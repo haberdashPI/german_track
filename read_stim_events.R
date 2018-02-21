@@ -70,11 +70,13 @@ sound_events$sound_index = NA
 sound_events$pres_trial = NA
 sound_events$pres_time = NA
 for(pres_row in 1:nrow(pf)){
-  eeg_row = last(which(sound_events$time < as.numeric(pf[pres_row,'time']) - 6))
+  eeg_row = last(which(sound_events$time <
+                       as.numeric(pf[pres_row,'time']) - 6))
   sound_events[eeg_row,'condition'] = as.character(pf[pres_row,]$condition)
   sound_events[eeg_row,'sound_index'] = pf[pres_row,'sound_index']
   sound_events[eeg_row,'pres_trial'] = pf[pres_row,'trial']
   sound_events[eeg_row,'pres_time'] = pf[pres_row,'time']
+  sound_events[eeg_row,'response'] = pf[pres_row,'response']
 }
 
 # verify trial alignment
@@ -102,5 +104,5 @@ sd(sound_events$time - sound_events$pres_time)
 
 ## save sound events
 sound_events %>%
-  select(sample,time,condition,sound_index) %>%
+  select(sample,time,condition,response,sound_index) %>%
   write.csv('sound_events.csv')

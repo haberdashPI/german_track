@@ -1,9 +1,8 @@
 datadir = '/Users/davidlittle/Data/EEGAttn_David_Little_2018_01_24/'
-eegfile = fullfile(datadir,'2018-01-24_0001_DavidLittle_record.bdf')
+eegfile = fullfile(datadir,'2018-01-24_0001_DavidLittle_biosemi.bdf')
 ft_defaults
 
-event = ft_read_event(eegfile)
-
+event = ft_read_event(eegfile);
 
 type = {event.type};
 status_types = zeros(length(type),1);
