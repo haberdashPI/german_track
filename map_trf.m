@@ -1,15 +1,17 @@
-function result = map_trf(fn,varargin)
+function result = map_trf(fn,names,varargin)
   result = [];
-  names = model_names();
   for k = 1:length(names)
     n = names{k};
     vals = {};
+    c = 0;
     for i = 1:length(varargin)
       if ismember('trf',fieldnames(varargin{i}))
-        vals{i} = varargin{i}.trf.(n);
+        val = varargin{i}.trf.(n);
       else
-        vals{i} = varargin{i}.(n);
+        val = varargin{i}.(n);
       end
+      c = c+1;
+      vals{c} = val;
     end
 
     result.(n) = fn(vals{:});

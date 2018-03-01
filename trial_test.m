@@ -2,7 +2,8 @@ ft_defaults
 analysisdir = 'models';
 datadir = '/Users/davidlittle/Data/EEGAttn_David_Little_2018_01_24/';
 eegfile = fullfile(datadir,'2018-01-24_0001_DavidLittle_biosemi.bdf');
-modelfile_prefix = fullfile(analysisdir,'2018-01-24_0001_DavidLittle_model');
+modelfile_prefix = fullfile(analysisdir,...
+                            '2018-01-24_0001_DavidLittle_targethit_');
 
 stim_events = readtable('sound_events.csv');
 head = ft_read_header(eegfile);
@@ -18,43 +19,23 @@ trial_len_samples = floor(trial_len*fs);
 % (so we normally can just manage the preprocessed data).
 % preprocessing
 eegfile_proc = [eegfile '.proc.mat'];
-if exist(eegfile_proc,'file') ~= 2
-  % define the trials
-  if exist(eegfile_proc,'file')
-    error(['Cannot create a file with the same name as directory ' ...
-           eegfile_proc]);
-  end
-
-  % load the trials
-  cfg = [];
-  cfg.dataset = eegfile;
-  cfg.trl = [stim_events{:,'sample'}-baseline_samples ...
-             stim_events{:,'sample'}+trial_len_samples ...
-             baseline_samples*ones(height(stim_events),1)];
-  cfg.continuous = 'yes';
-  cfg.channel = [1:128 257:262];
-
-  eeg_data = ft_preprocessing(cfg);
-
-  % downsample the trials
-  cfg = [];
-  cfg.resamplefs = 64;
-  eeg_data = ft_resampledata(cfg,eeg_data);
-
-  % re-reference the data
-  cfg = [];
-  cfg.refchannel = 'all';
-  cfg.reref = 'yes';
-  egg_data = ft_preprocessing(cfg,eeg_data);
-
-  % save to a file
-  save(eegfile_proc,'eeg_data');
-else
-  load(eegfile_proc);
-end
+load(eegfile_proc);
 
 % train the model
-model = train_model(eeg_data,stim_events,modelfile_prefix,1);
+dat = load('config/experiment_record.mat');
+all_stim_data = dat.experiment_cfg;
+train_config = []
+train_config.fs = all_stim_data.fs;
+train_config.trial = {};
+for trial = 1:length(eeg_data.trial)
+  train_config.trial{trial} = ...
+      get_stim_data(all_stim_data,stim_events(trial,:));
+end
+
+model_names = {'hit_target','miss_target','test_condition',...
+               'object_condition','feature_condition'}
+model = train_model(eeg_data,stim_events,train_config,...
+                    model_names,modelfile_prefix,0);
 
 % questions
 % do I use a broad or narrow time lag analysis?
@@ -74,38 +55,51 @@ model = train_model(eeg_data,stim_events,modelfile_prefix,1);
 % we can compare these three hypotehses during late and early
 % targets.
 
-N = length(model);
-grand_avg_trf = reduce_trf(@(x,y) x+y,model)
+grand_avg_trf = reduce_trf(@safeadd,model_names,model);
+N = reduce_trf(@(x,y)x+1,model_names,0,model)
 
 target_cor = stim_events;
-target_cor{:,'fem_young'} = NaN;
-target_cor{:,'fem_old'} = NaN;
-target_cor{:,'male'} = NaN;
 target_cor{:,'target_time'} = NaN;
 target_cor{:,'target'} = {'none'};
+for i = 1:length(model_names)
+  name = model_names{i};
+  target_cor{:,[name '_cor']} = NaN;
+end
 
 % for each trial...
 for trial = 1:height(stim_events)
-  cv_trial_trf = map_trf(@(grandm,trialm) (grandm - trialm)/(N-1),...
-                             grand_avg_trf,model{trial}.trf);
+  % if it exsits, do not include this trial's model
+  trial_trf = map_trf(@cv_trf,model_names,...
+                      grand_avg_trf,model{trial}.trf,N);
 
-  if ~strcmp(model{trial}.target,'none')
-    target_cor{trial,'target_time'} = model{trial}.target_time;
+  target_cor{trial,'target_time'} = model{trial}.target_time;
+  target_cor{trial,'target'} = {model{trial}.target};
 
-    start = max(1,floor(eeg_data.fsample * (model{trial}.target_time - 1)));
-    stop = min(ceil(eeg_data.fsample * (model{trial}.target_time + 0.5)),...
-               size(eeg_data.trial{1},2));
-    % start = 1;
-    % stop = size(eeg_data.trial{1},2);
+  stim_config = train_config.trial{trial};
 
-    names = {'fem_young','fem_old','male'};
-    for i = 1:3
-      target_cor{trial,names(i)} = ...
-          model_correlate(start,stop,eeg_data.trial{trial},...
-                          model{trial},cv_trial_trf,names{i});
+  for i = 1:length(model_names)
+    name = model_names{i};
+
+    if strcmp(name,'test_condition')
+      stim = stim_config.stream.mixed;
+    elseif strcmp(name,'object_condition')
+      stim = stim_config.stream.male;
+    elseif strcmp(name,'feature_condition')
+      stim = stim_config.stream.right;
+    elseif endsWith(name,'_target')
+      if ~strcmp(model{trial}.target,'none')
+        stimcor = stim_config.stream.(stim_config.target);
+      end
+    else
+      error(['unrecognized condition "' name '".'])
     end
-    target_cor{trial,'target'} = {model{trial}.target};
 
+    if ~endsWith(name,'_target') || ~strcmp(model{trial}.target,'none')
+      envelope = CreateLoudnessFeature(stimcor.data,stimcor.fs,...
+                                       eeg_data.fsample);
+
+      target_cor{trial,[name '_cor']} = ...
+          model_correlate(eeg_data.trial{trial},eeg_data.fsample,...
   end
 end
 

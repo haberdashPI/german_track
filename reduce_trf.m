@@ -1,25 +1,33 @@
-function result = reduce_trf(fn,models)
+function result = reduce_trf(fn,names,init,models)
   result = [];
-  names = model_names();
   for k = 1:length(names)
     n = names{k};
 
-    if ismember('trf',fieldnames(models{1}))
-      m = models{1}.trf.(n);
+    if nargin == 4
+      acc = init;
     else
-      m = models{1}.(n);
+      models = init;
+      if ismember('trf',fieldnames(models{1}))
+        acc = models{1}.trf.(n);
+      else
+        acc = models{1}.(n);
+      end
     end
 
     for i = 2:length(models)
       if ismember('trf',fieldnames(models{i}))
-        mn = models{i}.trf.(n);
+        acc_next = models{i}.trf.(n);
       else
-        mn = models{i}.(n);
+        acc_next = models{i}.(n);
       end
 
-      m = fn(m,mn);
+      if isempty(acc)
+        acc = acc_next;
+      elseif ~isempty(acc_next)
+        acc = fn(acc,acc_next);
+      end
     end
 
-    result.(n) = m;
+    result.(n) = acc;
   end
 end
