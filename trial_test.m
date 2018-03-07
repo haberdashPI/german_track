@@ -3,7 +3,7 @@ analysisdir = 'models';
 datadir = '/Users/davidlittle/Data/EEGAttn_David_Little_2018_01_24/';
 eegfile = fullfile(datadir,'2018-01-24_0001_DavidLittle_biosemi.bdf');
 modelfile_prefix = fullfile(analysisdir,...
-                            '2018-01-24_0001_DavidLittle_targethit_');
+                            '2018-01-24_0001_DavidLittle_target_model_1.0');
 
 stim_events = readtable('sound_events.csv');
 head = ft_read_header(eegfile);
@@ -32,8 +32,7 @@ for trial = 1:length(eeg_data.trial)
       get_stim_data(all_stim_data,stim_events(trial,:));
 end
 
-model_names = {'hit_target','miss_target','test_condition',...
-               'object_condition','feature_condition'}
+model_names = {'hit_target','miss_target'}
 model = train_model(eeg_data,stim_events,train_config,...
                     model_names,modelfile_prefix,0);
 
@@ -66,6 +65,8 @@ for i = 1:length(model_names)
   target_cor{:,[name '_cor']} = NaN;
 end
 
+all_cor_data = [];
+
 % for each trial...
 for trial = 1:height(stim_events)
   % if it exsits, do not include this trial's model
@@ -81,11 +82,11 @@ for trial = 1:height(stim_events)
     name = model_names{i};
 
     if strcmp(name,'test_condition')
-      stim = stim_config.stream.mixed;
+      stimcor = stim_config.stream.mixed;
     elseif strcmp(name,'object_condition')
-      stim = stim_config.stream.male;
+      stimcor = stim_config.stream.male;
     elseif strcmp(name,'feature_condition')
-      stim = stim_config.stream.right;
+      stimcor = stim_config.stream.right;
     elseif endsWith(name,'_target')
       if ~strcmp(model{trial}.target,'none')
         stimcor = stim_config.stream.(stim_config.target);
@@ -98,12 +99,34 @@ for trial = 1:height(stim_events)
       envelope = CreateLoudnessFeature(stimcor.data,stimcor.fs,...
                                        eeg_data.fsample);
 
-      target_cor{trial,[name '_cor']} = ...
-          model_correlate(eeg_data.trial{trial},eeg_data.fsample,...
+      cor_data = ...
+          model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
+                          envelope,stimcor,model{trial},...
+                          trial_trf.(name));
+
+      cor = corrcoef(cor_data);
+      target_cor{trial,[name '_cor']} = cor(1,2);
+
+      all_cor_data(trial,i,:,:) = cor_data;
+    end
   end
 end
 
-writetable(target_cor,'target_correlations.csv');
+% TODO: get this right
+all_cor_data(:,:,:,3) = repmat((1:size(all_cor_data,1))',...
+                               [1 size(all_cor_data,2) size(all_cor_data,3)]);
+all_cor_data(:,:,:,4) = repmat((1:size(all_cor_data,2)),...
+                               [size(all_cor_data,1) 1 size(all_cor_data,3)]);
+
+prediction = reshape(all_cor_data(:,:,:,1),[],1);
+response = reshape(all_cor_data(:,:,:,2),[],1);
+trial = reshape(all_cor_data(:,:,:,3),[],1);
+model_index = reshape(all_cor_data(:,:,:,4),[],1);
+
+table_cor_data = table(trial,response,prediction,model_index);
+
+writetable(target_cor,'target_correlations_1.0.csv');
+writetable(table_cor_data,'target_cor_data_1.0.csv');
 
 % TODO:
 % compute some aggregate correlations for each stream across time (i.e. using
@@ -113,5 +136,10 @@ writetable(target_cor,'target_correlations.csv');
 % what we can be reasonably sure of: listeners were encoding the target
 % near hits.
 %
-% TODO: train the model to the target near hits, and maybe (seperately?) to the
-% two other sources near misses.
+% based on the instruction we would expect listeners to attend
+% to:
+% the male stream during the object condition
+% the right speaker during the feature condition
+% the global mixture during the 'test' condition
+% can we compare the correlations between these
+% conditions to validate the model?

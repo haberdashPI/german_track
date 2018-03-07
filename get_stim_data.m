@@ -29,7 +29,7 @@ function stim_data = get_stim_data(info,stim_event)
   end
   stim_data.stream.hit_target.fs = fs;
   stim_data.stream.hit_target.start = stim_data.target_time - 1;
-  stim_data.stream.hit_target.stop = stim_data.target_time + 0.25;
+  stim_data.stream.hit_target.stop = stim_data.target_time + 0;
 
   % target misses
   if strcmp(stim_event.response{:},'3') && stim_data.target_time > 0
@@ -39,7 +39,7 @@ function stim_data = get_stim_data(info,stim_event)
   end
   stim_data.stream.miss_target.fs = fs;
   stim_data.stream.miss_target.start = stim_data.target_time - 1;
-  stim_data.stream.miss_target.stop = stim_data.target_time + 0.25;
+  stim_data.stream.miss_target.stop = stim_data.target_time + 0;
 
   % global attention
   if strcmp(stim_event.condition,'test')
