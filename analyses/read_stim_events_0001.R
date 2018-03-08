@@ -3,7 +3,12 @@ library(dplyr)
 library(ggplot2)
 library(cowplot)
 
-efraw = read.csv('eeg_events.csv')
+source('util/setup.R')
+
+## 0001 data was collected before some improvements to the trigger
+## setup, so it's preprocessing is a special case, handled in this file
+
+efraw = read.csv(file.path(data_dir,'eeg_events_0001.csv'))
 ef = NULL
 sr = 2048
 for(bit in 0:7){
@@ -17,8 +22,7 @@ ef = ef %>% arrange(sample) %>%
 p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
   xlab('minutes')
 
-datadir = '/Users/davidlittle/Data/EEGAttn_David_Little_2018_01_24/'
-presfile = file.path(datadir,'2018_01-24-0001_DavidLittle_presentation.log')
+presfile = file.path(raw_data_dir,'2018_01-24-0001_DavidLittle_presentation.log')
 
 raw_pf = read.table(presfile,header=T,skip=3,sep='\t',blank.lines.skip=T,fill=T)
 ## names(pf) %<>% tolower # make all columns lower case
@@ -49,6 +53,7 @@ p2 = ggplot(pf,aes(x=time/60,y=response,color=response)) + geom_point() +
 ## compare events
 plot_grid(p1,p2,nrow=2,ncol=1,align='v')
 
+####################
 ## compare responses
 presr = pf %>% select(time,response) %>%
   mutate(response = ifelse(response == 2,'yes','no'))
@@ -105,4 +110,4 @@ sd(sound_events$time - sound_events$pres_time)
 ## save sound events
 sound_events %>%
   select(sample,time,condition,response,sound_index) %>%
-  write.csv('sound_events.csv')
+  write.csv(file.path(data_dir,'sound_events_0001.csv'))
