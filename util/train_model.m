@@ -1,5 +1,5 @@
 function model = train_model(eeg,stim_events,train_config,streams,fileprefix,usecache)
-  if nargin < 4
+  if nargin < 6
     usecache = 0;
   end
 
