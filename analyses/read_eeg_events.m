@@ -33,7 +33,7 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   SID = repmat(sid,length(code),1);
   df = table(code,sample,SID);
 
-  writetable(df,);
+  writetable(df,result_file);
 
   head = ft_read_header(fullfile(raw_data_dir,eegfile));
   disp(['File sample rate: ' num2str(head.Fs)]);
