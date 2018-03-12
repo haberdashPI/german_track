@@ -16,7 +16,7 @@ addpath('util');
 ft_defaults;
 
 analysis_dir = fullfile(base_dir,'analyses');
-cache_dir = fullfile(base_dir,'analyses','preprocessed_data');
+cache_dir = fullfile(base_dir,'analyses','cache');
 model_dir = fullfile(analysis_dir,'models');
 data_dir = fullfile(base_dir,'data');
 
