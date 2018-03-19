@@ -49,39 +49,48 @@ for sid = 1:length(eeg_files)
     target_cor{:,[name '_cor']} = NaN;
   end
 
-  all_cor_data = [];
+  all_cor_data = zeros(height(stim_events),length(model_names),...
+                       size(eeg_data.trial{1},2))*NaN;
 
   % for each trial...
-  for trial = 1:height(stim_events)
-    % if it exsits, do not include this trial's model
-    trial_trf = map_trf(@cv_trf,model_names,...
-                        grand_avg_trf,model{trial}.trf,N);
+  textprogressbar('computing correlations: ');
+  try
+    for trial = 1:height(stim_events)
+      % if it exsits, do not include this trial's model
+      trial_trf = map_trf(@cv_trf,model_names,...
+                          grand_avg_trf,model{trial}.trf,N);
 
-    target_cor{trial,'target_time'} = model{trial}.target_time;
-    target_cor{trial,'target'} = {model{trial}.target};
+      target_cor{trial,'target_time'} = model{trial}.target_time;
+      target_cor{trial,'target'} = {model{trial}.target};
 
-    stim_config = train_config.trial{trial};
+      stim_config = train_config.trial{trial};
 
-    % compute results for each model type
-    for i = 1:length(model_names)
-      name = model_names{i};
-      stream = stim_config.stream.(name);
+      % compute results for each model type
+      for i = 1:length(model_names)
+        name = model_names{i};
+        stream = stim_config.stream.(name);
 
-      if ~stream.needs_target || ~strcmp(model{trial}.target,'none')
-        envelope = CreateLoudnessFeature(stream.test_data,stream.fs,...
-                                         eeg_data.fsample);
+        if ~stream.needs_target || ~strcmp(model{trial}.target,'none')
+          envelope = CreateLoudnessFeature(stream.test_data,stream.fs,...
+                                           eeg_data.fsample);
 
-        cor_data = ...
-            model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
-                           envelope,stream,model{trial},...
-                           trial_trf.(name));
+          cor_data = ...
+              model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
+                             envelope,stream,model{trial},...
+                             trial_trf.(name));
 
-        cor = corrcoef(cor_data);
-        target_cor{trial,[name '_cor']} = cor(1,2);
+          cor = corrcoef(cor_data);
+          target_cor{trial,[name '_cor']} = cor(1,2);
 
-        all_cor_data(trial,i,:,:) = cor_data;
+          all_cor_data(trial,i,1:size(cor_data,1),1:2) = cor_data;
+        end
       end
+      textprogressbar(100*(trial / height(stim_events)));
     end
+    textprogressbar('finished!');
+  catch e
+    textprogressbar('error!');
+    rethrow(e);
   end
 
   all_cor_data(:,:,:,3) = repmat((1:size(all_cor_data,1))',...
@@ -92,9 +101,9 @@ for sid = 1:length(eeg_files)
   prediction = reshape(all_cor_data(:,:,:,1),[],1);
   response = reshape(all_cor_data(:,:,:,2),[],1);
   trial = reshape(all_cor_data(:,:,:,3),[],1);
-  model_index = reshape(all_cor_data(:,:,:,4),[],1);
 
-  table_cor_data = table(trial,response,prediction,model_index);
+  table_cor_data = table(trial,response,prediction);
+  table_cor_data(:,'model') = model_names(reshape(all_cor_data(:,:,:,4),[],1))';
 
   table_cor_data(:,'sid') = {sid};
   target_cor(:,'sid') = {sid};
