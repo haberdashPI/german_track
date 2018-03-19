@@ -6,36 +6,41 @@ function model = train_model(eeg,stim_events,train_config,streams,fileprefix,use
   model = {};
 
   textprogressbar('processing trials: ');
-  for trial = 1:length(eeg.trial)
-    modelfile = [fileprefix '_trial_' num2str(trial,'%03d') '.mat'];
+  try
+    for trial = 1:length(eeg.trial)
+      modelfile = [fileprefix '_trial_' num2str(trial,'%03d') '.mat'];
 
-    if usecache && exist(modelfile)
-      textprogressbar(100*(trial / length(eeg.trial)));
-      mf = load(modelfile);
-      model{trial} = mf.trial_model;
-    else
-      trial_config = train_config.trial{trial};
+      if usecache && exist(modelfile)
+        textprogressbar(100*(trial / length(eeg.trial)));
+        mf = load(modelfile);
+        model{trial} = mf.trial_model;
+      else
+        trial_config = train_config.trial{trial};
 
-      trial_model = [];
-      % streams = fieldnames(trial_config.stream);
-      N = length(eeg.trial)*length(streams);
-      lags = 0:round(0.25*eeg.fsample);
-      for i = 1:length(streams)
-        textprogressbar(100*((length(streams)*(trial-1) + i) / N));
-        stream_name = streams{i};
-        trf = ...
-            train_helper(trial_config.stream.(stream_name),...
-                         eeg.trial{trial},eeg.fsample,lags);
-        trial_model.trf.(stream_name) = trf;
+        trial_model = [];
+        % streams = fieldnames(trial_config.stream);
+        N = length(eeg.trial)*length(streams);
+        lags = 0:round(0.25*eeg.fsample);
+        for i = 1:length(streams)
+          textprogressbar(100*((length(streams)*(trial-1) + i) / N));
+          stream_name = streams{i};
+          trf = ...
+              train_helper(trial_config.stream.(stream_name),...
+                           eeg.trial{trial},eeg.fsample,lags);
+          trial_model.trf.(stream_name) = trf;
+        end
+        trial_model.lags = lags;
+        trial_model.target = trial_config.target;
+        trial_model.target_time = trial_config.target_time;
+        save(modelfile,'trial_model');
+        model{trial} = trial_model;
       end
-      trial_model.lags = lags;
-      trial_model.target = trial_config.target;
-      trial_model.target_time = trial_config.target_time;
-      save(modelfile,'trial_model');
-      model{trial} = trial_model;
     end
+    textprogressbar('finished!');
+  catch e
+    textprogressbar('error!');
+    rethrow(e);
   end
-  textprogressbar('finished!');
 end
 
 function model = train_helper(stim,eeg,efs,lags)
