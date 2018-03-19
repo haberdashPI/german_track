@@ -24,7 +24,7 @@ function stim_data = get_stim_data(info,stim_event)
   stim_data.stream.hit_target.needs_target = 1;
   if stim_data.target_time > 0
     stim_data.stream.hit_target.test_data = ...
-        info.all_sentences{1}{sent_idx(target_idx),1};
+        info.all_sentences{target_idx}{sent_idx(target_idx),1};
   else
     stim_data.stream.hit_target.test_data = [];
   end
@@ -34,7 +34,7 @@ function stim_data = get_stim_data(info,stim_event)
     stim_data.stream.hit_target.data = [];
   end
   stim_data.stream.hit_target.fs = fs;
-  stim_data.stream.hit_target.start = stim_data.target_time - 1;
+  stim_data.stream.hit_target.start = stim_data.target_time - 2;
   stim_data.stream.hit_target.stop = stim_data.target_time + 0;
 
   % target misses
@@ -46,15 +46,15 @@ function stim_data = get_stim_data(info,stim_event)
     stim_data.stream.miss_mix.data = [];
   end
   stim_data.stream.miss_mix.fs = fs;
-  stim_data.stream.miss_mix.start = stim_data.target_time - 1;
+  stim_data.stream.miss_mix.start = stim_data.target_time - 2;
   stim_data.stream.miss_mix.stop = stim_data.target_time + 0;
 
   stim_data.stream.miss_nontarget.needs_target = 1;
   if target_idx > 0
     nts = 1:3;
     nts(nts ~=  sent_idx(target_idx));
-    non_target1 = info.all_sentences{1}{nts(1),1};
-    non_target2 = info.all_sentences{1}{nts(2),1};
+    non_target1 = info.all_sentences{nts(1)}{sent_idx(nts(1)),1};
+    non_target2 = info.all_sentences{nts(2)}{sent_idx(nts(2)),1};
     % padding
     if length(non_target1) > length(non_target2)
       non_target2(end+1:length(non_target1)) = 0;
