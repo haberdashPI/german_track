@@ -7,7 +7,7 @@ if strcmp(name,'util')
 end
 
 [~,name] = fileparts(base_dir);
-if ~strcmp(name,'eeg_atten') % TODO: change to german_track
+if ~strcmp(name,'german_track')
   warning(['Expected root directory to be named "eeg_atten". Was ' base_dir]);
 end
 

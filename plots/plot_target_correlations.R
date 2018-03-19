@@ -2,133 +2,67 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 
-dir = paste('plots',Sys.Date(),sep='_')
+source('util/setup.R')
+
+dir = file.path(plot_dir,paste('run',Sys.Date(),sep='_'))
 dir.exists(dir) || dir.create(dir)
 
-## TODO:
-## along x-axis plot all correctly identified targets next to one another (in
-## order) along the second part of the x-axis plot all incorrectly identified
-## targets on the y-axis is the relative correlation score of the target
-## voice within some window around the target time.
+df = NULL
+cor_files = list.files(cache_dir,pattern='target_2.0seconds.*_cor.csv')
+for(file in cor_files){
+  dff = read.csv(file.path(cache_dir,file))
 
-df = read.csv('target_correlations.csv')
-df = df %>%
-  rename(hitcor = hit_target_cor,
-         misscor = miss_target_cor,
-         globalcor = test_condition_cor,
-         objectcor = object_condition_cor,
-         featurecor = feature_condition_cor) %>%
-  mutate(condition = recode(condition,test = 'globalc'),
-         target_heard = response == 2,
-         target_present = !is.nan(target_time),
-         hit = target_heard & target_present,
-         miss = !target_heard & target_present) %>%
-  arrange(time)
+  dff = dff %>%
+    rename(hitcor = hit_target_cor,
+           misscor_nont = miss_nontarget_cor,
+           misscor_mix = miss_mix_cor) %>%
+    mutate(condition = recode(condition,test = 'globalc'),
+           target_heard = response == 2,
+           target_present = !is.na(target_time) & target_time > 0,
+           hit = target_heard & target_present,
+           miss = !target_heard & target_present) %>%
+    arrange(time)
+
+  df = rbind(df,dff)
+}
+
+bdf = df %>%
+  mutate(correct = target_heard == target_present) %>%
+  group_by(sid,condition,target_present) %>%
+  summarize(correct = mean(correct,na.rm=T))
+
+pos = position_jitter(width=0.1)
+ggplot(bdf,aes(x=target_present,y=correct)) +
+  geom_label(aes(label=sid),position=pos) +
+  facet_grid(condition~.) + ylim(0.4,1) +
+  geom_hline(yintercept=0.5,linetype=2) +
+  ylab('Proportion Correct') + xlab('Target Present')
+ggsave(file.path(dir,'1_behavioral_responses.pdf'))
 
 ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=hit,y=hitcor - misscor)) +
-  facet_grid(condition~.) +
-  geom_point(position=position_jitter(width=0.05)) +
+       aes(x=hit,y=hitcor - misscor_nont)) +
+  facet_grid(condition~sid) +
+  geom_point(alpha=0.5,position=position_jitter(width=0.05)) +
   stat_summary(aes(x=as.numeric(hit)+1.1)) +
-  geom_hline(yintercept=0,linetype=2)
-ggsave(file.path(dir,'1_hit_vs_miss_diff_2.pdf'))
-
-ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=misscor,y=hitcor)) +
-  facet_grid(condition~hit) +
-  geom_point(position=position_jitter(width=0.05)) +
   geom_hline(yintercept=0,linetype=2) +
-  geom_abline(intercept=0,slope=1)
-ggsave(file.path(dir,'2_hit_vs_miss_diag_2.pdf'))
+  ylab('Target Correlation - Non-target Correlation') + xlab('Target Detected')
 
-t.test(hitcor ~ hit,subset(df,target_present & !is.na(hit)))
-t.test(I(misscor-hitcor) ~ hit,subset(df,target_present & !is.na(hit)))
-
-t.test(hitcor ~ hit,
-       subset(df,target_present & !is.na(hit) & condition == 'globalc'))
-t.test(I(misscor-hitcor) ~ hit,
-       subset(df,target_present & !is.na(hit) & condition == 'globalc'))
-
-df = read.csv('target_correlations_1.5.csv')
-df = df %>%
-  rename(hitcor = hit_target_cor,
-         misscor = miss_target_cor) %>%
-  mutate(condition = recode(condition,test = 'globalc'),
-         target_heard = response == 2,
-         target_present = !is.nan(target_time),
-         hit = target_heard & target_present,
-         miss = !target_heard & target_present) %>%
-  arrange(time)
+ggsave(file.path(dir,'2_target_vs_miss_non_targets.pdf'))
 
 ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=hit,y=hitcor - misscor)) +
-  facet_grid(condition~.) +
-  geom_point(position=position_jitter(width=0.05)) +
+       aes(x=hit,y=hitcor - misscor_mix)) +
+  facet_grid(condition~sid) +
+  geom_point(alpha=0.5,position=position_jitter(width=0.05)) +
   stat_summary(aes(x=as.numeric(hit)+1.1)) +
-  geom_hline(yintercept=0,linetype=2)
-ggsave(file.path(dir,'3_hit_vs_miss_diff_1.5.pdf'))
-
-ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=misscor,y=hitcor)) +
-  facet_grid(condition~hit) +
-  geom_point(position=position_jitter(width=0.05)) +
   geom_hline(yintercept=0,linetype=2) +
-  geom_abline(intercept=0,slope=1)
-ggsave(file.path(dir,'4_hit_vs_miss_diag_1.5.pdf'))
+  ylab('Target Correlation - Mixture Correlation') + xlab('Target Detected')
 
-df = read.csv('target_correlations_1.0.csv')
-df = df %>%
-  rename(hitcor = hit_target_cor,
-         misscor = miss_target_cor) %>%
-  mutate(condition = recode(condition,test = 'globalc'),
-         target_heard = response == 2,
-         target_present = !is.nan(target_time),
-         hit = target_heard & target_present,
-         miss = !target_heard & target_present) %>%
-  arrange(time)
+ggsave(file.path(dir,'3_target_vs_miss_mix.pdf'))
 
-ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=hit,y=hitcor - misscor)) +
-  facet_grid(condition~.) +
-  geom_point(position=position_jitter(width=0.05)) +
-  stat_summary(aes(x=as.numeric(hit)+1.1)) +
-  geom_hline(yintercept=0,linetype=2)
-ggsave(file.path(dir,'5_hit_vs_miss_diff_1.0.pdf'))
+## t.test(hitcor ~ hit,subset(df,target_present & !is.na(hit)))
+## t.test(I(misscor-hitcor) ~ hit,subset(df,target_present & !is.na(hit)))
 
-ggplot(subset(df,target_present & !is.na(hit) & !is.na(miss)),
-       aes(x=misscor,y=hitcor)) +
-  facet_grid(condition~hit) +
-  geom_point(position=position_jitter(width=0.05)) +
-  geom_hline(yintercept=0,linetype=2) +
-  geom_abline(intercept=0,slope=1)
-ggsave(file.path(dir,'6_hit_vs_miss_diag_1.0.pdf'))
-
-
-t.test(hitcor ~ hit,subset(df,target_present & !is.na(hit)))
-t.test(I(misscor-hitcor) ~ hit,subset(df,target_present & !is.na(hit)))
-
-t.test(hitcor ~ hit,
-       subset(df,target_present & !is.na(hit) & condition == 'globalc'))
-t.test(I(misscor-hitcor) ~ hit,
-       subset(df,target_present & !is.na(hit) & condition == 'globalc'))
-
-dfcor = df %>%
-  gather(condition_cor,cor,objectcor,featurecor,globalcor) %>%
-  mutate(condition_cor = factor(condition_cor)) %>%
-  arrange(time)
-
-
-ggplot(dfcor,aes(x=recode(condition_cor,
-                          globalcor = 'Mixture (global)',
-                          featurecor = 'Right Channel (feature)',
-                          objectcor = 'Male Speaker (object)'),
-                 y=cor)) +
-  xlab('Envelope') + ylab('Correlation') +
-  geom_point(position=position_jitter(width=0.05)) +
-  stat_summary(aes(x=as.numeric(condition_cor)+0.15)) +
-  geom_hline(yintercept=0,linetype=2) +
-  facet_grid(condition~.,
-             labeller=as_labeller(c(globalc = 'Condition - Global',
-                                    feature = 'Condition - Feature',
-                                    object = 'Condition - Object')))
-ggsave(file.path(dir,'3_condition_correlation.pdf'))
+## t.test(hitcor ~ hit,
+##        subset(df,target_present & !is.na(hit) & condition == 'globalc'))
+## t.test(I(misscor-hitcor) ~ hit,
+##        subset(df,target_present & !is.na(hit) & condition == 'globalc'))

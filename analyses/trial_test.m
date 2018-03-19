@@ -1,7 +1,14 @@
 run('../util/setup.m')
 
-modelfile_prefix = fullfile(model_dir,'target_model_2.0seconds');
-results_prefix = fullfile(cache_dir,'target_2.0seconds');
+usecache = 1;
+
+% modelfile_prefix = fullfile(model_dir,'target_model_2.0seconds');
+% results_prefix = fullfile(cache_dir,'target_2.0seconds');
+% model_names = {'hit_target','miss_nontarget','miss_mix'};
+
+modelfile_prefix = fullfile(model_dir,'condition_model');
+results_prefix = fullfile(cache_dir,'condition_model');
+model_names = {'test_condition','object_condition','feature_condition'};
 
 % training configuration
 dat = load(fullfile(data_dir,'config','experiment_record.mat'));
@@ -10,15 +17,13 @@ train_config = [];
 train_config.fs = all_stim_data.fs;
 train_config.trial = {};
 
-model_names = {'hit_target','miss_target'};
-
 eeg_files = dir(fullfile(data_dir,'eeg_response*.bdf.mat'));
 
-for file_index = 1:length(eeg_files)
-  eventfile = fullfile(data_dir,sprintf('sound_events_%04d.csv',file_index));
+for sid = 1:length(eeg_files)
+  eventfile = fullfile(data_dir,sprintf('sound_events_%04d.csv',sid));
   stim_events = readtable(eventfile);
 
-  eegfile = fullfile(data_dir,eeg_files(file_index).name)
+  eegfile = fullfile(data_dir,eeg_files(sid).name)
   eegfiledata = load(eegfile);
   eeg_data = eegfiledata.eeg_data;
 
@@ -28,7 +33,8 @@ for file_index = 1:length(eeg_files)
         get_stim_data(all_stim_data,stim_events(trial,:));
   end
   model = train_model(eeg_data,stim_events,train_config,...
-                      model_names,sprintf('%s_sid%04d_',modelfile_prefix,file_index),1);
+                      model_names,sprintf('%s_sid%04d_',modelfile_prefix,sid),...
+                      usecache);
 
   % compute individual grand average
   grand_avg_trf = reduce_trf(@safeadd,model_names,model);
@@ -59,28 +65,15 @@ for file_index = 1:length(eeg_files)
     % compute results for each model type
     for i = 1:length(model_names)
       name = model_names{i};
+      stream = stim_config.stream.(name);
 
-      if strcmp(name,'test_condition')
-        stimcor = stim_config.stream.mixed;
-      elseif strcmp(name,'object_condition')
-        stimcor = stim_config.stream.male;
-      elseif strcmp(name,'feature_condition')
-        stimcor = stim_config.stream.right;
-      elseif endsWith(name,'_target')
-      if ~strcmp(model{trial}.target,'none')
-        stimcor = stim_config.stream.(stim_config.target);
-      end
-      else
-        error(['unrecognized condition "' name '".'])
-      end
-
-      if ~endsWith(name,'_target') || ~strcmp(model{trial}.target,'none')
-        envelope = CreateLoudnessFeature(stimcor.data,stimcor.fs,...
+      if ~stream.needs_target || ~strcmp(model{trial}.target,'none')
+        envelope = CreateLoudnessFeature(stream.test_data,stream.fs,...
                                          eeg_data.fsample);
 
         cor_data = ...
             model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
-                           envelope,stimcor,model{trial},...
+                           envelope,stream,model{trial},...
                            trial_trf.(name));
 
         cor = corrcoef(cor_data);
@@ -103,9 +96,12 @@ for file_index = 1:length(eeg_files)
 
   table_cor_data = table(trial,response,prediction,model_index);
 
-  writetable(target_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,file_index))
+  table_cor_data(:,'sid') = {sid};
+  target_cor(:,'sid') = {sid};
+
+  writetable(target_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,sid))
   writetable(table_cor_data,sprintf('%s_sid%03d_cor_data.csv',results_prefix,...
-                                    file_index));
+                                    sid));
 end
 
 % TODO:
