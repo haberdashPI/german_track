@@ -15,6 +15,12 @@ addpath('analyses');
 addpath('util');
 ft_defaults;
 
+global analysis_dir;
+global cache_dir;
+global model_dir;
+global data_dir;
+global raw_data_dir;
+
 analysis_dir = fullfile(base_dir,'analyses');
 cache_dir = fullfile(base_dir,'analyses','cache');
 model_dir = fullfile(analysis_dir,'models');

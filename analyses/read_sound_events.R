@@ -5,9 +5,9 @@ library(cowplot)
 
 source('util/setup.R')
 
-sid = 3
+sid = 2
 
-efraw = read.csv(file.path(data_dir,sprintf('eeg_events_%04d.csv',sid)))
+efraw = read.csv(file.path(data_dir,sprintf('eeg_events_%03d.csv',sid)))
 ef = NULL
 sr = 2048
 for(bit in 0:7){
@@ -23,7 +23,7 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
   xlab('minutes')
 p1
 
-presfiles = list.files(file.path(raw_data_dir),sprintf('%04d.*log',sid))
+presfiles = list.files(file.path(raw_data_dir),sprintf('%03d.*log',sid))
 if(length(presfiles) > 1){
   stop(do.call(paste,c(list(sprintf("Multiple files matching pattern for sid = %d:",sid)),
                         as.list(presfiles),list(sep='\n'))))
@@ -68,4 +68,10 @@ pf = pf %>%
 
 pf %>%
   select(sample,time,condition,response,sound_index) %>%
-  write.csv(file.path(data_dir,sprintf('sound_events_%04d.csv',sid)))
+  write.csv(file.path(data_dir,sprintf('sound_events_%03d.csv',sid)))
+
+pf %>%
+  mutate(index = as.numeric(condition)) %>%
+  select(time,index,sound_index) %>%
+  write.table(file.path(data_dir,sprintf('sound_events_%03d.txt',sid)),
+              quote=F,sep='\t',row.names=F)

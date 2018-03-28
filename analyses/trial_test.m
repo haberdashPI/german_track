@@ -2,55 +2,126 @@ run('../util/setup.m')
 
 usecache = 1;
 
+% TODO: these configurations need to use the new interface
 % modelfile_prefix = fullfile(model_dir,'target_model_2.0seconds');
 % results_prefix = fullfile(cache_dir,'target_2.0seconds');
 % model_names = {'hit_target','miss_nontarget','miss_mix'};
 
-modelfile_prefix = fullfile(model_dir,'condition_model');
-results_prefix = fullfile(cache_dir,'condition_model');
-model_names = {'test_condition','object_condition','feature_condition'};
+% modelfile_prefix = fullfile(model_dir,'condition_model');
+% results_prefix = fullfile(cache_dir,'condition_model');
+% model_names = {'test_condition','object_condition','feature_condition'};
+
+% model_names = {'general_envelope'};
+
+% modelfile_prefix = fullfile(model_dir,'genenv_model');
+% results_prefix = fullfile(cache_dir,'genenv_model');
+
+% config.train = [];
+% config.train(1).model_name = 'general_envelope';
+% config.train(1).label = 'condition';
+% config.train(1).range = 'none';
+% config.train(1).filter = @(info,event) 1;
+
+% config.test = [];
+% config.test(1).models = {'general_envelope'};
+% config.test(1).label = 'target';
+% config.test(1).range = [-2 0];
+% config.test(1).filter = @(info,event) 1;
+
+% config.test(2).models = {'general_envelope'};
+% config.test(2).label = 'mixture';
+% config.test(2).range = [-2 0];
+% config.test(2).filter = @(info,event) 1;
+
+% config.test(3).models = {'general_envelope'};
+% config.test(3).label = 'non_targets';
+% config.test(3).range = [-2 0];
+% config.test(3).filter = @(info,event) 1;
+
+% config.test(4).models = {'general_envelope'};
+% config.test(4).label = 'non_target1';
+% config.test(4).range = [-2 0];
+% config.test(4).filter = @(info,event) 1;
+
+% config.test(5).models = {'general_envelope'};
+% config.test(5).label = 'non_target2';
+% config.test(5).range = [-2 0];
+% config.test(5).filter = @(info,event) 1;
+
+model_names = {'full_target_object','full_target_feature','full_target_global'};
+
+modelfile_prefix = fullfile(model_dir,'full_target_model');
+results_prefix = fullfile(cache_dir,'full_target_model');
+
+config.train = [];
+config.train(1).model_name = 'full_target_feature';
+config.train(1).label = 'condition';
+config.train(1).range = 'none';
+config.train(1).filter = @(info,event) strcmp(event.condition,'feature');
+
+config.train(2).model_name = 'full_target_object';
+config.train(2).label = 'condition';
+config.train(2).range = 'none';
+config.train(2).filter = @(info,event) strcmp(event.condition,'object');
+
+config.train(3).model_name = 'full_target_global';
+config.train(3).label = 'condition';
+config.train(3).range = 'none';
+config.train(3).filter = @(info,event) strcmp(event.condition,'test');
+
+config.test = [];
+labels = {'target','mixture','non_targets'};
+for i = 1:3
+  config.test(i).models = {'full_target_object'};
+  config.test(i).label = labels{i};
+  config.test(i).range = [-2 0];
+  config.test(i).filter = @(info,event) strcmp(event.condition,'object');
+end
+
+for i = 1:3
+  config.test(i+3).models = {'full_target_feature'};
+  config.test(i+3).label = labels{i};
+  config.test(i+3).range = [-2 0];
+  config.test(i+3).filter = @(info,event) strcmp(event.condition,'feature');
+end
+
+for i = 1:3
+  config.test(i+6).models = {'full_target_global'};
+  config.test(i+6).label = labels{i};
+  config.test(i+6).range = [-2 0];
+  config.test(i+6).filter = @(info,event) strcmp(event.condition,'test');
+end
 
 % training configuration
 dat = load(fullfile(data_dir,'config','experiment_record.mat'));
 all_stim_data = dat.experiment_cfg;
-train_config = [];
-train_config.fs = all_stim_data.fs;
-train_config.trial = {};
 
 eeg_files = dir(fullfile(data_dir,'eeg_response*.bdf.mat'));
 
-for sid = 1:length(eeg_files)
-  eventfile = fullfile(data_dir,sprintf('sound_events_%04d.csv',sid));
-  stim_events = readtable(eventfile);
-
-  eegfile = fullfile(data_dir,eeg_files(sid).name)
+for sid_index = 1:length(eeg_files)
+  eegfile = fullfile(data_dir,eeg_files(sid_index).name)
   eegfiledata = load(eegfile);
   eeg_data = eegfiledata.eeg_data;
 
+  numstr = regexp(eegfile,'_([0-9]+).bdf','tokens');
+  sid = str2num(numstr{1}{1});
+  eventfile = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
+  stim_events = readtable(eventfile);
+
   % train the model
-  for trial = 1:length(eeg_data.trial)
-    train_config.trial{trial} = ...
-        get_stim_data(all_stim_data,stim_events(trial,:));
-  end
-  model = train_model(eeg_data,stim_events,train_config,...
-                      model_names,sprintf('%s_sid%04d_',modelfile_prefix,sid),...
+  model = train_model(eeg_data,all_stim_data,stim_events,config.train,...
+                      sprintf('%s_sid%03d',modelfile_prefix,sid),...
                       usecache);
 
   % compute individual grand average
   grand_avg_trf = reduce_trf(@safeadd,model_names,model);
-  N = reduce_trf(@(x,y)x+1,model_names,0,model)
+  N = reduce_trf(@(x,y)x+1,model_names,0,model);
 
   % setup data tables
-  target_cor = stim_events;
-  target_cor{:,'target_time'} = NaN;
-  target_cor{:,'target'} = {'none'};
-  for i = 1:length(model_names)
-    name = model_names{i};
-    target_cor{:,[name '_cor']} = NaN;
-  end
-
-  all_cor_data = zeros(height(stim_events),length(model_names),...
-                       size(eeg_data.trial{1},2))*NaN;
+  all_cor = table();
+  all_cor_data = table();
+  % all_cor_data = zeros(height(stim_events),length(model_names),...
+  %                      size(eeg_data.trial{1},2))*NaN;
 
   % for each trial...
   textprogressbar('computing correlations: ');
@@ -60,29 +131,42 @@ for sid = 1:length(eeg_files)
       trial_trf = map_trf(@cv_trf,model_names,...
                           grand_avg_trf,model{trial}.trf,N);
 
-      target_cor{trial,'target_time'} = model{trial}.target_time;
-      target_cor{trial,'target'} = {model{trial}.target};
+      % run each test
+      for test_index = 1:length(config.test)
+        stim = config.test(test_index);
+        audio = trial_audio(all_stim_data,stim_events(trial,:),stim);
 
-      stim_config = train_config.trial{trial};
+        % run the test for each model the test applies to
+        for model_index = 1:length(stim.models)
+          if ~isempty(audio.data)
+            envelope = CreateLoudnessFeature(audio.data,audio.fs,eeg_data.fsample);
 
-      % compute results for each model type
-      for i = 1:length(model_names)
-        name = model_names{i};
-        stream = stim_config.stream.(name);
+            cor_data = ...
+                model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
+                               envelope,audio,model{trial},...
+                               trial_trf.(stim.models{model_index}));
 
-        if ~stream.needs_target || ~strcmp(model{trial}.target,'none')
-          envelope = CreateLoudnessFeature(stream.test_data,stream.fs,...
-                                           eeg_data.fsample);
+            cor = corrcoef(cor_data);
+            name = sprintf('%s_to_%s_cor',stim.models{model_index},stim.label);
 
-          cor_data = ...
-              model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
-                             envelope,stream,model{trial},...
-                             trial_trf.(name));
+            row = stim_events(trial,:);
+            row(:,'cor') = {cor(1,2)};
+            row(:,'sid') = {sid};
+            row(:,'model') = stim.models(model_index);
+            row(:,'test') = {stim.label};
+            row(:,'target_time') = {audio.target_time};
+            all_cor = [all_cor; row];
 
-          cor = corrcoef(cor_data);
-          target_cor{trial,[name '_cor']} = cor(1,2);
+            prediction = cor_data(:,1);
+            response = cor_data(:,2);
+            cor_data = table(prediction,response);
+            cor_data(:,'cor') = {cor(1,2)};
+            cor_data(:,'sid') = {sid};
+            cor_data(:,'model') = stim.models(model_index);
+            cor_data(:,'test') = {stim.label};
 
-          all_cor_data(trial,i,1:size(cor_data,1),1:2) = cor_data;
+            all_cor_data = [all_cor_data; cor_data];
+          end
         end
       end
       textprogressbar(100*(trial / height(stim_events)));
@@ -93,24 +177,8 @@ for sid = 1:length(eeg_files)
     rethrow(e);
   end
 
-  all_cor_data(:,:,:,3) = repmat((1:size(all_cor_data,1))',...
-                                 [1 size(all_cor_data,2) size(all_cor_data,3)]);
-  all_cor_data(:,:,:,4) = repmat((1:size(all_cor_data,2)),...
-                                 [size(all_cor_data,1) 1 size(all_cor_data,3)]);
-
-  prediction = reshape(all_cor_data(:,:,:,1),[],1);
-  response = reshape(all_cor_data(:,:,:,2),[],1);
-  trial = reshape(all_cor_data(:,:,:,3),[],1);
-
-  table_cor_data = table(trial,response,prediction);
-  table_cor_data(:,'model') = model_names(reshape(all_cor_data(:,:,:,4),[],1))';
-
-  table_cor_data(:,'sid') = {sid};
-  target_cor(:,'sid') = {sid};
-
-  writetable(target_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,sid))
-  writetable(table_cor_data,sprintf('%s_sid%03d_cor_data.csv',results_prefix,...
-                                    sid));
+  writetable(all_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,sid))
+  writetable(all_cor_data,sprintf('%s_sid%03d_cor_data.csv',results_prefix,sid));
 end
 
 % TODO:

@@ -5,7 +5,7 @@ for i = 1:length(eegfiles)
   eegfile = eegfiles(i).name;
   numstr = regexp(eegfile,'_([0-9]+)_','tokens');
   sid = str2num(numstr{1}{1});
-  result_file = fullfile(data_dir,sprintf('eeg_response_%04d.bdf.mat',sid));
+  result_file = fullfile(data_dir,sprintf('eeg_response_%03d.bdf.mat',sid));
 
   if exist(result_file)
     warning(['The file ' result_file ' already exists. Skipping...']);
@@ -16,7 +16,7 @@ for i = 1:length(eegfiles)
   disp(['Found SID = ' num2str(sid)]);
 
 
-  event_file = fullfile(data_dir,sprintf('sound_events_%04d.csv',sid));
+  event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
   stim_events = readtable(event_file);
   head = ft_read_header(fullfile(raw_data_dir,eegfile));
   fs = head.Fs;
@@ -33,7 +33,7 @@ for i = 1:length(eegfiles)
              stim_events{:,'sample'}+trial_len_samples ...
              baseline_samples*ones(height(stim_events),1)];
   cfg.continuous = 'yes';
-  cfg.channel = [1:128 257:262];
+  cfg.channel = 1:128;
 
   eeg_data = ft_preprocessing(cfg);
 

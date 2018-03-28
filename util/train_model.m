@@ -1,37 +1,31 @@
-function model = train_model(eeg,stim_events,train_config,streams,fileprefix,usecache)
+function model = train_model(eeg,info,stim_events,train_config,fileprefix,usecache)
   if nargin < 6
     usecache = 0;
   end
 
   model = {};
 
-  textprogressbar('processing trials: ');
   try
+    textprogressbar('processing trials: ');
     for trial = 1:length(eeg.trial)
-      modelfile = [fileprefix '_trial_' num2str(trial,'%03d') '.mat'];
+      modelfile = sprintf('%s_trial%03d.mat',fileprefix,trial);
 
       if usecache && exist(modelfile)
         textprogressbar(100*(trial / length(eeg.trial)));
         mf = load(modelfile);
         model{trial} = mf.trial_model;
       else
-        trial_config = train_config.trial{trial};
-
         trial_model = [];
         % streams = fieldnames(trial_config.stream);
-        N = length(eeg.trial)*length(streams);
+        N = length(eeg.trial)*length(train_config);
         lags = 0:round(0.25*eeg.fsample);
-        for i = 1:length(streams)
-          textprogressbar(100*((length(streams)*(trial-1) + i) / N));
-          stream_name = streams{i};
-          trf = ...
-              train_helper(trial_config.stream.(stream_name),...
-                           eeg.trial{trial},eeg.fsample,lags);
-          trial_model.trf.(stream_name) = trf;
+        for i = 1:length(train_config)
+          stim = trial_audio(info,stim_events(trial,:),train_config(i));
+          textprogressbar(100*((length(train_config)*(trial-1) + i) / N));
+          trf = train_helper(train_config(i),stim,eeg.trial{trial},eeg.fsample,lags);
+          trial_model.trf.(train_config(i).model_name) = trf;
         end
         trial_model.lags = lags;
-        trial_model.target = trial_config.target;
-        trial_model.target_time = trial_config.target_time;
         save(modelfile,'trial_model');
         model{trial} = trial_model;
       end
@@ -43,7 +37,7 @@ function model = train_model(eeg,stim_events,train_config,streams,fileprefix,use
   end
 end
 
-function model = train_helper(stim,eeg,efs,lags)
+function model = train_helper(config,stim,eeg,efs,lags)
   if isempty(stim.data)
     model = [];
   else
