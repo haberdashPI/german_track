@@ -1,16 +1,50 @@
 run('../util/setup.m')
 
-usecache = 1;
+usecache = 0;
 
 % TODO: these configurations need to use the new interface
-% modelfile_prefix = fullfile(model_dir,'target_model_2.0seconds');
-% results_prefix = fullfile(cache_dir,'target_2.0seconds');
-% model_names = {'hit_target','miss_nontarget','miss_mix'};
-
 % modelfile_prefix = fullfile(model_dir,'condition_model');
 % results_prefix = fullfile(cache_dir,'condition_model');
 % model_names = {'test_condition','object_condition','feature_condition'};
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+model_names = {'hit_target','miss_mixture','miss_nontargets'}
+modelfile_prefix = fullfile(model_dir,'target_model');
+results_prefix = fullfile(cache_dir,'target_model');
+
+config.train = [];
+config.train(1).model_name = 'hit_target';
+config.train(1).label = 'target';
+config.train(1).range = [-2 0];
+config.train(1).filter = @(info,event) strcmp(event.response{:},'2');
+
+config.train(2).model_name = 'miss_mixture';
+config.train(2).label = 'mixture';
+config.train(2).range = [-2 0];
+config.train(2).filter = @(info,event) strcmp(event.response{:},'3');
+
+config.train(3).model_name = 'miss_nontargets';
+config.train(3).label = 'non_targets';
+config.train(3).range = [-2 0];
+config.train(3).filter = @(info,event) strcmp(event.response{:},'3');
+
+config.test = [];
+config.test(1).models = {'hit_target'};
+config.test(1).label = 'target';
+config.test(1).range = [-2 0];
+config.test(1).filter = @(info,event) 1;
+
+config.test(2).models = {'miss_mixture'};
+config.test(2).label = 'mixture';
+config.test(2).range = [-2 0];
+config.test(2).filter = @(info,event) 1;
+
+config.test(3).models = {'miss_nontargets'};
+config.test(3).label = 'non_targets';
+config.test(3).range = [-2 0];
+config.test(3).filter = @(info,event) 1;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % model_names = {'general_envelope'};
 
 % modelfile_prefix = fullfile(model_dir,'genenv_model');
@@ -48,49 +82,51 @@ usecache = 1;
 % config.test(5).range = [-2 0];
 % config.test(5).filter = @(info,event) 1;
 
-model_names = {'full_target_object','full_target_feature','full_target_global'};
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-modelfile_prefix = fullfile(model_dir,'full_target_model');
-results_prefix = fullfile(cache_dir,'full_target_model');
+% model_names = {'full_target_object','full_target_feature','full_target_global'};
 
-config.train = [];
-config.train(1).model_name = 'full_target_feature';
-config.train(1).label = 'condition';
-config.train(1).range = 'none';
-config.train(1).filter = @(info,event) strcmp(event.condition,'feature');
+% modelfile_prefix = fullfile(model_dir,'full_target_model');
+% results_prefix = fullfile(cache_dir,'full_target_model');
 
-config.train(2).model_name = 'full_target_object';
-config.train(2).label = 'condition';
-config.train(2).range = 'none';
-config.train(2).filter = @(info,event) strcmp(event.condition,'object');
+% config.train = [];
+% config.train(1).model_name = 'full_target_feature';
+% config.train(1).label = 'condition';
+% config.train(1).range = 'none';
+% config.train(1).filter = @(info,event) strcmp(event.condition,'feature');
 
-config.train(3).model_name = 'full_target_global';
-config.train(3).label = 'condition';
-config.train(3).range = 'none';
-config.train(3).filter = @(info,event) strcmp(event.condition,'test');
+% config.train(2).model_name = 'full_target_object';
+% config.train(2).label = 'condition';
+% config.train(2).range = 'none';
+% config.train(2).filter = @(info,event) strcmp(event.condition,'object');
 
-config.test = [];
-labels = {'target','mixture','non_targets'};
-for i = 1:3
-  config.test(i).models = {'full_target_object'};
-  config.test(i).label = labels{i};
-  config.test(i).range = [-2 0];
-  config.test(i).filter = @(info,event) strcmp(event.condition,'object');
-end
+% config.train(3).model_name = 'full_target_global';
+% config.train(3).label = 'condition';
+% config.train(3).range = 'none';
+% config.train(3).filter = @(info,event) strcmp(event.condition,'test');
 
-for i = 1:3
-  config.test(i+3).models = {'full_target_feature'};
-  config.test(i+3).label = labels{i};
-  config.test(i+3).range = [-2 0];
-  config.test(i+3).filter = @(info,event) strcmp(event.condition,'feature');
-end
+% config.test = [];
+% labels = {'target','mixture','non_targets'};
+% for i = 1:3
+%   config.test(i).models = {'full_target_object'};
+%   config.test(i).label = labels{i};
+%   config.test(i).range = [-2 0];
+%   config.test(i).filter = @(info,event) strcmp(event.condition,'object');
+% end
 
-for i = 1:3
-  config.test(i+6).models = {'full_target_global'};
-  config.test(i+6).label = labels{i};
-  config.test(i+6).range = [-2 0];
-  config.test(i+6).filter = @(info,event) strcmp(event.condition,'test');
-end
+% for i = 1:3
+%   config.test(i+3).models = {'full_target_feature'};
+%   config.test(i+3).label = labels{i};
+%   config.test(i+3).range = [-2 0];
+%   config.test(i+3).filter = @(info,event) strcmp(event.condition,'feature');
+% end
+
+% for i = 1:3
+%   config.test(i+6).models = {'full_target_global'};
+%   config.test(i+6).label = labels{i};
+%   config.test(i+6).range = [-2 0];
+%   config.test(i+6).filter = @(info,event) strcmp(event.condition,'test');
+% end
 
 % training configuration
 dat = load(fullfile(data_dir,'config','experiment_record.mat'));
@@ -98,7 +134,7 @@ all_stim_data = dat.experiment_cfg;
 
 eeg_files = dir(fullfile(data_dir,'eeg_response*.bdf.mat'));
 
-for sid_index = 1:length(eeg_files)
+for sid_index = 2 %sid_index = 1:length(eeg_files)
   eegfile = fullfile(data_dir,eeg_files(sid_index).name)
   eegfiledata = load(eegfile);
   eeg_data = eegfiledata.eeg_data;
