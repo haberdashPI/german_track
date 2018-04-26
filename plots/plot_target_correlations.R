@@ -23,7 +23,7 @@ for(file in cor_files){
   df = rbind(df,dff)
 }
 
-dfview = df %>% filter(sid == 2,!is.na(hit))
+dfview = df %>% filter(!is.na(hit))
 ## ggplot(dfview,aes(x=hit,y=cor)) +
 ##   facet_grid(condition~model) +
 ##   geom_point(alpha=0.5,position=position_jitter(width=0.05)) +
@@ -35,7 +35,7 @@ dfmodels = dfview %>%
   spread(model,cor)
 
 ggplot(dfmodels,aes(x=hit,y=hit_target-miss_nontargets)) +
-  facet_grid(condition~.) +
+  facet_grid(condition~sid) +
   geom_point(alpha=0.5,position=position_jitter(width=0.05)) +
   stat_summary(aes(x=as.numeric(hit)+1.2)) +
   geom_hline(yintercept=0,linetype=2)

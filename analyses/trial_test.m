@@ -1,46 +1,65 @@
 run('../util/setup.m')
 
-usecache = 0;
-
-% TODO: these configurations need to use the new interface
-% modelfile_prefix = fullfile(model_dir,'condition_model');
-% results_prefix = fullfile(cache_dir,'condition_model');
-% model_names = {'test_condition','object_condition','feature_condition'};
+usecache = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-model_names = {'hit_target','miss_mixture','miss_nontargets'}
-modelfile_prefix = fullfile(model_dir,'target_model');
-results_prefix = fullfile(cache_dir,'target_model');
+model_names = {'hit_target','miss_mixture','miss_nontargets'};
+modelfile_prefix = fullfile(model_dir,'target_model_cca');
+results_prefix = fullfile(cache_dir,'target_model_cca');
+
+method = 'CCA'
+method_params = [];
+method_params.regular = 1;
+
+% loadload;
 
 config.train = [];
 config.train(1).model_name = 'hit_target';
+config.train(1).maxlag = 0.25;
+config.train(1).method = method;
+config.train(1).method_params = method_params;
 config.train(1).label = 'target';
 config.train(1).range = [-2 0];
 config.train(1).filter = @(info,event) strcmp(event.response{:},'2');
 
 config.train(2).model_name = 'miss_mixture';
 config.train(2).label = 'mixture';
+config.train(2).maxlag = 0.25;
+config.train(2).method = method;
+config.train(2).method_params = method_params;
 config.train(2).range = [-2 0];
 config.train(2).filter = @(info,event) strcmp(event.response{:},'3');
 
 config.train(3).model_name = 'miss_nontargets';
 config.train(3).label = 'non_targets';
+config.train(3).maxlag = 0.25;
+config.train(3).method = method;
+config.train(3).method_params = method_params;
 config.train(3).range = [-2 0];
 config.train(3).filter = @(info,event) strcmp(event.response{:},'3');
 
 config.test = [];
 config.test(1).models = {'hit_target'};
+config.test(1).maxlag = 0.25;
+config.test(1).method = method;
+config.test(1).method_params = method_params;
 config.test(1).label = 'target';
 config.test(1).range = [-2 0];
 config.test(1).filter = @(info,event) 1;
 
 config.test(2).models = {'miss_mixture'};
 config.test(2).label = 'mixture';
+config.test(2).maxlag = 0.25;
+config.test(2).method = method;
+config.test(2).method_params = method_params;
 config.test(2).range = [-2 0];
 config.test(2).filter = @(info,event) 1;
 
 config.test(3).models = {'miss_nontargets'};
 config.test(3).label = 'non_targets';
+config.test(3).maxlag = 0.25;
+config.test(3).method = method;
+config.test(3).method_params = method_params;
 config.test(3).range = [-2 0];
 config.test(3).filter = @(info,event) 1;
 
@@ -52,33 +71,45 @@ config.test(3).filter = @(info,event) 1;
 
 % config.train = [];
 % config.train(1).model_name = 'general_envelope';
+% config.train(1).maxlag = 0.25;
+% config.train(1).method = 'TRF';
 % config.train(1).label = 'condition';
 % config.train(1).range = 'none';
 % config.train(1).filter = @(info,event) 1;
 
 % config.test = [];
 % config.test(1).models = {'general_envelope'};
+% config.test(1).maxlag = 0.25;
+% config.test(1).method = 'TRF';
 % config.test(1).label = 'target';
 % config.test(1).range = [-2 0];
 % config.test(1).filter = @(info,event) 1;
 
 % config.test(2).models = {'general_envelope'};
 % config.test(2).label = 'mixture';
+% config.test(2).maxlag = 0.25;
+% config.test(2).method = 'TRF';
 % config.test(2).range = [-2 0];
 % config.test(2).filter = @(info,event) 1;
 
 % config.test(3).models = {'general_envelope'};
 % config.test(3).label = 'non_targets';
+% config.test(3).maxlag = 0.25;
+% config.test(3).method = 'TRF';
 % config.test(3).range = [-2 0];
 % config.test(3).filter = @(info,event) 1;
 
 % config.test(4).models = {'general_envelope'};
 % config.test(4).label = 'non_target1';
+% config.test(4).maxlag = 0.25;
+% config.test(4).method = 'TRF';
 % config.test(4).range = [-2 0];
 % config.test(4).filter = @(info,event) 1;
 
 % config.test(5).models = {'general_envelope'};
 % config.test(5).label = 'non_target2';
+% config.test(5).maxlag = 0.25;
+% config.test(5).method = 'TRF';
 % config.test(5).range = [-2 0];
 % config.test(5).filter = @(info,event) 1;
 
@@ -91,17 +122,23 @@ config.test(3).filter = @(info,event) 1;
 
 % config.train = [];
 % config.train(1).model_name = 'full_target_feature';
+% config.train(1).maxlag = 0.25;
+% config.train(1).method = 'TRF';
 % config.train(1).label = 'condition';
 % config.train(1).range = 'none';
 % config.train(1).filter = @(info,event) strcmp(event.condition,'feature');
 
 % config.train(2).model_name = 'full_target_object';
 % config.train(2).label = 'condition';
+% config.train(2).maxlag = 0.25;
+% config.train(2).method = 'TRF';
 % config.train(2).range = 'none';
 % config.train(2).filter = @(info,event) strcmp(event.condition,'object');
 
 % config.train(3).model_name = 'full_target_global';
 % config.train(3).label = 'condition';
+% config.train(3).maxlag = 0.25;
+% config.train(3).method = 'TRF';
 % config.train(3).range = 'none';
 % config.train(3).filter = @(info,event) strcmp(event.condition,'test');
 
@@ -109,6 +146,8 @@ config.test(3).filter = @(info,event) 1;
 % labels = {'target','mixture','non_targets'};
 % for i = 1:3
 %   config.test(i).models = {'full_target_object'};
+%   config.test(i).maxlag = 0.25;
+%   config.test(i).method = 'TRF';
 %   config.test(i).label = labels{i};
 %   config.test(i).range = [-2 0];
 %   config.test(i).filter = @(info,event) strcmp(event.condition,'object');
@@ -116,6 +155,8 @@ config.test(3).filter = @(info,event) 1;
 
 % for i = 1:3
 %   config.test(i+3).models = {'full_target_feature'};
+%   config.test(i+3).maxlag = 0.25;
+%   config.test(i+3).method = 'TRF';
 %   config.test(i+3).label = labels{i};
 %   config.test(i+3).range = [-2 0];
 %   config.test(i+3).filter = @(info,event) strcmp(event.condition,'feature');
@@ -123,6 +164,8 @@ config.test(3).filter = @(info,event) 1;
 
 % for i = 1:3
 %   config.test(i+6).models = {'full_target_global'};
+%   config.test(i+6).maxlag = 0.25;
+%   config.test(i+6).method = 'TRF';
 %   config.test(i+6).label = labels{i};
 %   config.test(i+6).range = [-2 0];
 %   config.test(i+6).filter = @(info,event) strcmp(event.condition,'test');
@@ -132,14 +175,14 @@ config.test(3).filter = @(info,event) 1;
 dat = load(fullfile(data_dir,'config','experiment_record.mat'));
 all_stim_data = dat.experiment_cfg;
 
-eeg_files = dir(fullfile(data_dir,'eeg_response*.bdf.mat'));
+eeg_files = dir(fullfile(data_dir,'eeg_response*_ica.bdf.mat'));
 
-for sid_index = 2 %sid_index = 1:length(eeg_files)
+for sid_index = 1:length(eeg_files)
   eegfile = fullfile(data_dir,eeg_files(sid_index).name)
   eegfiledata = load(eegfile);
-  eeg_data = eegfiledata.eeg_data;
+  eeg_data = eegfiledata.dat;
 
-  numstr = regexp(eegfile,'_([0-9]+).bdf','tokens');
+  numstr = regexp(eegfile,'_([0-9]+)_ica.bdf','tokens');
   sid = str2num(numstr{1}{1});
   eventfile = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
   stim_events = readtable(eventfile);
@@ -150,8 +193,8 @@ for sid_index = 2 %sid_index = 1:length(eeg_files)
                       usecache);
 
   % compute individual grand average
-  grand_avg_trf = reduce_trf(@safeadd,model_names,model);
-  N = reduce_trf(@(x,y)x+1,model_names,0,model);
+  grand_avg_weights = reduce_weights(@safeadd,model_names,model);
+  N = reduce_weights(@(x,y)x+1,model_names,0,model);
 
   % setup data tables
   all_cor = table();
@@ -162,34 +205,33 @@ for sid_index = 2 %sid_index = 1:length(eeg_files)
   % for each trial...
   textprogressbar('computing correlations: ');
   try
-    for trial = 1:height(stim_events)
+    for trial = 1:length(eeg_data.trial)
       % if it exsits, do not include this trial's model
-      trial_trf = map_trf(@cv_trf,model_names,...
-                          grand_avg_trf,model{trial}.trf,N);
+      trial_weights = map_weights(@cv_weights,model_names,...
+                                  grand_avg_weights,model{trial}.weights,N);
 
       % run each test
       for test_index = 1:length(config.test)
-        stim = config.test(test_index);
-        audio = trial_audio(all_stim_data,stim_events(trial,:),stim);
+        test_config = config.test(test_index);
+        audio = trial_audio(all_stim_data,stim_events(trial,:),test_config);
 
         % run the test for each model the test applies to
-        for model_index = 1:length(stim.models)
+        for model_index = 1:length(test_config.models)
           if ~isempty(audio.data)
-            envelope = CreateLoudnessFeature(audio.data,audio.fs,eeg_data.fsample);
-
             cor_data = ...
-                model_cor_data(eeg_data.trial{trial},eeg_data.fsample,...
-                               envelope,audio,model{trial},...
-                               trial_trf.(stim.models{model_index}));
+                test_model(eeg_data.trial{trial},eeg_data.fsample,...
+                           audio,test_config,...
+                           trial_weights.(test_config.models{model_index}));
 
             cor = corrcoef(cor_data);
-            name = sprintf('%s_to_%s_cor',stim.models{model_index},stim.label);
+            name = sprintf('%s_to_%s_cor',test_config.models{model_index},...
+                           test_config.label);
 
             row = stim_events(trial,:);
             row(:,'cor') = {cor(1,2)};
             row(:,'sid') = {sid};
-            row(:,'model') = stim.models(model_index);
-            row(:,'test') = {stim.label};
+            row(:,'model') = test_config.models(model_index);
+            row(:,'test') = {test_config.label};
             row(:,'target_time') = {audio.target_time};
             all_cor = [all_cor; row];
 
@@ -198,8 +240,8 @@ for sid_index = 2 %sid_index = 1:length(eeg_files)
             cor_data = table(prediction,response);
             cor_data(:,'cor') = {cor(1,2)};
             cor_data(:,'sid') = {sid};
-            cor_data(:,'model') = stim.models(model_index);
-            cor_data(:,'test') = {stim.label};
+            cor_data(:,'model') = test_config.models(model_index);
+            cor_data(:,'test') = {test_config.label};
 
             all_cor_data = [all_cor_data; cor_data];
           end

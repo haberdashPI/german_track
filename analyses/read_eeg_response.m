@@ -1,4 +1,5 @@
 run('../util/setup.m')
+usecache = 1;
 
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'))
 for i = 1:length(eegfiles)
@@ -7,7 +8,7 @@ for i = 1:length(eegfiles)
   sid = str2num(numstr{1}{1});
   result_file = fullfile(data_dir,sprintf('eeg_response_%03d.bdf.mat',sid));
 
-  if exist(result_file)
+  if exist(result_file) && usecache
     warning(['The file ' result_file ' already exists. Skipping...']);
     continue;
   end
@@ -33,11 +34,21 @@ for i = 1:length(eegfiles)
              stim_events{:,'sample'}+trial_len_samples ...
              baseline_samples*ones(height(stim_events),1)];
   cfg.continuous = 'yes';
-  cfg.channel = 1:128;
+  if sid == 1
+      cfg.channel = [1:128 257:264]
+  else
+      cfg.channel = 1:136
+  end
+
+  % apply a (1Hz) high pass filter
+  cfg.hpfilter = 'yes';
+  cfg.hpfreq = 1;
+  cfg.hpfiltortype = 'but';
+  cfg.hpfiltord = 4;
 
   eeg_data = ft_preprocessing(cfg);
 
-  % downsample the trials
+  % downsample the trials to 64Hz
   cfg = [];
   cfg.resamplefs = 64;
   eeg_data = ft_resampledata(cfg,eeg_data);
@@ -46,8 +57,9 @@ for i = 1:length(eegfiles)
   cfg = [];
   cfg.refchannel = 'all';
   cfg.reref = 'yes';
-  egg_data = ft_preprocessing(cfg,eeg_data);
+  eeg_data = ft_preprocessing(cfg,eeg_data);
 
   % save to a file
-  save(result_file,'eeg_data');
+  ft_write_data(result_file,eeg_data);
 end
+alert()

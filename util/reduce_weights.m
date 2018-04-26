@@ -1,4 +1,4 @@
-function result = reduce_trf(fn,names,init,models)
+function result = reduce_weights(fn,names,init,models)
   result = [];
   for k = 1:length(names)
     n = names{k};
@@ -7,16 +7,16 @@ function result = reduce_trf(fn,names,init,models)
       acc = init;
     else
       models = init;
-      if ismember('trf',fieldnames(models{1}))
-        acc = models{1}.trf.(n);
+      if isfield(models{1},'weights')
+        acc = models{1}.weights.(n);
       else
         acc = models{1}.(n);
       end
     end
 
     for i = 2:length(models)
-      if ismember('trf',fieldnames(models{i}))
-        acc_next = models{i}.trf.(n);
+      if isfield(models{i},'weights')
+        acc_next = models{i}.weights.(n);
       else
         acc_next = models{i}.(n);
       end
