@@ -14,9 +14,10 @@ function cor_data = test_model(eeg_data,efs,audio,config,weights)
     cor_data = [prediction envelope(start:stop,:)];
   elseif strcmp(config.method,'CCA')
     spect = CreateAudiospectFeature(audio.data,audio.fs,efs);
-    eeg_lagged = LagGenerator(eeg(:,start:stop)',lags);
+    eeg_lagged = LagGenerator(eeg_data(:,start:stop)',lags);
+
     prediction = eeg_lagged * weights.eeg;
-    audio_proj = spect * weights.spect;
+    audio_proj = spect(start:stop,:) * weights.spect;
 
     cor_data = [prediction audio_proj];
   end

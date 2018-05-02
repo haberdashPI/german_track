@@ -188,9 +188,19 @@ for sid_index = 1:length(eeg_files)
   stim_events = readtable(eventfile);
 
   % train the model
-  model = train_model(eeg_data,all_stim_data,stim_events,config.train,...
-                      sprintf('%s_sid%03d',modelfile_prefix,sid),...
-                      usecache);
+  model = {};
+  for trial = 1:length(eeg.trial)
+      modelfile = sprintf('%s_sid%03d_trial%03d.mat',modelfile_prefix,sid,trial);
+      if usecache && exist(modelfile)
+        mf = load(modelfile)
+        model{trial} = mf.model_trial
+      else
+        model_trial = train_model(eeg_data,all_stim_data,stim_events,...
+                                  config.trian,[trial])
+        save(modelfile,'model_trial')
+        model{trial} = model_trial
+      end
+  end
 
   % compute individual grand average
   grand_avg_weights = reduce_weights(@safeadd,model_names,model);
