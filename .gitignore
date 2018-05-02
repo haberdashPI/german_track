@@ -5,3 +5,8 @@
 *.csv
 *.mat
 *.wav
+*.swp
+.ctags
+.gutctags
+tags
+
