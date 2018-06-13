@@ -11,12 +11,17 @@ results_prefix = fullfile(cache_dir,'envelope_cca');
 K = 10;
 model_names = {'cca_feature','cca_object','cca_global'};
 
-modelfile_prefix = fullfile(model_dir,'full_target_model');
-results_prefix = fullfile(cache_dir,'full_target_model');
+% TODO: rename to include "fake" in name
+noise = 1e-8
+shared_prefix = 'fake_1e-8'
+modelfile_prefix = fullfile(model_dir,shared_prefix);
+results_prefix = fullfile(cache_dir,shared_prefix);
 
 method = 'CCA_envelope';
 method_params = [];
 method_params.regular = 1;
+
+warning('Using fake data to train and test the model!')
 
 config.train = [];
 labels = {'object','feature','test'};
@@ -28,14 +33,14 @@ for i = 1:3
   config.train(i).label = labels;
   config.train(i).range = 'none';
   config.train(i).filter = @(info,event) strcmp(event.condition,labels{i}) ...
-    && has_target(info,event)
+    && has_target(info,event);
 
   config.train(i).fake_seed = @(trial) trial;
   config.train(i).fake_data = 1;
   config.train(i).fake_channels = {1:10, 1:10, 1:10};
   config.train(i).fake_channels{i} = 1:50;
   config.train(i).fake_lag = 3;
-  config.train(i).fake_noise = 0.5;
+  config.train(i).fake_noise = noise;
 end
 
 config.test = [];
@@ -48,19 +53,19 @@ for i = 1:3
   config.test(i).label = labels;
   config.test(i).range = [-2 0];
   config.test(i).filter = @(info,event) strcmp(event.condition,labels{i}) ...
-    && has_target(info,event)
+    && has_target(info,event);
 
   config.test(i).fake_seed = @(trial) trial+10000;
   config.test(i).fake_data = 1;
   config.test(i).fake_channels = {1:10, 1:10, 1:10};
   config.test(i).fake_channels{i} = 1:50;
   config.test(i).fake_lag = 3;
-  config.test(i).fake_noise = 0.5;
+  config.test(i).fake_noise = noise;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-for sid_index = 1:length(eeg_files)
+for sid_index = 2 %1:length(eeg_files)
   [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name);
 
   all_cor = table();
@@ -85,6 +90,7 @@ for sid_index = 1:length(eeg_files)
     end
 
     for trial = test_trials
+      % disp(['Trial: ' num2str(trial)])
       for test_index = 1:length(config.test)
         test_config = config.test(test_index);
         textprogressbar(100*(trial-1) / length(eeg_data.trial));
@@ -101,6 +107,8 @@ for sid_index = 1:length(eeg_files)
             row = stim_events(trial,:);
             row(:,'sid') = {sid};
             row(:,'model') = test_config.models(model_index);
+            row(:,'target_time') = {get_target_time(all_stim_data,...
+              stim_events(trial,:))};
 
             labels = {'object','feature','test'};
             for i = 1:3

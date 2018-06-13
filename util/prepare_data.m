@@ -47,9 +47,10 @@ function [stim_result,eeg_result] = prepare_data(info,config,stim_event,...
       error('Fake data generation not supported for this method.')
     end
     lags = 0:round(config.maxlag*eeg.fsample);
-    stim_result = CreateAudiospectFeature(stim.data,stim.fs,eeg.fsample);
+    [stim,fs] = trial_audio(info,stim_event,config_label);
+    stim_result = CreateAudiospectFeature(stim,fs,eeg.fsample);
     stop = min(stop,size(spect,1));
     eeg_result = LagGenerator(eeg.trial{trial}(:,start:stop)',lags);
-    stim_reuslt = stim_result(start:stop,:);
+    stim_result = stim_result(start:stop,:);
   end
 end
