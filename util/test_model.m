@@ -1,8 +1,5 @@
 function cor_data = test_model(eeg_data,efs,audio,config,weights)
-  start = max(1,floor(efs * audio.start));
-  stop = min(ceil(efs * audio.stop),size(eeg_data,2));
-
-  lags = 0:round(config.maxlag*efs);
+  start,stop = find_range(eeg_data,efs,config.range)
 
   if strcmp(config.method,'TRF')
     envelope = CreateLoudnessFeature(audio.data,audio.fs,efs);
