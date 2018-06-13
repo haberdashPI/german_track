@@ -7,7 +7,6 @@ eeg_files = dir(fullfile(data_dir,'eeg_response*_ica.bdf.mat'));
 
 results_prefix = fullfile(cache_dir,'target_model_cca');
 
-
 model_names = {'full_target_object','full_target_feature','full_target_global'};
 
 modelfile_prefix = fullfile(model_dir,'full_target_model');
@@ -74,19 +73,13 @@ for i = 1:3
   config.test(i+6).filter = @(info,event) strcmp(event.condition,'test');
 end
 
-all_cor = table();
-all_cor_data = table();
-
 for sid_index = 1:length(eeg_files)
-  eegfile = fullfile(data_dir,eeg_files(sid_index).name)
-  eegfiledata = load(eegfile);
-  eeg_data = eegfiledata.dat;
+  [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name)
 
-  numstr = regexp(eegfile,'_([0-9]+)_ica.bdf','tokens');
-  sid = str2num(numstr{1}{1});
+  all_cor = table();
+  all_cor_data = table();
 
-  eventfile = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
-  stim_events = readtable(eventfile);
+
 
   textprogressbar('testing...')
   for trial = 1:length(eeg_data.trial)
@@ -144,7 +137,8 @@ for sid_index = 1:length(eeg_files)
     end
 
     writetable(all_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,sid))
-    writetable(all_cor_data,sprintf('%s_sid%03d_cor_data.csv',results_prefix,sid));
+    writetable(all_cor_data,sprintf('%s_sid%03d_cor_data.csv',...
+                                    results_prefix,sid));
   end
   textprogressbar('done!')
 end
