@@ -49,7 +49,7 @@ function model = train_model(eeg,info,stim_events,train_config,trials)
 end
 
 function [all_audio,all_eeg] = select_data(eeg,info,stim_events,config,trials)
-  if length(trials) == 0
+  if isempty(trials)
     error('No training trials provided')
   end
 
@@ -67,10 +67,6 @@ function [all_audio,all_eeg] = select_data(eeg,info,stim_events,config,trials)
     all_audio = zeros(size(eeg.trial{1},2)*length(trials),128);
     all_eeg = zeros(size(eeg.trial{1},2)*length(trials),...
                     length(lags)*size(eeg.trial{1},1));
-  end
-
-  if config.fake_data
-    warning('Using fake data to train the model')
   end
 
   t = 1;

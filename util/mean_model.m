@@ -1,5 +1,5 @@
-function mmodel = mean_model(fn,arg1,arg2)
-  result = []
+function result = mean_model(fn,arg1,arg2)
+  result = [];
   names = model_names();
   for k = 1:length(names)
     n = names{k};

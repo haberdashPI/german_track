@@ -21,8 +21,8 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
 
   type = {event.type};
   status_types = zeros(length(type),1);
-  for i = 1:length(type)
-    status_types(i) = logical(strcmp(type(i),"STATUS"));
+  for j = 1:length(type)
+    status_types(j) = logical(strcmp(type(j),"STATUS"));
   end
 
   code = [event.value]';

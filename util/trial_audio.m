@@ -5,6 +5,7 @@ function [data,fs] = trial_audio(info,stim_event,config)
     error(['Multiple labels provided, did you mean to call trial_audio'...
            ' on them seperately?'])
   end
+  stim_num = stim_event.sound_index;
 
   audio_file = fullfile(data_dir,'audio','trials',sprintf('trial_%d.wav',stim_num));
   [stim,fs] = audioread(audio_file);
@@ -57,11 +58,11 @@ function [data,fs] = trial_audio(info,stim_event,config)
     else
       b_data(end+1:length(a_data)) = 0.0;
     end
-    data = a_data+b+data
+    data = a_data+b_data;
     if a_fs ~= b_fs
       error('Unexpected mismatched sample rates')
     end
-    fs = a_fs
+    fs = a_fs;
   else
     error(['Unexpected label "' config.label '".'])
   end
