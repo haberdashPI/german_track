@@ -12,8 +12,8 @@ K = 10;
 model_names = {'cca_feature','cca_object','cca_global'};
 
 % TODO: rename to include "fake" in name
-noise = 1e-8
-shared_prefix = 'fake_1e-8'
+noise = 0;
+shared_prefix = 'fake_0';
 modelfile_prefix = fullfile(model_dir,shared_prefix);
 results_prefix = fullfile(cache_dir,shared_prefix);
 

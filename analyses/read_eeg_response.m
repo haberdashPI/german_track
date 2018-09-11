@@ -1,7 +1,7 @@
 run('../util/setup.m')
 usecache = 1;
 
-eegfiles = dir(fullfile(raw_data_dir,'*.bdf'))
+eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
 for i = 1:length(eegfiles)
   eegfile = eegfiles(i).name;
   numstr = regexp(eegfile,'_([0-9]+)_','tokens');
@@ -35,9 +35,9 @@ for i = 1:length(eegfiles)
              baseline_samples*ones(height(stim_events),1)];
   cfg.continuous = 'yes';
   if sid == 1
-      cfg.channel = [1:128 257:264]
+      cfg.channel = [1:128 257:264];
   else
-      cfg.channel = 1:136
+      cfg.channel = 1:136;
   end
 
   % apply a (1Hz) high pass filter

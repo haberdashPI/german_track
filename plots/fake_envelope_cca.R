@@ -3,16 +3,16 @@ library(stringr)
 library(ggplot2)
 library(tidyr)
 
-source('util/setup.R')
+source("util/setup.R")
 
-dir = file.path(plot_dir,paste('run',Sys.Date(),sep='_'))
+dir = file.path(plot_dir,paste("run",Sys.Date(),sep="_"))
 dir.exists(dir) || dir.create(dir)
 
 df = NULL
-cor_files = list.files(cache_dir,pattern='full_target.*_cor.csv')
-for(file in cor_files){
+cor_files = list.files(cache_dir,pattern="fake_0.*_cor\\.csv")
+for (file in cor_files){
   dff = read.csv(file.path(cache_dir,file)) %>%
-    mutate(condition = recode(condition,test = 'globalc'),
+    mutate(condition = recode(condition,test = "globalc"),
            target_heard = response == 2,
            target_present = !is.na(target_time) & target_time > 0,
            hit = target_heard & target_present,
@@ -26,3 +26,6 @@ dfview = df %>%
   gather(target,cor,cor_object:cor_test) %>%
   mutate(target = str_sub(target,5,-1))
 ggplot(dfview,aes(x=target,y=cor)) + geom_point() + facet_wrap(~condition)
+
+# okay... that didn't work, we need to step back and make the
+# simulated task *even* simpler

@@ -178,7 +178,7 @@ all_stim_data = dat.experiment_cfg;
 eeg_files = dir(fullfile(data_dir,'eeg_response*_ica.bdf.mat'));
 
 for sid_index = 1:length(eeg_files)
-  [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name)
+  [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name);
 
   % train the model
   model = {};

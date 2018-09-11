@@ -74,7 +74,7 @@ for i = 1:3
 end
 
 for sid_index = 1:length(eeg_files)
-  [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name)
+  [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name);
 
   all_cor = table();
   all_cor_data = table();
