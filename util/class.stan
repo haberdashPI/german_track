@@ -41,3 +41,9 @@ model{
 // and class
 
 // NEXT STEP: create a toy data set and test the model
+// the idea woudl be to start with some example mixture
+// envelopes using the actual audio, and see how well
+// we can predict which envelope (or envelopes) correspond
+// to whcih class... 
+// to start I will have y be a single change deterministically
+// representing one of the envelopes.

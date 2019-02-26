@@ -6,7 +6,6 @@
 *.mat
 *.wav
 *.swp
-.ctags
-.gutctags
-tags
+.tags
+.vscode
 

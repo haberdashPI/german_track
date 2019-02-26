@@ -69,6 +69,7 @@ function [all_audio,all_eeg] = select_data(eeg,info,stim_events,config,trials)
                     length(lags)*size(eeg.trial{1},1));
   end
 
+  % TODO: these calls to size(eeg,X) seem wrong....
   t = 1;
   for trial = trials
     if config.filter(info,stim_events(trial,:))
@@ -77,7 +78,7 @@ function [all_audio,all_eeg] = select_data(eeg,info,stim_events,config,trials)
 
       all_eeg(t:(t+size(eeg_result,1)-1),1:size(eeg_result,2)) = eeg_result;
       all_audio(t:(t+size(stim_result,1)-1),1:size(stim_result,2)) = stim_result;
-      t = t+size(eeg_result,1);
+      t = t+size(eeg_result,2);
     end
   end
 

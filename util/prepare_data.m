@@ -1,5 +1,4 @@
-function [stim_result,eeg_result] = prepare_data(info,config,stim_event,...
-                                                 eeg,trial)
+function [stim_result,eeg_result] = prepare_data(stim,eeg,features,lags)
   [start,stop] = find_range(info,stim_event,config,...
                             eeg.trial{trial},eeg.fsample);
   if strcmp(config.method,'TRF')

@@ -11,7 +11,6 @@ results_prefix = fullfile(cache_dir,'envelope_cca');
 K = 10;
 model_names = {'cca_feature','cca_object','cca_global'};
 
-% TODO: rename to include "fake" in name
 noise = 0;
 shared_prefix = 'fake_0';
 modelfile_prefix = fullfile(model_dir,shared_prefix);
@@ -69,25 +68,30 @@ for sid_index = 2 %1:length(eeg_files)
   [eeg_data,stim_events,sid] = load_trial(eeg_files(sid_index).name);
 
   all_cor = table();
-  all_cor_data = table();
+  % all_cor_data = table();
 
   textprogressbar('testing...')
-  fold_size = ceil(length(eeg_data.trial) / K);
-  for fold = 1:K
-    test_trials = (fold-1)*fold_size+1 : ...
-      min(length(eeg_data.trial),fold*fold_size);
+  folds = k_folds(K,length(eeg_data.trial));
+  for fold_index = 1:length(folds)
+    test_trials = folds{fold_index,1};
+    train_trials = folds{fold_index,2};
 
-    train_trials = setdiff(1:length(eeg_data.trial),test_trials);
-
+    stim_data, eeg_data = fn_TODO();
     modelfile = sprintf('%s_sid%03d_fold%02d.mat',modelfile_prefix,sid,fold);
-    if usecache && exist(modelfile)
-      mf = load(modelfile);
-      model = mf.model;
-    else
-      model = train_model(eeg_data,all_stim_data,stim_events,config.train,...
-                          train_trials);
-      save(modelfile,'model');
-    end
+    model = cachefn(modelfile,@train_model,config,stim_data,eeg_data));
+
+    % problem: k folds go over the three categories; should occur
+    % within each category (global, feature, object)
+
+    % at this point, because matlab isn't generic enough
+    % I need to start thinking about the actual model I'm going
+    % to run here... that will affect both fn_TODO
+    % and the code below, I don't what to as pervasively
+    % use config: it should just indicate how the files
+    % are organized, sample rates, etc... and *maybe*
+    % one thing to indicate the particular model.
+    %
+    % NOTE: it *might* be worth using class and methods
 
     for trial = test_trials
       % disp(['Trial: ' num2str(trial)])
@@ -124,8 +128,8 @@ for sid_index = 2 %1:length(eeg_files)
       end
     end
     writetable(all_cor,sprintf('%s_sid%03d_cor.csv',results_prefix,sid));
-    writetable(all_cor_data,sprintf('%s_sid%03d_cor_data.csv',...
-      results_prefix,sid));
+    % writetable(all_cor_data,sprintf('%s_sid%03d_cor_data.csv',...
+    %   results_prefix,sid));
   end
   textprogressbar('done!');
 end

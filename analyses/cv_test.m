@@ -86,7 +86,7 @@ for sid_index = 1:length(eeg_files)
     train_trials = setdiff(1:length(eeg_data.trial),trial);
 
     modelfile = sprintf('%s_sid%03d_trial%03d.mat',modelfile_prefix,sid,trial);
-    if usecache && exist(modelfile)
+    if usecache && exist(modelfile,'file')
       mf = load(modelfile);
       model = mf.model;
     else
