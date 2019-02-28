@@ -78,7 +78,7 @@ for sid_index = 2 %1:length(eeg_files)
 
     stim_data, eeg_data = fn_TODO();
     modelfile = sprintf('%s_sid%03d_fold%02d.mat',modelfile_prefix,sid,fold);
-    model = cachefn(modelfile,@train_model,config,stim_data,eeg_data));
+    model = cachefn(modelfile,@train_model,config,stim_data,eeg_data);
 
     % problem: k folds go over the three categories; should occur
     % within each category (global, feature, object)

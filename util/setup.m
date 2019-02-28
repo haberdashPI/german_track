@@ -8,7 +8,7 @@ end
 
 [~,name] = fileparts(base_dir);
 if ~strcmp(name,'german_track')
-  warning(['Expected root directory to be named "eeg_atten". Was ' base_dir]);
+  warning(['Expected root directory to be named "german_track". Was ' base_dir]);
 end
 
 addpath('analyses');
@@ -30,5 +30,5 @@ data_dir = fullfile(base_dir,'data');
 if startsWith(name,'Claude.local')
   raw_data_dir = '/Volumes/MiguelJr/Research/Experiments/trackgerman/data/';
 else
-  raw_data_dir = '/Users/davidlittle/Data/EEGAttn_David_Little_2018_01_24/';
+  raw_data_dir = '/Volumes/Data/Little_german_track_2019-02-27/';
 end

@@ -5,7 +5,7 @@ library(cowplot)
 
 source('util/setup.R')
 
-sid = 2
+sid = 7
 
 efraw = read.csv(file.path(data_dir,sprintf('eeg_events_%03d.csv',sid)))
 ef = NULL
@@ -23,9 +23,9 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
   xlab('minutes')
 p1
 
-presfiles = list.files(file.path(raw_data_dir),sprintf('%03d.*log',sid))
+presfiles = list.files(file.path(raw_data_dir),sprintf('%04d.*log',sid))
 if(length(presfiles) > 1){
-  stop(do.call(paste,c(list(sprintf("Multiple files matching pattern for sid = %d:",sid)),
+  stop(do.call(paste,c(list(sprintf('Multiple files matching pattern for sid = %d:',sid)),
                         as.list(presfiles),list(sep='\n'))))
 }
 presfile = file.path(raw_data_dir,presfiles)
@@ -44,22 +44,20 @@ pf = raw_pf %>% rename(subtrial=Trial) %>%
             response_time =
               last(TTime[Event.Type == 'Response' & Code %in% c(2,3)]) / 10^4)
 
-pf = pf %>% filter(condition %in% c('test','object','feature') & !is.na(response)) %>%
+pf = pf %>% filter(condition %in% c('test','object','feature'),
+                   !is.na(response)) %>%
   arrange(time)
 
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
 
 sound_events = filter(ef,bit == 5)
-## small exception for 2 and 3, since the script
-## had one error, that marked some practice
-## trials as test trials
-if(sid %in% c(2,3)){
-  if(nrow(sound_events) != 154)
-    stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+if(nrow(sound_events) != 154)
+  stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
 
-  sound_events = sound_events[c(1:50,53:102,105:154),]
-}
+# these extra rows, which we're skipping, are practice trials during the intro
+# to the 'feature' and 'object' conditions of the experiment
+sound_events = sound_events[c(1:50,53:102,105:154),]
 
 pf = pf %>%
   rename(pres_time = time) %>%

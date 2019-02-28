@@ -3,6 +3,7 @@
 .Rhistory
 *~
 *.csv
+*.txt
 *.mat
 *.wav
 *.swp

@@ -6,12 +6,12 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   % TODO: skip already generated files and
   % warn
   eegfile = eeg_files(i).name;
-  numstr = regexp(eegfile,'_([0-9]+)_','tokens');
+  numstr = regexp(eegfile,'([0-9]+)_','tokens');
   sid = str2num(numstr{1}{1});
   result_file = fullfile(data_dir,sprintf('eeg_events_%03d.csv',sid));
 
-  if exists(result_file)
-    warn(['The file ' result_file ' already exists. Skipping...']);
+  if exist(result_file,'file')
+    warning(['The file ' result_file ' already exists. Skipping...']);
     continue;
   end
 
@@ -22,7 +22,7 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   type = {event.type};
   status_types = zeros(length(type),1);
   for j = 1:length(type)
-    status_types(j) = logical(strcmp(type(j),"STATUS"));
+    status_types(j) = logical(strcmp(type(j),'STATUS'));
   end
 
   code = [event.value]';

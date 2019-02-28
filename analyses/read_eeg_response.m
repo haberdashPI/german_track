@@ -4,18 +4,17 @@ usecache = 1;
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
 for i = 1:length(eegfiles)
   eegfile = eegfiles(i).name;
-  numstr = regexp(eegfile,'_([0-9]+)_','tokens');
+  numstr = regexp(eegfile,'([0-9]+)_','tokens');
   sid = str2num(numstr{1}{1});
-  result_file = fullfile(data_dir,sprintf('eeg_response_%03d.bdf.mat',sid));
+  result_file = fullfile(data_dir,sprintf('eeg_response_%03d.mat',sid));
 
-  if exist(result_file) && usecache
+  if exist(result_file,'file') && usecache
     warning(['The file ' result_file ' already exists. Skipping...']);
     continue;
   end
 
   disp(['reading events for ' eegfile]);
   disp(['Found SID = ' num2str(sid)]);
-
 
   event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
   stim_events = readtable(event_file);
@@ -60,6 +59,6 @@ for i = 1:length(eegfiles)
   eeg_data = ft_preprocessing(cfg,eeg_data);
 
   % save to a file
-  ft_write_data(result_file,eeg_data);
+  ft_write_data(result_file,eeg_data,'dataformat','matlab');
 end
 alert()
