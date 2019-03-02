@@ -34,6 +34,9 @@ other participant's data.
 3. Call `analyses/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
 
+The audio files for each trial (which should be located with the bdf files)
+should also be moved to the `data/audio` subdirectory.
+
 ## Project organization
 
 - `analyses` The top-level scripts called from Matlab or R to analyze the data.
