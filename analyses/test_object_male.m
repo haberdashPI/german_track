@@ -10,29 +10,37 @@ eeg_files = dir(fullfile(data_dir,'eeg_response*.mat'));
 [eeg,stim_events,sid] = load_subject(eeg_files(1).name);
 
 maxlag = 0.25;
+
 male_index = 1;
+fem1_index = 2;
+fem2_index = 2;
+
 fs = stim_info.fs;
 lags = 0:round(maxlag*eeg.fsample);
 
-sum_model = []
+male_model = trf_train(eeg,stim_info,...
+  @(i)strcmp(stim_events(i,'condition'),'object'),...
+  @(i)sentence(stim_events,stim_info,i,male_index));
+
+fem1_model = trf_train(eeg,stim_info,...
+  @(i)strcmp(stim_events(i,'condition'),'object'),...
+  @(i)sentence(stim_events,stim_info,i,fem1_index));
+
+fem2_model = trf_train(eeg,stim_info,...
+  @(i)strcmp(stim_events(i,'condition'),'object'),...
+  @(i)sentence(stim_events,stim_info,i,fem2_index));
+
+
+% TODO: once I've written this up, make it a function
 for i = 1:length(eeg.trial)
   if strcmp(stim_events(i,'condition'),'object')
-    sent_idx = stim_events{i,'sound_index'};
-    stim = stim_info.all_sentences{1}{sent_idx(1),1};
+    [~,prediction] = FindTRF([],[],-1,eeg.trial{1}',male_model,...
+        lags,'Shrinkage');
 
-    stim_envelope = CreateLoudnessFeature(stim,fs,eeg.fsample);
-    response = eeg.trial{i};
+    % TODO: compute the envelope
+    % TODO: create cor array
 
-    min_len = min(size(stim_envelope,1),size(response,2))
-    response = response(:,1:min_len)';
-    stim_envelope = stim_envelope(1:min_len);
-
-    model = FindTRF(stim,response,-1,[],[],lags,'Shrinkage');
-    if isempty(sum_model)
-      sum_model = model
-    else
-      sum_model = sum_model + model
-    end
+    j = j+1
+    cor(j) = corrcoef(prediction,envelope);
   end
 end
-male_model = sum_model / 50;
