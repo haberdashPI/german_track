@@ -13,7 +13,7 @@ for i = 1:length(eegfiles)
     continue;
   end
 
-  disp(['reading events for ' eegfile]);
+  disp(['reading responses for ' eegfile]);
   disp(['Found SID = ' num2str(sid)]);
 
   event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));

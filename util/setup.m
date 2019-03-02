@@ -27,7 +27,7 @@ model_dir = fullfile(analysis_dir,'models');
 data_dir = fullfile(base_dir,'data');
 
 [ret,name] = system('hostname');
-if startsWith(name,'Claude.local')
+if startsWith(name,'Mycroft.local')
   raw_data_dir = '/Volumes/MiguelJr/Research/Experiments/trackgerman/data/';
 else
   raw_data_dir = '/Volumes/Data/Little_german_track_2019-02-27/';

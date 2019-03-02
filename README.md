@@ -7,12 +7,30 @@ condition--or listening to one ear--the *feature* condition.
 
 TODO: more details about the project should eventually go here.
 
-## Analysis pipeline
+## Concerns
 
-1. Call `anlayses/eeg_events.m` to generate *.csv files with the event triggers
+I'm not sure the config file I am using is right. I should find a way to verify
+that it is actually describing the files I think it is.
+
+## Regenerating the preprocessed data
+
+The EEG files are large, and not stored in the git repository. You will need
+to regenerate the preprocessed files (which will be stored in the `data/`
+subfolder). In `setup.m` you can specify the location of the raw BDF files
+and the Presentation *.log files on your local machine. Once specified, you
+can use the following steps to generate the preprocessed data on your
+machine. This pipeline will skip file generation if it finds existing files
+in `data/` so you can also use this pipeline to add preprocessed data for a
+new participant, by including their raw BDF file in the same location as all
+other participant's data.
+
+1. Call `anlayses/read_eeg_events.m` to generate *.csv files with the event triggers
 2. Call `analyses/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
-   to the 50 trials for each of the three conditions.
+   to the start of the 50 trials for each of the three conditions. This
+   script must be run incrementally: i.e. copy each section of code to R
+   and verify the output, as you run it. (e.g. there is a graph that gets
+   generated of all events in the EEG file).
 3. Call `analyses/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
 
