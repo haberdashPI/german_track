@@ -1,9 +1,12 @@
-function result = trf_train(eeg,stim_info,filter_fn,stim_fn)
+function result = trf_train(eeg,stim_info,lags,filter_fn,stim_fn)
   sum_model = [];
-  n = 0;
+
+  textprogressbar('training...');
+  onCleanup(@() textprogressbar(''));
+  N = sum(arrayfun(filter_fn,1:length(eeg.trial)));
+  j = 0;
   for i = 1:length(eeg.trial)
     if filter_fn(i)
-      n = n+1;
       stim = stim_fn(i);
       stim_envelope = CreateLoudnessFeature(stim,stim_info.fs,eeg.fsample);
       response = eeg.trial{i};
@@ -18,7 +21,10 @@ function result = trf_train(eeg,stim_info,filter_fn,stim_fn)
       else
         sum_model = sum_model + model;
       end
+
+      j = j+1;
+      textprogressbar(100*(j/N));
     end
   end
-  result = sum_model / n
+  result = sum_model / N;
 end

@@ -1,4 +1,8 @@
 base_dir = getwd()
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
 
 if(basename(base_dir) != 'german_track'){ ## TODO: change to 'german_track'
   warning(paste('Expected root directory to be named "eeg_atten". Was',

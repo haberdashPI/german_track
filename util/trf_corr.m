@@ -1,6 +1,10 @@
-function C = trf_corr(eeg,stim_info,model,filter_fn,stim_fn)
-  C = [];
+function C = trf_corr(eeg,stim_info,model,lags,filter_fn,stim_fn)
+  N = sum(arrayfun(filter_fn,1:length(eeg.trial)));
+  C = zeros(1,N);
   j = 0;
+
+  textprogressbar('correlating...');
+  onCleanup(@() textprogressbar(''));
   for i = 1:length(eeg.trial)
     if filter_fn(i)
       stim = stim_fn(i);
@@ -13,7 +17,10 @@ function C = trf_corr(eeg,stim_info,model,filter_fn,stim_fn)
 
       [~,prediction] = FindTRF([],[],-1,response,model,lags,'Shrinkage');
       j = j+1;
-      C(j) = corrcoef(prediction,stim_envelope);
+      cor = corrcoef(prediction,stim_envelope);
+      C(j) = cor(1,2);
+
+      textprogressbar(100*(j/N));
     end
   end
 end

@@ -1,7 +1,7 @@
 function [eeg_data,stim_events,sid] = load_subject(file)
   global data_dir
 
-  eegfile = fullfile(data_dir,file)
+  eegfile = fullfile(data_dir,file);
   eegfiledata = load(eegfile);
   eeg_data = eegfiledata.dat;
 
