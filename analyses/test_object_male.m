@@ -27,9 +27,25 @@ for i = 1:length(eeg_files)
 
 
   if use_fake_data
-    use_eeg = trf_fake_data(eeg,stim_info,3,1,20,...
+    use_eeg1 = trf_fake_data(eeg,stim_info,3,1,20,...
       @(i)strcmp(stim_events{i,'condition'},'object'),...
       @(i)sentence(stim_events,stim_info,i,male_index));
+    use_eeg2 = trf_fake_data(eeg,stim_info,3,21,25,...
+      @(i)strcmp(stim_events{i,'condition'},'object'),...
+      @(i)sentence(stim_events,stim_info,i,fem1_index));
+    use_eeg3 = trf_fake_data(eeg,stim_info,3,31,35,...
+      @(i)strcmp(stim_events{i,'condition'},'object'),...
+      @(i)sentence(stim_events,stim_info,i,fem2_index));
+
+    use_eeg = [];
+    use_eeg.fsample = use_eeg1.fsample;
+    use_eeg.trial = cell(size(eeg.trial));
+    for i = 1:length(use_eeg.trial)
+      if length(use_eeg1.trial{i}) > 0
+        use_eeg.trial{i} = use_eeg1.trial{i} + use_eeg2.trial{i} + ...
+          use_eeg3.trial{i};
+      end
+    end
   else
     use_eeg = eeg;
   end
