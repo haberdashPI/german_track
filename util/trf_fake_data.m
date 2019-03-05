@@ -27,6 +27,6 @@ function fake = trf_fake_data(eeg,stim_info,eps,first_channel,last_channel,filte
   end
 
   fake = [];
-  fake.fsample = eeg.fsample;
+  fake.fsample = eeg.fsample;1
   fake.trial = fake_eeg;
 end
