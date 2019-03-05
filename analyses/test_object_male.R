@@ -1,15 +1,26 @@
 
 source('util/setup.R')
 
+use_fake_data = TRUE
+
 dir = file.path(plot_dir,paste('run',Sys.Date(),sep='_'))
 dir.exists(dir) || dir.create(dir)
 
-df = gather(read.csv(file.path(cache_dir,'testobj.csv')),
-            label,cor,male_C:fem2_C)
+if(use_fake_data){
+  df = gather(read.csv(file.path(cache_dir,'fake_testobj.csv')),
+              label,cor,male_C:fem2_C)
+}else{
+  df = gather(read.csv(file.path(cache_dir,'testobj.csv')),
+              label,cor,male_C:fem2_C)
+}
 
 ggplot(df,aes(x=label,y=cor,color=label)) +
   geom_point(position=position_jitter(width=0.2),color='black',alpha=0.2) +
   stat_summary(geom='pointrange',fun.data='mean_cl_boot') +
   facet_wrap(~sid)
 
-ggsave(file.path(dir,'object_condition.pdf'))
+if(use_fake_data){
+  ggsave(file.path(dir,'fake_object_condition.pdf'))
+}else{
+  ggsave(file.path(dir,'object_condition.pdf'))
+}
