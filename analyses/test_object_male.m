@@ -25,7 +25,6 @@ for i = 1:length(eeg_files)
 
   lags = 0:round(maxlag*eeg.fsample);
 
-
   if use_fake_data
     use_eeg1 = trf_fake_data(eeg,stim_info,3,1,20,...
       @(i)strcmp(stim_events{i,'condition'},'object'),...
