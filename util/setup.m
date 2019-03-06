@@ -13,7 +13,12 @@ end
 
 addpath('analyses');
 addpath('util');
+
+% fieldtrip can be installed from http://www.fieldtriptoolbox.org/
+% add it to the MATLAB path
 ft_defaults;
+% download https://github.com/sofacoustics/API_MO and add to MATLAB path
+SOFAstart;
 
 global analysis_dir;
 global cache_dir;

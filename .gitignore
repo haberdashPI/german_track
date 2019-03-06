@@ -2,10 +2,9 @@
 .RData
 .Rhistory
 *~
-*.csv
-*.txt
-*.mat
-*.wav
+data/*
+analyses/cache/*
+analyses/models/*
 *.swp
 .tags
 .vscode
