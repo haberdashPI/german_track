@@ -13,15 +13,29 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     % machine. You can change these using `config` or by just changing
     % their values within the function source.
 
+    % GOOD GOD: I really wish people knew how to write *modular* functions.
+    % Non-local relationships between variables are abundant here. So.
+    % Confusing.  I would love to clean this code up more, but it is simply not
+    % worth my time.
+    %
+    % The goals are:
+    %  1. record all randomly generated values, so that we can regenerate
+    %     the exact same stimulus set (this will make it possible to
+    %     improve on the information I save, if I forget something)
+    %  2. generate a highly comprehensible output with the information I
+    %     currently want:
+    %     a. the wave forms *after* being placed in space
+    %     b. the target wave form before and after the insertion of the deviant
+    %     c. the exact positions in space of each wave form (so we can
+    %        reproduce the SOFA calls used to create this files).
+    %     d. the names of each file mixed into a trial
+    %
+    % NOTE: no audio files will be saved, since these will
+    % be generated as *.wav files.
+
     % ---------------------------------------------------------------------
     % running config ------------------------------------------------------
     % ---------------------------------------------------------------------
-
-    if nargin==0
-        run_main = 1;
-        run_train = 1;
-        runexample = 0;
-    end
 
     mix_dir = fullfile(base_dir,'stimuli','mixtures');
     if ~exist(mix_dir,'dir')
@@ -44,94 +58,96 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     config.normval = 5;
     config.analysis_len = 64;
     config.synthesis_len = 74;
-    config.dev_len = 1;
+    config.deviant_len = 1;
     config.switch_len = 1.2;
     config.min_stay_len = 0.5;
     config.jitter_period = 0.2;
-    config.dev_start_time = 1.5;
+    config.deviant_start_time = 1.5;
 
     test_block_cfg = [];
-    test_block_cfg.dev_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
-    test_block_cfg.dev_probs = [3;2;2;1;2]/10;
+    test_block_cfg.deviant_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
+    test_block_cfg.deviant_probs = [3;2;2;1;2]/10;
     test_block_cfg.num_trials = 50;
 
     train_block_cfg = [];
-    train_block_cfg.dev_cases = ...
+    train_block_cfg.deviant_cases = ...
         [1 1; -1 -1; 2 2; -1 -1; 1 2; 2 1; -1 -1; 1 1; 2 2; -1 -1];
     train_block_cfg.cond_rep = 4;
-    train_block_cfg.dev_probs = ones(size(train_block_cfg.dev_cases,1),1)/...
-        size(train_block_cfg.dev_cases,1);
-    train_block_cfg.num_trials = size(train_block_cfg.dev_cases,1)*...
+    train_block_cfg.deviant_probs = ...
+        ones(size(train_block_cfg.deviant_cases,1),1)/...
+            size(train_block_cfg.deviant_cases,1);
+    train_block_cfg.num_trials = size(train_block_cfg.deviant_cases,1)*...
         train_block_cfg.cond_rep;
 
     % ---------------------------------------------------------------------
     % running of the actual sections for stims ----------------------------
     % ---------------------------------------------------------------------
 
-    % TODO: this is where I stopped editing
-    [select_perms,select_perms_train] = get_sentences_per_trial(config.all_sentences,test_block_cfg.num_trials,train_block_cfg.num_trials);
+    [select_perms,select_perms_train] = ...
+      select_trial_sentences(config.all_sentences,...
+        test_block_cfg.num_trials,train_block_cfg.num_trials);
 
-    if run_main
-        config.block_cfg = test_block_cfg;
-        sentence_perms = select_perms;
-        get_all_exp_stuff(0);
-        config.block_cfg.trial_sentences = trial_sentences;
-        config.block_cfg.trial_dev_speakers = trial_dev_speakers;
-        config.block_cfg.trial_dev_direction = trial_dev_direction;
-        config.block_cfg.target_times = target_times;
-        config.block_cfg.switch_times = switch_times;
-        config.block_cfg.directionality = all_directionality;
-        config.test_block_cfg = config.block_cfg;
+    config.test_block_cfg = get_all_exp_stuff(config,test_block_cfg,...
+        select_perms,0);
+    config.train_block_cfg = get_all_exp_stuff(config,train_block_cfg,...
+        select_perms_train,1);
+
+    % TODO: don't save the audio files inside of the config file
+    % these shoudl be stored as separate *.wav files.
+    save(fullfile(base_dir,'stimuli','mixtures'),'config');
+    save_for_experiment(config,basedir);
+end
+
+function block_cfg = configure_block(config,block_cfg,permutations)
+
+    [trial_sentences,trial_deviant_speakers,trial_deviant_dir] = ...
+        get_trial_info(permutations,config,block_cfg);
+
+    block_cfg.trial_sentences = trial_sentences;
+    block_cfg.trial_deviant_speakers = trial_deviant_speakers;
+    block_cfg.trial_deviant_dir = trial_deviant_dir;
+
+    block_cfg.target_times = zeros(size(trial_deviant_dir));
+    block_cfg.switch_times = cell(size(trial_deviant_dir));
+    block_cfg.directions = cell(size(trial_deviant_dir,1),3);
+
+    for trial_idx=1:size(trial_sentences,1)
+        block_cfg = make_directions(config,block_cfg,trial_idx);
     end
+end
 
-    if run_train
-        config.block_cfg = train_block_cfg;
-        sentence_perms = select_perms_train;
-        get_all_exp_stuff(1);
-        config.block_cfg.trial_sentences = trial_sentences;
-        config.block_cfg.trial_dev_speakers = trial_dev_speakers;
-        config.block_cfg.trial_dev_direction = trial_dev_direction;
-        config.block_cfg.target_times = target_times;
-        config.block_cfg.switch_times = switch_times;
-        config.block_cfg.directionality = all_directionality;
-        config.train_block_cfg = config.block_cfg;
-    end
+function generate_stimuli(config,block_cfg,is_training)
+    for trial_idx=1:size(trial_sentences,1)
+        disp(trial_idx);
 
-    if runexample
-        config = make_all_stim(config);
-    end
-
-    if run_main==1 && run_train==1
-        config = rmfield(config,'block_cfg');
-        save(fullfile(base_dir,'stimuli','mixtures'),'config');
-        save_for_experiment(config,basedir);
-    end
-
-    % ---------------------------------------------------------------------
-    % nest functions ------------------------------------------------------
-    % ---------------------------------------------------------------------
-
-    function get_all_exp_stuff(is_training)
-        [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,config);
-        target_times = zeros(size(trial_dev_direction));
-        switch_times = cell(size(trial_dev_direction));
-        all_directionality = cell(size(trial_dev_direction,1),3);
-        for trial_idx=1:size(trial_sentences,1)
-%        for trial_idx=25:35
-            disp(trial_idx);
-            thispath = sprintf('trial_%d',trial_idx);
-            if is_training
-                training_loudness_flag = (mod(trial_idx-1,config.block_cfg.cond_rep)+1)<=config.block_cfg.cond_rep/2;
-            else
-                training_loudness_flag = 0;
-            end
-            [stim,tt,h,d,critical_times] = make_stim(config,hrtfs,trial_sentences(trial_idx,:),trial_dev_speakers(trial_idx),trial_dev_direction(trial_idx),training_loudness_flag);
-            title(trial_idx);
-            target_times(trial_idx) = tt;
-            switch_times{trial_idx} = critical_times;
-            all_directionality(trial_idx,:) = d;
-            save_trial(stim,h,config.fs,config.normval,basedir,thispath,is_training);
+        % should the deviation be louder?
+        if is_training
+            mod_index = (mod(trial_idx-1,block_cfg.cond_rep)+1);
+            repetitions = block_cfg.cond_rep;
+            loud_deviant = mod_index <= repetitions/2;
+        else
+            loud_deviant = 0;
         end
+
+        [stim,tt,h,d,critical_times] = ...
+            make_stim(config,block_cfg,trial_idx,hrtfs,loud_deviant);
+
+        % TODO: this is where I left off last time
+
+        % TODO: the below lines need to be run earlier. They really all belong
+        % in `configure_block` (in fact, this reveals the the `add_deviant`
+        % function both figures out the exact location of the target and
+        % modulates the sound, so I also need to separate those to things out
+        % into separate functions
+
+        block_cfg.target_times(trial_idx) = tt;
+        block_cfg.switch_times{trial_idx} = critical_times;
+        block_cfg.directions(trial_idx,:) = d;
+
+        % TODO: save the mixutre, the sound with the deviant
+        % and the unmixed HRTF modulated sources.
+        save_trial(stim,h,config.fs,config.normval,basedir,thispath,...
+            is_training);
     end
 end
 
@@ -174,26 +190,26 @@ function save_for_experiment(config,basedir)
     save_this;
 
     function save_this
-        trial_dev_speakers = block_cfg.trial_dev_speakers;
-        [~,~,ac] = unique(trial_dev_speakers,'stable');
-        trial_dev_speakers(trial_dev_speakers>0) = ac(trial_dev_speakers>0);
+        trial_deviant_speakers = block_cfg.trial_deviant_speakers;
+        [~,~,ac] = unique(trial_deviant_speakers,'stable');
+        trial_deviant_speakers(trial_deviant_speakers>0) = ac(trial_deviant_speakers>0);
 
-        trial_dev_direction = block_cfg.trial_dev_direction;
-        [~,~,ac] = unique(trial_dev_direction,'stable');
-        trial_dev_direction = ac;
-        ctrl_idx = trial_dev_direction(find(trial_dev_speakers==-1,1));
-        trial_dev_direction(trial_dev_direction==ctrl_idx) = trial_dev_speakers(trial_dev_direction==ctrl_idx);
+        trial_deviant_dir = block_cfg.trial_deviant_dir;
+        [~,~,ac] = unique(trial_deviant_dir,'stable');
+        trial_deviant_dir = ac;
+        ctrl_idx = trial_deviant_dir(find(trial_deviant_speakers==-1,1));
+        trial_deviant_dir(trial_deviant_dir==ctrl_idx) = trial_deviant_speakers(trial_deviant_dir==ctrl_idx);
 
-        sal = trial_dev_speakers>-1;
-        this_info = [block_cfg.target_times sal trial_dev_speakers trial_dev_direction];
+        sal = trial_deviant_speakers>-1;
+        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
         dlmwrite([basedir bpath 'target_info_all.txt'],this_info,'delimiter',' ');
 
-        sal = trial_dev_speakers==1;
-        this_info = [block_cfg.target_times sal trial_dev_speakers trial_dev_direction];
+        sal = trial_deviant_speakers==1;
+        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
         dlmwrite([basedir bpath 'target_info_obj.txt'],this_info,'delimiter',' ');
 
-        sal = trial_dev_direction==1;
-        this_info = [block_cfg.target_times sal trial_dev_speakers trial_dev_direction];
+        sal = trial_deviant_dir==1;
+        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
         dlmwrite([basedir bpath 'target_info_dir.txt'],this_info,'delimiter',' ');
     end
 
@@ -215,22 +231,27 @@ function save_trial(stim,handl,fs,normval,basedir,thispath,istraining)
     close;
 end
 
-function [select_perms,select_perms_train] = get_sentences_per_trial(all_sentences,num_trials,num_train)
-%% fix this function i dont even
+function [select_perms,select_perms_train] = ...
+    select_trial_sentences(all_sentences,num_trials,num_train)
+
     w = 0.3; % tolerance length difference
     sentence_perms = [];
     for s1=1:length(all_sentences{1})
-        for s2=2:length(all_sentences{2})
-            if abs(all_sentences{1}{s1,2}-all_sentences{2}{s2,2})<w
-                sentence_perms = [sentence_perms; s1 s2 abs(all_sentences{1}{s1,2}-all_sentences{2}{s2,2})];
+        for s2=1:length(all_sentences{2})
+            l1 = all_sentences{1}.length_s(s1);
+            l2 = all_sentences{2}.length_s(s2);
+            if abs(l1-l2)<w
+                sentence_perms = [sentence_perms; s1 s2 abs(l1-l2)];
             end
         end
     end
+
     % find the most diverse set of params to select
-    %%
     select_perms = [];
-    [s1_perm_counts,s1_possibilities] = hist(sentence_perms(:,1),unique(sentence_perms(:,1)));
-    [s2_perm_counts,s2_possibilities] = hist(sentence_perms(:,2),unique(sentence_perms(:,2)));
+    [s1_perm_counts,s1_possibilities] = hist(sentence_perms(:,1),...
+        unique(sentence_perms(:,1)));
+    [s2_perm_counts,s2_possibilities] = hist(sentence_perms(:,2),...
+        unique(sentence_perms(:,2)));
     s1_used_counts_p = zeros(1,length(s1_possibilities));
     s2_used_counts_p = zeros(1,length(s2_possibilities));
     while length(select_perms)<num_trials+num_train
@@ -239,8 +260,10 @@ function [select_perms,select_perms_train] = get_sentences_per_trial(all_sentenc
         s1_least_used_p = find(s1_used_counts_p==min(s1_used_counts_p));
         % out of those, find the s1s with least perm pairs
         s1_least_used_perm_counts_p = s1_perm_counts(s1_least_used_p);
-        % now we have to choose between these (indexed by possibilities, not absolute indexing!
-        s1_poss_p = s1_least_used_p(s1_least_used_perm_counts_p==min(s1_least_used_perm_counts_p));
+        % now we have to choose between these (indexed by possibilities,
+        % not absolute indexing!
+        s1_poss_p = s1_least_used_p(s1_least_used_perm_counts_p==...
+            min(s1_least_used_perm_counts_p));
         % and here is the absolute indexing
         s1_poss = s1_possibilities(s1_poss_p);
 
@@ -257,9 +280,12 @@ function [select_perms,select_perms_train] = get_sentences_per_trial(all_sentenc
         % now get how many perms the s2's have
         s2_poss_perm_counts_p = s2_perm_counts(s2_poss_p);
         % then select the min one
-        s2_least_used_perm_counts_p = find(s2_poss_perm_counts_p==min(s2_poss_perm_counts_p));
+        s2_least_used_perm_counts_p = find(s2_poss_perm_counts_p==...
+            min(s2_poss_perm_counts_p));
         % if there is more than one, select one randomly
-        s2_select = s2_possibilities(s2_poss_p(s2_least_used_perm_counts_p(randsample(length(s2_least_used_perm_counts_p),1))));
+        asample = randsample(length(s2_least_used_perm_counts_p),1);
+        least_used = s2_least_used_perm_counts_p(asample);
+        s2_select = s2_possibilities(s2_poss_p(least_used));
         s2_select_p = find(s2_possibilities==s2_select);
 
         % now, find which s1's had this s2 as a pair
@@ -280,381 +306,352 @@ function [select_perms,select_perms_train] = get_sentences_per_trial(all_sentenc
     select_perms_train = select_perms(end-num_train+1:end,:);
     select_perms = select_perms(1:end-num_train,:);
     %%
-    s3_lengths = cell2mat(all_sentences{3}(:,2));
+    s3_lengths = all_sentences{3}.length;
     s3_used_counts = zeros(1,length(s3_lengths));
     for select_idx=1:size(select_perms,1)
-        ls = [all_sentences{1}{select_perms(select_idx,1),2} all_sentences{2}{select_perms(select_idx,2),2}];
+        ls = [all_sentences{1}.length(select_perms(select_idx,1)) ...
+            all_sentences{2}.length(select_perms(select_idx,2))];
         s3_poss = find(abs(max(ls)-s3_lengths)<w);
         s3_poss_used_counts = s3_used_counts(s3_poss);
-        s3_poss_least_used = s3_poss(s3_poss_used_counts==min(s3_poss_used_counts));
-        [~,s3_poss_least_used_closest_idx] = min(abs(max(ls)-s3_lengths(s3_poss_least_used)));
+        s3_poss_least_used = s3_poss(s3_poss_used_counts==...
+            min(s3_poss_used_counts));
+        [~,s3_poss_least_used_closest_idx] = ...
+            min(abs(max(ls)-s3_lengths(s3_poss_least_used)));
         s3_select = s3_poss_least_used(s3_poss_least_used_closest_idx);
         select_perms(select_idx,3) = s3_select;
         s3_used_counts(s3_select) = s3_used_counts(s3_select) + 1;
     end
 
-    s3_lengths = cell2mat(all_sentences{3}(:,2));
     for select_idx=1:size(select_perms_train,1)
-        ls = [all_sentences{1}{select_perms_train(select_idx,1),2} all_sentences{2}{select_perms_train(select_idx,2),2}];
+        ls = [all_sentences{1}.length(select_perms(select_idx,1)) ...
+            all_sentences{2}.length(select_perms(select_idx,2))];
         [~,chosen3] = min(abs(max(ls)-s3_lengths));
         select_perms_train(select_idx,3) = chosen3;
     end
 
 end
 
-function [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,config)
-%%
-    all_speakers = config.all_sentences(:,2);
-    dev_cases = config.block_cfg.dev_cases;
-    dev_probs = config.block_cfg.dev_probs;
-    num_trials = config.block_cfg.num_trials;
+function [trial_sentences,trial_deviant_speakers,trial_deviant_dir] = ...
+    get_trial_info(sentence_perms,block_cfg)
+
+    deviant_cases = block_cfg.deviant_cases;
+    deviant_probs = block_cfg.deviant_probs;
+    num_trials = block_cfg.num_trials;
 
     trial_sentences = [];
-    perm_pointer = 1;
-    for i=1:size(dev_cases,1)
-        trial_sentences = [trial_sentences; repmat(dev_cases(i,:),num_trials * dev_probs(i),1)];
+    for i=1:size(deviant_cases,1)
+        trial_sentences = [trial_sentences; ...
+            repmat(deviant_cases(i,:),num_trials * deviant_probs(i),1)];
     end
     trial_sentences = [sentence_perms trial_sentences];
-    trial_dev_speakers = trial_sentences(:,end-1);
-%     trial_dev_speakers(trial_dev_speakers>0) = all_speakers(trial_dev_speakers(trial_dev_speakers>0));
-    trial_dev_direction = categorical(trial_sentences(:,end),[-1 1 2],{'none','left','right'});
+    trial_deviant_speakers = trial_sentences(:,end-1);
+    trial_deviant_dir = categorical(trial_sentences(:,end),[-1 1 2],{'none','left','right'});
     trial_sentences = trial_sentences(:,1:3);
-
 end
 
-function [stim,target_time,h,d,critical_times] = make_stim(config,hrtfs,sentence_idxs,dev_speaker,dev_direction,training_loudness_flag)
-%%
-    % ---------------------------------------------------------------------
-    % all config params ---------------------------------------------------
-    % ---------------------------------------------------------------------
-
-    all_sentences = config.all_sentences;
-    fs = config.fs;
-    analysis_len = config.analysis_len;
-    synthesis_len = config.synthesis_len;
-    dev_len = config.dev_len;
+function block_cfg = make_directions(config,block_cfg,trial)
     switch_len = config.switch_len;
     min_stay_len = config.min_stay_len;
-    T = config.jitter_period;
 
-    d1s0 = 1; % first speaker starts from direction 0 (right)
-    target_time = 0;
     switch_num_range = 1:5;
     min_stim_len_for_switch = ...
         arrayfun(@(num_switch)((num_switch*2-1)*switch_len+...
-                               ceil(num_switch/2)*min_stay_len),switch_num_range);
+            ceil(num_switch/2)*min_stay_len),switch_num_range);
 
-    % ---------------------------------------------------------------------
-    % making of the stim (function calls mostly) --------------------------
-    % ---------------------------------------------------------------------
+    idxs = block_cfg.trial_sentences(trial,:);
+    s1 = config.all_sentences{1}(idxs(1)).data;
+    s2 = config.all_sentences{2}(idxs(2)).data;
+    s3 = config.all_sentences{3}(idxs(3)).data;
 
-    s1 = all_sentences{1}{sentence_idxs(1)};
-    s2 = all_sentences{2}{sentence_idxs(2)};
-    s3 = all_sentences{3}{sentence_idxs(3)};
-    normalize_volume;
-    len_stim = equalize_sentence_lengths;
-    [direction_wave1,direction_wave2,direction_wave3] = make_directionality;
-    add_deviant;
-    len_stim = equalize_sentence_lengths;
-    get_sound;
-    h = show_stim(config,sentence_idxs,azi1,sph2nav(azi_real1),s1,azi2,sph2nav(azi_real2),s2,azi3,sph2nav(azi_real3),s3,target_time,dev_speaker,training_loudness_flag);
-%     sound(stim/5,fs);
-%     disp('crimson day');
-    d = {direction_wave1,direction_wave2,direction_wave3};
+    % compute directions (azimuth) of sounds
+    len_stim = equalize_lengths(s1,s2,s3);
+    [dir1,dir2,dir3] = ...
+        make_directions(switch_num_range,min_stim_len_for_switch,len_stim);
+    block_cfg.direction{trial,:} = {dir1,dir2,dir3};
+end
 
-    % ---------------------------------------------------------------------
-    % nest functions ------------------------------------------------------
-    % ---------------------------------------------------------------------
+function [stim,target_time,h,d,critical_times] = ...
+    make_stim(config,block_cfg,trial,hrtfs,loud_deviant)
 
-    function normalize_volume
-%         s1 = s1/rms(s1);
-%         s2 = s2/rms(s2);
-%         s3 = s2/rms(s3);
-%         s1 = s1/10^(0/20);
-%         s2 = s2/10^(1/20);
-%         s3 = s3/10^(1/20);
+    % insert the deviant sound
+    deviant = block_cfg.trial_deviant_speakers(trial);
+    deviant_dir = block_cfg.trial_deviant_dir{trial};
+    [s1,s2,s3] = add_deviant(config,deviant,deviant_dir,s1,s2,s3);
+
+    [~,s1,s2,s3] = equalize_lengths(s1,s2,s3);
+
+    p1 = SOFAspat(s1,hrtfs,block_cfg,0);
+    p2 = SOFAspat(s2,hrtfs,dir2,0);
+    p3 = SOFAspat(s3,hrtfs,dir3,0);
+    stim = p1 + p2 + p3;
+end
+
+function [len_stim,s1,s2,s3] = equalize_lengths(s1,s2,s3)
+    len_stim = max(length(s1),length(s2));
+    s1 = [s1; zeros(len_stim-length(s1),1)];
+    s2 = [s2; zeros(len_stim-length(s2),1)];
+    s3 = [s3(1:min(len_stim,length(s3))); zeros(len_stim-length(s3),1)];
+end
+
+function [s1,s2,s3,target_time] = add_deviant(config,deviant,deviant_dir,s1,s2,s3)
+    safety = 0.8;
+    safety_end = config.fs*config.deviant_start_time;
+    [ss,dd,dc,de,tt] = stream_select;
+    [target_t,target_time] = tt_select;
+    if deviant>0
+        manipulate;
+        if deviant==1
+            s1 = ss;
+        elseif deviant==2
+            s2 = ss;
+        end
     end
 
-    function len_stim = equalize_sentence_lengths
-        len_stim = max(length(s1),length(s2));
-        s1 = [s1; zeros(len_stim-length(s1),1)];
-        s2 = [s2; zeros(len_stim-length(s2),1)];
-        s3 = [s3(1:min(len_stim,length(s3))); zeros(len_stim-length(s3),1)];
-    end
-
-    function [direction_wave1,direction_wave2,direction_wave3] = make_directionality
-        % jitter period and ampl
-        A = 1/5;
-        % get number of switches
-        pop = switch_num_range(min_stim_len_for_switch-len_stim/fs<0);
-%         switch_num = pop(randsample(length(pop),1));
-        switch_num = max(pop);
-        % get length of each section for s1
-        if switch_num<3
-            extra_time = len_stim/fs-min_stim_len_for_switch(switch_num)-1.5;
-            section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
-            if dev_direction=='right' || dev_speaker==2
-                section_lengths(1) = section_lengths(1) + 1.5;
-            elseif dev_direction=='left'
-                section_lengths(2) = section_lengths(2) + 1.5;
-            else
-                section_lengths(1) = section_lengths(1) + 0.75;
-                section_lengths(2) = section_lengths(2) + 0.75;
-            end
+    function [ss,dd,dc,de,tt] = stream_select
+        if deviant==1
+            ss = s1;
+            dd = block_cfg.direction{1};
+            dc = circshift(dd,-round(block_cfg.deviant_len*fs));
+            de = circshift(dd,round(safety*fs));
+            tt = safety_end;
+        elseif deviant==2
+            ss = s2;
+            dd = block_cfg.direction{2};
+            dc = circshift(dd,-round(block_cfg.deviant_len*fs));
+            de = circshift(dd,round(safety*fs));
+            tt = safety_end;
         else
-            extra_time = len_stim/fs-min_stim_len_for_switch(switch_num);
-            section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
+            ss = []; dd = []; dc = []; de = []; tt = 0;
         end
-        % put the opening section
-        switch_wave = (0:1/(fs*switch_len):1)';
-        % then put everything together
-        critical_times = [];
-        sec1;
-        sec2;
-        sec3;
-        secs_equalize;
-        critical_times = cumsum(critical_times);
-        t1 = round((min_stay_len+section_lengths(1))*fs);
-        to_angle;
+    end
 
-        function sec1
-            direction_wave1 = make_jitter(round((section_lengths(1)+min_stay_len)*fs),0);
-            direction_wave2 = make_jitter(length(direction_wave1),1);
-            sl = min(length(direction_wave2),round(length(switch_wave)/2));
-            direction_wave3 = flip([switch_wave(1:sl); make_jitter(length(direction_wave1)-sl,1)-switch_wave(sl)]);
-            critical_times = [critical_times round((section_lengths(1)+min_stay_len)*fs)];
+    function [target_t,target_time] = tt_select
+        if deviant_dir=='right'
+%                 ffs = (dd(tt:end-safety_end)<-35).*(dc(tt:end-safety_end)<-35).*(de(tt:end-safety_end)<-35);
+            ffs = (dd(tt:end-safety_end)<-10).*(dc(tt:end-safety_end)<-10);
+            get_optimal_t;
+        elseif deviant_dir=='left'
+            ffs = (dd(tt:end-safety_end)>37).*...
+                (dc(tt:end-safety_end)>37).*...
+                (de(tt:end-safety_end)>37);
+            get_optimal_t;
+        else
+            target_t = 0;
         end
+        target_time = target_t/fs;
 
-        function sec2
-            for section_idx=2:switch_num
-                if direction_wave1(end)<0.5
-                    this_switch = switch_wave;
-                    this_len = round((section_lengths(section_idx)+switch_len*2)*fs);
-                    this_len2 = this_len-length(switch_wave)*2;
-                    direction_wave2 = [direction_wave2; make_jitter(length(this_switch),1,1); flip(switch_wave); make_jitter(this_len2,0,1); switch_wave];
-                    critical_times = [critical_times length(this_switch) length(switch_wave) this_len2 length(switch_wave)];
-                    mini_switch = switch_wave(1:ceil(this_len2/2));
-                    direction_wave3 = [direction_wave3; make_jitter(length(this_switch)*2,0); mini_switch; flip(mini_switch(1:end-mod(this_len2,2))); make_jitter(length(switch_wave),0)];
-                else
-                    this_switch = flip(switch_wave);
-                    this_len = round((section_lengths(section_idx)+min_stay_len)*fs);
-                    direction_wave2 = [direction_wave2; make_jitter(length(switch_wave)+this_len,1)];
-                    mini_switch = switch_wave(1:ceil(this_len/2));
-                    direction_wave3 = [direction_wave3; make_jitter(length(switch_wave),0); mini_switch; flip(mini_switch(1:end-mod(this_len,2)))];
-                    critical_times = [critical_times length(this_switch) this_len];
-                end
-                direction_wave1 = [direction_wave1; this_switch; make_jitter(this_len,this_switch(end))];
+        function get_optimal_t
+            if isempty(find(ffs,1)), disp('FFS'); end
+            sig_poss_start = abs(ss(tt+(1:length(ffs))).*ffs);
+            [~,t_poss] = findpeaks(sig_poss_start,'npeaks',20,'sortstr','descend','minpeakdistance',fs/20);
+            peak_rmss = zeros(length(t_poss),1);
+            for ti=1:length(t_poss)
+                peak_rmss(ti) = rms(ss(tt+t_poss(ti)+(1:fs)));
             end
+            [~,t_selecti] = max(peak_rmss);
+            target_t = t_poss(t_selecti);
+            target_t = target_t+tt;
         end
+    end
 
-        function sec3
-            section_idx = switch_num + 1;
-            if direction_wave1(end)<0.5
+    function manipulate
+        %%
+        idxs = target_t:target_t+config.deviant_len*config.fs;
+        if deviant_speaker==2
+            seg = E_phase(ss(idxs),config.analysis_len,config.synthesis_len)';
+            seg = resample(seg,config.analysis_len,config.synthesis_len);
+        else
+            seg = E_phase(ss(idxs),config.synthesis_len,config.analysis_len)';
+            seg = resample(seg,config.synthesis_len,config.analysis_len);
+        end
+        seg = seg*rms(ss(idxs))/rms(seg);
+        if loud_deviant
+            seg = seg*10^(4/20);
+        end
+        %%
+        ss = [ss(1:target_t); seg; ss(idxs(end)+1:end)];
+        %%
+        st = round(0.01*config.fs);
+%             n = 5;
+        idxs = target_t-st:target_t;
+        ramp = linspace(0.7,1,length(idxs))';
+        ss(idxs) = ss(idxs).*flip(ramp);
+        idxs = target_t:target_t+st;
+        ss(idxs) = ss(idxs).*ramp;
+        idxs = (target_t-st:target_t)+config.fs*block_cfg.deviant_len;
+        ss(idxs) = ss(idxs).*flip(ramp);
+        idxs = (target_t:target_t+st)+config.fs*block_cfg.deviant_len;
+        if length(ss)>idxs(end)
+            ss(idxs) = ss(idxs).*ramp;
+        end
+    end
+end
+
+
+function [dir1,dir2,dir3] = ...
+    make_directions(config,switch_num_range,min_stim_len_for_switch,len_stim)
+
+    % jitter period and ampl
+    A = 1/5;
+    extra_time = len_stim/config.fs - min_stim_len_for_switch;
+
+    % determine number of switches
+    valid_switches = switch_num_range(extra_time>=0);
+    switch_num = max(valid_switches);
+
+    % determine length of each section for s1
+    if switch_num<3
+        section_lengths = randfixedsum(switch_num+1,1,...
+            extra_time - config.deviant_start_time,0,...
+            extra_time.config.deviant_start_time);
+        if deviant_dir=='right' || deviant_speaker==2
+            section_lengths(1) = section_lengths(1) + config.deviant_start_time;
+        elseif deviant_dir=='left'
+            section_lengths(2) = section_lengths(2) + config.deviant_start_time;
+        else
+            section_lengths(1) = section_lengths(1) + config.deviant_start_time/2;
+            section_lengths(2) = section_lengths(2) + config.deviant_start_time/2;
+        end
+    else
+        section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
+    end
+
+    % put the opening section
+    switch_wave = (0:1/(fs*switch_len):1)';
+
+    % then put everything together
+    critical_times = [];
+    sec1;
+    sec2;
+    sec3;
+    secs_equalize;
+    critical_times = cumsum(critical_times);
+    to_angle;
+
+    function sec1
+        dir1 = make_jitter(round((section_lengths(1)+min_stay_len)*fs),0);
+        dir2 = make_jitter(length(dir1),1);
+        sl = min(length(dir2),round(length(switch_wave)/2));
+        dir3 = flip([switch_wave(1:sl); make_jitter(length(dir1)-sl,1)-switch_wave(sl)]);
+        critical_times = [critical_times round((section_lengths(1)+min_stay_len)*fs)];
+    end
+
+    function sec2
+        for section_idx=2:switch_num
+            if dir1(end)<0.5
                 this_switch = switch_wave;
-                this_len = round((section_lengths(section_idx))*fs);
-                direction_wave2 = [direction_wave2; make_jitter(length(this_switch),1); flip(switch_wave(end+1-min(this_len,length(switch_wave)):end)); make_jitter(this_len-length(switch_wave),0)];
-                critical_times = [critical_times length(this_switch) length(switch_wave)];
+                this_len = round((section_lengths(section_idx)+switch_len*2)*fs);
+                this_len2 = this_len-length(switch_wave)*2;
+                dir2 = [dir2; make_jitter(length(this_switch),1,1); flip(switch_wave); make_jitter(this_len2,0,1); switch_wave];
+                critical_times = [critical_times length(this_switch) length(switch_wave) this_len2 length(switch_wave)];
+                mini_switch = switch_wave(1:ceil(this_len2/2));
+                dir3 = [dir3; make_jitter(length(this_switch)*2,0); mini_switch; flip(mini_switch(1:end-mod(this_len2,2))); make_jitter(length(switch_wave),0)];
             else
                 this_switch = flip(switch_wave);
-                this_len = round((section_lengths(section_idx))*fs);
-                direction_wave2 = [direction_wave2; make_jitter(length(switch_wave)+this_len,1)];
+                this_len = round((section_lengths(section_idx)+min_stay_len)*fs);
+                dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
+                mini_switch = switch_wave(1:ceil(this_len/2));
+                dir3 = [dir3; make_jitter(length(switch_wave),0); mini_switch; flip(mini_switch(1:end-mod(this_len,2)))];
                 critical_times = [critical_times length(this_switch) this_len];
             end
-            direction_wave1 = [direction_wave1; this_switch; make_jitter(this_len,this_switch(end))];
-            direction_wave3 = [direction_wave3; make_jitter(length(this_switch)+this_len,0)];
-        end
-
-        function secs_equalize
-            if ~isempty(find(diff([length(direction_wave1) length(direction_wave2) length(direction_wave3)])~=0,1))
-                disp('Direction lengths not the same!');
-            end
-            direction_wave1 = direction_wave1(1:len_stim);
-            direction_wave2 = direction_wave2(1:len_stim);
-            direction_wave3 = direction_wave3(1:len_stim);
-        end
-
-        function jit = make_jitter(len_requested,direc,override)
-            if nargin==2, override=0; end
-            jit = -sin(2*pi/(T)*linspace(0,len_requested/fs,len_requested))'*A;
-            if direc==1 && override
-                jit = jit+direc;
-            elseif direc==1 || override
-                jit = -jit+direc;
-            end
-        end
-
-        function to_angle
-            if d1s0
-%                 direction_wave1 = direction_wave1*180-90;
-%                 direction_wave2 = direction_wave2*180-90;
-%                 direction_wave3 = direction_wave3*180-90;
-                direction_wave1 = (direction_wave1+A)/(1+A*2)*180-90;
-                direction_wave2 = (direction_wave2+A)/(1+A*2)*180-90;
-                direction_wave3 = (direction_wave3+A)/(1+A*2)*180-90;
-            else
-%                 direction_wave1 = 90-(direction_wave1-min(direction_wave1))/(max(direction_wave1)-min(direction_wave1))*180;
-%                 direction_wave2 = 90-(direction_wave2-min(direction_wave2))/(max(direction_wave2)-min(direction_wave2))*180;
-%                 direction_wave3 = 90-(direction_wave3-min(direction_wave3))*(0.7)/(max(direction_wave3)-min(direction_wave3))*180;
-                direction_wave1 = 90-(direction_wave1+A)/(1+A*2)*180;
-                direction_wave2 = 90-(direction_wave2+A)/(1+A*2)*180;
-                direction_wave3 = 90-(direction_wave3+A)/(1+A*2)*180;
-            end
+            dir1 = [dir1; this_switch; make_jitter(this_len,this_switch(end))];
         end
     end
 
-    function add_deviant
-        safety = 0.8;
-        safety_end = fs*config.dev_start_time;
-        [ss,dd,dc,de,tt] = stream_select;
-        [target_t,target_time] = tt_select;
-        if dev_speaker>0
-            manipulate;
-            if dev_speaker==1
-                s1 = ss;
-            elseif dev_speaker==2
-                s2 = ss;
-            end
-        end
-
-        function [ss,dd,dc,de,tt] = stream_select
-            if dev_speaker==1
-                ss = s1;
-                dd = direction_wave1;
-                dc = circshift(dd,-round(dev_len*fs));
-                de = circshift(dd,round(safety*fs));
-                tt = safety_end;
-            elseif dev_speaker==2
-                ss = s2;
-                dd = direction_wave2;
-                dc = circshift(dd,-round(dev_len*fs));
-                de = circshift(dd,round(safety*fs));
-                tt = safety_end;
-            else
-                ss = []; dd = []; dc = []; de = []; tt = 0;
-            end
-        end
-
-        function [target_t,target_time] = tt_select
-            if dev_direction=='right'
-%                 ffs = (dd(tt:end-safety_end)<-35).*(dc(tt:end-safety_end)<-35).*(de(tt:end-safety_end)<-35);
-                ffs = (dd(tt:end-safety_end)<-10).*(dc(tt:end-safety_end)<-10);
-                get_optimal_t;
-            elseif dev_direction=='left'
-                ffs = (dd(tt:end-safety_end)>37).*(dc(tt:end-safety_end)>37).*(de(tt:end-safety_end)>37);
-                get_optimal_t;
-            else
-                target_t = 0;
-            end
-            target_time = target_t/fs;
-
-            function get_optimal_t
-                if isempty(find(ffs,1)), disp('FFS'); end
-                sig_poss_start = abs(ss(tt+(1:length(ffs))).*ffs);
-                [~,t_poss] = findpeaks(sig_poss_start,'npeaks',20,'sortstr','descend','minpeakdistance',fs/20);
-                peak_rmss = zeros(length(t_poss),1);
-                for ti=1:length(t_poss)
-                    peak_rmss(ti) = rms(ss(tt+t_poss(ti)+(1:fs)));
-                end
-                [~,t_selecti] = max(peak_rmss);
-                target_t = t_poss(t_selecti);
-                target_t = target_t+tt;
-            end
-        end
-
-        function manipulate
-            %%
-            idxs = target_t:target_t+dev_len*fs;
-            if dev_speaker==2
-                seg = E_phase(ss(idxs),analysis_len,synthesis_len)';
-                seg = resample(seg,analysis_len,synthesis_len);
-            else
-                seg = E_phase(ss(idxs),synthesis_len,analysis_len)';
-                seg = resample(seg,synthesis_len,analysis_len);
-            end
-            seg = seg*rms(ss(idxs))/rms(seg);
-            if training_loudness_flag
-                seg = seg*10^(4/20);
-            end
-            %%
-            ss = [ss(1:target_t); seg; ss(idxs(end)+1:end)];
-            %%
-            st = round(0.01*fs);
-%             n = 5;
-            idxs = target_t-st:target_t;
-            ramp = linspace(0.7,1,length(idxs))';
-            ss(idxs) = ss(idxs).*flip(ramp);
-            idxs = target_t:target_t+st;
-            ss(idxs) = ss(idxs).*ramp;
-            idxs = (target_t-st:target_t)+fs*dev_len;
-            ss(idxs) = ss(idxs).*flip(ramp);
-            idxs = (target_t:target_t+st)+fs*dev_len;
-            if length(ss)>idxs(end)
-                ss(idxs) = ss(idxs).*ramp;
-            end
-        end
-    end
-
-    function get_sound
-        if 0
-            ear1 = s1.*direction_wave1 + s2.*direction_wave2;
-            ear2 = s1.*(1-direction_wave1) + s2.*(1-direction_wave2);
-            stim = [ear1, ear2];
+    function sec3
+        section_idx = switch_num + 1;
+        if dir1(end)<0.5
+            this_switch = switch_wave;
+            this_len = round((section_lengths(section_idx))*fs);
+            dir2 = [dir2; make_jitter(length(this_switch),1); flip(switch_wave(end+1-min(this_len,length(switch_wave)):end)); make_jitter(this_len-length(switch_wave),0)];
+            critical_times = [critical_times length(this_switch) length(switch_wave)];
         else
-            [p1,azi1,~,sourceposition_idx1] = SOFAspat(s1,hrtfs,direction_wave1,0);
-            [p2,azi2,~,sourceposition_idx2] = SOFAspat(s2,hrtfs,direction_wave2,0);
-            [p3,azi3,~,sourceposition_idx3] = SOFAspat(s3,hrtfs,direction_wave3,0);
-            azi_real1 = hrtfs.SourcePosition(sourceposition_idx1,1);
-            azi_real2 = hrtfs.SourcePosition(sourceposition_idx2,1);
-            azi_real3 = hrtfs.SourcePosition(sourceposition_idx3,1);
-            stim = p1 + p2 + p3;
+            this_switch = flip(switch_wave);
+            this_len = round((section_lengths(section_idx))*fs);
+            dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
+            critical_times = [critical_times length(this_switch) this_len];
+        end
+        dir1 = [dir1; this_switch; make_jitter(this_len,this_switch(end))];
+        dir3 = [dir3; make_jitter(length(this_switch)+this_len,0)];
+    end
+
+    function secs_equalize
+        if ~isempty(find(diff([length(dir1) length(dir2) length(dir3)])~=0,1))
+            disp('dir lengths not the same!');
+        end
+        dir1 = dir1(1:len_stim);
+        dir2 = dir2(1:len_stim);
+        dir3 = dir3(1:len_stim);
+    end
+
+    function jit = make_jitter(len_requested,direc,override)
+        if nargin==2, override=0; end
+        jit = -sin(2*pi/(config.jitter_period)*...
+            linspace(0,len_requested/fs,len_requested))'*A;
+        if direc==1 && override
+            jit = jit+direc;
+        elseif direc==1 || override
+            jit = -jit+direc;
         end
     end
 
+    function to_angle
+        if d1s0
+            dir1 = (dir1+A)/(1+A*2)*180-90;
+            dir2 = (dir2+A)/(1+A*2)*180-90;
+            dir3 = (dir3+A)/(1+A*2)*180-90;
+        else
+            dir1 = 90-(dir1+A)/(1+A*2)*180;
+            dir2 = 90-(dir2+A)/(1+A*2)*180;
+            dir3 = 90-(dir3+A)/(1+A*2)*180;
+        end
+    end
 end
 
-function h = show_stim(config,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,dev_speaker,training_loudness_flag)
-%%
-    all_sentences = config.all_sentences;
-    fs = config.fs;
-    colors = ['b','r','g'];
-    rect_lightness = 0.8;
-    if dev_speaker==1
-        dev_color = ones(1,3)*rect_lightness+[0 0 1-rect_lightness];
-    elseif dev_speaker==2
-        dev_color = ones(1,3)*rect_lightness+[1-rect_lightness 0 0];
-    end
-    if dev_speaker>0 && training_loudness_flag
-        dev_color = dev_color/1.5;
-    end
 
-    h = figure; hold on
-    yl = [-100 100];
-    if target_time>0
-        rectangle('Position',[target_time yl(1) config.dev_len diff(yl)],'FaceColor',dev_color,'linestyle','none');
-    end
+% function h = show_stim(config,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,deviant_speaker,loud_deviant)
 
-    azifactor = length(azi1)/length(s1);
+%     all_sentences = config.all_sentences;
+%     fs = config.fs;
+%     colors = ['b','r','g'];
+%     rect_lightness = 0.8;
+%     if deviant_speaker==1
+%         deviant_color = ones(1,3)*rect_lightness+[0 0 1-rect_lightness];
+%     elseif deviant_speaker==2
+%         deviant_color = ones(1,3)*rect_lightness+[1-rect_lightness 0 0];
+%     end
+%     if deviant_speaker>0 && loud_deviant
+%         deviant_color = deviant_color/1.5;
+%     end
 
-    t = (1:length(azi1))/fs/azifactor;
+%     h = figure; hold on
+%     yl = [-100 100];
+%     if target_time>0
+%         rectangle('Position',[target_time yl(1) config.deviant_len diff(yl)],'FaceColor',deviant_color,'linestyle','none');
+%     end
 
-    l1 = plot(t,azi1,'color',colors(1),'displayname',[num2str(all_sentences{1,2}) '-' num2str(sentence_idxs(1))]);
-    % keyboard
-    % plot(t,azi_real1','x','color',colors(1));
-    l2 = plot(t,azi2,'color',colors(2),'displayname',[num2str(all_sentences{2,2}) '-' num2str(sentence_idxs(2))]);
-    % plot(t,azi_real2','x','color',colors(2));
-    l3 = plot(t,azi3,'color',colors(3),'displayname',[num2str(all_sentences{3,2}) '-' num2str(sentence_idxs(3))]);
-    % plot(t,azi_real3','x','color',colors(3));
+%     azifactor = length(azi1)/length(s1);
 
-    t = (1:length(s1))/fs;
+%     t = (1:length(azi1))/fs/azifactor;
 
-    plot(t,s1*40+45,'color',colors(1));
-    plot(t,s2*40-45,'color',colors(2));
-    plot(t,s3*40,'color',colors(3));
+%     l1 = plot(t,azi1,'color',colors(1),'displayname',[num2str(all_sentences{1,2}) '-' num2str(sentence_idxs(1))]);
+%     % keyboard
+%     % plot(t,azi_real1','x','color',colors(1));
+%     l2 = plot(t,azi2,'color',colors(2),'displayname',[num2str(all_sentences{2,2}) '-' num2str(sentence_idxs(2))]);
+%     % plot(t,azi_real2','x','color',colors(2));
+%     l3 = plot(t,azi3,'color',colors(3),'displayname',[num2str(all_sentences{3,2}) '-' num2str(sentence_idxs(3))]);
+%     % plot(t,azi_real3','x','color',colors(3));
 
-    legend([l1 l2 l3],'location','northwest');
-    ylim(yl);
-    xlim([0 length(s1)/fs]);
-    set(gca,'ytick',[-90 90],'yticklabel',{'right','left'});
-    xlabel('Time (s)');
+%     t = (1:length(s1))/fs;
 
-end
+%     plot(t,s1*40+45,'color',colors(1));
+%     plot(t,s2*40-45,'color',colors(2));
+%     plot(t,s3*40,'color',colors(3));
+
+%     legend([l1 l2 l3],'location','northwest');
+%     ylim(yl);
+%     xlim([0 length(s1)/fs]);
+%     set(gca,'ytick',[-90 90],'yticklabel',{'right','left'});
+%     xlabel('Time (s)');
+
+% end
