@@ -13,8 +13,6 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     % machine. You can change these using `config` or by just changing
     % their values within the function source.
 
-    sentence_folder = fullfile(base_dir,'stimuli','sentences')
-
     % ---------------------------------------------------------------------
     % running config ------------------------------------------------------
     % ---------------------------------------------------------------------
@@ -25,33 +23,32 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
         runexample = 0;
     end
 
-    mix_dir = fullfile(base_dir,'stimuli','mixtures')
+    mix_dir = fullfile(base_dir,'stimuli','mixtures');
     if ~exist(mix_dir,'dir')
         mkdir(mix_dir)
     end
-    sentence_dir = fullfile(base_dir,'stimuli','sentences')
+    sentence_dir = fullfile(base_dir,'stimuli','sentences');
 
     % ---------------------------------------------------------------------
     % experiment/token setup ----------------------------------------------
     % ---------------------------------------------------------------------
 
-    experiment_cfg = [];
+    config = [];
     ppl_order = {'vadem','mensc','letzt'};
-    % TODO: this is where I stopped revising code
-    [all_sentences,fs] = read_sentences(sentence_folder,ppl_order);
+    [all_sentences,fs] = read_sentences(sentence_dir,ppl_order);
 
     hrtfs = SOFAload(fullfile(basedir,'hrtfs','hrtf_b_nh172.sofa'));
-    experiment_cfg.sentence_fs = fs;
-    experiment_cfg.all_sentences = all_sentences;
+    config.sentence_fs = fs;
+    config.all_sentences = all_sentences;
 
-    experiment_cfg.normval = 5;
-    experiment_cfg.analysis_len = 64;
-    experiment_cfg.synthesis_len = 74;
-    experiment_cfg.dev_len = 1;
-    experiment_cfg.switch_len = 1.2;
-    experiment_cfg.min_stay_len = 0.5;
-    experiment_cfg.jitter_period = 0.2;
-    experiment_cfg.dev_start_time = 1.5;
+    config.normval = 5;
+    config.analysis_len = 64;
+    config.synthesis_len = 74;
+    config.dev_len = 1;
+    config.switch_len = 1.2;
+    config.min_stay_len = 0.5;
+    config.jitter_period = 0.2;
+    config.dev_start_time = 1.5;
 
     test_block_cfg = [];
     test_block_cfg.dev_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
@@ -59,51 +56,55 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     test_block_cfg.num_trials = 50;
 
     train_block_cfg = [];
-    train_block_cfg.dev_cases = [1 1; -1 -1; 2 2; -1 -1; 1 2; 2 1; -1 -1; 1 1; 2 2; -1 -1];
+    train_block_cfg.dev_cases = ...
+        [1 1; -1 -1; 2 2; -1 -1; 1 2; 2 1; -1 -1; 1 1; 2 2; -1 -1];
     train_block_cfg.cond_rep = 4;
-    train_block_cfg.dev_probs = ones(size(train_block_cfg.dev_cases,1),1)/size(train_block_cfg.dev_cases,1);
-    train_block_cfg.num_trials = size(train_block_cfg.dev_cases,1)*train_block_cfg.cond_rep;
+    train_block_cfg.dev_probs = ones(size(train_block_cfg.dev_cases,1),1)/...
+        size(train_block_cfg.dev_cases,1);
+    train_block_cfg.num_trials = size(train_block_cfg.dev_cases,1)*...
+        train_block_cfg.cond_rep;
 
     % ---------------------------------------------------------------------
     % running of the actual sections for stims ----------------------------
     % ---------------------------------------------------------------------
 
-    [select_perms,select_perms_train] = get_sentences_per_trial(experiment_cfg.all_sentences,test_block_cfg.num_trials,train_block_cfg.num_trials);
+    % TODO: this is where I stopped editing
+    [select_perms,select_perms_train] = get_sentences_per_trial(config.all_sentences,test_block_cfg.num_trials,train_block_cfg.num_trials);
 
     if run_main
-        experiment_cfg.block_cfg = test_block_cfg;
+        config.block_cfg = test_block_cfg;
         sentence_perms = select_perms;
         get_all_exp_stuff(0);
-        experiment_cfg.block_cfg.trial_sentences = trial_sentences;
-        experiment_cfg.block_cfg.trial_dev_speakers = trial_dev_speakers;
-        experiment_cfg.block_cfg.trial_dev_direction = trial_dev_direction;
-        experiment_cfg.block_cfg.target_times = target_times;
-        experiment_cfg.block_cfg.switch_times = switch_times;
-        experiment_cfg.block_cfg.directionality = all_directionality;
-        experiment_cfg.test_block_cfg = experiment_cfg.block_cfg;
+        config.block_cfg.trial_sentences = trial_sentences;
+        config.block_cfg.trial_dev_speakers = trial_dev_speakers;
+        config.block_cfg.trial_dev_direction = trial_dev_direction;
+        config.block_cfg.target_times = target_times;
+        config.block_cfg.switch_times = switch_times;
+        config.block_cfg.directionality = all_directionality;
+        config.test_block_cfg = config.block_cfg;
     end
 
     if run_train
-        experiment_cfg.block_cfg = train_block_cfg;
+        config.block_cfg = train_block_cfg;
         sentence_perms = select_perms_train;
         get_all_exp_stuff(1);
-        experiment_cfg.block_cfg.trial_sentences = trial_sentences;
-        experiment_cfg.block_cfg.trial_dev_speakers = trial_dev_speakers;
-        experiment_cfg.block_cfg.trial_dev_direction = trial_dev_direction;
-        experiment_cfg.block_cfg.target_times = target_times;
-        experiment_cfg.block_cfg.switch_times = switch_times;
-        experiment_cfg.block_cfg.directionality = all_directionality;
-        experiment_cfg.train_block_cfg = experiment_cfg.block_cfg;
+        config.block_cfg.trial_sentences = trial_sentences;
+        config.block_cfg.trial_dev_speakers = trial_dev_speakers;
+        config.block_cfg.trial_dev_direction = trial_dev_direction;
+        config.block_cfg.target_times = target_times;
+        config.block_cfg.switch_times = switch_times;
+        config.block_cfg.directionality = all_directionality;
+        config.train_block_cfg = config.block_cfg;
     end
 
     if runexample
-        experiment_cfg = make_all_stim(experiment_cfg);
+        config = make_all_stim(config);
     end
 
     if run_main==1 && run_train==1
-        experiment_cfg = rmfield(experiment_cfg,'block_cfg');
-        save(fullfile(base_dir,'stimuli','mixtures'),'experiment_cfg');
-        save_for_experiment(experiment_cfg,basedir);
+        config = rmfield(config,'block_cfg');
+        save(fullfile(base_dir,'stimuli','mixtures'),'config');
+        save_for_experiment(config,basedir);
     end
 
     % ---------------------------------------------------------------------
@@ -111,7 +112,7 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     % ---------------------------------------------------------------------
 
     function get_all_exp_stuff(is_training)
-        [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,experiment_cfg);
+        [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,config);
         target_times = zeros(size(trial_dev_direction));
         switch_times = cell(size(trial_dev_direction));
         all_directionality = cell(size(trial_dev_direction,1),3);
@@ -120,51 +121,55 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
             disp(trial_idx);
             thispath = sprintf('trial_%d',trial_idx);
             if is_training
-                training_loudness_flag = (mod(trial_idx-1,experiment_cfg.block_cfg.cond_rep)+1)<=experiment_cfg.block_cfg.cond_rep/2;
+                training_loudness_flag = (mod(trial_idx-1,config.block_cfg.cond_rep)+1)<=config.block_cfg.cond_rep/2;
             else
                 training_loudness_flag = 0;
             end
-            [stim,tt,h,d,critical_times] = make_stim(experiment_cfg,hrtfs,trial_sentences(trial_idx,:),trial_dev_speakers(trial_idx),trial_dev_direction(trial_idx),training_loudness_flag);
+            [stim,tt,h,d,critical_times] = make_stim(config,hrtfs,trial_sentences(trial_idx,:),trial_dev_speakers(trial_idx),trial_dev_direction(trial_idx),training_loudness_flag);
             title(trial_idx);
             target_times(trial_idx) = tt;
             switch_times{trial_idx} = critical_times;
             all_directionality(trial_idx,:) = d;
-            save_trial(stim,h,experiment_cfg.fs,experiment_cfg.normval,basedir,thispath,is_training);
+            save_trial(stim,h,config.fs,config.normval,basedir,thispath,is_training);
         end
     end
 end
 
-function [all_sentences,fs] = read_sentences(folder_name,ppl_order,basedir)
-%%
-    all_sentences = cell(0,2);
-    all_sentence_files = sort(dir(fullfile(sentence_dir,'*.wav'));
+function [all_sentences,fs] = read_sentences(sentence_dir,ppl_order)
+    reader_index = containers.Map;
+    for i = 1:length(ppl_order)
+        reader_index(ppl_order(i)) = i;
+    end
+
+    all_sentences = {[], [], []};
+    all_sentence_files = sort(dir(fullfile(sentence_dir,'*.wav')));
     for file_idx=1:length(all_sentence_files)
         file_name = all_sentence_files(file_idx).name;
-        [passage,fs] = audioread(fullfile(sentence_dir,file_name));
-        % TODO: This is were I stopped revising code inside read_sentences
+        [data,fs] = audioread(fullfile(sentence_dir,file_name));
+
+        sentence = [];
+        sentence.data = data;
+        sentence.length_s = length(passage)/fs;
+        sentence.filename = file_name;
+
         reader_id = file_name(1:5);
-        all_sentences_idx = find(ismember(all_sentences(:,2),reader_id));
-        if isempty(all_sentences_idx)
-            % TODO: I see that the file name is saved, I should be able
-            % to truly confirm that the saved *.mat file doesn't
-            % actually match the results as stored in wav_test
-            all_sentences = [all_sentences; {[{passage(:,1)} {length(passage)/fs} {file_name}] reader_id}];
+        if isKey(reader_index,reader_id)
+            i = reader_index(reader_id);
+            all_sentences{i} = ...
+                [all_sentences{reader_index(reader_id)}; sentence];
         else
-            all_sentences{all_sentences_idx} = [all_sentences{all_sentences_idx}; {passage(:,1)} {length(passage)/fs} {file_name}];
+            error(['Could not find key for file prefix: ' reader_id])
         end
     end
-    [~,pb] = ismember(ppl_order,all_sentences(:,2));
-    all_sentences = all_sentences(pb,:);
-
 end
 
-function save_for_experiment(experiment_cfg,basedir)
+function save_for_experiment(config,basedir)
 %%
-    block_cfg = experiment_cfg.train_block_cfg;
+    block_cfg = config.train_block_cfg;
     bpath = 'stim_training/';
     save_this;
 
-    block_cfg = experiment_cfg.test_block_cfg;
+    block_cfg = config.test_block_cfg;
     bpath = '';
     save_this;
 
@@ -297,12 +302,12 @@ function [select_perms,select_perms_train] = get_sentences_per_trial(all_sentenc
 
 end
 
-function [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,experiment_cfg)
+function [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_info(sentence_perms,config)
 %%
-    all_speakers = experiment_cfg.all_sentences(:,2);
-    dev_cases = experiment_cfg.block_cfg.dev_cases;
-    dev_probs = experiment_cfg.block_cfg.dev_probs;
-    num_trials = experiment_cfg.block_cfg.num_trials;
+    all_speakers = config.all_sentences(:,2);
+    dev_cases = config.block_cfg.dev_cases;
+    dev_probs = config.block_cfg.dev_probs;
+    num_trials = config.block_cfg.num_trials;
 
     trial_sentences = [];
     perm_pointer = 1;
@@ -317,20 +322,20 @@ function [trial_sentences,trial_dev_speakers,trial_dev_direction] = get_trial_in
 
 end
 
-function [stim,target_time,h,d,critical_times] = make_stim(experiment_cfg,hrtfs,sentence_idxs,dev_speaker,dev_direction,training_loudness_flag)
+function [stim,target_time,h,d,critical_times] = make_stim(config,hrtfs,sentence_idxs,dev_speaker,dev_direction,training_loudness_flag)
 %%
     % ---------------------------------------------------------------------
     % all config params ---------------------------------------------------
     % ---------------------------------------------------------------------
 
-    all_sentences = experiment_cfg.all_sentences;
-    fs = experiment_cfg.fs;
-    analysis_len = experiment_cfg.analysis_len;
-    synthesis_len = experiment_cfg.synthesis_len;
-    dev_len = experiment_cfg.dev_len;
-    switch_len = experiment_cfg.switch_len;
-    min_stay_len = experiment_cfg.min_stay_len;
-    T = experiment_cfg.jitter_period;
+    all_sentences = config.all_sentences;
+    fs = config.fs;
+    analysis_len = config.analysis_len;
+    synthesis_len = config.synthesis_len;
+    dev_len = config.dev_len;
+    switch_len = config.switch_len;
+    min_stay_len = config.min_stay_len;
+    T = config.jitter_period;
 
     d1s0 = 1; % first speaker starts from direction 0 (right)
     target_time = 0;
@@ -352,7 +357,7 @@ function [stim,target_time,h,d,critical_times] = make_stim(experiment_cfg,hrtfs,
     add_deviant;
     len_stim = equalize_sentence_lengths;
     get_sound;
-    h = show_stim(experiment_cfg,sentence_idxs,azi1,sph2nav(azi_real1),s1,azi2,sph2nav(azi_real2),s2,azi3,sph2nav(azi_real3),s3,target_time,dev_speaker,training_loudness_flag);
+    h = show_stim(config,sentence_idxs,azi1,sph2nav(azi_real1),s1,azi2,sph2nav(azi_real2),s2,azi3,sph2nav(azi_real3),s3,target_time,dev_speaker,training_loudness_flag);
 %     sound(stim/5,fs);
 %     disp('crimson day');
     d = {direction_wave1,direction_wave2,direction_wave3};
@@ -499,7 +504,7 @@ function [stim,target_time,h,d,critical_times] = make_stim(experiment_cfg,hrtfs,
 
     function add_deviant
         safety = 0.8;
-        safety_end = fs*experiment_cfg.dev_start_time;
+        safety_end = fs*config.dev_start_time;
         [ss,dd,dc,de,tt] = stream_select;
         [target_t,target_time] = tt_select;
         if dev_speaker>0
@@ -607,10 +612,10 @@ function [stim,target_time,h,d,critical_times] = make_stim(experiment_cfg,hrtfs,
 
 end
 
-function h = show_stim(experiment_cfg,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,dev_speaker,training_loudness_flag)
+function h = show_stim(config,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,dev_speaker,training_loudness_flag)
 %%
-    all_sentences = experiment_cfg.all_sentences;
-    fs = experiment_cfg.fs;
+    all_sentences = config.all_sentences;
+    fs = config.fs;
     colors = ['b','r','g'];
     rect_lightness = 0.8;
     if dev_speaker==1
@@ -625,7 +630,7 @@ function h = show_stim(experiment_cfg,sentence_idxs,azi1,azi_real1,s1,azi2,azi_r
     h = figure; hold on
     yl = [-100 100];
     if target_time>0
-        rectangle('Position',[target_time yl(1) experiment_cfg.dev_len diff(yl)],'FaceColor',dev_color,'linestyle','none');
+        rectangle('Position',[target_time yl(1) config.dev_len diff(yl)],'FaceColor',dev_color,'linestyle','none');
     end
 
     azifactor = length(azi1)/length(s1);
