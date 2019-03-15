@@ -1,7 +1,6 @@
 % This is the top-level script used to generate stimuli
-
 run('../../util/setup.m')
-path('.')
+addpath('.')
 
 config = [];
 config.speaker_order = {'vadem','mensc','letzt'};
@@ -21,6 +20,7 @@ test_block_cfg = [];
 test_block_cfg.target_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
 test_block_cfg.target_probs = [3;2;2;1;2]/10;
 test_block_cfg.num_trials = 50;
+config.test_block_cfg = test_block_cfg;
 
 train_block_cfg = [];
 train_block_cfg.target_cases = ...
@@ -31,8 +31,9 @@ train_block_cfg.target_probs = ...
         size(train_block_cfg.target_cases,1);
 train_block_cfg.num_trials = size(train_block_cfg.target_cases,1)*...
     train_block_cfg.cond_rep;
+config.train_block_cfg = train_block_cfg;
 
-config.hrtf_file = fullfile(base_dir,'stimuli','hrtfs','hrtf_b_nh172.sofa')
+config.hrtf_file = fullfile(base_dir,'stimuli','hrtfs','hrtf_b_nh172.sofa');
 
 % setup and save mixture configuration
 config = configure_mixtures(fullfile(base_dir,'stimuli'),config);

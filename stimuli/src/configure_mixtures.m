@@ -32,6 +32,110 @@ function config = configure_mixtures(indir,config)
     save(mix_dir,'config');
 end
 
+function [select_perms,select_perms_train] = ...
+    select_trial_sentences(audiodata,num_trials,num_train)
+
+    w = 0.3; % tolerance length difference
+    sentence_perms = [];
+    for s1=1:length(audiodata{1})
+        for s2=1:length(audiodata{2})
+            % TODO: this is the last place i ran into an error
+            % MATLAB says: Expected one output from a curly brace or dot
+            % indexing expression, but there were 68 results.
+            l1 = audiodata{1}.length_s(s1);
+            l2 = audiodata{2}.length_s(s2);
+            if abs(l1-l2)<w
+                sentence_perms = [sentence_perms; s1 s2 abs(l1-l2)];
+            end
+        end
+    end
+
+    % find the most diverse set of params to select
+    select_perms = [];
+    [s1_perm_counts,s1_possibilities] = hist(sentence_perms(:,1),...
+        unique(sentence_perms(:,1)));
+    [s2_perm_counts,s2_possibilities] = hist(sentence_perms(:,2),...
+        unique(sentence_perms(:,2)));
+    s1_used_counts_p = zeros(1,length(s1_possibilities));
+    s2_used_counts_p = zeros(1,length(s2_possibilities));
+    while length(select_perms)<num_trials+num_train
+
+        % first find which s1's were used least
+        s1_least_used_p = find(s1_used_counts_p==min(s1_used_counts_p));
+        % out of those, find the s1s with least perm pairs
+        s1_least_used_perm_counts_p = s1_perm_counts(s1_least_used_p);
+        % now we have to choose between these (indexed by possibilities,
+        % not absolute indexing!
+        s1_poss_p = s1_least_used_p(s1_least_used_perm_counts_p==...
+            min(s1_least_used_perm_counts_p));
+        % and here is the absolute indexing
+        s1_poss = s1_possibilities(s1_poss_p);
+
+        % now, for these s1, find every possible s2, absolute indexed
+        s2_poss_all = sentence_perms(ismember(sentence_perms(:,1),s1_poss),1:2);
+        % get the p indexed possibilities
+        s2_poss_p = find(ismember(s2_possibilities,unique(s2_poss_all(:,2))));
+        % eliminate the ones that weren't used 0 times
+        s2_poss_p(s2_used_counts_p(s2_poss_p)~=min(s2_used_counts_p)) = [];
+        if isempty(s2_poss_p)
+            s1_used_counts_p(s1_poss) = s1_used_counts_p(s1_poss) + 1;
+            continue;
+        end
+        % now get how many perms the s2's have
+        s2_poss_perm_counts_p = s2_perm_counts(s2_poss_p);
+        % then select the min one
+        s2_least_used_perm_counts_p = find(s2_poss_perm_counts_p==...
+            min(s2_poss_perm_counts_p));
+        % if there is more than one, select one randomly
+        asample = randsample(length(s2_least_used_perm_counts_p),1);
+        least_used = s2_least_used_perm_counts_p(asample);
+        s2_select = s2_possibilities(s2_poss_p(least_used));
+        s2_select_p = find(s2_possibilities==s2_select);
+
+        % now, find which s1's had this s2 as a pair
+        s1_poss = s2_poss_all(s2_poss_all(:,2)==s2_select,1);
+        % if there is more than one, select one randomly
+        s1_select = s1_poss(randsample(length(s1_poss),1));
+        s1_select_p = find(s1_possibilities==s1_select);
+
+        % record the selected group
+        select_perms = [select_perms; s1_select s2_select];
+
+        % now update used counts
+        s1_used_counts_p(s1_select_p) = s1_used_counts_p(s1_select_p) + 1;
+        s2_used_counts_p(s2_select_p) = s2_used_counts_p(s2_select_p) + 1;
+
+    end
+    %%
+    select_perms_train = select_perms(end-num_train+1:end,:);
+    select_perms = select_perms(1:end-num_train,:);
+    %%
+    s3_lengths = audiodata{3}.length;
+    s3_used_counts = zeros(1,length(s3_lengths));
+    for select_idx=1:size(select_perms,1)
+        ls = [audiodata{1}.length(select_perms(select_idx,1)) ...
+            audiodata{2}.length(select_perms(select_idx,2))];
+        s3_poss = find(abs(max(ls)-s3_lengths)<w);
+        s3_poss_used_counts = s3_used_counts(s3_poss);
+        s3_poss_least_used = s3_poss(s3_poss_used_counts==...
+            min(s3_poss_used_counts));
+        [~,s3_poss_least_used_closest_idx] = ...
+            min(abs(max(ls)-s3_lengths(s3_poss_least_used)));
+        s3_select = s3_poss_least_used(s3_poss_least_used_closest_idx);
+        select_perms(select_idx,3) = s3_select;
+        s3_used_counts(s3_select) = s3_used_counts(s3_select) + 1;
+    end
+
+    for select_idx=1:size(select_perms_train,1)
+        ls = [audiodata{1}.length(select_perms(select_idx,1)) ...
+            audiodata{2}.length(select_perms(select_idx,2))];
+        [~,chosen3] = min(abs(max(ls)-s3_lengths));
+        select_perms_train(select_idx,3) = chosen3;
+    end
+
+end
+
+
 function block_cfg = configure_block(config,block_cfg,permutations,audiodata)
 
     [trial_sentences,trial_target_speakers,trial_target_dir] = ...
