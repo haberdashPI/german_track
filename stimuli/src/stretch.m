@@ -1,4 +1,4 @@
-function loggedSpeech = E_phase(ss,AnalysisLen,SynthesisLen)
+function loggedSpeech = stretch(ss,AnalysisLen,SynthesisLen)
 
 WindowLen = 256;
 Hopratio = SynthesisLen/AnalysisLen;
@@ -51,7 +51,7 @@ while ~isDone(hAudioSource)
 
     % ST-FFT
     % FFT of a windowed buffered signal
-    yfft = step(hfft, step(hwin, step(hbuf, y)));     
+    yfft = step(hfft, step(hwin, step(hbuf, y)));
 
     % Convert complex FFT data to magnitude and phase.
     ymag       = abs(yfft);
@@ -88,11 +88,11 @@ while ~isDone(hAudioSource)
     % operation
     yistfft = yistfft * gain;
 
-    step(hslg, yistfft);     % Log signal 
+    step(hslg, yistfft);     % Log signal
 end
 
 %% Release
-% Here you call the release method on the System objects to close any open 
+% Here you call the release method on the System objects to close any open
 % files and devices.
 
 release(hAudioSource);
