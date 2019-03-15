@@ -25,7 +25,7 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     %  2. generate a highly comprehensible output with the information I
     %     currently want:
     %     a. the wave forms *after* being placed in space
-    %     b. the target wave form before and after the insertion of the deviant
+    %     b. the target wave form before and after the insertion of the target
     %     c. the exact positions in space of each wave form (so we can
     %        reproduce the SOFA calls used to create this files).
     %     d. the names of each file mixed into a trial
@@ -58,25 +58,25 @@ function create_mixtures(n_test_stimuli,n_train_stimuli,config)
     config.normval = 5;
     config.analysis_len = 64;
     config.synthesis_len = 74;
-    config.deviant_len = 1;
+    config.target_len = 1;
     config.switch_len = 1.2;
     config.min_stay_len = 0.5;
     config.jitter_period = 0.2;
-    config.deviant_start_time = 1.5;
+    config.target_start_time = 1.5;
 
     test_block_cfg = [];
-    test_block_cfg.deviant_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
-    test_block_cfg.deviant_probs = [3;2;2;1;2]/10;
+    test_block_cfg.target_cases = [1 1; 1 2; 2 1; 2 2; -1 -1];
+    test_block_cfg.target_probs = [3;2;2;1;2]/10;
     test_block_cfg.num_trials = 50;
 
     train_block_cfg = [];
-    train_block_cfg.deviant_cases = ...
+    train_block_cfg.target_cases = ...
         [1 1; -1 -1; 2 2; -1 -1; 1 2; 2 1; -1 -1; 1 1; 2 2; -1 -1];
     train_block_cfg.cond_rep = 4;
-    train_block_cfg.deviant_probs = ...
-        ones(size(train_block_cfg.deviant_cases,1),1)/...
-            size(train_block_cfg.deviant_cases,1);
-    train_block_cfg.num_trials = size(train_block_cfg.deviant_cases,1)*...
+    train_block_cfg.target_probs = ...
+        ones(size(train_block_cfg.target_cases,1),1)/...
+            size(train_block_cfg.target_cases,1);
+    train_block_cfg.num_trials = size(train_block_cfg.target_cases,1)*...
         train_block_cfg.cond_rep;
 
     % ---------------------------------------------------------------------
@@ -100,19 +100,22 @@ end
 
 function block_cfg = configure_block(config,block_cfg,permutations)
 
-    [trial_sentences,trial_deviant_speakers,trial_deviant_dir] = ...
+    [trial_sentences,trial_target_speakers,trial_target_dir] = ...
         get_trial_info(permutations,config,block_cfg);
 
     block_cfg.trial_sentences = trial_sentences;
-    block_cfg.trial_deviant_speakers = trial_deviant_speakers;
-    block_cfg.trial_deviant_dir = trial_deviant_dir;
+    block_cfg.trial_target_speakers = trial_target_speakers;
+    block_cfg.trial_target_dir = trial_target_dir;
 
-    block_cfg.target_times = zeros(size(trial_deviant_dir));
-    block_cfg.switch_times = cell(size(trial_deviant_dir));
-    block_cfg.directions = cell(size(trial_deviant_dir,1),3);
+    block_cfg.target_times = zeros(size(trial_target_dir));
+    block_cfg.switch_times = cell(size(trial_target_dir));
+    block_cfg.directions = cell(size(trial_target_dir,1),3);
 
     for trial_idx=1:size(trial_sentences,1)
         block_cfg = make_directions(config,block_cfg,trial_idx);
+        [tindex,ttime] = select_target_timing(config,block_cfg,trial_idx,
+            % TODO: this is where I left off
+            % TODO: figure out the remaining parameters
     end
 end
 
@@ -120,22 +123,22 @@ function generate_stimuli(config,block_cfg,is_training)
     for trial_idx=1:size(trial_sentences,1)
         disp(trial_idx);
 
-        % should the deviation be louder?
+        % should the target be louder?
         if is_training
             mod_index = (mod(trial_idx-1,block_cfg.cond_rep)+1);
             repetitions = block_cfg.cond_rep;
-            loud_deviant = mod_index <= repetitions/2;
+            loud_target = mod_index <= repetitions/2;
         else
-            loud_deviant = 0;
+            loud_target = 0;
         end
 
         [stim,tt,h,d,critical_times] = ...
-            make_stim(config,block_cfg,trial_idx,hrtfs,loud_deviant);
+            make_stim(config,block_cfg,trial_idx,hrtfs,loud_target);
 
         % TODO: this is where I left off last time
 
         % TODO: the below lines need to be run earlier. They really all belong
-        % in `configure_block` (in fact, this reveals the the `add_deviant`
+        % in `configure_block` (in fact, this reveals the the `add_target`
         % function both figures out the exact location of the target and
         % modulates the sound, so I also need to separate those to things out
         % into separate functions
@@ -144,7 +147,7 @@ function generate_stimuli(config,block_cfg,is_training)
         block_cfg.switch_times{trial_idx} = critical_times;
         block_cfg.directions(trial_idx,:) = d;
 
-        % TODO: save the mixutre, the sound with the deviant
+        % TODO: save the mixutre, the sound with the target
         % and the unmixed HRTF modulated sources.
         save_trial(stim,h,config.fs,config.normval,basedir,thispath,...
             is_training);
@@ -190,26 +193,26 @@ function save_for_experiment(config,basedir)
     save_this;
 
     function save_this
-        trial_deviant_speakers = block_cfg.trial_deviant_speakers;
-        [~,~,ac] = unique(trial_deviant_speakers,'stable');
-        trial_deviant_speakers(trial_deviant_speakers>0) = ac(trial_deviant_speakers>0);
+        trial_target_speakers = block_cfg.trial_target_speakers;
+        [~,~,ac] = unique(trial_target_speakers,'stable');
+        trial_target_speakers(trial_target_speakers>0) = ac(trial_target_speakers>0);
 
-        trial_deviant_dir = block_cfg.trial_deviant_dir;
-        [~,~,ac] = unique(trial_deviant_dir,'stable');
-        trial_deviant_dir = ac;
-        ctrl_idx = trial_deviant_dir(find(trial_deviant_speakers==-1,1));
-        trial_deviant_dir(trial_deviant_dir==ctrl_idx) = trial_deviant_speakers(trial_deviant_dir==ctrl_idx);
+        trial_target_dir = block_cfg.trial_target_dir;
+        [~,~,ac] = unique(trial_target_dir,'stable');
+        trial_target_dir = ac;
+        ctrl_idx = trial_target_dir(find(trial_target_speakers==-1,1));
+        trial_target_dir(trial_target_dir==ctrl_idx) = trial_target_speakers(trial_target_dir==ctrl_idx);
 
-        sal = trial_deviant_speakers>-1;
-        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
+        sal = trial_target_speakers>-1;
+        this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
         dlmwrite([basedir bpath 'target_info_all.txt'],this_info,'delimiter',' ');
 
-        sal = trial_deviant_speakers==1;
-        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
+        sal = trial_target_speakers==1;
+        this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
         dlmwrite([basedir bpath 'target_info_obj.txt'],this_info,'delimiter',' ');
 
-        sal = trial_deviant_dir==1;
-        this_info = [block_cfg.target_times sal trial_deviant_speakers trial_deviant_dir];
+        sal = trial_target_dir==1;
+        this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
         dlmwrite([basedir bpath 'target_info_dir.txt'],this_info,'delimiter',' ');
     end
 
@@ -331,21 +334,21 @@ function [select_perms,select_perms_train] = ...
 
 end
 
-function [trial_sentences,trial_deviant_speakers,trial_deviant_dir] = ...
+function [trial_sentences,trial_target_speakers,trial_target_dir] = ...
     get_trial_info(sentence_perms,block_cfg)
 
-    deviant_cases = block_cfg.deviant_cases;
-    deviant_probs = block_cfg.deviant_probs;
+    target_cases = block_cfg.target_cases;
+    target_probs = block_cfg.target_probs;
     num_trials = block_cfg.num_trials;
 
     trial_sentences = [];
-    for i=1:size(deviant_cases,1)
+    for i=1:size(target_cases,1)
         trial_sentences = [trial_sentences; ...
-            repmat(deviant_cases(i,:),num_trials * deviant_probs(i),1)];
+            repmat(target_cases(i,:),num_trials * target_probs(i),1)];
     end
     trial_sentences = [sentence_perms trial_sentences];
-    trial_deviant_speakers = trial_sentences(:,end-1);
-    trial_deviant_dir = categorical(trial_sentences(:,end),[-1 1 2],{'none','left','right'});
+    trial_target_speakers = trial_sentences(:,end-1);
+    trial_target_dir = categorical(trial_sentences(:,end),[-1 1 2],{'none','left','right'});
     trial_sentences = trial_sentences(:,1:3);
 end
 
@@ -371,16 +374,16 @@ function block_cfg = make_directions(config,block_cfg,trial)
 end
 
 function [stim,target_time,h,d,critical_times] = ...
-    make_stim(config,block_cfg,trial,hrtfs,loud_deviant)
+    make_stim(config,block_cfg,trial,hrtfs,loud_target)
 
-    % insert the deviant sound
-    deviant = block_cfg.trial_deviant_speakers(trial);
-    deviant_dir = block_cfg.trial_deviant_dir{trial};
-    [s1,s2,s3] = add_deviant(config,deviant,deviant_dir,s1,s2,s3);
+    % insert the target sound
+    target = block_cfg.trial_target_speakers(trial);
+    target_dir = block_cfg.trial_target_dir{trial};
+    [s1,s2,s3] = add_target(config,target,target_dir,s1,s2,s3);
 
     [~,s1,s2,s3] = equalize_lengths(s1,s2,s3);
 
-    p1 = SOFAspat(s1,hrtfs,block_cfg,0);
+    p1 = SOFAspat(s1,hrtfs,dir1,0);
     p2 = SOFAspat(s2,hrtfs,dir2,0);
     p3 = SOFAspat(s3,hrtfs,dir3,0);
     stim = p1 + p2 + p3;
@@ -393,52 +396,42 @@ function [len_stim,s1,s2,s3] = equalize_lengths(s1,s2,s3)
     s3 = [s3(1:min(len_stim,length(s3))); zeros(len_stim-length(s3),1)];
 end
 
-function [s1,s2,s3,target_time] = add_deviant(config,deviant,deviant_dir,s1,s2,s3)
+function [target_index,target_time] = ...
+    select_target_timing(config,block_cfg,trial,target,directions)
+
+    idxs = block_cfg.trial_sentences(trial,:);
+    s1 = config.all_sentences{1}(idxs(1)).data;
+    s2 = config.all_sentences{2}(idxs(2)).data;
+    s3 = config.all_sentences{3}(idxs(3)).data;
+    sounds = {s1,s2,s3};
+
     safety = 0.8;
-    safety_end = config.fs*config.deviant_start_time;
+    safety_end = config.fs*config.target_start_time;
+
     [ss,dd,dc,de,tt] = stream_select;
-    [target_t,target_time] = tt_select;
-    if deviant>0
-        manipulate;
-        if deviant==1
-            s1 = ss;
-        elseif deviant==2
-            s2 = ss;
-        end
-    end
+    [target_index,target_time] = tt_select(ss,dd,dc,de,tt)
 
     function [ss,dd,dc,de,tt] = stream_select
-        if deviant==1
-            ss = s1;
-            dd = block_cfg.direction{1};
-            dc = circshift(dd,-round(block_cfg.deviant_len*fs));
-            de = circshift(dd,round(safety*fs));
-            tt = safety_end;
-        elseif deviant==2
-            ss = s2;
-            dd = block_cfg.direction{2};
-            dc = circshift(dd,-round(block_cfg.deviant_len*fs));
-            de = circshift(dd,round(safety*fs));
-            tt = safety_end;
-        else
-            ss = []; dd = []; dc = []; de = []; tt = 0;
-        end
+        ss = sounds{target}
+        dd = directions{target}
+        dc = circshift(dd,-round(config.target_len*fs));
+        de = circshift(dd,round(safety*fs));
+        tt = safety_end;
     end
 
-    function [target_t,target_time] = tt_select
-        if deviant_dir=='right'
-%                 ffs = (dd(tt:end-safety_end)<-35).*(dc(tt:end-safety_end)<-35).*(de(tt:end-safety_end)<-35);
+    function [target_index,target_time] = tt_select(ss,dd,dc,de,tt)
+        if target_dir=='right'
             ffs = (dd(tt:end-safety_end)<-10).*(dc(tt:end-safety_end)<-10);
             get_optimal_t;
-        elseif deviant_dir=='left'
+        elseif target_dir=='left'
             ffs = (dd(tt:end-safety_end)>37).*...
                 (dc(tt:end-safety_end)>37).*...
                 (de(tt:end-safety_end)>37);
             get_optimal_t;
         else
-            target_t = 0;
+            target_index = 0;
         end
-        target_time = target_t/fs;
+        target_time = target_index/fs;
 
         function get_optimal_t
             if isempty(find(ffs,1)), disp('FFS'); end
@@ -449,15 +442,26 @@ function [s1,s2,s3,target_time] = add_deviant(config,deviant,deviant_dir,s1,s2,s
                 peak_rmss(ti) = rms(ss(tt+t_poss(ti)+(1:fs)));
             end
             [~,t_selecti] = max(peak_rmss);
-            target_t = t_poss(t_selecti);
-            target_t = target_t+tt;
+            target_index = t_poss(t_selecti)+tt;
+        end
+    end
+
+end
+
+function [s1,s2,s3,target_time] = add_target(config,target,target_dir,s1,s2,s3)
+    if target>0
+        manipulate;
+        if target==1
+            s1 = ss;
+        elseif target==2
+            s2 = ss;
         end
     end
 
     function manipulate
         %%
-        idxs = target_t:target_t+config.deviant_len*config.fs;
-        if deviant_speaker==2
+        idxs = target_t:target_t+config.target_len*config.fs;
+        if target_speaker==2
             seg = E_phase(ss(idxs),config.analysis_len,config.synthesis_len)';
             seg = resample(seg,config.analysis_len,config.synthesis_len);
         else
@@ -465,7 +469,7 @@ function [s1,s2,s3,target_time] = add_deviant(config,deviant,deviant_dir,s1,s2,s
             seg = resample(seg,config.synthesis_len,config.analysis_len);
         end
         seg = seg*rms(ss(idxs))/rms(seg);
-        if loud_deviant
+        if loud_target
             seg = seg*10^(4/20);
         end
         %%
@@ -478,9 +482,9 @@ function [s1,s2,s3,target_time] = add_deviant(config,deviant,deviant_dir,s1,s2,s
         ss(idxs) = ss(idxs).*flip(ramp);
         idxs = target_t:target_t+st;
         ss(idxs) = ss(idxs).*ramp;
-        idxs = (target_t-st:target_t)+config.fs*block_cfg.deviant_len;
+        idxs = (target_t-st:target_t)+config.fs*block_cfg.target_len;
         ss(idxs) = ss(idxs).*flip(ramp);
-        idxs = (target_t:target_t+st)+config.fs*block_cfg.deviant_len;
+        idxs = (target_t:target_t+st)+config.fs*block_cfg.target_len;
         if length(ss)>idxs(end)
             ss(idxs) = ss(idxs).*ramp;
         end
@@ -502,15 +506,15 @@ function [dir1,dir2,dir3] = ...
     % determine length of each section for s1
     if switch_num<3
         section_lengths = randfixedsum(switch_num+1,1,...
-            extra_time - config.deviant_start_time,0,...
-            extra_time.config.deviant_start_time);
-        if deviant_dir=='right' || deviant_speaker==2
-            section_lengths(1) = section_lengths(1) + config.deviant_start_time;
-        elseif deviant_dir=='left'
-            section_lengths(2) = section_lengths(2) + config.deviant_start_time;
+            extra_time - config.target_start_time,0,...
+            extra_time.config.target_start_time);
+        if target_dir=='right' || target_speaker==2
+            section_lengths(1) = section_lengths(1) + config.target_start_time;
+        elseif target_dir=='left'
+            section_lengths(2) = section_lengths(2) + config.target_start_time;
         else
-            section_lengths(1) = section_lengths(1) + config.deviant_start_time/2;
-            section_lengths(2) = section_lengths(2) + config.deviant_start_time/2;
+            section_lengths(1) = section_lengths(1) + config.target_start_time/2;
+            section_lengths(2) = section_lengths(2) + config.target_start_time/2;
         end
     else
         section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
@@ -609,25 +613,25 @@ function [dir1,dir2,dir3] = ...
 end
 
 
-% function h = show_stim(config,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,deviant_speaker,loud_deviant)
+% function h = show_stim(config,sentence_idxs,azi1,azi_real1,s1,azi2,azi_real2,s2,azi3,azi_real3,s3,target_time,target_speaker,loud_target)
 
 %     all_sentences = config.all_sentences;
 %     fs = config.fs;
 %     colors = ['b','r','g'];
 %     rect_lightness = 0.8;
-%     if deviant_speaker==1
-%         deviant_color = ones(1,3)*rect_lightness+[0 0 1-rect_lightness];
-%     elseif deviant_speaker==2
-%         deviant_color = ones(1,3)*rect_lightness+[1-rect_lightness 0 0];
+%     if target_speaker==1
+%         target_color = ones(1,3)*rect_lightness+[0 0 1-rect_lightness];
+%     elseif target_speaker==2
+%         target_color = ones(1,3)*rect_lightness+[1-rect_lightness 0 0];
 %     end
-%     if deviant_speaker>0 && loud_deviant
-%         deviant_color = deviant_color/1.5;
+%     if target_speaker>0 && loud_target
+%         target_color = target_color/1.5;
 %     end
 
 %     h = figure; hold on
 %     yl = [-100 100];
 %     if target_time>0
-%         rectangle('Position',[target_time yl(1) config.deviant_len diff(yl)],'FaceColor',deviant_color,'linestyle','none');
+%         rectangle('Position',[target_time yl(1) config.target_len diff(yl)],'FaceColor',target_color,'linestyle','none');
 %     end
 
 %     azifactor = length(azi1)/length(s1);
