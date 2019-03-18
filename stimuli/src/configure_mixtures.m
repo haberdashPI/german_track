@@ -1,7 +1,7 @@
 
 function config = configure_mixtures(indir,config)
-    mix_dir = isdir(fullfile(indir,'mixtures'));
-    config.mix_dir = mix_dir;
+    mix_dir = 'mixtures';
+    config.base_dir = indir;
 
     if ~exist(config.hrtf_file,'file')
         error(['Could not find specified HRTF file: ' hrtf_file])
@@ -15,8 +15,9 @@ function config = configure_mixtures(indir,config)
     end
     config.sentence_dir = sentence_dir;
 
-    sentence_dir = fullfile(indir,'sentences');
-    [audiodata,fs] = read_sentences(sentence_dir,config.speaker_order);
+    sentence_dir = 'sentences';
+    [audiodata,fs] = read_sentences(fullfile(inddir,sentence_dir),...
+        config.speaker_order);
     config.sentence_dir = sentence_dir;
     config.fs = fs;
 
@@ -29,22 +30,23 @@ function config = configure_mixtures(indir,config)
     config.train_block_cfg = configure_block(config,config.train_block_cfg,...
         select_perms_train,audiodata);
 
-    save(mix_dir,'config');
+    keyboard
+    save(fullfile(indir,mix_dir),'config');
 end
 
 function [select_perms,select_perms_train] = ...
     select_trial_sentences(audiodata,num_trials,num_train)
 
-    w = 0.3; % tolerance length difference
+    tolerance_s = 0.3; % tolerance length difference
     sentence_perms = [];
     for s1=1:length(audiodata{1})
         for s2=1:length(audiodata{2})
             % TODO: this is the last place i ran into an error
             % MATLAB says: Expected one output from a curly brace or dot
             % indexing expression, but there were 68 results.
-            l1 = audiodata{1}.length_s(s1);
-            l2 = audiodata{2}.length_s(s2);
-            if abs(l1-l2)<w
+            l1 = audiodata{1}(s1).length_s;
+            l2 = audiodata{2}(s2).length_s;
+            if abs(l1-l2)<tolerance_s
                 sentence_perms = [sentence_perms; s1 s2 abs(l1-l2)];
             end
         end
@@ -110,26 +112,26 @@ function [select_perms,select_perms_train] = ...
     select_perms_train = select_perms(end-num_train+1:end,:);
     select_perms = select_perms(1:end-num_train,:);
     %%
-    s3_lengths = audiodata{3}.length;
-    s3_used_counts = zeros(1,length(s3_lengths));
+    s3_lengths_s = [audiodata{3}.length_s];
+    s3_used_counts = zeros(1,length(s3_lengths_s));
     for select_idx=1:size(select_perms,1)
-        ls = [audiodata{1}.length(select_perms(select_idx,1)) ...
-            audiodata{2}.length(select_perms(select_idx,2))];
-        s3_poss = find(abs(max(ls)-s3_lengths)<w);
+        ls = [audiodata{1}(select_perms(select_idx,1)).length_s ...
+            audiodata{2}(select_perms(select_idx,2)).length_s];
+        s3_poss = find(abs(max(ls)-s3_lengths_s)<tolerance_s);
         s3_poss_used_counts = s3_used_counts(s3_poss);
         s3_poss_least_used = s3_poss(s3_poss_used_counts==...
             min(s3_poss_used_counts));
         [~,s3_poss_least_used_closest_idx] = ...
-            min(abs(max(ls)-s3_lengths(s3_poss_least_used)));
+            min(abs(max(ls)-s3_lengths_s(s3_poss_least_used)));
         s3_select = s3_poss_least_used(s3_poss_least_used_closest_idx);
         select_perms(select_idx,3) = s3_select;
         s3_used_counts(s3_select) = s3_used_counts(s3_select) + 1;
     end
 
     for select_idx=1:size(select_perms_train,1)
-        ls = [audiodata{1}.length(select_perms(select_idx,1)) ...
-            audiodata{2}.length(select_perms(select_idx,2))];
-        [~,chosen3] = min(abs(max(ls)-s3_lengths));
+        ls = [audiodata{1}(select_perms(select_idx,1)).length_s ...
+            audiodata{2}(select_perms(select_idx,2)).length_s];
+        [~,chosen3] = min(abs(max(ls)-s3_lengths_s));
         select_perms_train(select_idx,3) = chosen3;
     end
 
@@ -139,7 +141,7 @@ end
 function block_cfg = configure_block(config,block_cfg,permutations,audiodata)
 
     [trial_sentences,trial_target_speakers,trial_target_dir] = ...
-        get_trial_info(permutations,config,block_cfg);
+        get_trial_info(permutations,block_cfg);
 
     block_cfg.trial_sentences = trial_sentences;
     block_cfg.trial_target_speakers = trial_target_speakers;
@@ -152,7 +154,7 @@ function block_cfg = configure_block(config,block_cfg,permutations,audiodata)
 
     for trial_idx=1:size(trial_sentences,1)
         block_cfg = make_directions(config,block_cfg,trial_idx,audiodata);
-        block_cfg = select_target_timing(config,block_cfg,trial_idx,audiodata)
+        block_cfg = select_target_timing(config,block_cfg,trial_idx,audiodata);
     end
 end
 
@@ -174,22 +176,37 @@ function [trial_sentences,trial_target_speakers,trial_target_dir] = ...
     trial_sentences = trial_sentences(:,1:3);
 end
 
-function [dir1,dir2,dir3,critical_times] = ...
-    make_directions(config,switch_num_range,min_stim_len_for_switch,len_stim)
+function block_cfg = make_directions(config,block_cfg,trial,audiodata)
+    switch_len = config.switch_len;
+    min_stay_len = config.min_stay_len;
+
+    switch_num_range = 1:5;
+    min_stim_len_for_switch = ...
+        arrayfun(@(num_switch)((num_switch*2-1)*switch_len+...
+                               ceil(num_switch/2)*min_stay_len),switch_num_range);
+
+    idxs = block_cfg.trial_sentences(trial,:);
+    s1 = audiodata{1}(idxs(1)).data;
+    s2 = audiodata{2}(idxs(2)).data;
+    s3 = audiodata{3}(idxs(3)).data;
+    len_stim = equalize_lengths(s1,s2,s3);
 
     % jitter period and ampl
     A = 1/5;
-    extra_time = len_stim/config.fs - min_stim_len_for_switch;
+    extra_times = len_stim/config.fs - min_stim_len_for_switch;
 
     % determine number of switches
-    valid_switches = switch_num_range(extra_time>=0);
+    valid_switches = switch_num_range(extra_times>=0);
     switch_num = max(valid_switches);
+    extra_time = extra_times(switch_num);
 
     % determine length of each section for s1
     if switch_num<3
-        section_lengths = randfixedsum(switch_num+1,1,...
-            extra_time - config.min_target_start,0,...
-            extra_time.config.min_target_start);
+        target_dir = block_cfg.trial_target_dir(trial);
+        target_speaker = block_cfg.trial_target_speakers(trial);
+        avail_time = extra_time - config.min_target_start;
+
+        section_lengths = randfixedsum(switch_num+1,1,avail_time,0,avail_time);
         if target_dir=='right' || target_speaker==2
             section_lengths(1) = section_lengths(1) + config.min_target_start;
         elseif target_dir=='left'
@@ -202,10 +219,21 @@ function [dir1,dir2,dir3,critical_times] = ...
         section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
     end
 
+    % TODO: everything from this point onward in `make_directions` is
+    % determinisitc: % I should be able to remove this from the configuration
+    % file (saves a lot of memory) % and generate this during the
+    % `create_mixtures` function.
+
     % put the opening section
-    switch_wave = (0:1/(fs*switch_len):1)';
+    switch_wave = (0:1/(config.fs*switch_len):1)';
 
     % then put everything together
+    % (comment: I don't love the lack of modularity, but I don't need to change
+    % this, so I'm leaving it alone for now)
+    dir1 = [];
+    dir2 = [];
+    dir3 = [];
+
     critical_times = [];
     sec1;
     sec2;
@@ -214,19 +242,25 @@ function [dir1,dir2,dir3,critical_times] = ...
     critical_times = cumsum(critical_times);
     to_angle;
 
+    % send results to return values
+    block_cfg.directions{trial,1} = dir1;
+    block_cfg.directions{trial,2} = dir2;
+    block_cfg.directions{trial,3} = dir2;
+    block_cfg.switch_times = critical_times;
+
     function sec1
-        dir1 = make_jitter(round((section_lengths(1)+min_stay_len)*fs),0);
+        dir1 = make_jitter(round((section_lengths(1)+min_stay_len)*config.fs),0);
         dir2 = make_jitter(length(dir1),1);
         sl = min(length(dir2),round(length(switch_wave)/2));
         dir3 = flip([switch_wave(1:sl); make_jitter(length(dir1)-sl,1)-switch_wave(sl)]);
-        critical_times = [critical_times round((section_lengths(1)+min_stay_len)*fs)];
+        critical_times = [critical_times round((section_lengths(1)+min_stay_len)*config.fs)];
     end
 
     function sec2
         for section_idx=2:switch_num
             if dir1(end)<0.5
                 this_switch = switch_wave;
-                this_len = round((section_lengths(section_idx)+switch_len*2)*fs);
+                this_len = round((section_lengths(section_idx)+switch_len*2)*config.fs);
                 this_len2 = this_len-length(switch_wave)*2;
                 dir2 = [dir2; make_jitter(length(this_switch),1,1); flip(switch_wave); make_jitter(this_len2,0,1); switch_wave];
                 critical_times = [critical_times length(this_switch) length(switch_wave) this_len2 length(switch_wave)];
@@ -234,7 +268,7 @@ function [dir1,dir2,dir3,critical_times] = ...
                 dir3 = [dir3; make_jitter(length(this_switch)*2,0); mini_switch; flip(mini_switch(1:end-mod(this_len2,2))); make_jitter(length(switch_wave),0)];
             else
                 this_switch = flip(switch_wave);
-                this_len = round((section_lengths(section_idx)+min_stay_len)*fs);
+                this_len = round((section_lengths(section_idx)+min_stay_len)*config.fs);
                 dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
                 mini_switch = switch_wave(1:ceil(this_len/2));
                 dir3 = [dir3; make_jitter(length(switch_wave),0); mini_switch; flip(mini_switch(1:end-mod(this_len,2)))];
@@ -248,12 +282,12 @@ function [dir1,dir2,dir3,critical_times] = ...
         section_idx = switch_num + 1;
         if dir1(end)<0.5
             this_switch = switch_wave;
-            this_len = round((section_lengths(section_idx))*fs);
+            this_len = round((section_lengths(section_idx))*config.fs);
             dir2 = [dir2; make_jitter(length(this_switch),1); flip(switch_wave(end+1-min(this_len,length(switch_wave)):end)); make_jitter(this_len-length(switch_wave),0)];
             critical_times = [critical_times length(this_switch) length(switch_wave)];
         else
             this_switch = flip(switch_wave);
-            this_len = round((section_lengths(section_idx))*fs);
+            this_len = round((section_lengths(section_idx))*config.fs);
             dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
             critical_times = [critical_times length(this_switch) this_len];
         end
@@ -273,7 +307,7 @@ function [dir1,dir2,dir3,critical_times] = ...
     function jit = make_jitter(len_requested,direc,override)
         if nargin==2, override=0; end
         jit = -sin(2*pi/(config.jitter_period)*...
-            linspace(0,len_requested/fs,len_requested))'*A;
+            linspace(0,len_requested/config.fs,len_requested))'*A;
         if direc==1 && override
             jit = jit+direc;
         elseif direc==1 || override
@@ -282,21 +316,13 @@ function [dir1,dir2,dir3,critical_times] = ...
     end
 
     function to_angle
-        if d1s0
-            dir1 = (dir1+A)/(1+A*2)*180-90;
-            dir2 = (dir2+A)/(1+A*2)*180-90;
-            dir3 = (dir3+A)/(1+A*2)*180-90;
-        else
-            dir1 = 90-(dir1+A)/(1+A*2)*180;
-            dir2 = 90-(dir2+A)/(1+A*2)*180;
-            dir3 = 90-(dir3+A)/(1+A*2)*180;
-        end
+        dir1 = (dir1+A)/(1+A*2)*180-90;
+        dir2 = (dir2+A)/(1+A*2)*180-90;
+        dir3 = (dir3+A)/(1+A*2)*180-90;
     end
 end
 
-function [target_index,target_time] = select_target_timing(config,...
-    block_cfg,trial,audiodata)
-
+function block_cfg = select_target_timing(config,block_cfg,trial,audiodata)
     idxs = block_cfg.trial_sentences(trial,:);
     s1 = audiodata{1}(idxs(1)).data;
     s2 = audiodata{2}(idxs(2)).data;
@@ -304,7 +330,7 @@ function [target_index,target_time] = select_target_timing(config,...
     sounds = {s1,s2,s3};
 
     target = block_cfg.trial_target_speakers(trial);
-    directions = block_cfg.direction{trial,:};
+    directions = {block_cfg.directions{trial,:}};
 
     safety = 0.8;
     safety_end = config.fs*config.min_target_start;
@@ -312,18 +338,23 @@ function [target_index,target_time] = select_target_timing(config,...
     [ss,dd,dc,de,tt] = stream_select;
     [target_index,target_time] = tt_select(ss,dd,dc,de,tt);
 
-    block_cfg.target_times(trial_idx) = target_time;
-    block_cfg.target_indices(trial_idx) = target_index;
+    block_cfg.target_times(trial) = target_time;
+    block_cfg.target_indices(trial) = target_index;
 
     function [ss,dd,dc,de,tt] = stream_select
-        ss = sounds{target};
-        dd = directions{target};
-        dc = circshift(dd,-round(config.target_len*fs));
-        de = circshift(dd,round(safety*fs));
-        tt = safety_end;
+        if target > 0
+            ss = sounds{target};
+            dd = directions{target};
+            dc = circshift(dd,-round(config.target_len*config.fs));
+            de = circshift(dd,round(safety*config.fs));
+            tt = safety_end;
+        else
+            ss = []; dd = []; dc = []; de = []; tt = 0;
+        end
     end
 
     function [target_index,target_time] = tt_select(ss,dd,dc,de,tt)
+        target_dir = block_cfg.trial_target_dir(trial);
         if target_dir=='right'
             ffs = (dd(tt:end-safety_end)<-10).*(dc(tt:end-safety_end)<-10);
             get_optimal_t;
@@ -335,15 +366,16 @@ function [target_index,target_time] = select_target_timing(config,...
         else
             target_index = 0;
         end
-        target_time = target_index/fs;
+        target_time = target_index/config.fs;
 
         function get_optimal_t
             if isempty(find(ffs,1)), disp('FFS'); end
             sig_poss_start = abs(ss(tt+(1:length(ffs))).*ffs);
-            [~,t_poss] = findpeaks(sig_poss_start,'npeaks',20,'sortstr','descend','minpeakdistance',fs/20);
+            [~,t_poss] = findpeaks(sig_poss_start,'npeaks',20,'sortstr',...
+                'descend','minpeakdistance',config.fs/20);
             peak_rmss = zeros(length(t_poss),1);
             for ti=1:length(t_poss)
-                peak_rmss(ti) = rms(ss(tt+t_poss(ti)+(1:fs)));
+                peak_rmss(ti) = rms(ss(tt+t_poss(ti)+(1:config.fs)));
             end
             [~,t_selecti] = max(peak_rmss);
             target_index = t_poss(t_selecti)+tt;

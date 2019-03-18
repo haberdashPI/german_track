@@ -29,16 +29,10 @@ function create_mixtures(config)
         fullfile(config.mix_dir,'testing'),audiodat,hrtfs,0);
 end
 
-function d = isdir(d)
-    if ~exist(d,'dir')
-        mkdir(d)
-    end
-end
-
 function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
-    isdir(indir);
-    isdir(fullfile(indir,'target_component'));
-    isdir(fullfile(indir,'mixture_components'));
+    ensuredir(indir);
+    ensuredir(fullfile(indir,'target_component'));
+    ensuredir(fullfile(indir,'mixture_components'));
 
     function saveto(str,stim,i)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
