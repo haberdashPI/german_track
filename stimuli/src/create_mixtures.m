@@ -1,4 +1,4 @@
-function create_mixtures(config)
+function create_mixtures(indir)
 
     % GOOD GOD: I really wish people knew how to write *modular* functions.
     % Non-local relationships between variables are abundant here. So.
@@ -19,14 +19,24 @@ function create_mixtures(config)
     %
     % NOTE: no audio files will be saved, since these will
     % be generated as *.wav files.
-    hrtfs = SOFAload(fullfile(basedir,'hrtfs','hrtf_b_nh172.sofa'));
 
-    [audiodata,~] = read_sentences(config.sentence_dir,config.speaker_order);
+    fid = fopen(fullfile(indir,'config.json'));
+    config = jsondecode(fscanf(fid,'%s'));
+    fclose(fid);
+
+    hrtfs = SOFAload(fullfile(indir,'hrtfs','hrtf_b_nh172.sofa'));
+
+    [audiodata,fs] = read_sentences(fullfile(indir,config.sentence_dir),...
+        config.speaker_order);
+    if fs ~= config.fs
+        error(['Sample rates of audio files (' num2str(fs) ...
+               ') and configuration (' num2str(config.fs) ') do not match.']);
+    end
 
     generate_stimuli(config,config.train_block_cfg,...
-        fullfile(config.mix_dir,'training'),audiodata,hrtfs,1);
+        fullfile(indir,config.mix_dir,'training'),audiodata,hrtfs,1);
     generate_stimuli(config,config.test_block_cfg,...
-        fullfile(config.mix_dir,'testing'),audiodat,hrtfs,0);
+        fullfile(indir,config.mix_dir,'testing'),audiodat,hrtfs,0);
 end
 
 function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
@@ -38,7 +48,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
     end
 
-    for trial_idx=1:size(trial_sentences,1)
+    for trial_idx=1:block_cfg.num_trials
         disp(trial_idx);
 
         % should the target be louder?
@@ -60,6 +70,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
     end
 end
+
 function [stim,target_stim,hrtf_stims] = make_stim(config,block_cfg,trial,...
     audiodata,hrtfs,loud_target)
 
@@ -89,10 +100,10 @@ end
 
 function [target_sound,sounds] = add_target(config,block_cfg,trial,sounds,loud_target)
     target_t = block_cfg.target_indices(trial);
-    target = block_cfg.target_speaker(trial);
+    target_speaker = block_cfg.trial_target_speakers(trial);
 
-    target_sound = manipulate(config,sounds{target},target_t);
-    sounds{target} = target_sound;
+    target_sound = manipulate(config,sounds{target_speaker},target_t);
+    sounds{target_speaker} = target_sound;
 
     function ss = manipulate(config,ss,target_t)
         %%

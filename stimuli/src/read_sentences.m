@@ -8,6 +8,7 @@ function [audiodata,fs] = read_sentences(sentence_dir,ppl_order)
     warning('Assuming all audio files have the same sample rate.');
 
     audiodata = {[], [], []};
+    fs = 0;
     files = dir(fullfile(sentence_dir,'*.wav'));
     filenames = sort({files.name});
     for file_idx=1:length(filenames)
