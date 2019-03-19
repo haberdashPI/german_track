@@ -1,13 +1,15 @@
 
-function directions = make_directions(config,block_cfg,trial,audiodata)
+function [directions,critical_times] = make_directions(config,block_cfg,trial,audiodata)
     section_lengths = block_cfg.trial_section_lengths{trial};
     switch_num = block_cfg.trial_switch_num(trial);
+    switch_len = config.switch_len;
+    min_stay_len = config.min_stay_len;
 
     idxs = block_cfg.trial_sentences(trial,:);
     s1 = audiodata{1}(idxs(1)).data;
     s2 = audiodata{2}(idxs(2)).data;
     s3 = audiodata{3}(idxs(3)).data;
-    sounds = {s1,s2,s3};
+    [len_stim,s1,s2,s3] = equalize_lengths(s1,s2,s3);
 
     % put the opening section
     switch_wave = (0:1/(config.fs*switch_len):1)';
@@ -19,6 +21,7 @@ function directions = make_directions(config,block_cfg,trial,audiodata)
     dir2 = [];
     dir3 = [];
 
+    A = 1/5;
     critical_times = [];
     sec1;
     sec2;

@@ -1,10 +1,10 @@
 
 function config = configure_mixtures(indir,config)
-    mix_dir = 'mixtures';
-    config.base_dir = indir;
+    config.mix_dir = 'mixtures';
 
-    if ~exist(config.hrtf_file,'file')
-        error(['Could not find specified HRTF file: ' hrtf_file])
+    disp(indir);
+    if ~exist(fullfile(indir,config.hrtf_file),'file')
+        error(['Could not find specified HRTF file: ' config.hrtf_file])
     end
 
 
@@ -16,7 +16,7 @@ function config = configure_mixtures(indir,config)
     config.sentence_dir = sentence_dir;
 
     sentence_dir = 'sentences';
-    [audiodata,fs] = read_sentences(fullfile(inddir,sentence_dir),...
+    [audiodata,fs] = read_sentences(fullfile(indir,sentence_dir),...
         config.speaker_order);
     config.sentence_dir = sentence_dir;
     config.fs = fs;
@@ -30,8 +30,9 @@ function config = configure_mixtures(indir,config)
     config.train_block_cfg = configure_block(config,config.train_block_cfg,...
         select_perms_train,audiodata);
 
-    keyboard
-    save(fullfile(indir,mix_dir),'config');
+    fid = fopen(fullfile(indir,'config.json'),'wt');
+    fprintf(fid,'%s',jsonencode(config));
+    fclose(fid);
 end
 
 function [select_perms,select_perms_train] = ...
@@ -150,8 +151,8 @@ function block_cfg = configure_block(config,block_cfg,permutations,audiodata)
     block_cfg.target_times = zeros(size(trial_target_dir));
     block_cfg.target_indices = zeros(size(trial_target_dir));
     block_cfg.switch_times = cell(size(trial_target_dir));
-    block_cfg.s
-    block_cfg.directions = cell(size(trial_target_dir,1),3);
+    block_cfg.trial_section_lengths = cell(size(trial_target_dir));
+    block_cfg.trial_switch_num = zeros(size(trial_target_dir));
 
     for trial_idx=1:size(trial_sentences,1)
         block_cfg = make_switches(config,block_cfg,trial_idx,audiodata);
@@ -187,13 +188,12 @@ function block_cfg = make_switches(config,block_cfg,trial,audiodata)
                                ceil(num_switch/2)*min_stay_len),switch_num_range);
 
     idxs = block_cfg.trial_sentences(trial,:);
-    l1 = length(audiodata{1}(idxs(1)).data):
+    l1 = length(audiodata{1}(idxs(1)).data);
     l2 = length(audiodata{2}(idxs(2)).data);
     l3 = length(audiodata{3}(idxs(3)).data);
     len_stim = equalize_lengths(l1,l2,l3);
 
     % jitter period and ampl
-    A = 1/5;
     extra_times = len_stim/config.fs - min_stim_len_for_switch;
 
     % determine number of switches
@@ -232,7 +232,9 @@ function block_cfg = select_target_timing(config,block_cfg,trial,audiodata)
     sounds = {s1,s2,s3};
 
     target = block_cfg.trial_target_speakers(trial);
-    directions = make_directions(config,block_cfg,trial,audiodata);
+    [directions,switch_times] = ...
+        make_directions(config,block_cfg,trial,audiodata);
+    block_cfg.switch_times{trial} = switch_times;
 
     safety = 0.8;
     safety_end = config.fs*config.min_target_start;
