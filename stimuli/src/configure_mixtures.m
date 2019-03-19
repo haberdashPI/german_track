@@ -150,10 +150,11 @@ function block_cfg = configure_block(config,block_cfg,permutations,audiodata)
     block_cfg.target_times = zeros(size(trial_target_dir));
     block_cfg.target_indices = zeros(size(trial_target_dir));
     block_cfg.switch_times = cell(size(trial_target_dir));
+    block_cfg.s
     block_cfg.directions = cell(size(trial_target_dir,1),3);
 
     for trial_idx=1:size(trial_sentences,1)
-        block_cfg = make_directions(config,block_cfg,trial_idx,audiodata);
+        block_cfg = make_switches(config,block_cfg,trial_idx,audiodata);
         block_cfg = select_target_timing(config,block_cfg,trial_idx,audiodata);
     end
 end
@@ -176,7 +177,7 @@ function [trial_sentences,trial_target_speakers,trial_target_dir] = ...
     trial_sentences = trial_sentences(:,1:3);
 end
 
-function block_cfg = make_directions(config,block_cfg,trial,audiodata)
+function block_cfg = make_switches(config,block_cfg,trial,audiodata)
     switch_len = config.switch_len;
     min_stay_len = config.min_stay_len;
 
@@ -186,10 +187,10 @@ function block_cfg = make_directions(config,block_cfg,trial,audiodata)
                                ceil(num_switch/2)*min_stay_len),switch_num_range);
 
     idxs = block_cfg.trial_sentences(trial,:);
-    s1 = audiodata{1}(idxs(1)).data;
-    s2 = audiodata{2}(idxs(2)).data;
-    s3 = audiodata{3}(idxs(3)).data;
-    len_stim = equalize_lengths(s1,s2,s3);
+    l1 = length(audiodata{1}(idxs(1)).data):
+    l2 = length(audiodata{2}(idxs(2)).data);
+    l3 = length(audiodata{3}(idxs(3)).data);
+    len_stim = equalize_lengths(l1,l2,l3);
 
     % jitter period and ampl
     A = 1/5;
@@ -219,107 +220,8 @@ function block_cfg = make_directions(config,block_cfg,trial,audiodata)
         section_lengths = randfixedsum(switch_num+1,1,extra_time,0,extra_time);
     end
 
-    % TODO: everything from this point onward in `make_directions` is
-    % determinisitc: % I should be able to remove this from the configuration
-    % file (saves a lot of memory) % and generate this during the
-    % `create_mixtures` function.
-
-    % put the opening section
-    switch_wave = (0:1/(config.fs*switch_len):1)';
-
-    % then put everything together
-    % (comment: I don't love the lack of modularity, but I don't need to change
-    % this, so I'm leaving it alone for now)
-    dir1 = [];
-    dir2 = [];
-    dir3 = [];
-
-    critical_times = [];
-    sec1;
-    sec2;
-    sec3;
-    secs_equalize;
-    critical_times = cumsum(critical_times);
-    to_angle;
-
-    % send results to return values
-    block_cfg.directions{trial,1} = dir1;
-    block_cfg.directions{trial,2} = dir2;
-    block_cfg.directions{trial,3} = dir2;
-    block_cfg.switch_times = critical_times;
-
-    function sec1
-        dir1 = make_jitter(round((section_lengths(1)+min_stay_len)*config.fs),0);
-        dir2 = make_jitter(length(dir1),1);
-        sl = min(length(dir2),round(length(switch_wave)/2));
-        dir3 = flip([switch_wave(1:sl); make_jitter(length(dir1)-sl,1)-switch_wave(sl)]);
-        critical_times = [critical_times round((section_lengths(1)+min_stay_len)*config.fs)];
-    end
-
-    function sec2
-        for section_idx=2:switch_num
-            if dir1(end)<0.5
-                this_switch = switch_wave;
-                this_len = round((section_lengths(section_idx)+switch_len*2)*config.fs);
-                this_len2 = this_len-length(switch_wave)*2;
-                dir2 = [dir2; make_jitter(length(this_switch),1,1); flip(switch_wave); make_jitter(this_len2,0,1); switch_wave];
-                critical_times = [critical_times length(this_switch) length(switch_wave) this_len2 length(switch_wave)];
-                mini_switch = switch_wave(1:ceil(this_len2/2));
-                dir3 = [dir3; make_jitter(length(this_switch)*2,0); mini_switch; flip(mini_switch(1:end-mod(this_len2,2))); make_jitter(length(switch_wave),0)];
-            else
-                this_switch = flip(switch_wave);
-                this_len = round((section_lengths(section_idx)+min_stay_len)*config.fs);
-                dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
-                mini_switch = switch_wave(1:ceil(this_len/2));
-                dir3 = [dir3; make_jitter(length(switch_wave),0); mini_switch; flip(mini_switch(1:end-mod(this_len,2)))];
-                critical_times = [critical_times length(this_switch) this_len];
-            end
-            dir1 = [dir1; this_switch; make_jitter(this_len,this_switch(end))];
-        end
-    end
-
-    function sec3
-        section_idx = switch_num + 1;
-        if dir1(end)<0.5
-            this_switch = switch_wave;
-            this_len = round((section_lengths(section_idx))*config.fs);
-            dir2 = [dir2; make_jitter(length(this_switch),1); flip(switch_wave(end+1-min(this_len,length(switch_wave)):end)); make_jitter(this_len-length(switch_wave),0)];
-            critical_times = [critical_times length(this_switch) length(switch_wave)];
-        else
-            this_switch = flip(switch_wave);
-            this_len = round((section_lengths(section_idx))*config.fs);
-            dir2 = [dir2; make_jitter(length(switch_wave)+this_len,1)];
-            critical_times = [critical_times length(this_switch) this_len];
-        end
-        dir1 = [dir1; this_switch; make_jitter(this_len,this_switch(end))];
-        dir3 = [dir3; make_jitter(length(this_switch)+this_len,0)];
-    end
-
-    function secs_equalize
-        if ~isempty(find(diff([length(dir1) length(dir2) length(dir3)])~=0,1))
-            disp('dir lengths not the same!');
-        end
-        dir1 = dir1(1:len_stim);
-        dir2 = dir2(1:len_stim);
-        dir3 = dir3(1:len_stim);
-    end
-
-    function jit = make_jitter(len_requested,direc,override)
-        if nargin==2, override=0; end
-        jit = -sin(2*pi/(config.jitter_period)*...
-            linspace(0,len_requested/config.fs,len_requested))'*A;
-        if direc==1 && override
-            jit = jit+direc;
-        elseif direc==1 || override
-            jit = -jit+direc;
-        end
-    end
-
-    function to_angle
-        dir1 = (dir1+A)/(1+A*2)*180-90;
-        dir2 = (dir2+A)/(1+A*2)*180-90;
-        dir3 = (dir3+A)/(1+A*2)*180-90;
-    end
+    block_cfg.trial_section_lengths{trial} = section_lengths;
+    block_cfg.trial_switch_num(trial) = switch_num;
 end
 
 function block_cfg = select_target_timing(config,block_cfg,trial,audiodata)
@@ -330,7 +232,7 @@ function block_cfg = select_target_timing(config,block_cfg,trial,audiodata)
     sounds = {s1,s2,s3};
 
     target = block_cfg.trial_target_speakers(trial);
-    directions = {block_cfg.directions{trial,:}};
+    directions = make_directions(config,block_cfg,trial,audiodata);
 
     safety = 0.8;
     safety_end = config.fs*config.min_target_start;

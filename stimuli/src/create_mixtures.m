@@ -74,10 +74,16 @@ function [stim,target_stim,hrtf_stims] = make_stim(config,block_cfg,trial,...
         loud_target);
     [~,s1,s2,s3] = equalize_lengths(sounds{1},sounds{2},sounds{3});
 
-    p1 = SOFAspat(s1,hrtfs,dir1,0);
-    p2 = SOFAspat(s2,hrtfs,dir2,0);
-    p3 = SOFAspat(s3,hrtfs,dir3,0);
+    % compute directions of the sounds
+    direc = make_directions(config,block_cfg,trial,audiodata);
+
+    % transform sounds by HRTFs
+    p1 = SOFAspat(s1,hrtfs,direc{1},0);
+    p2 = SOFAspat(s2,hrtfs,direc{2},0);
+    p3 = SOFAspat(s3,hrtfs,direc{3},0);
     hrtf_stims = {p1,p2,p3};
+
+    % mix the sounds
     stim = p1 + p2 + p3;
 end
 
