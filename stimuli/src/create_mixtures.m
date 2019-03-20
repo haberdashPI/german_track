@@ -48,9 +48,9 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     ensuredir(fullfile(indir,'target_component'));
     ensuredir(fullfile(indir,'mixture_components'));
 
-    delete(fullfile(indir,'*'));
-    delete(fullfile(indir,'target_component','*'));
-    delete(fullfile(indir,'mixture_components','*'));
+    delete(fullfile(indir,'*.wav'));
+    delete(fullfile(indir,'target_component','*.wav'));
+    delete(fullfile(indir,'mixture_components','*.wav'));
 
     function saveto(str,stim,i)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
