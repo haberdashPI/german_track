@@ -30,9 +30,12 @@ function config = configure_mixtures(indir,config)
     config.train_block_cfg = configure_block(config,config.train_block_cfg,...
         select_perms_train,audiodata);
 
-    fid = fopen(fullfile(indir,'config.json'),'wt');
+    config_file = fullfile(indir,'config.json');
+    fid = fopen(config_file,'wt');
     fprintf(fid,'%s',jsonencode(config));
     fclose(fid);
+
+    disp(['Saved configuration to "' config_file '".']);
 end
 
 function [select_perms,select_perms_train] = ...

@@ -20,9 +20,11 @@ function create_mixtures(indir)
     % NOTE: no audio files will be saved, since these will
     % be generated as *.wav files.
 
-    fid = fopen(fullfile(indir,'config.json'));
+    config_file = fullfile(indir,'config.json');
+    fid = fopen(config_file);
     config = jsondecode(fscanf(fid,'%s'));
     fclose(fid);
+    disp(['Read configuration from "' config_file '".']);
 
     hrtfs = SOFAload(fullfile(indir,'hrtfs','hrtf_b_nh172.sofa'));
 
@@ -33,10 +35,12 @@ function create_mixtures(indir)
                ') and configuration (' num2str(config.fs) ') do not match.']);
     end
 
+    disp('Training stimuli:');
     generate_stimuli(config,config.train_block_cfg,...
         fullfile(indir,config.mix_dir,'training'),audiodata,hrtfs,1);
+    disp('Testing stimuli:');
     generate_stimuli(config,config.test_block_cfg,...
-        fullfile(indir,config.mix_dir,'testing'),audiodat,hrtfs,0);
+        fullfile(indir,config.mix_dir,'testing'),audiodata,hrtfs,0);
 end
 
 function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
@@ -44,13 +48,19 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     ensuredir(fullfile(indir,'target_component'));
     ensuredir(fullfile(indir,'mixture_components'));
 
+    delete(fullfile(indir,'*'));
+    delete(fullfile(indir,'target_component','*'));
+    delete(fullfile(indir,'mixture_components','*'));
+
     function saveto(str,stim,i)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
     end
 
+    warning('error','MATLAB:audiovideo:audiowrite:dataClipped');
+    textprogressbar('Generating mixtures...');
+    onCleanup(@() textprogressbar('\n'));
+    bad_trials = [];
     for trial_idx=1:block_cfg.num_trials
-        disp(trial_idx);
-
         % should the target be louder?
         if is_training
             mod_index = (mod(trial_idx-1,block_cfg.cond_rep)+1);
@@ -63,11 +73,28 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         [stim,target,hrtf] = make_stim(config,block_cfg,trial_idx,audiodata,...
             hrtfs,loud_target);
 
-        saveto('trial_%02d.wav',stim,trial_idx);
-        saveto(fullfile('target_component','trial_%02d.wav'),target,trial_idx);
-        saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
-        saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
-        saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
+        try
+            saveto('trial_%02d.wav',stim,trial_idx);
+            if ~isempty(target)
+                saveto(fullfile('target_component','trial_%02d.wav'),target,trial_idx);
+            end
+            saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
+            saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
+            saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
+        catch e
+            switch e.identifier
+            case 'MATLAB:audiovideo:audiowrite:dataClipped'
+                bad_trials = [bad_trials trial_idx];
+            otherwise
+                rethrow(e);
+            end
+        end
+
+        textprogressbar(100*(trial_idx/block_cfg.num_trials));
+    end
+
+    if ~isempty(bad_trials)
+        warning(['Some of the trials had clipped audio: ' num2str(bad_trials)])
     end
 end
 
@@ -101,6 +128,10 @@ end
 function [target_sound,sounds] = add_target(config,block_cfg,trial,sounds,loud_target)
     target_t = block_cfg.target_indices(trial);
     target_speaker = block_cfg.trial_target_speakers(trial);
+    if target_speaker < 0
+        target_sound = [];
+        return;
+    end
 
     target_sound = manipulate(config,sounds{target_speaker},target_t);
     sounds{target_speaker} = target_sound;

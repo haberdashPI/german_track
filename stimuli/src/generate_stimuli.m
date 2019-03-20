@@ -36,10 +36,12 @@ config.train_block_cfg = train_block_cfg;
 config.hrtf_file = fullfile('hrtfs','hrtf_b_nh172.sofa');
 
 % setup and save mixture configuration
-configure_mixtures(fullfile(base_dir,'stimuli'),config);
+config = configure_mixtures(fullfile(base_dir,'stimuli'),config);
 
 % NOTE: you can load run `create_mixtures` at a later date, and generate the
-% same audio
+% exact same audio files (so these wave files are not stored in the git
+% repository as they can always be regenerated)
+
 create_mixtures(fullfile(base_dir,'stimuli'));
 
 % TODO: auto generate description for the location of the target
