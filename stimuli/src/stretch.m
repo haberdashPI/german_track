@@ -1,4 +1,7 @@
 function loggedSpeech = stretch(ss,AnalysisLen,SynthesisLen)
+% this uses a vocoder to stretch the duration of a stimulus based on
+% the ratio of AnalysisLen and SynthesisLen (resampling can then be
+% used to change the pitch)
 
 WindowLen = 256;
 Hopratio = SynthesisLen/AnalysisLen;
