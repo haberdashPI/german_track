@@ -1,23 +1,11 @@
 function create_mixtures(indir)
 
-    % GOOD GOD: I really wish people knew how to write *modular* functions.
+    % GOOD GOD: I really wish people would write *modular* functions.
     % Non-local relationships between variables are abundant here. So.
     % Confusing.  I would love to clean this code up more, but it is simply not
     % worth my time.
-    %
-    % The goals are:
-    %  1. record all randomly generated values, so that we can regenerate
-    %     the exact same stimulus set (this will make it possible to
-    %     improve on the information I save, if I forget something)
-    %  2. generate a highly comprehensible output with the information I
-    %     currently want:
-    %     a. the wave forms *after* being placed in space
-    %     b. the target wave form before and after the insertion of the target
-    %     c. the exact positions in space of each wave form (so we can
-    %        reproduce the SOFA calls used to create this files).
-    %     d. the names of each file mixed into a trial
-    %
-    % NOTE: no audio files will be saved, since these will
+
+    % NOTE: no audio files will be saved in the config file, since these will
     % be generated as *.wav files.
 
     config_file = fullfile(indir,'config.json');
@@ -93,9 +81,35 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         textprogressbar(100*(trial_idx/block_cfg.num_trials));
     end
 
+    save_target_info(block_cfg,indir)
+
     if ~isempty(bad_trials)
         warning(['Some of the trials had clipped audio: ' num2str(bad_trials)])
     end
+end
+
+function save_target_info(block_cfg,indir)
+    trial_target_speakers = block_cfg.trial_target_speakers;
+    [~,~,ac] = unique(trial_target_speakers,'stable');
+    trial_target_speakers(trial_target_speakers>0) = ac(trial_target_speakers>0);
+
+    trial_target_dir = block_cfg.trial_target_dir;
+    [~,~,ac] = unique(trial_target_dir,'stable');
+    trial_target_dir = ac;
+    ctrl_idx = trial_target_dir(find(trial_target_speakers==-1,1));
+    trial_target_dir(trial_target_dir==ctrl_idx) = trial_target_speakers(trial_target_dir==ctrl_idx);
+
+    sal = trial_target_speakers>-1;
+    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    dlmwrite(fullfile(indir,'target_info_all.txt'),this_info,'delimiter',' ');
+
+    sal = trial_target_speakers==1;
+    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    dlmwrite(fullfile(indir,'target_info_obj.txt'),this_info,'delimiter',' ');
+
+    sal = trial_target_dir==1;
+    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    dlmwrite(fullfile(indir,'target_info_dir.txt'),this_info,'delimiter',' ');
 end
 
 function [stim,target_stim,hrtf_stims] = make_stim(config,block_cfg,trial,...
