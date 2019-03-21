@@ -38,9 +38,10 @@ config.hrtf_file = fullfile('hrtfs','hrtf_b_nh172.sofa');
 % setup and save mixture configuration
 config = configure_mixtures(fullfile(base_dir,'stimuli'),config);
 
-% NOTE: you can load run `create_mixtures` at a later date, and generate the
-% exact same audio files (so these wave files are not stored in the git
-% repository as they can always be regenerated)
+% NOTE: you can load run `create_mixtures` at a later date without running
+% `configure_mixtures`, and generate the % exact same audio files (so these
+% wave files are not stored in the git % repository as they can always be
+% regenerated)
 
 create_mixtures(fullfile(base_dir,'stimuli'));
 
