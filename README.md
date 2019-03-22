@@ -29,7 +29,7 @@ in `data/` so you can also use this pipeline to add preprocessed data for a
 new participant, by including their raw BDF file in the same location as all
 other participant's data.
 
-1. Call `anlayses/read_eeg_events.m` to generate *.csv files with the event triggers
+1. Call `analyses/read_eeg_events.m` to generate *.csv files with the event triggers
 2. Call `analyses/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
    to the start of the 50 trials for each of the three conditions. This
