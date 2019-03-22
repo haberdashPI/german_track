@@ -91,24 +91,29 @@ end
 function save_target_info(block_cfg,indir)
     trial_target_speakers = block_cfg.trial_target_speakers;
     [~,~,ac] = unique(trial_target_speakers,'stable');
-    trial_target_speakers(trial_target_speakers>0) = ac(trial_target_speakers>0);
+    trial_target_speakers(trial_target_speakers>0) = ...
+        ac(trial_target_speakers>0);
 
     trial_target_dir = block_cfg.trial_target_dir;
     [~,~,ac] = unique(trial_target_dir,'stable');
     trial_target_dir = ac;
     ctrl_idx = trial_target_dir(find(trial_target_speakers==-1,1));
-    trial_target_dir(trial_target_dir==ctrl_idx) = trial_target_speakers(trial_target_dir==ctrl_idx);
+    trial_target_dir(trial_target_dir==ctrl_idx) = ...
+        trial_target_speakers(trial_target_dir==ctrl_idx);
 
     sal = trial_target_speakers>-1;
-    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    this_info = [block_cfg.target_times sal trial_target_speakers ...
+        trial_target_dir];
     dlmwrite(fullfile(indir,'target_info_all.txt'),this_info,'delimiter',' ');
 
     sal = trial_target_speakers==1;
-    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    this_info = [block_cfg.target_times sal trial_target_speakers ...
+        trial_target_dir];
     dlmwrite(fullfile(indir,'target_info_obj.txt'),this_info,'delimiter',' ');
 
     sal = trial_target_dir==1;
-    this_info = [block_cfg.target_times sal trial_target_speakers trial_target_dir];
+    this_info = [block_cfg.target_times sal trial_target_speakers ...
+        trial_target_dir];
     dlmwrite(fullfile(indir,'target_info_dir.txt'),this_info,'delimiter',' ');
 end
 
