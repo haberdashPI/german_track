@@ -36,19 +36,23 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     ensuredir(fullfile(indir,'target_component'));
     ensuredir(fullfile(indir,'mixture_components'));
 
-    delete(fullfile(indir,'*.wav'));
-    delete(fullfile(indir,'target_component','*.wav'));
-    delete(fullfile(indir,'mixture_components','*.wav'));
+    % delete(fullfile(indir,'*.wav'));
+    % delete(fullfile(indir,'target_component','*.wav'));
+    % delete(fullfile(indir,'mixture_components','*.wav'));
 
     function saveto(str,stim,i)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
     end
 
-    warning('error','MATLAB:audiovideo:audiowrite:dataClipped');
     textprogressbar('Generating mixtures...');
+    warning('error','MATLAB:audiovideo:audiowrite:dataClipped');
     onCleanup(@() textprogressbar('\n'));
     bad_trials = [];
     for trial_idx=1:block_cfg.num_trials
+        if exist(sprintf(fullfile(indir,'mixture_components',...
+            'trial_%02d_3.wav'),trial_idx),'file')
+            continue
+        end
         % should the target be louder?
         if is_training
             mod_index = (mod(trial_idx-1,block_cfg.cond_rep)+1);
@@ -61,30 +65,62 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         [stim,target,hrtf] = make_stim(config,block_cfg,trial_idx,audiodata,...
             hrtfs,loud_target);
 
-        try
-            saveto('trial_%02d.wav',stim,trial_idx);
-            if ~isempty(target)
-                saveto(fullfile('target_component','trial_%02d.wav'),target,trial_idx);
-            end
-            saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
-            saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
-            saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
-        catch e
-            switch e.identifier
-            case 'MATLAB:audiovideo:audiowrite:dataClipped'
-                bad_trials = [bad_trials trial_idx];
-            otherwise
-                rethrow(e);
-            end
+        warning('');
+
+        saveto('trial_%02d.wav',stim,trial_idx);
+        if ~isempty(target)
+            saveto(fullfile('target_component','trial_%02d.wav'),...
+                target ./ rms(target),trial_idx);
+        end
+        saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
+        saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
+        saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
+
+        [~,id] = lastwarn;
+        if strcmp(id,'MATLAB:audiovideo:audiowrite:dataClipped')
+            bad_trials = [bad_trials trial_idx];
         end
 
         textprogressbar(100*(trial_idx/block_cfg.num_trials));
     end
 
     save_target_info(block_cfg,indir)
+    if is_training
+        fid = fopen(fullfile(indir,'train_messages.txt'),'wt');
+        for i = 1:block_cfg.num_trials
+            fprintf(fid,'%s\n#\n',describe_target(config,block_cfg,i));
+        end
+        fclose(fid);
+    end
 
     if ~isempty(bad_trials)
         warning(['Some of the trials had clipped audio: ' num2str(bad_trials)])
+    end
+end
+
+function str = describe_target(config,block_cfg,trial)
+    speaker = block_cfg.trial_target_speakers(trial);
+    if speaker < 0
+        str = 'There is no different pitch.';
+    else
+        str = 'The different pitch segment was ';
+        if speaker == 1
+            str = [str 'male'];
+        else
+            str = [str 'female'];
+        end
+        str = [str ', on the ' block_cfg.trial_target_dir{trial} ...
+            ' side, near the '];
+
+        disp(['trial ' num2str(trial) ' target ended at ' ...
+            num2str(block_cfg.target_times(trial)+config.target_len)])
+        if block_cfg.target_times(trial)+config.target_len < 4
+            str = [str 'beginning.'];
+        elseif block_cfg.target_times(trial)+config.target_len < 6
+            str = [str 'middle.'];
+        else
+            str = [str 'end.'];
+        end
     end
 end
 

@@ -5,8 +5,8 @@
 data/*
 analyses/cache/*
 analyses/models/*
-stimuli/mixtures/*.wav
 stimuli/mixtures/**/*.wav
+stimuli/mixtures/**/*.txt
 *.swp
 .tags
 .vscode

@@ -9,7 +9,7 @@ I dont' know where it is, I need to re-create it with the same format.
 
 The files I need are:
 
-* train_messages.txt (this is the one I have to recreate, based on the example)
-* target_info_all.txt
-* target_info_obj.txt
-* target_info_dir.txt
+- [x] train_messages.txt (this is the one I have to recreate, based on the example)
+- [x] target_info_all.txt
+- [x] target_info_obj.txt
+- [x] target_info_dir.txt
