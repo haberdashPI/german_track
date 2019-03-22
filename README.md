@@ -7,10 +7,15 @@ condition--or listening to one ear--the *feature* condition.
 
 TODO: more details about the project should eventually go here.
 
-## Concerns
+## Stimulus Generation
 
-I'm not sure the config file I am using is right. I should find a way to verify
-that it is actually describing the files I think it is.
+To reproduce the stimuli, re-run `create_mixtures` (under `stimuli/src`)
+as shown in `generate_stimuli` (also under `stimuli/src`). This will use
+`config.json` to create the experimental stimuli. 
+
+You can generate a new stimulus set, with the same configuration parameters,
+but a different random seed, by using the `configure_mixtures`, (udner
+`stimuli/src`) as shown in `generate_stimuli`.
 
 ## Regenerating the preprocessed data
 
