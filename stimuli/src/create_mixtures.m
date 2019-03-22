@@ -45,7 +45,6 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     end
 
     textprogressbar('Generating mixtures...');
-    warning('error','MATLAB:audiovideo:audiowrite:dataClipped');
     onCleanup(@() textprogressbar('\n'));
     bad_trials = [];
     for trial_idx=1:block_cfg.num_trials
@@ -70,7 +69,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         saveto('trial_%02d.wav',stim,trial_idx);
         if ~isempty(target)
             saveto(fullfile('target_component','trial_%02d.wav'),...
-                target ./ rms(target),trial_idx);
+                target ./ (10*rms(target)),trial_idx);
         end
         saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
         saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
@@ -112,8 +111,6 @@ function str = describe_target(config,block_cfg,trial)
         str = [str ', on the ' block_cfg.trial_target_dir{trial} ...
             ' side, near the '];
 
-        disp(['trial ' num2str(trial) ' target ended at ' ...
-            num2str(block_cfg.target_times(trial)+config.target_len)])
         if block_cfg.target_times(trial)+config.target_len < 4
             str = [str 'beginning.'];
         elseif block_cfg.target_times(trial)+config.target_len < 6
