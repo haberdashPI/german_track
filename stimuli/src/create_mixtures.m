@@ -47,6 +47,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     textprogressbar('Generating mixtures...');
     onCleanup(@() textprogressbar('\n'));
     bad_trials = [];
+    block_cfg.trial_length_s = zeros(1,block_cfg.num_trials);
     for trial_idx=1:block_cfg.num_trials
         if exist(sprintf(fullfile(indir,'mixture_components',...
             'trial_%02d_3.wav'),trial_idx),'file')
@@ -63,8 +64,9 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 
         [stim,target,hrtf] = make_stim(config,block_cfg,trial_idx,audiodata,...
             hrtfs,loud_target);
+        block_cfg.trial_length_s(trial_idx) = size(stim,1)/config.fs;
 
-        warning('');
+        lastwarn('');
 
         saveto('trial_%02d.wav',stim,trial_idx);
         if ~isempty(target)
@@ -98,7 +100,12 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 end
 
 function str = describe_target(config,block_cfg,trial)
+    disp(sprintf('Trial %d\n',trial))
     speaker = block_cfg.trial_target_speakers(trial);
+    start_end = block_cfg.trial_length_s / 3;
+    disp(sprintf('start_end = %f\n',start_end));
+
+    middle_end = block_cfg.trial_length_s * 2/3;
     if speaker < 0
         str = 'There is no different pitch.';
     else
@@ -111,9 +118,9 @@ function str = describe_target(config,block_cfg,trial)
         str = [str ', on the ' block_cfg.trial_target_dir{trial} ...
             ' side, near the '];
 
-        if block_cfg.target_times(trial)+config.target_len < 4
+        if block_cfg.target_times(trial)+config.target_len/2 < start_end
             str = [str 'beginning.'];
-        elseif block_cfg.target_times(trial)+config.target_len < 6
+        elseif block_cfg.target_times(trial)+config.target_len/2 < middle_end
             str = [str 'middle.'];
         else
             str = [str 'end.'];
