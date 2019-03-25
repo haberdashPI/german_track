@@ -49,6 +49,13 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     bad_trials = [];
     block_cfg.trial_length_s = zeros(1,block_cfg.num_trials);
     for trial_idx=1:block_cfg.num_trials
+
+        idxs = block_cfg.trial_sentences(trial_idx,:);
+        l1 = audiodata{1}(idxs(1)).length_s;
+        l2 = audiodata{2}(idxs(2)).length_s;
+        l3 = audiodata{3}(idxs(3)).length_s;
+        block_cfg.trial_length_s(trial_idx) = equalize_lengths(l1,l2,l3);
+
         if exist(sprintf(fullfile(indir,'mixture_components',...
             'trial_%02d_3.wav'),trial_idx),'file')
             continue
@@ -64,7 +71,6 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 
         [stim,target,hrtf] = make_stim(config,block_cfg,trial_idx,audiodata,...
             hrtfs,loud_target);
-        block_cfg.trial_length_s(trial_idx) = size(stim,1)/config.fs;
 
         lastwarn('');
 
@@ -100,10 +106,9 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 end
 
 function str = describe_target(config,block_cfg,trial)
-    disp(sprintf('Trial %d\n',trial))
     speaker = block_cfg.trial_target_speakers(trial);
-    start_end = block_cfg.trial_length_s / 3;
-    disp(sprintf('start_end = %f\n',start_end));
+    start_end = block_cfg.trial_length_s(trial) / 3.0 + ...
+        config.min_target_start/2;
 
     middle_end = block_cfg.trial_length_s * 2/3;
     if speaker < 0
