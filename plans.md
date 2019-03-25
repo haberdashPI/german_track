@@ -3,7 +3,10 @@
 
 ## Current steps
 
-Emails & Setting up use of new stimuli for data recording
+Emails (tomorrow)
+Setting up use of new stimuli for data recording
+
+Organize Presentation program and create git repository
 
 ## Notes
 
