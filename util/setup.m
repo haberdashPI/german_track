@@ -2,7 +2,7 @@
 base_dir = pwd();
 [base_dir_rest,name] = fileparts(base_dir);
 if strcmp(name,'util')
-  base_dir = base_dir_rest
+  base_dir = base_dir_rest;
   cd(base_dir);
 end
 
@@ -31,9 +31,21 @@ cache_dir = fullfile(base_dir,'analyses','cache');
 model_dir = fullfile(analysis_dir,'models');
 data_dir = fullfile(base_dir,'data');
 
-[ret,name] = system('hostname');
-if startsWith(name,'Mycroft.local')
-  raw_data_dir = '/Volumes/MiguelJr/Research/Experiments/trackgerman/data/';
-else
-  raw_data_dir = '/Volumes/Data/Little_german_track_2019-02-27/';
+[ret,hostname] = system('hostname');
+fid = fopen(fullfile(base_dir,'config.json'),'rt');
+config = jsondecode(fscanf(fid,'%s'));
+fclose(fid);
+
+match = 0;
+default_i = 1;
+for i = 1:length(config)
+    if strcmp(config(i).host,'default')
+        default_i = i;
+    elseif startsWith(hostname,config(i).host)
+        raw_data_dir = config(i).raw_data_dir;
+        match = 1;
+    end
+end
+if ~match
+  raw_data_dir = config(default_i).raw_data_dir;
 end
