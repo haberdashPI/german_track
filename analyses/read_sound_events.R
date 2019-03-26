@@ -5,7 +5,7 @@ library(cowplot)
 
 source('util/setup.R')
 
-sid = 7
+sid = 9
 
 efraw = read.csv(file.path(data_dir,sprintf('eeg_events_%03d.csv',sid)))
 ef = NULL
@@ -51,6 +51,7 @@ pf = pf %>% filter(condition %in% c('test','object','feature'),
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
 
+# TODO: bit 5 is missing.... why?
 sound_events = filter(ef,bit == 5)
 if(nrow(sound_events) != 154)
   stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))

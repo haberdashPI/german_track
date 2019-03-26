@@ -7,16 +7,16 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   % warn
   eegfile = eeg_files(i).name;
   numstr = regexp(eegfile,'([0-9]+)_','tokens');
-  sid = str2num(numstr{1}{1});
+  sid = str2double(numstr{1}{1});
   result_file = fullfile(data_dir,sprintf('eeg_events_%03d.csv',sid));
 
   if exist(result_file,'file')
-    warning(['The file ' result_file ' already exists. Skipping...']);
+    warning('The file %s already exists. Skipping...',result_file);
     continue;
   end
 
-  disp(['reading events for ' eegfile]);
-  disp(['Found SID = ' num2str(sid)]);
+  fprintf('reading events for %s\n',eegfile);
+  fprintf('Found SID = %d',sid);
   event = ft_read_event(fullfile(raw_data_dir,eegfile));
 
   type = {event.type};
@@ -36,5 +36,5 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   writetable(df,result_file);
 
   head = ft_read_header(fullfile(raw_data_dir,eegfile));
-  disp(['File sample rate: ' num2str(head.Fs)]);
+  fprintf('File sample rate: %d',head.Fs);
 end

@@ -80,6 +80,9 @@ should also be moved to the `data/audio` subdirectory.
 The first three subjects' events are likely poorly aligned due to some
 issues with the sound drivers on the computer presenting stimuli.
 
+Subjects up to 7 used an old stimulus set, for which we do not have
+ground truth of the target modulation or HRTF transformed sentences.
+
 ## Usage notes
 
 Many the scripts cannot be simply run. Parts of the code must be run step
