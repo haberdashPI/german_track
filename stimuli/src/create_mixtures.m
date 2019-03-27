@@ -9,10 +9,8 @@ function create_mixtures(indir)
     % be generated as *.wav files.
 
     config_file = fullfile(indir,'config.json');
-    fid = fopen(config_file);
-    config = jsondecode(fscanf(fid,'%s'));
-    fclose(fid);
-    disp(['Read configuration from "' config_file '".']);
+    config = read_json(config_file);
+    fprintf('Read configuration from "%s".',config_file);
 
     hrtfs = SOFAload(fullfile(indir,'hrtfs','hrtf_b_nh172.sofa'));
 

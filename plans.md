@@ -1,12 +1,15 @@
 
 # Plans
 
-## Current steps
+## Current anlaysis steps
 
-Emails (tomorrow)
-Setting up use of new stimuli for data recording
+Finished reading events for SID 9, now let's read in the eeg responses
+and do a sanity check
 
-Organize Presentation program and create git repository
+## Current experiment steps
+
+fix Presentation triggers (seems to be using older bit signals...?)
+organize consent form
 
 ## Notes
 

@@ -3,12 +3,9 @@ run('../util/setup.m')
 % First sanity check: can we more accurately recover the male voice
 % when that is the voice listeners are asked to attend to.
 
-dat = load(fullfile(data_dir,'config','experiment_record.mat'));
-stim_info = dat.experiment_cfg;
-
-use_fake_data = 1;
-
+stim_info = read_json(fullfile(stimulus_dir,'config.json'));
 eeg_files = dir(fullfile(data_dir,'eeg_response*.mat'));
+use_fake_data = 0;
 
 male_C = [];
 fem1_C = [];

@@ -25,16 +25,16 @@ global cache_dir;
 global model_dir;
 global data_dir;
 global raw_data_dir;
+global stimulus_dir;
 
 analysis_dir = fullfile(base_dir,'analyses');
 cache_dir = fullfile(base_dir,'analyses','cache');
 model_dir = fullfile(analysis_dir,'models');
 data_dir = fullfile(base_dir,'data');
+stimulus_dir = fullfile(base_dir,'stimuli');
 
 [ret,hostname] = system('hostname');
-fid = fopen(fullfile(base_dir,'config.json'),'rt');
-config = jsondecode(fscanf(fid,'%s'));
-fclose(fid);
+config = read_json(fullfile(base_dir,'config.json'));
 
 match = 0;
 default_i = 1;

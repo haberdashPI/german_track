@@ -16,7 +16,7 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   end
 
   fprintf('reading events for %s\n',eegfile);
-  fprintf('Found SID = %d',sid);
+  fprintf('Found SID = %d\n',sid);
   event = ft_read_event(fullfile(raw_data_dir,eegfile));
 
   type = {event.type};
@@ -36,5 +36,5 @@ for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
   writetable(df,result_file);
 
   head = ft_read_header(fullfile(raw_data_dir,eegfile));
-  fprintf('File sample rate: %d',head.Fs);
+  fprintf('File sample rate: %d\n',head.Fs);
 end
