@@ -8,6 +8,10 @@ function result = trf_train(eeg,stim_info,lags,filter_fn,stim_fn)
   for i = 1:length(eeg.trial)
     if filter_fn(i)
       stim = stim_fn(i);
+      % for now, just convert stero signals to mono signals
+      if size(stim,2) > 1
+        stim = sum(stim,2);
+      end
       stim_envelope = CreateLoudnessFeature(stim,stim_info.fs,eeg.fsample);
       response = eeg.trial{i};
 

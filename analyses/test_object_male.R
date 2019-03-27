@@ -1,17 +1,17 @@
 
 source('util/setup.R')
 
-use_fake_data = TRUE
+use_fake_data = FALSE #TRUE
 
 dir = file.path(plot_dir,paste('run',Sys.Date(),sep='_'))
 dir.exists(dir) || dir.create(dir)
 
 if(use_fake_data){
   df = gather(read.csv(file.path(cache_dir,'fake_testobj.csv')),
-              label,cor,male_C:fem2_C)
+              label,cor,male_C:other_male_C)
 }else{
   df = gather(read.csv(file.path(cache_dir,'testobj.csv')),
-              label,cor,male_C:fem2_C)
+              label,cor,male_C:other_male_C)
 }
 
 ggplot(df,aes(x=label,y=cor,color=label)) +
