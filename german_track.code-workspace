@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"extensions": {
+		"recommendations": [
+			"ikuyadeu.r",
+			"gimly81.matlab",
+			"ivan-bocharov.stan-vscode"
+		]
+	}
+}
