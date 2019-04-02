@@ -2,6 +2,7 @@
 .RData
 .Rhistory
 *~
+data
 data/*
 analyses/cache/*
 analyses/models/*
@@ -10,4 +11,4 @@ stimuli/mixtures/**/*.txt
 *.swp
 .tags
 .vscode
-
+install.json
