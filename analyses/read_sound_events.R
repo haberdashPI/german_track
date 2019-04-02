@@ -51,22 +51,27 @@ pf = pf %>% filter(condition %in% c("test","object","feature"),
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
 
-# sound_events = filter(ef,bit == 5)
-sound_events = filter(ef,bit == 4) # for subject 9 only
-# if(nrow(sound_events) != 154)
-#   stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+sound_events = filter(ef,bit == 5)
+# sound_events = filter(ef,bit == 4) # for subject 9 only
+
+# note: comment out the below for subject 9
+if(nrow(sound_events) != 154)
+  stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
 
 # these extra rows, which we're skipping, are practice trials during the intro
 # to the 'feature' and 'object' conditions of the experiment
 
 # duriung recording for subject 9, the first event was lost
-sound_events = sound_events[c(2:50,53:102,105:154)-1,]
-pf = pf[2:nrow(pf),]
+sound_events = sound_events[c(1:50,53:102,105:154),]
+# sound_events = sound_events[c(2:50,53:102,105:154)-1,] # subject 9 only
+# pf = pf[2:nrow(pf),] # subject 9 only
 
 pf = pf %>%
   rename(pres_time = time) %>%
   mutate(sample = sound_events$sample,
          time = sound_events$time)
+
+# pf = pf[1:(nrow(pf)-1),] # subject 8 only
 
 pf %>%
   select(sample,time,condition,response,sound_index) %>%

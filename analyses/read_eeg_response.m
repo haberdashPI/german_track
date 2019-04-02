@@ -35,11 +35,15 @@ for i = 1:length(eegfiles)
   cfg.continuous = 'yes';
   if sid == 1
       cfg.channel = [1:128 257:264];
-  else
+  elseif sid == 9
       cfg.channel = 1:136;
+  else
+      cfg.channel = 1:72;
   end
 
   % apply a (1Hz) high pass filter
+  % (a recent study suggests that maybe I should remove this:
+  % need to examine either replacing with robust filter or just doing nothing)
   cfg.hpfilter = 'yes';
   cfg.hpfreq = 1;
   cfg.hpfiltortype = 'but';

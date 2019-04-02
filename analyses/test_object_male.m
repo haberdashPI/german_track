@@ -98,3 +98,4 @@ if use_fake_data
 else
   writetable(table(male_C,fem1_C,fem2_C,other_male_C,sid),fullfile(cache_dir,'testobj.csv'));
 end
+alert()

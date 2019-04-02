@@ -1,7 +1,7 @@
 run('../util/setup.m')
 
 eeg_files = dir(fullfile(raw_data_dir,'*.bdf'));
-for i = 1:length(eeg_files) % TEMPORARY, normally 1:length...
+for i = 1:length(eeg_files)
 
   % TODO: skip already generated files and
   % warn
