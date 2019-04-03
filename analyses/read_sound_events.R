@@ -5,7 +5,7 @@ library(cowplot)
 
 source("util/setup.R")
 
-sid = 9
+sid = 8
 
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
@@ -70,8 +70,6 @@ pf = pf %>%
   rename(pres_time = time) %>%
   mutate(sample = sound_events$sample,
          time = sound_events$time)
-
-# pf = pf[1:(nrow(pf)-1),] # subject 8 only
 
 pf %>%
   select(sample,time,condition,response,sound_index) %>%
