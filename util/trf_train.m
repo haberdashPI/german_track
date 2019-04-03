@@ -1,11 +1,12 @@
-function result = trf_train(eeg,stim_info,lags,filter_fn,stim_fn)
+function result = trf_train(prefix,eeg,stim_info,lags,indices,filter_fn,stim_fn)
     sum_model = [];
 
     textprogressbar('training...');
     onCleanup(@() textprogressbar(''));
     N = sum(arrayfun(filter_fn,1:length(eeg.trial)));
     j = 0;
-    for i = 1:length(eeg.trial)
+
+    for i = indices
         if filter_fn(i)
             stim = stim_fn(i);
             % for now, just convert stero signals to mono signals
@@ -19,7 +20,8 @@ function result = trf_train(eeg,stim_info,lags,filter_fn,stim_fn)
             response = response(:,1:min_len)';
             stim_envelope = stim_envelope(1:min_len);
 
-            model = FindTRF(stim_envelope,response,-1,[],[],lags,'Shrinkage');
+            model = cachefn(sprintf('%s_%02d',prefix,i),FindTRF,...
+                stim_envelope,response,-1,[],[],lags,'Shrinkage');
             if isempty(sum_model)
                 sum_model = model;
             else
