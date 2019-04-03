@@ -1,4 +1,4 @@
-function audio = sentence(stim_events,stim_info,index,source)
+function audio = load_other_sentence(stim_events,stim_info,index,source)
     global stimulus_dir;
 
     stim_num = stim_events{index,'sound_index'};
