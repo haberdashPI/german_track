@@ -2,13 +2,13 @@
 base_dir = pwd();
 [base_dir_rest,name] = fileparts(base_dir);
 if strcmp(name,'util')
-  base_dir = base_dir_rest;
-  cd(base_dir);
+    base_dir = base_dir_rest;
+    cd(base_dir);
 end
 
 [~,name] = fileparts(base_dir);
 if ~strcmp(name,'german_track')
-  warning(['Expected root directory to be named "german_track". Was ' base_dir]);
+    warning(['Expected root directory to be named "german_track". Was ' base_dir]);
 end
 
 addpath('analyses');
@@ -47,5 +47,5 @@ for i = 1:length(config)
     end
 end
 if ~match
-  raw_data_dir = config(default_i).raw_data_dir;
+    raw_data_dir = config(default_i).raw_data_dir;
 end

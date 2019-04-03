@@ -6,8 +6,8 @@ library(stringr)
 library(rjson)
 
 if(basename(base_dir) != 'german_track'){ ## TODO: change to 'german_track'
-  warning(paste('Expected root directory to be named "eeg_atten". Was',
-                basename(base_dir)))
+    warning(paste('Expected root directory to be named "eeg_atten". Was',
+                  basename(base_dir)))
 }
 
 analysis_dir = file.path(base_dir,'analyses')

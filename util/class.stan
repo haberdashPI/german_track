@@ -1,36 +1,36 @@
 data{
-  int<lower=1> n_t; // number of time samples
-  int<lower=1> n_k; // number of classes
-  int<lower=1> n_e; // the number of possible envelopes
-  int<lower=1> d_x; // number of x dimensions
-  int<lower=1> d_y; // number of y dimensions
+    int<lower=1> n_t; // number of time samples
+    int<lower=1> n_k; // number of classes
+    int<lower=1> n_e; // the number of possible envelopes
+    int<lower=1> d_x; // number of x dimensions
+    int<lower=1> d_y; // number of y dimensions
 
-  matrix[n_t,d_x] x; // the response to classify/predict
-  matrix[n_t,d_y] y[n_e]; // the possible envelopes the response could be encoding
-  matrix[n_t] k; // the label for each time point
+    matrix[n_t,d_x] x; // the response to classify/predict
+    matrix[n_t,d_y] y[n_e]; // the possible envelopes the response could be encoding
+    matrix[n_t] k; // the label for each time point
 
-  real sigma_x; // plausible error in x
-  real sigma_W; // plausible error in weighting between y and x
+    real sigma_x; // plausible error in x
+    real sigma_W; // plausible error in weighting between y and x
 }
 parameters{
-  matrix[n_y,n_x] W[n_e,n_k]; // the transformation from x -> y for each envelope and class
-  real eps; // error in y
-  real phi[n_e,n_k]; // error in W for each envelope
+    matrix[n_y,n_x] W[n_e,n_k]; // the transformation from x -> y for each envelope and class
+    real eps; // error in y
+    real phi[n_e,n_k]; // error in W for each envelope
 }
 model{
-  eps ~ normal(0,sigma_x);
-  phi ~ normal(0,sigma_W);
+    eps ~ normal(0,sigma_x);
+    phi ~ normal(0,sigma_W);
 
-  for(env in 1:n_e){
-    for(k in 1:n_k){
-      W[env,k] ~ double_exponential(0,phi[env,k]);
-    }
-  }
-  for(i in 1:n_t){
     for(env in 1:n_e){
-      y[env][i] ~ normal(W[env,k[i]]*x[i],eps)
+        for(k in 1:n_k){
+            W[env,k] ~ double_exponential(0,phi[env,k]);
+        }
     }
-  }
+    for(i in 1:n_t){
+        for(env in 1:n_e){
+            y[env][i] ~ normal(W[env,k[i]]*x[i],eps)
+        }
+    }
 }
 
 // NOTES: I think y in this case is a set of possible envelopes
@@ -44,6 +44,6 @@ model{
 // the idea woudl be to start with some example mixture
 // envelopes using the actual audio, and see how well
 // we can predict which envelope (or envelopes) correspond
-// to whcih class... 
+// to whcih class...
 // to start I will have y be a single change deterministically
 // representing one of the envelopes.
