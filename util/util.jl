@@ -1,3 +1,17 @@
 
 function load_subject(file)
-    eegfile = joinpath(data_dir,file)
+    mf = MatFile(file)
+    data = get_variable(mf,:dat)
+    close(mf)
+
+    fdir, _ = splitdir(file)
+    event_file = joinpath(fdir,@sprintf("sound_events_%03d.csv",sid))
+    stim_events = DataFrame(load(event_file))
+
+    sid = parse(Int,match(r"([0-9]+)(_ica)?\.mat$",file)[1])
+
+    data,stim_events,sid
+end
+
+
+

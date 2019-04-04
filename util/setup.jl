@@ -2,6 +2,9 @@ using Pkg; Pkg.activate("..")
 using JSON
 using MATLAB
 using Revise
+using CSVFiles
+using DataFrames
+using Printf
 
 base_dir = realpath(joinpath(@__DIR__,".."))
 _, name = splitdir(base_dir)
@@ -9,7 +12,7 @@ if name != "german_track"
     @warn("Expected root directory to be named 'german_track'. Was '$name'.")
 end
 
-includet(joinpath(@__DIR__,"util","util.jl"))
+includet(joinpath(base_dir,"util","util.jl"))
 
 analysis_dir = joinpath(base_dir,"analyses")
 cache_dir = joinpath(base_dir,"analyses","cache")
