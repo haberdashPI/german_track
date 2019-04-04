@@ -96,8 +96,7 @@ truth of the target modulation or HRTF transformed sentences. These subjects
 data must also be loaded in a slightly different way, which can be found by
 checking out older versions of the repository.
 
-Subject 8 failed to record data for the last trial; probably a bug in 
-the Presentation code (turn of recording too soon?).
+Subjects 8-10: A28 seems to be a bad electrode
 
 Subject 9 used an older version of the trigger codes, and the first test
 trial (of 150) was lost. `read_sound_events.R` must be slighlty modified
