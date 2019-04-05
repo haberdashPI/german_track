@@ -61,11 +61,11 @@ for eeg_file in eeg_files
                     i -> load_other_sentence(stim_events,stim_info,i,male_index)))
 end
 
-save("testobj.csv",DataFrame(
+save(joinpath(cache_dir,"testobj.csv"),DataFrame(
     male_C=vcat(male_C...),
     fem1_C=vcat(fem1_C...),
     fem2_C=vcat(fem2_C...),
     other_male_C=vcat(other_male_C...),
-    sid=repeat()))
+    sid=vcat(sids...)))
 
 alert()
