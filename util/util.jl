@@ -1,7 +1,7 @@
 
 function load_subject(file)
     mf = MatFile(file)
-    data = get_variable(mf,:dat)
+    data = get_mvariable(mf,:dat)
     close(mf)
 
     sid = parse(Int,match(r"([0-9]+)(_ica)?\.mat$",file)[1])
@@ -15,15 +15,29 @@ end
 
 function load_sentence(events,info,stim_i,source_i)
     stim_num = events.sound_index[stim_i]
-    load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+    x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
         @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
+    SampleBuf(x,fs)
 end
 
-function cachefn(file,fn,args...)
+function load_other_sentence(events,info,stim_i,source_i)
+    stim_num = events.sound_index[stim_i]
+    sentences = info["test_block_cfg"]["trial_sentences"][:,source_i]
+    # randomly select one of the stimuli != stim_i
+    selected = rand(vcat(1:stim_num-1,stim_num+1:length(sentences)))
+
+    x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+        @sprintf("trial_%02d_%1d.wav",selected,source_i)))
+    SampleBuf(x,fs)
+end
+
+function cachefn(prefix,fn,args...)
+    file = joinpath(cache_dir,prefix * ".jld2")
     if isfile(file)
         load(file,"contents")
     else
         result = fn(args...)
         save(file,"contents",result)
+        result
     end
 end

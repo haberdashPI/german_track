@@ -1,6 +1,6 @@
 using Pkg; Pkg.activate("..")
 using JSON, MATLAB, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
-    ProgressMeter, JLD2, FileIO
+    ProgressMeter, JLD2, FileIO, Statistics
 
 base_dir = realpath(joinpath(@__DIR__,".."))
 _, name = splitdir(base_dir)
@@ -9,6 +9,7 @@ if name != "german_track"
 end
 
 includet(joinpath(base_dir,"util","util.jl"))
+includet(joinpath(base_dir,"util","trf.jl"))
 
 analysis_dir = joinpath(base_dir,"analyses")
 cache_dir = joinpath(base_dir,"analyses","cache")
