@@ -30,6 +30,9 @@ on your `PATH`, and you must have the package `rjson` installed (i.e.
 
 ## Regenerating the preprocessed data
 
+**NOTE**: This is undergoing a substantial re-write in julia
+to make organizing my analyses easier
+
 There are few steps necessary to regenerate the preprocessed data files
 (which are stored in the `data/` subfolder). In `config.json` you can
 specify the location of the raw BDF files and Presentation *.log files for
