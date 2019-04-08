@@ -1,6 +1,6 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, MATLAB, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
-    ProgressMeter, JLD2, FileIO, Statistics
+    ProgressMeter, JLD2, FileIO, Statistics, Query, Gadfly
 
 base_dir = realpath(joinpath(@__DIR__,".."))
 _, name = splitdir(base_dir)
