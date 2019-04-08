@@ -41,3 +41,14 @@ function cachefn(prefix,fn,args...)
         result
     end
 end
+
+function folds(k,indices)
+    len = length(indices)
+    fold_size = ceil(Int,len / k)
+    map(1:k) do fold
+        test = indices[((fold-1)fold_size+1) : (min(len,fold*fold_size))]
+        train = setdiff(indices,test)
+
+        (train,test)
+    end
+end

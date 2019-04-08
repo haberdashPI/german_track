@@ -57,6 +57,7 @@ for eeg_file in eeg_files
         name = @sprintf("Training SID %02d (Other Male)",sid),
         i -> load_other_sentence(stim_events,stim_info,i,male_index))
 
+    # TODO: use trf_corr_cv, and see how it goes
     push!(male_C,trf_corr(eeg,stim_info,male_model,lags,indices,
                     name = @sprintf("Testing SID %02d (Male)",sid),
                     i -> load_sentence(stim_events,stim_info,i,male_index)))
