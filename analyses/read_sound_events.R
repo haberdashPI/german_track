@@ -5,7 +5,7 @@ library(cowplot)
 
 source("util/setup.R")
 
-sid = 8
+sid = 11
 
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
@@ -71,12 +71,12 @@ pf = pf %>%
     mutate(sample = sound_events$sample,
            time = sound_events$time)
 
-    pf %>%
-        select(sample,time,condition,response,sound_index) %>%
-        write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)))
+pf %>%
+    select(sample,time,condition,response,sound_index) %>%
+    write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)))
 
-    pf %>%
-        mutate(index = as.numeric(condition)) %>%
-        select(time,index,sound_index) %>%
-        write.table(file.path(data_dir,sprintf("sound_events_%03d.txt",sid)),
-                    quote=F,sep="\t",row.names=F)
+pf %>%
+    mutate(index = as.numeric(condition)) %>%
+    select(time,index,sound_index) %>%
+    write.table(file.path(data_dir,sprintf("sound_events_%03d.txt",sid)),
+                quote=F,sep="\t",row.names=F)
