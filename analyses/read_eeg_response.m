@@ -22,7 +22,7 @@ for i = 1:length(eegfiles)
     fs = head.Fs;
 
     baseline = 0;
-    trial_len = 10;
+    trial_len = 10; % conservative upper bound; most trials are ~7 second long
     baseline_samples = floor(baseline*fs);
     trial_len_samples = floor(trial_len*fs);
 

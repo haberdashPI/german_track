@@ -1,5 +1,10 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 
+# - verify that everything works with CV
+# - run over new data
+# - look at additional conditions
+# - train at target switches
+
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
 eeg_files = filter(x -> endswith(x,".mat"),readdir(data_dir))
 
@@ -30,14 +35,17 @@ for eeg_file in eeg_files
 
     male_model = trf_train(@sprintf("trf_object_male_sid_%03d",sid),
         eeg,stim_info,lags,indices,
+        name = @sprintf("Training SID %02d (Male)",sid),
         i -> load_sentence(stim_events,stim_info,i,male_index))
 
     fem1_model = trf_train(@sprintf("trf_object_fem1_sid_%03d",sid),
         eeg,stim_info,lags,indices,
+        name = @sprintf("Training SID %02d (Female 1)",sid),
         i -> load_sentence(stim_events,stim_info,i,fem1_index))
 
     fem2_model = trf_train(@sprintf("trf_object_fem2_sid_%03d",sid),
         eeg,stim_info,lags,indices,
+        name = @sprintf("Training SID %02d (Female 2)",sid),
         i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
     # hold on a sec, we really should load the same other load_other_sentence
@@ -46,18 +54,23 @@ for eeg_file in eeg_files
 
     other_male_model = trf_train(@sprintf("trf_object_other_male_sid_%03d",sid),
         eeg,stim_info,lags,indices,
+        name = @sprintf("Training SID %02d (Other Male)",sid),
         i -> load_other_sentence(stim_events,stim_info,i,male_index))
 
     push!(male_C,trf_corr(eeg,stim_info,male_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Male)",sid),
                     i -> load_sentence(stim_events,stim_info,i,male_index)))
 
     push!(fem1_C,trf_corr(eeg,stim_info,fem1_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Female 1)",sid),
                     i -> load_sentence(stim_events,stim_info,i,fem1_index)))
 
     push!(fem2_C,trf_corr(eeg,stim_info,fem2_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Female 2)",sid),
                     i -> load_sentence(stim_events,stim_info,i,fem2_index)))
 
     push!(other_male_C,trf_corr(eeg,stim_info,other_male_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Other Male)",sid),
                     i -> load_other_sentence(stim_events,stim_info,i,male_index)))
 end
 

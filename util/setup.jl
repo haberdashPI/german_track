@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate("..")
+using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, MATLAB, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
     ProgressMeter, JLD2, FileIO, Statistics
 

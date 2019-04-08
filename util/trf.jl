@@ -1,7 +1,7 @@
-function trf_train(prefix,eeg,stim_info,lags,indices,stim_fn)
+function trf_train(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
     sum_model = Float64[]
 
-    @showprogress for i in indices
+    @showprogress name for i in indices
         stim = stim_fn(i)
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
@@ -36,6 +36,8 @@ function find_envelope(stim,tofs)
 end
 
 function find_trf(envelope,response,dir,lags,method)
+    # XX = X'*X
+
     # envelope = mxarray(envelope)
     # response = mxarray(response)
     lags = collect(lags)
@@ -48,10 +50,10 @@ function predict_trf(dir,response,model,lags,method)
     result
 end
 
-function trf_corr(eeg,stim_info,model,lags,indices,stim_fn)
+function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
     result = zeros(length(indices))
 
-    @showprogress for (j,i) in enumerate(indices)
+    @showprogress name for (j,i) in enumerate(indices)
         stim = stim_fn(i)
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
