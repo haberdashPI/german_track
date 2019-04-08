@@ -35,17 +35,17 @@ for eeg_file in eeg_files
 
     male_model = trf_train(@sprintf("trf_object_male_sid_%03d",sid),
         eeg,stim_info,lags,indices,
-        name = @sprintf("Training SID %02d (Male)",sid),
+        name = @sprintf("Training SID %02d (Male) ",sid),
         i -> load_sentence(stim_events,stim_info,i,male_index))
 
     fem1_model = trf_train(@sprintf("trf_object_fem1_sid_%03d",sid),
         eeg,stim_info,lags,indices,
-        name = @sprintf("Training SID %02d (Female 1)",sid),
+        name = @sprintf("Training SID %02d (Female 1) ",sid),
         i -> load_sentence(stim_events,stim_info,i,fem1_index))
 
     fem2_model = trf_train(@sprintf("trf_object_fem2_sid_%03d",sid),
         eeg,stim_info,lags,indices,
-        name = @sprintf("Training SID %02d (Female 2)",sid),
+        name = @sprintf("Training SID %02d (Female 2) ",sid),
         i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
     # hold on a sec, we really should load the same other load_other_sentence
@@ -54,32 +54,36 @@ for eeg_file in eeg_files
 
     other_male_model = trf_train(@sprintf("trf_object_other_male_sid_%03d",sid),
         eeg,stim_info,lags,indices,
-        name = @sprintf("Training SID %02d (Other Male)",sid),
+        name = @sprintf("Training SID %02d (Other Male) ",sid),
         i -> load_other_sentence(stim_events,stim_info,i,male_index))
 
     # TODO: use trf_corr_cv, and see how it goes
-    push!(male_C,trf_corr(eeg,stim_info,male_model,lags,indices,
-                    name = @sprintf("Testing SID %02d (Male)",sid),
+    push!(male_C,trf_corr_cv(@sprintf("trf_object_male_sid_%03d",sid),eeg,
+                    stim_info,male_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Male) ",sid),
                     i -> load_sentence(stim_events,stim_info,i,male_index)))
 
-    push!(fem1_C,trf_corr(eeg,stim_info,fem1_model,lags,indices,
-                    name = @sprintf("Testing SID %02d (Female 1)",sid),
+    push!(fem1_C,trf_corr_cv(@sprintf("trf_object_male_sid_%03d",sid),eeg,
+                    stim_info,fem1_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Female 1) ",sid),
                     i -> load_sentence(stim_events,stim_info,i,fem1_index)))
 
-    push!(fem2_C,trf_corr(eeg,stim_info,fem2_model,lags,indices,
-                    name = @sprintf("Testing SID %02d (Female 2)",sid),
+    push!(fem2_C,trf_corr_cv(@sprintf("trf_object_male_sid_%03d",sid),eeg,
+                    stim_info,fem2_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Female 2) ",sid),
                     i -> load_sentence(stim_events,stim_info,i,fem2_index)))
 
-    push!(other_male_C,trf_corr(eeg,stim_info,other_male_model,lags,indices,
-                    name = @sprintf("Testing SID %02d (Other Male)",sid),
+    push!(other_male_C,trf_corr_cv(@sprintf("trf_object_male_sid_%03d",sid),eeg,
+                    stim_info,other_male_model,lags,indices,
+                    name = @sprintf("Testing SID %02d (Other Male) ",sid),
                     i -> load_other_sentence(stim_events,stim_info,i,male_index)))
 end
 
-save(joinpath(cache_dir,"testobj.csv"),DataFrame(
-    male_C=vcat(male_C...),
-    fem1_C=vcat(fem1_C...),
-    fem2_C=vcat(fem2_C...),
-    other_male_C=vcat(other_male_C...),
-    sid=vcat(sids...)))
+save(joinpath(cache_dir,"testobj.csv"),
+    DataFrame(male_C=vcat(male_C...),
+        fem1_C=vcat(fem1_C...),
+        fem2_C=vcat(fem2_C...),
+        other_male_C=vcat(other_male_C...),
+        sid=vcat(sids...)))
 
 alert()
