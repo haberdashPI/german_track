@@ -40,12 +40,67 @@ function find_envelope(stim,tofs)
     get_mvariable(:result)
 end
 
+# TODO: debug this debug function
+function simple_lags(x,lags)
+    y = similar(x,size(x,1),size(x,2)*length(lags))
+    for r in axes(x,1)
+        for (l,lag) in enumerate(lags)
+            for c in axes(x,2)
+                r_ = r + lag
+                if r_ <= 0
+                    y[r,(l-1)*length(lags)+c] = 0
+                elseif r_ <= size(x,1)
+                    y[r,(l-1)*length(lags)+c] = 0
+                else
+                    y[r,(l-1)*length(lags)+c] = x[r_,c]
+                end
+            end
+        end
+    end
+
+    y
+end
+
+# TODO: use the debug function to debug this optimized lagouter function
+function lagouter(x,lags::UnitRange)
+    n = length(lags)
+
+    xx = similar(x,size(x,2)*n,size(x,2)*n)
+    x_r = similar(x,size(x,2)*n)
+
+    # left pad (indices < 1)
+    start_offset = max(0,-first(lags))
+    xpad = zeros(eltype(x),size(x,2)*n)
+    for r in 1:start_offset
+        xpad[(start_offset - r + 1):end] =
+            vec(view(x,max(1,r + first(lags)):(r+last(lags)),:))
+        BLAS.syr!('U',1,xpad,xx)
+    end
+
+    # non-padded computations
+    stop_offset = max(0,last(lags))
+    for r in start_offset+1:n-stop_offset
+        BLAS.syr!('U',1,vec(view(x,r .+ lags,:)),xx)
+    end
+
+    # right pad (indices > 1)
+
+    # note: we do this in reverse order so that we can start with the version
+    # of xpad with the most zeros and overwrite the zeros as we go
+    xpad .= 0
+    for r in n:-1:(n-stop_offset+1)
+        xpad[(n - stop_offset + 1):n] =
+            vec(view(x,(r+first(lags)):min(size(x,1),r+last(lags))))
+        BLAS.syr!('U',1,xpad,xx)
+    end
+
+    Symmetric(xx,:U)
+end
+
 function find_trf(envelope,response,dir,lags,method)
-    # L = length(lags)
-    # N = size(response,2)*L
-    # M = size(envelope,2)
-    # XX = Array{Float64,2}(undef,N,N)
-    # for r in axis(response,2), l in 1:length(lags)
+    L = length(lags)
+    N = size(response,2)*L
+    M = size(envelope,2)
 
     # XY = Array{Float64,2}(undef,M,M*length(lags))
 
@@ -79,7 +134,7 @@ function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
         """
         response = get_mvariable(:response)
 
-        pred = predict_trf(-1,response,model*,lags,"Shrinkage")
+        pred = predict_trf(-1,response,model,lags,"Shrinkage")
         result[j] = cor(pred,stim_envelope)
     end
     result
@@ -105,8 +160,8 @@ function trf_corr_cv(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testi
         """
         response = get_mvariable(:response)
 
-        subj_model_file = joinpath(cache_dir,sprintf("%s_%02d.jld2",i))
-        subj_model = load(file,"contents")
+        subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d.jld2",prefix,i))
+        subj_model = load(subj_model_file,"contents")
         n = length(indices)
         r1, r2 = (n-1)/n, 1/n
 
