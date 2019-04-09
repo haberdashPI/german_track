@@ -28,16 +28,12 @@ for eeg_file in eeg_files
 
     eeg, stim_events, sid = load_subject(joinpath(data_dir,eeg_file))
     lags = 0:round(Int,maxlag*mat"$eeg.fsample")
-    seed = Dates.value(Dates.now())
+    seed = hash(eeg_file)
     # test and train generates the same random sequence
     test_rng = MersenneTwister(seed)
     train_rng = MersenneTwister(seed)
 
     for cond in unique(stim_events.condition)
-        # temporary, to mimic behavior without condition iteration
-        # if cond != "object"
-        #     continue
-        # end
 
         indices = findall(stim_events.condition .== cond)
         println("============================================================")
