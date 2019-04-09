@@ -61,21 +61,26 @@ function simple_lags(x,lags)
     y
 end
 
+# TODO: WIP think more about how to do this right
+# (also is this really goign to help?)
 function zero_pad_rows(x::Matrix,indices::UnitRange)
     m = size(x,2)
     n = length(indices)*size(x,2)
     padded = similar(x,n)
     fi = max(0,-first(indices)+2)
-    li = size(x,1) - max(0,last(indices)-size(x,1)+1)
+    li = length(indices) - max(0,last(indices)-size(x,1))
     @show fi
     @show li
     padded[1:((fi-1)m)] .= 0
-    @show ((fi-1)m+1):((li-1)*m+1)
-    @show indices[fi]:indices[li]
-    vals = vec(view(x,indices[fi]:indices[li],:))
-    @show size(vals)
-    padded[((fi-1)m+1):((li-1)*m)] =
-    padded[((li-1)*m+2):end] .= 0
+    start = (fi-1)m+1
+    for ii in fi:li
+        stop = start + size(x,2) - 1
+        padded[start:stop] = view(x,ii,:)
+        start = stop+1
+    end
+    padded[(li*m+1):end] .= 0
+
+    padded
 end
 
 # TODO: use the debug function to debug this optimized lagouter function
