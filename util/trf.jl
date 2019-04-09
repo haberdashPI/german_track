@@ -44,38 +44,18 @@ function find_envelope(stim,tofs)
     get_mvariable(:result)
 end
 
-# TODO: debug this debug function
-function simple_lags(x,lags)
-    y = similar(x,size(x,1),size(x,2)*length(lags))
-    for r in axes(x,1)
-        for (l,lag) in enumerate(lags)
-            for c in axes(x,2)
-                r_ = r + lag
-                if r_ <= 0
-                    y[r,(l-1)*size(x,2)+c] = 0
-                elseif r_ > size(x,1)
-                    y[r,(l-1)*size(x,2)+c] = 0
-                else
-                    y[r,(l-1)*size(x,2)+c] = x[r_,c]
-                end
-            end
-        end
-    end
-
-    y
-end
-
 # TODO: WIP think more about how to do this right
 # (also is this really goign to help?)
-function zero_pad_rows(x::Matrix,indices::UnitRange)
+function zero_pad_rows(x::AbstractMatrix,indices::UnitRange)
     columns = axes(x,2)
     ncol = size(x,2)
     padded = similar(x,size(x,2)*length(indices))
     for (ii,i) in enumerate(indices)
-        if i <= 0 || i > m
-            padded[columns .+ ncol*(ii-1)] = 0
+        @show collect(columns .+ ncol*(ii-1))
+        if i <= 0 || i > size(x,1)
+            padded[columns .+ ncol*(ii-1)] .= 0
         else
-            padded[columns .+ ncol*(ii-1)] = x[ii,:]
+            padded[columns .+ ncol*(ii-1)] .= x[i,:]
         end
     end
 
@@ -85,13 +65,10 @@ end
 # TODO: use the debug function to debug this optimized lagouter function
 function lagouter(x,lags::UnitRange)
     n = length(lags)
-
     xx = similar(x,size(x,2)*n,size(x,2)*n)
-    x_r = similar(x,size(x,2)*n)
 
-    stop_offset = max(0,last(lags))
-    for r in start_offset+1:n-stop_offset
-        BLAS.syr!('U',1,zero_pad_rows(x,r .+ lags),xx)
+    for r in axes(x,1)
+        BLAS.syr!('U',1.0,zero_pad_rows(x,r .+ lags),xx)
     end
 
     Symmetric(xx,:U)
