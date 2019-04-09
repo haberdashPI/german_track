@@ -3,7 +3,11 @@
 # I don't really need the telluride toolbox to do what I'm doing right now and
 # I can optimize it better if it's all in julia
 
-function trf_train(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
+function trf_train(prefix,args...;kwds...)
+    cachefn(@sprintf("%s_avg",prefix),trf_train,args...;kwds...)
+end
+
+function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
     sum_model = Float64[]
 
     @showprogress name for i in indices
@@ -64,21 +68,16 @@ end
 # TODO: WIP think more about how to do this right
 # (also is this really goign to help?)
 function zero_pad_rows(x::Matrix,indices::UnitRange)
-    m = size(x,2)
-    n = length(indices)*size(x,2)
-    padded = similar(x,n)
-    fi = max(0,-first(indices)+2)
-    li = length(indices) - max(0,last(indices)-size(x,1))
-    @show fi
-    @show li
-    padded[1:((fi-1)m)] .= 0
-    start = (fi-1)m+1
-    for ii in fi:li
-        stop = start + size(x,2) - 1
-        padded[start:stop] = view(x,ii,:)
-        start = stop+1
+    columns = axes(x,2)
+    ncol = size(x,2)
+    padded = similar(x,size(x,2)*length(indices))
+    for (ii,i) in enumerate(indices)
+        if i <= 0 || i > m
+            padded[columns .+ ncol*(ii-1)] = 0
+        else
+            padded[columns .+ ncol*(ii-1)] = x[ii,:]
+        end
     end
-    padded[(li*m+1):end] .= 0
 
     padded
 end
@@ -99,9 +98,9 @@ function lagouter(x,lags::UnitRange)
 end
 
 function find_trf(envelope,response,dir,lags,method)
-    L = length(lags)
-    N = size(response,2)*L
-    M = size(envelope,2)
+    # L = length(lags)
+    # N = size(response,2)*L
+    # M = size(envelope,2)
 
     # XY = Array{Float64,2}(undef,M,M*length(lags))
 

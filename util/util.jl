@@ -20,11 +20,11 @@ function load_sentence(events,info,stim_i,source_i)
     SampleBuf(x,fs)
 end
 
-function load_other_sentence(events,info,stim_i,source_i)
+function load_other_sentence(events,info,stim_i,source_i;rng=GLOBAL_RNG)
     stim_num = events.sound_index[stim_i]
     sentences = info["test_block_cfg"]["trial_sentences"][:,source_i]
     # randomly select one of the stimuli != stim_i
-    selected = rand(vcat(1:stim_num-1,stim_num+1:length(sentences)))
+    selected = rand(rng,vcat(1:stim_num-1,stim_num+1:length(sentences)))
 
     x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
         @sprintf("trial_%02d_%1d.wav",selected,source_i)))
