@@ -48,17 +48,34 @@ function simple_lags(x,lags)
             for c in axes(x,2)
                 r_ = r + lag
                 if r_ <= 0
-                    y[r,(l-1)*length(lags)+c] = 0
-                elseif r_ <= size(x,1)
-                    y[r,(l-1)*length(lags)+c] = 0
+                    y[r,(l-1)*size(x,2)+c] = 0
+                elseif r_ > size(x,1)
+                    y[r,(l-1)*size(x,2)+c] = 0
                 else
-                    y[r,(l-1)*length(lags)+c] = x[r_,c]
+                    y[r,(l-1)*size(x,2)+c] = x[r_,c]
                 end
             end
         end
     end
 
     y
+end
+
+function zero_pad_rows(x::Matrix,indices::UnitRange)
+    m = size(x,2)
+    n = length(indices)*size(x,2)
+    padded = similar(x,n)
+    fi = max(0,-first(indices)+2)
+    li = size(x,1) - max(0,last(indices)-size(x,1)+1)
+    @show fi
+    @show li
+    padded[1:((fi-1)m)] .= 0
+    @show ((fi-1)m+1):((li-1)*m+1)
+    @show indices[fi]:indices[li]
+    vals = vec(view(x,indices[fi]:indices[li],:))
+    @show size(vals)
+    padded[((fi-1)m+1):((li-1)*m)] =
+    padded[((li-1)*m+2):end] .= 0
 end
 
 # TODO: use the debug function to debug this optimized lagouter function
@@ -68,30 +85,9 @@ function lagouter(x,lags::UnitRange)
     xx = similar(x,size(x,2)*n,size(x,2)*n)
     x_r = similar(x,size(x,2)*n)
 
-    # left pad (indices < 1)
-    start_offset = max(0,-first(lags))
-    xpad = zeros(eltype(x),size(x,2)*n)
-    for r in 1:start_offset
-        xpad[(start_offset - r + 1):end] =
-            vec(view(x,max(1,r + first(lags)):(r+last(lags)),:))
-        BLAS.syr!('U',1,xpad,xx)
-    end
-
-    # non-padded computations
     stop_offset = max(0,last(lags))
     for r in start_offset+1:n-stop_offset
-        BLAS.syr!('U',1,vec(view(x,r .+ lags,:)),xx)
-    end
-
-    # right pad (indices > 1)
-
-    # note: we do this in reverse order so that we can start with the version
-    # of xpad with the most zeros and overwrite the zeros as we go
-    xpad .= 0
-    for r in n:-1:(n-stop_offset+1)
-        xpad[(n - stop_offset + 1):n] =
-            vec(view(x,(r+first(lags)):min(size(x,1),r+last(lags))))
-        BLAS.syr!('U',1,xpad,xx)
+        BLAS.syr!('U',1,zero_pad_rows(x,r .+ lags),xx)
     end
 
     Symmetric(xx,:U)
