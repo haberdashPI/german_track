@@ -27,7 +27,7 @@ for eeg_file in eeg_files
     global df
 
     eeg, stim_events, sid = load_subject(joinpath(data_dir,eeg_file))
-    lags = 0:round(Int,maxlag*mat"$eeg.fsample")
+    lags = 0:round(Int,maxlag*samplerate(eeg))
     seed = hash(eeg_file)
     # test and train generates the same random sequence
     test_rng = MersenneTwister(seed)

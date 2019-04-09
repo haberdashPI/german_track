@@ -7,7 +7,9 @@ function trf_train(prefix,args...;kwds...)
     cachefn(@sprintf("%s_avg",prefix),trf_train,args...;kwds...)
 end
 
-function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
+function trf_train(prefix,)
+
+function trf_train(prefix,eeg::MatEEGData,stim_info,lags,indices,stim_fn;name="Training")
     sum_model = Float64[]
 
     @showprogress name for i in indices
@@ -16,8 +18,8 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
             stim = sum(stim,dims=2)
         end
         # TODO: put this inside find trf
-        stim_envelope = find_envelope(stim,mat"$eeg.fsample")
-        mat"response = $eeg.trial{$i};"
+        stim_envelope = find_envelope(stim,samplerate(eeg))
+        mat"response = $(eeg.data).trial{$i};"
 
         mat"""
         min_len = min(size($stim_envelope,1),size(response,2));
@@ -40,6 +42,23 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
 end
 
 function find_envelope(stim,tofs)
+    N = round(Int,size(stim,1)/samplerate(stim)*tofs)
+    result = zeros(N)
+    window_size = 1.5/tofs
+    energy = stim.^2
+    toindex(t) = clamp(round(Int,t*samplerate(stim)),1,size(stim,1))
+
+    for i in 1:N
+        t = i/tofs
+        from = toindex(t-window_size)
+        to = toindex(t+window_size)
+        result[i] = mean(view(energy,from:to,:))
+    end
+
+    result
+end
+
+function old_find_envelope(stim,tofs)
     mat"result = CreateLoudnessFeature($(stim.data),$(samplerate(stim)),$tofs)"
     get_mvariable(:result)
 end
@@ -51,7 +70,6 @@ function zero_pad_rows(x::AbstractMatrix,indices::UnitRange)
     ncol = size(x,2)
     padded = similar(x,size(x,2)*length(indices))
     for (ii,i) in enumerate(indices)
-        @show collect(columns .+ ncol*(ii-1))
         if i <= 0 || i > size(x,1)
             padded[columns .+ ncol*(ii-1)] .= 0
         else
@@ -63,22 +81,45 @@ function zero_pad_rows(x::AbstractMatrix,indices::UnitRange)
 end
 
 # TODO: use the debug function to debug this optimized lagouter function
-function lagouter(x,lags::UnitRange)
-    n = length(lags)
-    xx = similar(x,size(x,2)*n,size(x,2)*n)
 
+function withlags(x,lags)
+    y = similar(x,size(x,1),size(x,2)*length(lags))
     for r in axes(x,1)
-        BLAS.syr!('U',1.0,zero_pad_rows(x,r .+ lags),xx)
+        for (l,lag) in enumerate(lags)
+            for c in axes(x,2)
+                r_ = r + lag
+                if r_ <= 0
+                    y[r,(l-1)*size(x,2)+c] = 0
+                elseif r_ > size(x,1)
+                    y[r,(l-1)*size(x,2)+c] = 0
+                else
+                    y[r,(l-1)*size(x,2)+c] = x[r_,c]
+                end
+            end
+        end
     end
 
-    Symmetric(xx,:U)
+    y
 end
 
-function find_trf(envelope,response,dir,lags,method)
+
+function find_trf(stimulus,response,dir,lags;K=0.2)
     # L = length(lags)
     # N = size(response,2)*L
     # M = size(envelope,2)
+    xlag = withlags(stimulus,lags)
+    XX = Symmetric(BLAS.syrk('U','N',1.0,xlag),:U)
+    XX = (1-K).*XX .+ I*K*mean(eigvals(XX))
+    XY = envelope'xlag
+    result = XX\XY'
+    # [(feat x lag) x (feat x lag)] * [(featre x lag) x channels] = [(feat x lag) x channels]
+    # XX*result = XY'
 
+    result = reshape(result,length(lags),size(stimulus,2),size(response,2))
+    permutedims!(result,(1,3,2))
+end
+
+function find_trf(stimulus,response::MxArray,dir,lags)
     # XY = Array{Float64,2}(undef,M,M*length(lags))
 
     # envelope = mxarray(envelope)
