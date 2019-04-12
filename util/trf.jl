@@ -4,7 +4,7 @@
 # I can optimize it better if it's all in julia
 
 function trf_train(prefix,args...;kwds...)
-    cachefn(@sprintf("%s_avg",prefix),trf_train,args...;kwds...)
+    cachefn(@sprintf("%s_avg",prefix),trf_train_,prefix,args...;kwds...)
 end
 
 function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
@@ -12,22 +12,13 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
 
     @showprogress name for i in indices
         stim = stim_fn(i)
+        # for now, make signal monaural
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        # TODO: put this inside find trf
-        stim_envelope = find_envelope(stim,mat"$eeg.fsample")
-        mat"response = $eeg.trial{$i};"
 
-        mat"""
-        min_len = min(size($stim_envelope,1),size(response,2));
-        response = response(:,1:min_len);
-        $stim_envelope = $stim_envelope(1:min_len);
-        """
-        response = get_mvariable(:response)
-
-        model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,
-            stim_envelope,response,-1,lags,"Shrinkage")
+        model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,stim,eeg,i,
+            -1,lags,"Shrinkage")
         # model = find_trf(stim_envelope,response,-1,lags,"Shrinkage")
         if isempty(sum_model)
             sum_model = model
@@ -39,52 +30,50 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
     sum_model
 end
 
+# tried to make things faster by computing envelope in julia (to avoid copying
+# the entire wav file): doesn't seem to matter much
 function find_envelope(stim,tofs)
-    mat"result = CreateLoudnessFeature($(stim.data),$(samplerate(stim)),$tofs)"
-    get_mvariable(:result)
-end
+    N = round(Int,size(stim,1)/samplerate(stim)*tofs)
+    result = zeros(N)
+    window_size = 1.5/tofs
+    toindex(t) = clamp(round(Int,t*samplerate(stim)),1,size(stim,1))
 
-# TODO: WIP think more about how to do this right
-# (also is this really goign to help?)
-function zero_pad_rows(x::AbstractMatrix,indices::UnitRange)
-    columns = axes(x,2)
-    ncol = size(x,2)
-    padded = similar(x,size(x,2)*length(indices))
-    for (ii,i) in enumerate(indices)
-        @show collect(columns .+ ncol*(ii-1))
-        if i <= 0 || i > size(x,1)
-            padded[columns .+ ncol*(ii-1)] .= 0
-        else
-            padded[columns .+ ncol*(ii-1)] .= x[i,:]
-        end
+    for i in 1:N
+        t = i/tofs
+        from = toindex(t-window_size)
+        to = toindex(t+window_size)
+        result[i] = mean(x^2 for x in view(stim.data,from:to,:))
     end
 
-    padded
+    result
 end
 
-# TODO: use the debug function to debug this optimized lagouter function
-function lagouter(x,lags::UnitRange)
-    n = length(lags)
-    xx = similar(x,size(x,2)*n,size(x,2)*n)
+# function find_envelope(stim,tofs)
+#     mat "result = CreateLoudnessFeature($(stim.data),$(samplerate(stim)),$tofs)"
+#     get_mvariable(:result)
+# end
 
-    for r in axes(x,1)
-        BLAS.syr!('U',1.0,zero_pad_rows(x,r .+ lags),xx)
-    end
+function find_signals(stim,eeg,i)
+    # envelope and neural response
+    stim_envelope = find_envelope(stim,mat"$eeg.fsample")
+    mat" response = $eeg.trial{$i}; "
 
-    Symmetric(xx,:U)
+    # find shared length
+    rsize = mat" size(response,2) "
+    min_len = min(size(stim_envelope,1),trunc(Int,rsize));
+
+    # trim the the signals
+    mat" response = response(:,1:$min_len); "
+    response = get_mvariable(:response)
+    stim_envelope = stim_envelope[1:min_len]
+
+    stim_envelope,response
 end
 
-function find_trf(envelope,response,dir,lags,method)
-    # L = length(lags)
-    # N = size(response,2)*L
-    # M = size(envelope,2)
-
-    # XY = Array{Float64,2}(undef,M,M*length(lags))
-
-    # envelope = mxarray(envelope)
-    # response = mxarray(response)
+function find_trf(stim,eeg,i,dir,lags,method)
+    stim_envelope,response = find_signals(stim,eeg,i)
     lags = collect(lags)
-    mat"$result = FindTRF($envelope,$response',-1,[],[],($lags)',$method)"
+    mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method)"
     result
 end
 
@@ -101,15 +90,7 @@ function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        stim_envelope = find_envelope(stim,mat"$eeg.fsample")
-        mat"response = $eeg.trial{$i};"
-
-        mat"""
-        min_len = min(size($stim_envelope,1),size(response,2));
-        response = response(:,1:min_len);
-        $stim_envelope = $stim_envelope(1:min_len);
-        """
-        response = get_mvariable(:response)
+        stim_envelope, response = find_signals(stim,eeg,i)
 
         pred = predict_trf(-1,response,model,lags,"Shrinkage")
         result[j] = cor(pred,stim_envelope)
@@ -127,15 +108,7 @@ function trf_corr_cv(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testi
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        stim_envelope = find_envelope(stim,mat"$eeg.fsample")
-        mat"response = $eeg.trial{$i};"
-
-        mat"""
-        min_len = min(size($stim_envelope,1),size(response,2));
-        response = response(:,1:min_len);
-        $stim_envelope = $stim_envelope(1:min_len);
-        """
-        response = get_mvariable(:response)
+        stim_envelope,response = find_signals(stim,eeg,i)
 
         subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d.jld2",prefix,i))
         subj_model = load(subj_model_file,"contents")

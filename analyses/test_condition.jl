@@ -6,7 +6,7 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 # - train at target switches
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> endswith(x,".mat"),readdir(data_dir))
+eeg_files = filter(x -> endswith(x,".ma"*"t"),readdir(data_dir))
 
 maxlag = 0.25
 const male_index = 1
@@ -30,8 +30,6 @@ for eeg_file in eeg_files
     lags = 0:round(Int,maxlag*mat"$eeg.fsample")
     seed = hash(eeg_file)
     # test and train generates the same random sequence
-    test_rng = MersenneTwister(seed)
-    train_rng = MersenneTwister(seed)
 
     for cond in unique(stim_events.condition)
 
@@ -56,12 +54,6 @@ for eeg_file in eeg_files
             name = @sprintf("Training SID %02d (Female 2): ",sid),
             i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
-        other_male_model = trf_train(@sprintf("trf_%s_other_male_sid_%03d",cond,sid),
-            eeg,stim_info,lags,indices,
-            name = @sprintf("Training SID %02d (Other Male): ",sid),
-            i -> load_other_sentence(stim_events,stim_info,i,male_index,
-                    rng=train_rng))
-
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Male): ",sid),
@@ -84,10 +76,9 @@ for eeg_file in eeg_files
                 speaker="fem2", corr = C))
 
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
-                stim_info,other_male_model,lags,indices,
+                stim_info,male_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Other Male): ",sid),
-                i -> load_other_sentence(stim_events,stim_info,i,male_index,
-                        rng=test_rng))
+                i -> load_other_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="other_male", corr = C))
     end
