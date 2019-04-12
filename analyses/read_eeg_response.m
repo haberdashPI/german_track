@@ -52,6 +52,7 @@ for i = 1:length(eegfiles)
     eeg_data = ft_preprocessing(cfg);
 
     % downsample the trials to 64Hz
+    % (NOTE: field trip might be assuming continuous data; check on that)
     cfg = [];
     cfg.resamplefs = 64;
     eeg_data = ft_resampledata(cfg,eeg_data);
