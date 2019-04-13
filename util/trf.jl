@@ -98,9 +98,11 @@ function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
     result
 end
 
+function trf_corr_cv(prefix,args...;kwds...)
+    cachefn(@sprintf("%s_corr",prefix),trf_train_,prefix,args...;kwds...)
+end
 
-
-function trf_corr_cv(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
+function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
     result = zeros(length(indices))
 
     @showprogress name for (j,i) in enumerate(indices)
