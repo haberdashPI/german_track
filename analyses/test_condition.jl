@@ -1,8 +1,6 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 
-# - verify that everything works with CV
-# - run over new data
-# - look at additional conditions
+# - train on correct trials only
 # - train at target switches
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
