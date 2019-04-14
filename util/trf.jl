@@ -3,8 +3,9 @@
 # I don't really need the telluride toolbox to do what I'm doing right now and
 # I can optimize it better if it's all in julia
 
-function trf_train(prefix,args...;kwds...)
-    cachefn(@sprintf("%s_avg",prefix),trf_train_,prefix,args...;kwds...)
+function trf_train(prefix,args...;group_suffix="",kwds...)
+    cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
+        trf_train_,prefix,args...;kwds...)
 end
 
 function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
@@ -98,8 +99,9 @@ function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
     result
 end
 
-function trf_corr_cv(prefix,args...;kwds...)
-    cachefn(@sprintf("%s_corr",prefix),trf_train_,prefix,args...;kwds...)
+function trf_corr_cv(prefix,args...;group_suffix="",kwds...)
+    cachefn(@sprintf("%s_corr%s",prefix,group_suffix),
+        trf_corr_cv_,prefix,args...;kwds...)
 end
 
 function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testing")

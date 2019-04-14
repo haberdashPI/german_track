@@ -14,7 +14,6 @@ male_C = []
 fem1_C = []
 fem2_C = []
 other_male_C = []
-sids = []
 K = 10
 
 df = DataFrame(sid = Int[],condition = String[], speaker = String[],
@@ -28,7 +27,7 @@ for eeg_file in eeg_files
     # 3 == no
     stim_events[:target_present] =
         stim_info["test_block_cfg"]["target_times"][stim_events.sound_index] .> 0
-    stim_events[:corect] = stim_events.target_present .==
+    stim_events[:correct] = stim_events.target_present .==
         (stim_events.response .== 2)
 
     lags = 0:round(Int,maxlag*mat"$eeg.fsample")
@@ -43,53 +42,61 @@ for eeg_file in eeg_files
         println("============================================================")
         println("Condition: $cond")
 
-        push!(sids,fill(sid,length(indices)))
-
         male_model = trf_train(@sprintf("trf_%s_male_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Male): ",sid),
+            group_suffix = "_correct",
             i -> load_sentence(stim_events,stim_info,i,male_index))
 
         fem1_model = trf_train(@sprintf("trf_%s_fem1_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Female 1): ",sid),
+            group_suffix = "_correct",
             i -> load_sentence(stim_events,stim_info,i,fem1_index))
 
         fem2_model = trf_train(@sprintf("trf_%s_fem2_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Female 2): ",sid),
+            group_suffix = "_correct",
             i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,test,
                 name = @sprintf("Testing SID %02d (Male): ",sid),
+                group_suffix = "_correct",
                 i -> load_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
-                speaker="male", corr = C))
+                speaker="male", corr = C,
+                test_correct = stim_events.correct[test]))
 
         C = trf_corr_cv(@sprintf("trf_%s_fem1_sid_%03d",cond,sid),eeg,
                 stim_info,fem1_model,lags,test,
                 name = @sprintf("Testing SID %02d (Female 1): ",sid),
+                group_suffix = "_correct",
                 i -> load_sentence(stim_events,stim_info,i,fem1_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
-                speaker="fem1", corr = C))
+                speaker="fem1", corr = C,
+                test_correct = stim_events.correct[test]))
 
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
                 stim_info,fem2_model,lags,test,
                 name = @sprintf("Testing SID %02d (Female 2): ",sid),
+                group_suffix = "_correct",
                 i -> load_sentence(stim_events,stim_info,i,fem2_index))
             df = vcat(df,DataFrame(sid = sid, condition = cond,
-                speaker="fem2", corr = C))
+                speaker="fem2", corr = C,
+                test_correct = stim_events.correct[test]))
 
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,test,
                 name = @sprintf("Testing SID %02d (Other Male): ",sid),
+                group_suffix = "_correct",
                 i -> load_other_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="other_male", corr = C,
-                test_correct = stim_events.corect))
+                test_correct = stim_events.correct[test]))
     end
 end
-save(joinpath(cache_dir,"testcond.csv"),df)
+save(joinpath(cache_dir,"test_correct.csv"),df)
 
 alert()
