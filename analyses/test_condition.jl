@@ -66,7 +66,7 @@ for eeg_file in eeg_files
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="fem1", corr = C))
 
-        C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
+        C = trf_corr_cv(@sprintf("trf_%s_fem2_sid_%03d",cond,sid),eeg,
                 stim_info,fem2_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Female 2): ",sid),
                 i -> load_sentence(stim_events,stim_info,i,fem2_index))
@@ -76,6 +76,7 @@ for eeg_file in eeg_files
         C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Other Male): ",sid),
+                group_suffix = "_other",
                 i -> load_other_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="other_male", corr = C))
