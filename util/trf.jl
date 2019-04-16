@@ -55,25 +55,72 @@ end
 #     get_mvariable(:result)
 # end
 
+toindex(x,min,fs) = clamp.(round.(Int,x.*fs),1,min)
+select_bounds(x,::Nothing,min,fs,dim) = x
+function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim) =
+    start,stop = toindex.((start,stop),min,fs)
+    if dim == 1
+        x[start:stop,:]
+    elseif dim ==2
+        x[:,start:stop]
+    else
+        error("Unspported dimension $dim.")
+    end
+end
+
+function select_bounds(x::MxArray,(start,stop)::Tuple,min,fs,dim)
+    start,stop = toindex.((start,stop),min,fs)
+    if dim == 1
+        mat" x = $x($start:$stop,:); "
+    elseif dim == 2
+        mat" x = $x(:,$start:$stop); "
+    else
+        error("Unspported dimension $dim.")
+    end
+
+    get_mvariable(:x)
+end
+
+
+function select_bounds(x::AbstractArray,bounds::Array{Tuple},min,fs,dim)
+    if dim == 1
+        vcat(select_bounds.(Ref(x),bounds,min,fs,dim)...)
+    elseif dim == 2
+        hcat(select_bounds.(Ref(x),bounds,min,fs,dim)...)
+    else
+        error("Unspported dimension $dim.")
+    end
+end
+
+function select_bounds(x::MxArray,bounds::Array{Tuple},min,fs,dim)
+    bounds = select_bounds.(Ref(x),bounds,min,fs,dim)
+    mat" indices = []; "
+    for bound in bounds
+        mat" indices = [indices $(bound[1]):$(bound[2])]; "
+    end
+    if dim == 1
+        mat" x = $x(indices,:) "
+    elseif dim == 2
+        mat" x = $x(:,indices) "
+    else
+        error("Unspported dimension $dim.")
+    end
+
+    get_mvariable(:x)
+end
+
 function find_signals(stim,eeg,i,bounds=nothing)
     # envelope and neural response
     fs = mat"$eeg.fsample"
     stim_envelope = find_envelope(stim,fs)
+
     mat" response = $eeg.trial{$i}; "
-
-    # find shared length
-    rsize = mat" size(response,2) "
-    min_len = min(size(stim_envelope,1),trunc(Int,rsize));
-    if isnothing(bounds)
-        start,stop = 10,min_len
-    else
-        start, stop = clamp.(round.(Int,bounds.*fs), 1, min_len)
-    end
-
-    # trim the the signals
-    mat" response = response(:,$start:$stop); "
     response = get_mvariable(:response)
-    stim_envelope = stim_envelope[start:stop]
+
+    min_len = min(size(stim_envelope,1),trunc(Int,size(response,2)));
+
+    stim_envelope = select_bounds(stim_envelope,bounds,min_len,fs,1)
+    response = select_bounds(response,bounds,size(response,2),min_len,fs,2)
 
     stim_envelope,response
 end
