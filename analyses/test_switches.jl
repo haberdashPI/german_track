@@ -21,32 +21,10 @@ K = 10
 df = DataFrame(sid = Int[],condition = String[], speaker = String[],
         corr = Float64[],test_correct = Bool[])
 
-window = (-1,2)
-suffix = "switches"
 fs = convert(Float64,stim_info["fs"])
 switch_times =
     convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
-train_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
-
-function remove_switches(switches,max_time;wait_time=0.5)
-    result = Array{Tuple{Float64,Float64}}(undef,length(switches)+1)
-
-    start = 0
-    i = 0
-    for switch in switches
-        if start < switch
-            i = i+1
-            result[i] = (start,switch)
-        end
-        start = switch+wait_time
-    end
-    if start < max_time
-        i = i+1
-        result[i] = (start,max_time)
-    end
-
-    view(result,1:i)
-end
+switch_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
 
 for eeg_file in eeg_files
     global df
@@ -70,68 +48,67 @@ for eeg_file in eeg_files
         println("Condition: $cond")
 
         indices = findall(stim_events.condition .== cond)
+        bounds = switch_bounds[stim_events.sound_index]
 
-        male_model = trf_train(@sprintf("trf_%s_male_sid_switch_%03d",cond,sid),
+        male_model = trf_train(@sprintf("trf_%s_male_switch_sid_%03d",cond,sid),
             eeg,stim_info,lags,indices,
             name = @sprintf("Training SID %02d (Male): ",sid),
-            bounds = train_bounds,
-            group_suffix = "_"*suffix,
+            bounds = bounds,
             i -> load_sentence(stim_events,stim_info,i,male_index))
 
-        fem1_model = trf_train(@sprintf("trf_%s_fem1_sid_switch_%03d",cond,sid),
+        fem1_model = trf_train(@sprintf("trf_%s_fem1_switch_sid_%03d",cond,sid),
             eeg,stim_info,lags,indices,
             name = @sprintf("Training SID %02d (Female 1): ",sid),
-            bounds = train_bounds,
-            group_suffix = "_"*suffix,
+            bounds = bounds,
             i -> load_sentence(stim_events,stim_info,i,fem1_index))
 
-        fem2_model = trf_train(@sprintf("trf_%s_fem2_sid_switch_%03d",cond,sid),
+        fem2_model = trf_train(@sprintf("trf_%s_fem2_switch_sid_%03d",cond,sid),
             eeg,stim_info,lags,indices,
             name = @sprintf("Training SID %02d (Female 2): ",sid),
-            bounds = train_bounds,
-            group_suffix = "_"*suffix,
+            bounds = bounds,
             i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
         # should these also be bounded by the target?
 
-        C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
-                stim_info,male_model,lags,test,
+        C = trf_corr_cv(@sprintf("trf_%s_male_switch_sid_%s03d",cond,sid),eeg,
+                stim_info,male_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Male): ",sid),
-                group_suffix = "_"*suffix,
+                bounds = bounds,
                 i -> load_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="male", corr = C,
-                test_correct = stim_events.correct[test]))
+                test_correct = stim_events.correct[indices]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_fem1_sid_%03d",cond,sid),eeg,
-                stim_info,fem1_model,lags,test,
+        C = trf_corr_cv(@sprintf("trf_%s_fem1_switch_sid%03d",cond,sid),eeg,
+                stim_info,fem1_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Female 1): ",sid),
-                group_suffix = "_"*suffix,
+                bounds = bounds,
                 i -> load_sentence(stim_events,stim_info,i,fem1_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="fem1", corr = C,
-                test_correct = stim_events.correct[test]))
+                test_correct = stim_events.correct[indices]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_fem2_sid_%03d",cond,sid),eeg,
-                stim_info,fem2_model,lags,test,
+        C = trf_corr_cv(@sprintf("trf_%s_fem2_switch_sid%03d",cond,sid),eeg,
+                stim_info,fem2_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Female 2): ",sid),
-                group_suffix = "_"*suffix,
+                bounds = bounds,
                 i -> load_sentence(stim_events,stim_info,i,fem2_index))
             df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="fem2", corr = C,
-                test_correct = stim_events.correct[test]))
+                test_correct = stim_events.correct[indices]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
-                stim_info,male_model,lags,test,
+        C = trf_corr_cv(@sprintf("trf_%s_male_switch_sid%03d",cond,sid),eeg,
+                stim_info,male_model,lags,indices,
                 name = @sprintf("Testing SID %02d (Other Male): ",sid),
-                group_suffix = "_other_"*suffix,
+                group_suffix = "_other",
+                bounds = bounds,
                 i -> load_other_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="other_male", corr = C,
-                test_correct = stim_events.correct[test]))
+                test_correct = stim_events.correct[indices]))
     end
 end
-save(joinpath(cache_dir,"test_target.csv"),df)
+save(joinpath(cache_dir,"test_switches.csv"),df)
 
 alert()
 

@@ -52,3 +52,23 @@ function folds(k,indices)
         (train,test)
     end
 end
+
+function remove_switches(switches,max_time;wait_time=0.5)
+    result = Array{Tuple{Float64,Float64}}(undef,length(switches)+1)
+
+    start = 0
+    i = 0
+    for switch in switches
+        if start < switch
+            i = i+1
+            result[i] = (start,switch)
+        end
+        start = switch+wait_time
+    end
+    if start < max_time
+        i = i+1
+        result[i] = (start,max_time)
+    end
+
+    view(result,1:i)
+end

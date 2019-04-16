@@ -57,7 +57,7 @@ end
 
 toindex(x,min,fs) = clamp.(round.(Int,x.*fs),1,min)
 select_bounds(x,::Nothing,min,fs,dim) = x
-function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim) =
+function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim)
     start,stop = toindex.((start,stop),min,fs)
     if dim == 1
         x[start:stop,:]
@@ -82,7 +82,7 @@ function select_bounds(x::MxArray,(start,stop)::Tuple,min,fs,dim)
 end
 
 
-function select_bounds(x::AbstractArray,bounds::Array{Tuple},min,fs,dim)
+function select_bounds(x::AbstractArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
     if dim == 1
         vcat(select_bounds.(Ref(x),bounds,min,fs,dim)...)
     elseif dim == 2
@@ -92,11 +92,11 @@ function select_bounds(x::AbstractArray,bounds::Array{Tuple},min,fs,dim)
     end
 end
 
-function select_bounds(x::MxArray,bounds::Array{Tuple},min,fs,dim)
-    bounds = select_bounds.(Ref(x),bounds,min,fs,dim)
+function select_bounds(x::MxArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
     mat" indices = []; "
-    for bound in bounds
-        mat" indices = [indices $(bound[1]):$(bound[2])]; "
+    for (start,stop) in bounds
+        start,stop = toindex.((start,stop),min,fs)
+        mat" indices = [indices $start:$stop]; "
     end
     if dim == 1
         mat" x = $x(indices,:) "
@@ -120,13 +120,19 @@ function find_signals(stim,eeg,i,bounds=nothing)
     min_len = min(size(stim_envelope,1),trunc(Int,size(response,2)));
 
     stim_envelope = select_bounds(stim_envelope,bounds,min_len,fs,1)
-    response = select_bounds(response,bounds,size(response,2),min_len,fs,2)
+    response = select_bounds(response,bounds,min_len,fs,2)
 
     stim_envelope,response
 end
 
-function find_trf(stim,eeg,i,dir,lags,method,bounds=nothing)
-    stim_envelope,response = find_signals(stim,eeg,i,bounds)
+function find_trf(stim,eeg,i,dir,lags,method,bounds=nothing;
+        found_signals=nothing)
+    if isnothing(found_signals)
+        stim_envelope,response = find_signals(stim,eeg,i,bounds)
+    else
+        stim_envelope,response = found_signals
+    end
+
     lags = collect(lags)
     mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method)"
     result
@@ -158,7 +164,14 @@ function trf_corr_cv(prefix,args...;group_suffix="",kwds...)
         trf_corr_cv_,prefix,args...;kwds...)
 end
 
-function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
+function single(x)
+    @assert(length(x) == 1)
+    first(x)
+end
+
+function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
+        bounds=nothing,name="Testing")
+
     result = zeros(length(indices))
 
     @showprogress name for (j,i) in enumerate(indices)
@@ -166,17 +179,19 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Test
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        stim_envelope,response = find_signals(stim,eeg,i)
+        bounds_i = isnothing(bounds) ? nothing : bounds[i]
+        stim_envelope,response = find_signals(stim,eeg,i,bounds_i)
 
         subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d.jld2",prefix,i))
         # subj_model = load(subj_model_file,"contents")
-        subj_model = cachefn(subj_model_file,find_trf,stim,eeg,i,-1,lags,"Shrinkage")
+        subj_model = cachefn(subj_model_file,find_trf,stim,eeg,i,-1,lags,
+            "Shrinkage",bounds_i,found_signals = (stim_envelope,response))
         n = length(indices)
         r1, r2 = (n-1)/n, 1/n
 
         pred = predict_trf(-1,response,(r1.*model .- r2.*subj_model),lags,
             "Shrinkage")
-        result[j] = cor(pred,stim_envelope)
+        result[j] = single(cor(pred,stim_envelope))
     end
     result
 end
