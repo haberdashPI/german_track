@@ -8,7 +8,8 @@ function trf_train(prefix,args...;group_suffix="",kwds...)
         trf_train_,prefix,args...;kwds...)
 end
 
-function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
+function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training",
+        bounds=nothing)
     sum_model = Float64[]
 
     @showprogress name for i in indices
@@ -19,7 +20,7 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training")
         end
 
         model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,stim,eeg,i,
-            -1,lags,"Shrinkage")
+            -1,lags,"Shrinkage",isnothing(bounds) ? nothing : bounds[i])
         # model = find_trf(stim_envelope,response,-1,lags,"Shrinkage")
         if isempty(sum_model)
             sum_model = model
@@ -54,25 +55,31 @@ end
 #     get_mvariable(:result)
 # end
 
-function find_signals(stim,eeg,i)
+function find_signals(stim,eeg,i,bounds=nothing)
     # envelope and neural response
-    stim_envelope = find_envelope(stim,mat"$eeg.fsample")
+    fs = mat"$eeg.fsample"
+    stim_envelope = find_envelope(stim,fs)
     mat" response = $eeg.trial{$i}; "
 
     # find shared length
     rsize = mat" size(response,2) "
     min_len = min(size(stim_envelope,1),trunc(Int,rsize));
+    if isnothing(bounds)
+        start,stop = 10,min_len
+    else
+        start, stop = clamp.(round.(Int,bounds.*fs), 1, min_len)
+    end
 
     # trim the the signals
-    mat" response = response(:,1:$min_len); "
+    mat" response = response(:,$start:$stop); "
     response = get_mvariable(:response)
-    stim_envelope = stim_envelope[1:min_len]
+    stim_envelope = stim_envelope[start:stop]
 
     stim_envelope,response
 end
 
-function find_trf(stim,eeg,i,dir,lags,method)
-    stim_envelope,response = find_signals(stim,eeg,i)
+function find_trf(stim,eeg,i,dir,lags,method,bounds=nothing)
+    stim_envelope,response = find_signals(stim,eeg,i,bounds)
     lags = collect(lags)
     mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method)"
     result
@@ -115,7 +122,8 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;name="Test
         stim_envelope,response = find_signals(stim,eeg,i)
 
         subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d.jld2",prefix,i))
-        subj_model = load(subj_model_file,"contents")
+        # subj_model = load(subj_model_file,"contents")
+        subj_model = cachefn(subj_model_file,find_trf,stim,eeg,i,-1,lags,"Shrinkage")
         n = length(indices)
         r1, r2 = (n-1)/n, 1/n
 
