@@ -46,63 +46,67 @@ for eeg_file in eeg_files
         train = findall((stim_events.condition .== cond) .&
             (stim_events.target_time .> 0) .& (stim_events.correct))
 
-        male_model = trf_train(@sprintf("trf_%s_male_sid_target_%03d",cond,sid),
+        target_bounds = tuple.(stim_events.target_time .+ window[1]*target_len,
+            stim_events.target_time .+ window[2]*target_len)
+
+        male_model = trf_train(@sprintf("trf_%s_male_target_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Male): ",sid),
-            bounds = tuple.(stim_events.target_time .+ window[1]*target_len,
-                stim_events.target_time .+ window[2]*target_len),
+            bounds = target_bounds,
             group_suffix = "_"*suffix,
             i -> load_sentence(stim_events,stim_info,i,male_index))
 
-        fem1_model = trf_train(@sprintf("trf_%s_fem1_sid_target_%03d",cond,sid),
+        fem1_model = trf_train(@sprintf("trf_%s_fem1_target_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Female 1): ",sid),
-            bounds = tuple.(stim_events.target_time .+ window[1]*target_len,
-                stim_events.target_time .+ window[2]*target_len),
+            bounds = target_bounds,
             group_suffix = "_"*suffix,
             i -> load_sentence(stim_events,stim_info,i,fem1_index))
 
-        fem2_model = trf_train(@sprintf("trf_%s_fem2_sid_target_%03d",cond,sid),
+        fem2_model = trf_train(@sprintf("trf_%s_fem2_target_sid_%03d",cond,sid),
             eeg,stim_info,lags,train,
             name = @sprintf("Training SID %02d (Female 2): ",sid),
-            bounds = tuple.(stim_events.target_time .+ window[1]*target_len,
-                stim_events.target_time .+ window[2]*target_len),
+            bounds = target_bounds,
             group_suffix = "_"*suffix,
             i -> load_sentence(stim_events,stim_info,i,fem2_index))
 
         # should these also be bounded by the target?
 
-        C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
+        C = trf_corr_cv(@sprintf("trf_%s_male_target_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,test,
                 name = @sprintf("Testing SID %02d (Male): ",sid),
                 group_suffix = "_"*suffix,
+                bounds = target_bounds,
                 i -> load_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="male", corr = C,
                 test_correct = stim_events.correct[test]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_fem1_sid_%03d",cond,sid),eeg,
+        C = trf_corr_cv(@sprintf("trf_%s_fem1_target_sid_%03d",cond,sid),eeg,
                 stim_info,fem1_model,lags,test,
                 name = @sprintf("Testing SID %02d (Female 1): ",sid),
                 group_suffix = "_"*suffix,
+                bounds = target_bounds,
                 i -> load_sentence(stim_events,stim_info,i,fem1_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="fem1", corr = C,
                 test_correct = stim_events.correct[test]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_fem2_sid_%03d",cond,sid),eeg,
+        C = trf_corr_cv(@sprintf("trf_%s_fem2_target_sid_%03d",cond,sid),eeg,
                 stim_info,fem2_model,lags,test,
                 name = @sprintf("Testing SID %02d (Female 2): ",sid),
                 group_suffix = "_"*suffix,
+                bounds = target_bounds,
                 i -> load_sentence(stim_events,stim_info,i,fem2_index))
             df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="fem2", corr = C,
                 test_correct = stim_events.correct[test]))
 
-        C = trf_corr_cv(@sprintf("trf_%s_male_sid_%03d",cond,sid),eeg,
+        C = trf_corr_cv(@sprintf("trf_%s_male_target_sid_%03d",cond,sid),eeg,
                 stim_info,male_model,lags,test,
                 name = @sprintf("Testing SID %02d (Other Male): ",sid),
                 group_suffix = "_other_"*suffix,
+                bounds = target_bounds,
                 i -> load_other_sentence(stim_events,stim_info,i,male_index))
         df = vcat(df,DataFrame(sid = sid, condition = cond,
                 speaker="other_male", corr = C,
