@@ -88,9 +88,9 @@ end
 function select_bounds(x::MxArray,(start,stop)::Tuple,min,fs,dim)
     start,stop = toindex.((start,stop),min,fs)
     if dim == 1
-        mat" x = $x($start:$stop,:); "
+        mat"x = $x($start:$stop,:);"
     elseif dim == 2
-        mat" x = $x(:,$start:$stop); "
+        mat"x = $x(:,$start:$stop);"
     else
         error("Unspported dimension $dim.")
     end
@@ -110,15 +110,15 @@ function select_bounds(x::AbstractArray,bounds::AbstractArray{<:Tuple},min,fs,di
 end
 
 function select_bounds(x::MxArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
-    mat" indices = []; "
+    mat"indices = [];"
     for (start,stop) in bounds
         start,stop = toindex.((start,stop),min,fs)
-        mat" indices = [indices $start:$stop]; "
+        mat"indices = [indices $start:$stop];"
     end
     if dim == 1
-        mat" x = $x(indices,:) "
+        mat"x = $x(indices,:);"
     elseif dim == 2
-        mat" x = $x(:,indices) "
+        mat"x = $x(:,indices);"
     else
         error("Unspported dimension $dim.")
     end
@@ -131,7 +131,7 @@ function find_signals(stim,eeg,i,bounds=nothing)
     fs = mat"$eeg.fsample"
     stim_envelope = find_envelope(stim,fs)
 
-    mat" response = $eeg.trial{$i}; "
+    mat"response = $eeg.trial{$i};"
     response = get_mvariable(:response)
 
     min_len = min(size(stim_envelope,1),trunc(Int,size(response,2)));
@@ -151,12 +151,12 @@ function find_trf(stim,eeg,i,dir,lags,method,bounds=nothing;
     end
 
     lags = collect(lags)
-    mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method)"
+    mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method);"
     result
 end
 
 function predict_trf(dir,response,model,lags,method)
-    mat"[~,$result] = FindTRF([],[],-1,$response',$model,($lags)',$method)"
+    mat"[~,$result] = FindTRF([],[],-1,$response',$model,($lags)',$method);"
     result
 end
 
