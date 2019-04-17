@@ -53,6 +53,30 @@ function folds(k,indices)
     end
 end
 
+# TODO: select the switch areas
+function only_switches(switches,max_time;window=(-0.250,0.250))
+    result = Array{Tuple{Float64,Float64}}(undef,length(switches))
+
+    i = 0
+    stop = 0
+    for switch in switches
+        new_stop = min(switch+window[2],max_time)
+        if stop < switch+window[1]
+            i = i+1
+            result[i] = (switch+window[1],new_stop)
+        elseif i > 0
+            result[i] = (result[i][1], new_stop)
+        else
+            i = i+1
+            result[i] = (0,new_stop)
+        end
+        stop = new_stop
+    end
+
+    view(result,1:i)
+end
+
+
 function remove_switches(switches,max_time;wait_time=0.5)
     result = Array{Tuple{Float64,Float64}}(undef,length(switches)+1)
 
