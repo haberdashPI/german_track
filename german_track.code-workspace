@@ -8,7 +8,10 @@
 		"recommendations": [
 			"ikuyadeu.r",
 			"gimly81.matlab",
-			"ivan-bocharov.stan-vscode"
+			"ivan-bocharov.stan-vscode",
+			"haberdashpi.matlab-in-julia",
+			"julialang.language-julia",
 		]
-	}
+	},
+	"settings": {}
 }
