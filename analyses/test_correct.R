@@ -29,11 +29,11 @@ ggplot(dfcor,aes(x=pmax(fem1,fem2),y=male)) +
     geom_point(aes(color=test_correct)) +
     geom_abline(intercept=0,slope=1) + facet_grid(condition~sid) +
     scale_color_brewer(palette='Set1')
-ggsave(file.path(dir,"correct_corr_male_v_female_by_condition.pdf"),
-    width=9,height=5)
+# ggsave(file.path(dir,"correct_corr_male_v_female_by_condition.pdf"),
+#     width=9,height=5)
 
 ggplot(dfcor,aes(x=pmax(fem1,fem2),y=male)) +
     geom_point(aes(color=test_correct)) +
     geom_abline(intercept=0,slope=1) + facet_grid(~sid) +
     scale_color_brewer(palette='Set1')
-ggsave(file.path(dir,"correct_corr_male_v_female.pdf"),width=9,height=2.5)
+# ggsave(file.path(dir,"correct_corr_male_v_female.pdf"),width=9,height=2.5)

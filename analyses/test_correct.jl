@@ -33,13 +33,15 @@ for eeg_file in eeg_files
     lags = 0:round(Int,maxlag*mat"$eeg.fsample")
     seed = hash(eeg_file)
     # test and train generates the same random sequence
+    println("========================================")
+    println("sid: $sid")
 
     for cond in unique(stim_events.condition)
 
         test = findall(stim_events.condition .== cond)
         train = findall((stim_events.condition .== cond) .&
             (stim_events.correct))
-        println("============================================================")
+        println("----------------------------------------")
         println("Condition: $cond")
 
         male_model = trf_train(@sprintf("trf_%s_male_sid_%03d",cond,sid),

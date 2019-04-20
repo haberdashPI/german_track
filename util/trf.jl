@@ -56,7 +56,24 @@ end
 # end
 
 toindex(x,min,fs) = clamp.(round.(Int,x.*fs),1,min)
-select_bounds(x,::Nothing,min,fs,dim) = x
+
+function select_bounds(x::AbstractArray,::Nothing,min_len,fs,dim)
+    if dim == 1
+        x[1:min(min_len,end),:]
+    elseif dim == 2
+        x[:,1:min(min_len,end)]
+    end
+end
+
+function select_bounds(x::MxArray,::Nothing,min_len,fs,dim)
+    if dim == 1
+        mat"x = $x(1:min(end,$min_len),:);"
+    elseif dim == 2
+        mat"x = $x(:,1:min(end,$min_len));"
+    end
+    get_mvariable(:x)
+end
+
 function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim)
     start,stop = toindex.((start,stop),min,fs)
     if dim == 1
