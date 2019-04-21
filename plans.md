@@ -3,8 +3,11 @@
 
 ## Current anlaysis steps
 
-Finished reading events for SID 9, now let's read in the eeg responses
-and do a sanity check
+Try cleaning up the data more
+Add sid 14
+Improve analysis scripts (make more general) ??
+Try training switches on everything, not just the correct trials
+
 
 ## Current experiment steps
 

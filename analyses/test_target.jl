@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> endswith(x,".ma"*"t"),readdir(data_dir))
+eeg_files = filter(x -> endswith(x,".mat"),readdir(data_dir))
 
 maxlag = 0.25
 const male_index = 1
