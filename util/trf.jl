@@ -199,7 +199,7 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
         bounds_i = isnothing(bounds) ? nothing : bounds[i]
         stim_envelope,response = find_signals(stim,eeg,i,bounds_i)
 
-        subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d.jld2",prefix,i))
+        subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d",prefix,i))
         # subj_model = load(subj_model_file,"contents")
         subj_model = cachefn(subj_model_file,find_trf,stim,eeg,i,-1,lags,
             "Shrinkage",bounds_i,found_signals = (stim_envelope,response))
