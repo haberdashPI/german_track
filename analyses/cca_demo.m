@@ -1,3 +1,7 @@
+% x is, all of the features (channels x subjects)
+% by all observations (trials x trials)
+
+% TODO: before-hand; remove bad channels, and interpolate
 x = x - repmat(mean(x,1), size(x,1),1); % subtract mean from each column
 C = x'*x; % covariance matrix
 

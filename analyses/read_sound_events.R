@@ -5,7 +5,7 @@ library(cowplot)
 
 source("util/setup.R")
 
-sid = 13
+sid = 14
 
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL

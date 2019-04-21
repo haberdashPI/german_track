@@ -31,23 +31,23 @@ for i = 1:length(eegfiles)
     cfg.dataset = fullfile(raw_data_dir,eegfile);
     cfg.trl = [max(0,stim_events{:,'sample'}-baseline_samples) ...
     min(head.nSamples,stim_events{:,'sample'}+trial_len_samples) ...
-    baseline_samples*ones(height(stim_events),1)];
+        baseline_samples*ones(height(stim_events),1)];
     cfg.continuous = 'yes';
     if sid == 1
         cfg.channel = [1:128 257:264];
     elseif sid == 9
-        cfg.channel = 1:136;
+        cfg.channel = [1:64 129:134];
     else
-        cfg.channel = 1:72;
+        cfg.channel = 1:70;
     end
 
     % apply a (1Hz) high pass filter
     % (a recent study suggests that maybe I should remove this:
     % need to examine either replacing with robust filter or just doing nothing)
-    cfg.hpfilter = 'yes';
-    cfg.hpfreq = 1;
-    cfg.hpfiltortype = 'but';
-    cfg.hpfiltord = 4;
+    % cfg.hpfilter = 'yes';
+    % cfg.hpfreq = 1;
+    % cfg.hpfiltortype = 'but';
+    % cfg.hpfiltord = 4;
 
     eeg_data = ft_preprocessing(cfg);
 
