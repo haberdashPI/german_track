@@ -4,7 +4,6 @@
 ## Current anlaysis steps
 
 Try cleaning up the data more
-Add sid 14
 Improve analysis scripts (make more general) ??
 Try training switches on everything, not just the correct trials
 
