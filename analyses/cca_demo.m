@@ -1,5 +1,5 @@
-% x is, all of the features (channels x subjects)
-% by all observations (trials x trials)
+% x is, all of the features (channel x subject)
+% by all observations (time x trial)
 
 % TODO: before-hand; remove bad channels, and interpolate
 x = x - repmat(mean(x,1), size(x,1),1); % subtract mean from each column
