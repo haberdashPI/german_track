@@ -5,9 +5,9 @@ total_channels = 0;
 
 time_slices = {};
 
-% STEP 1: look for any really egregious
-% artificats and get rid of them (leave most of them in, since mCCA
-% should clean a lot of it up)
+% STEP 1: look for any really egregious % artificats and decide how to get
+% rid of them (leave most of them in, since mCCA should clean a lot of it up)
+
 [eeg,~,~] = load_subject('eeg_response_008.mat');
 
 plot_cfg = [];
@@ -17,19 +17,12 @@ plot_cfg.eegscale = 1000;
 plot_cfg.mychan = ft_channelselection('EX*',eeg)
 plot_cfg.mychanscale = 1000;
 
-use_channels = {'A*','B*','EX1','EX2','EX3','EX4','EX5','EX6','-A28'};
-feature_names = ft_channelselection(use_channels,eeg)
-
+use_channels = {'A*','B*','EXG1','EXG2','EXG3','EXG4','EXG5','EXG6','-A28'};
+channel_names = ft_channelselection(use_channels,eeg)
+channel_indices = cellfun(@(x){ any(cellfun(@(y) strcmp(x,y),channel_names)) }, eeg.label);
+channel_indices = find(cell2mat(channel_indices));
 all_eeg = {}
 trial_order = {}
-
-% thoughts: is should probably just get rid of A28
-% (it's worth troubleshooting, to see if it's that particular
-% selectrode, or that particular location)
-
-% TODO: sum up the total times and channels % to assmple the data later
-total_time = 0;
-total_features = 0;
 
 % visualize all the data, and make sure there isn't anything
 % really egregious that we need to get rid of
@@ -77,33 +70,36 @@ all_eeg = [all_eeg {eeg}];
 trial_order = [trial_order {sort_trial_times(eeg,stim_events)}]
 
 n_times = 10*64;
-n_trials = 150
-x = zeros(length(use_channels) * length(all_eeg),n_trials*n_times);
+n_trials = 150;
+x = zeros(length(channel_indices) * length(all_eeg),n_trials*n_times);
 for i = 1:length(all_eeg)
-    for trial = trial_order{i};
-        feature_indices = (i-1)*length(use_channels) + (1:length(use_channels))
-        time_indices = (trial-1)*n_times + 1:n_times
-        % TODO: trial_time_indices and trial_chan_indices
+    for trial_i = 1:length(trial_order{i})
+        trial = trial_order{i}(trial_i);
+        trial_time_indices = 1:min(size(all_eeg{i}.trial{trial},2),n_times);
+        feature_indices = (i-1)*length(channel_indices) + ...
+            (1:length(channel_indices));
+        time_indices = (trial_i-1)*n_times + (1:length(trial_time_indices));
         x(feature_indices,time_indices) = ...
-            all_eeg{i}.trial{trial}(trial_time_indices,trial_chan_indices)
+            all_eeg{i}.trial{trial}(channel_indices,trial_time_indices);
     end
 end
-% TODO: STOPPED HERE
-% stimuli are shuffled: re-order them so stimuli match across participants
+x = x';
+x = x - repmat(mean(x,1), size(x,1),1); % subtract mean from each column
+C = x'*x; % covariance matrix
 
+nchan = length(channel_indices);
+[A,score,AA] = nt_mcca(C,nchan);
 
-% STEP 2: assemble the matrices
-total_times = 0;
-total_channels = length(use_channels) * length(trials)
-for i = 1:length(all_eeg)
-    eeg = all_eeg{i};
-    total_times = total_times + sum(cellfun(@(x) size(x,2),eeg.trial));
+comp = X * A; % MCCA components, where first column is most repeatable component across subjects
+nkeep = 20; % number of components to keep
+
+% Project out all but first "nkeep" components
+for i = 1:nsub
+    arr = <subject data in "tall" form, dim= ntime*ntrial x nchan>
+    iA = AA{i}; % subject-specific MCCA weights
+    eye_select = zeros(size(iA,2),1);
+    eye_select(1:nkeep) = 1;
+    y = arr* (iA*diag(eye_select)*pinv(iA));
+    % y: MCCA-cleaned data for subject i
 end
 
-% TODO: arrange all trials by
-
-% WARNING: nt_mcca assumes same number of channels per subject (if we
-% remove a channel in one subject but not others, we have to interpolate)
-x = zeros(total_channels,total_times)
-for i = 1:length(all_eeg)
-    x()
