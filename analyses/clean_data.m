@@ -151,6 +151,7 @@ eeg = my_detrend(eeg,bad_trials);
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
+% TODO: interploate A4 in trial 3
 
 % add to data set
 all_eeg = [all_eeg {eeg}];
