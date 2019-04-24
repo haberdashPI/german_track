@@ -1,100 +1,182 @@
 run('../util/setup.m')
 
-total_times = 0;
-total_channels = 0;
+% ======================================================================
+% STEP 0: configuration
 
-time_slices = {};
-
-% STEP 1: clean the data: remove egregious artifacts, and de-trend the
-% data
-
+% load first file, to get channel names
 [eeg,~,~] = load_subject('eeg_response_008.mat');
 
+% pre-cleaning plot configuration
 plot_cfg = [];
 plot_cfg.viewmode = 'vertical';
 plot_cfg.preproc.detrend = 'yes';
-% plot_cfg.preproc.demean = 'yes';
 plot_cfg.eegscale = 200;
 plot_cfg.mychan = ft_channelselection('EX*',eeg)
 plot_cfg.mychanscale = 200;
 
-use_channels = {'A*','B*','EXG1','EXG2','EXG3','EXG4','EXG5','EXG6','-A28'};
-channel_names = ft_channelselection(use_channels,eeg)
-channel_indices = cellfun(@(x){ any(cellfun(@(y) strcmp(x,y),channel_names)) }, eeg.label);
-channel_indices = find(cell2mat(channel_indices));
-
-plot_cfg.channel = channel_names;
+% electrode geometry
+elec = ft_read_sens(fullfile(data_dir,'biosemi64.txt'));
+cfg = [];
+cfg.elec = elec;
+lay = ft_prepare_layout(cfg);
+ft_layoutplot(cfg)
 
 all_eeg = {}
 trial_order = {}
 
+% visual rejection plot
+reject_cfg          = [];
+reject_cfg.method   = 'summary';
+reject_cfg.alim     = 1e-12;
+
+% channel repair, via interpolation
+channel_repair_cfg = [];
+channel_repair_cfg.method = 'spline';
+channel_repair_cfg.elec = elec;
+
+% post-detrending plot configuration
+plot_detrend_cfg = plot_cfg
+plot_detrend_cfg.preproc.detrend = 'no';
+plot_detrend_cfg.preproc.demean = 'no';
+plot_detrend_cfg.eegscale = 50;
+plot_detrend_cfg.mychan = ft_channelselection('EX*',eeg)
+plot_detrend_cfg.mychanscale = 50;
+
+% ======================================================================
+% STEP 1: clean the data: remove egregious artifacts, and de-trend the
+% data
+
 % subj 8 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_008.mat');
-% ft_databrowser(plot_cfg,eeg);
 trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
+ft_rejectvisual(reject_cfg,eeg);
 bad_trials = [
+    19
+    35
     69
+    117
     118
-]';
+];
 
-% zero out bad trials and channels
-% zero out all data 500ms past the stimulus
-% TODO: don't zero out the times, since that is dealt
-% with in `read_eeg_response` now.
-config = read_json(fullfile(stimulus_dir,"config.json"));
-bad_channels = setdiff(1:size(eeg.trial{1}),channel_indices);
-for i = 1:length(eeg.trial)
-    if any(i == bad_trials)
-        eeg.trial{i}(:,:) = 0;
-    else
-        eeg.trial{i}(bad_channels,:) = 0;
-        trial_file = fullfile(stimulus_dir,"mixtures","testing",...
-            sprintf("trial_%02d.wav",stim_events.sound_index(i)));
-        [trial_audio,fs] = audioread(trial_file);
-        audio_samples = round(size(trial_audio,1)/fs*eeg.fsample);
-        len = min(audio_samples + round(0.5*eeg.fsample),...
-            size(eeg.trial{i},2));
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A28'};
+eeg = ft_channelrepair(channel_repair_cfg,eeg);
 
-        eeg.trial_end(i) = len;
-        eeg.trial{i} = eeg.trial{i}(:,1:len);
-        eeg.time{i} = (1:len) ./ eeg.fsample;
-    end
-end
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
 
-% linear detrending
-for i = 1:length(eeg.trial)
-    time_indices = 1:eeg.trial_end(i);
-    data = eeg.trial{i}(channel_indices,time_indices);
-    if ~any(i == bad_trials)
-        eeg.trial{i}(channel_indices,time_indices) = nt_demean(data);
-        % eeg.trial{i}(channel_indices,time_indices) = nt_detrend(data,1);
-    end
-end
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
 
-ft_databrowser(plot_cfg,eeg);
-
+% add to data set
 all_eeg = [all_eeg {eeg}];
 
 % subj 9 ----------------------------------------
-% I think I shoud remove this participant; there's way too much noise
-% (something is wrong)
-% [eeg,stim_events,~] = load_subject('eeg_response_009.mat');
-% % ft_databrowser(plot_cfg,eeg);
-% all_eeg = [all_eeg {eeg}];
-% trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
+% NOTE: I may need to remove this participant
+% it's quite noisey data
+[eeg,stim_events,~] = load_subject('eeg_response_009.mat');
+ft_rejectvisual(reject_cfg,eeg);
+
+bad_trials = [
+    18
+    42
+    50
+    100
+    101
+    103
+    116
+    117
+    118
+    134
+    135
+    137
+    138
+    139
+    140
+    142
+    147
+];
+
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A1','A2','A7','B1','B2','B3','B4','B21','A28',''};
+eeg = ft_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% add to data set
+all_eeg = [all_eeg {eeg}];
 
 % subj 10 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_010.mat');
-% ft_databrowser(plot_cfg,eeg);
+ft_rejectvisual(reject_cfg,eeg);
+
+bad_trials = [
+    11
+    22
+    34
+    45
+    50
+    55
+    59
+    60
+    61
+    62
+    63
+    64
+    65
+    66
+    67
+    68
+    74
+    80
+    82
+    83
+    84
+    117
+];
+
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A28','B25'};
+eeg = ft_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% add to data set
 all_eeg = [all_eeg {eeg}];
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
 
 % subj 11 ----------------------------------------
-% bad trials: 60-67
 [eeg,stim_events,~] = load_subject('eeg_response_011.mat');
-% ft_databrowser(plot_cfg,eeg);
-all_eeg = [all_eeg {eeg}];
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
+ft_rejectvisual(reject_cfg,eeg);
+
+% bad_trials = [
+%     34
+%     118
+% ];
+
+% % zero trials, interpolate channels
+% eeg = zero_trials(eeg,bad_trials);
+% channel_repair_cfg.badchannel = {'A4','A5','A28','B25'};
+% eeg = ft_channelrepair(channel_repair_cfg,eeg);
+
+% % detrend the data
+% eeg = my_detrend(eeg,bad_trials);
+
+% % verify the result
+% ft_databrowser(plot_detrend_cfg,eeg);
+
+% % add to data set
+% all_eeg = [all_eeg {eeg}];
 
 % subj 12 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_012.mat');
