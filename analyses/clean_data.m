@@ -10,9 +10,10 @@ run('../util/setup.m')
 plot_cfg = [];
 plot_cfg.viewmode = 'vertical';
 plot_cfg.preproc.detrend = 'yes';
-plot_cfg.eegscale = 200;
-plot_cfg.mychan = ft_channelselection('EX*',eeg)
-plot_cfg.mychanscale = 200;
+plot_cfg.eegscale = 1;
+plot_cfg.mychan = ft_channelselection('EX*',eeg);
+plot_cfg.mychanscale = 1;
+plot_cfg.ylim = [-600 600];
 
 % electrode geometry
 elec = ft_read_sens(fullfile(data_dir,'biosemi64.txt'));
@@ -35,7 +36,7 @@ channel_repair_cfg.method = 'spline';
 channel_repair_cfg.elec = elec;
 
 % post-detrending plot configuration
-plot_detrend_cfg = plot_cfg
+plot_detrend_cfg = plot_cfg;
 plot_detrend_cfg.preproc.detrend = 'no';
 plot_detrend_cfg.preproc.demean = 'no';
 plot_detrend_cfg.eegscale = 50;
@@ -48,8 +49,8 @@ plot_detrend_cfg.mychanscale = 50;
 
 % subj 8 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_008.mat');
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
 ft_rejectvisual(reject_cfg,eeg);
+
 bad_trials = [
     19
     35
@@ -61,16 +62,18 @@ bad_trials = [
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A28'};
-eeg = ft_channelrepair(channel_repair_cfg,eeg);
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
 eeg = my_detrend(eeg,bad_trials);
+alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg = [all_eeg {eeg}];
+all_eeg{1} = eeg;
 
 % subj 9 ----------------------------------------
 % NOTE: I may need to remove this participant
@@ -101,27 +104,56 @@ bad_trials = [
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A1','A2','A7','B1','B2','B3','B4','B21','A28',''};
-eeg = ft_channelrepair(channel_repair_cfg,eeg);
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
 eeg = my_detrend(eeg,bad_trials);
+alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg = [all_eeg {eeg}];
+all_eeg{2} = eeg;
 
 % subj 10 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_010.mat');
 ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
-    11
-    22
     34
+    118
+];
+
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A4','A5','A28','B25'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% TODO: what's with the differetn scales for different subjects?
+
+% add to data set
+all_eeg{3} = eeg;
+
+% subj 11 ----------------------------------------
+[eeg,stim_events,~] = load_subject('eeg_response_011.mat');
+ft_rejectvisual(reject_cfg,eeg);
+
+bad_trials = [
+    34
+    35
+    36
+    39
     45
-    50
     55
     59
     60
@@ -133,76 +165,130 @@ bad_trials = [
     66
     67
     68
+    69
     74
-    80
-    82
+    81
     83
     84
-    117
+    94
+    116
+    124
+    129
+    134
+    149
 ];
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
-channel_repair_cfg.badchannel = {'A28','B25'};
-eeg = ft_channelrepair(channel_repair_cfg,eeg);
+channel_repair_cfg.badchannel = {'A28','B31'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
 eeg = my_detrend(eeg,bad_trials);
+alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
-% TODO: interploate A4 in trial 3
 
 % add to data set
-all_eeg = [all_eeg {eeg}];
+all_eeg{4} = eeg;
 
-% subj 11 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_011.mat');
+% subj 12 ----------------------------------------
+[eeg,stim_events,~] = load_subject('eeg_response_012.mat');
 ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+channel_repair_cfg.badchannel = {'B26'};
+channel_repair_cfg.trials = 90;
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+channel_repair_cfg.badchannel = {'A21'};
+channel_repair_cfg.trials = 102;
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+% TODO: reject trials and channels
+
+bad_trials = [
+    115
+];
+
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+% TODO:
+channel_repair_cfg.badchannel = {'B26'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% add to data set
+all_eeg{5} = eeg;
+
+% subj 13 ----------------------------------------
+[eeg,stim_events,~] = load_subject('eeg_response_013.mat');
+ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+bad_trials = [
+    114
+    150
+];
+
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A28'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% add to data set
+all_eeg{6} = eeg;
+
+% subj 14 ----------------------------------------
+[eeg,stim_events,~] = load_subject('eeg_response_014.mat');
+% TODO: clean final subject
+
+% ft_rejectvisual(reject_cfg,eeg);
+% ft_databrowser(plot_cfg,eeg);
 
 % bad_trials = [
-%     34
-%     118
+%     114
+%     150
 % ];
 
 % % zero trials, interpolate channels
 % eeg = zero_trials(eeg,bad_trials);
-% channel_repair_cfg.badchannel = {'A4','A5','A28','B25'};
-% eeg = ft_channelrepair(channel_repair_cfg,eeg);
+% channel_repair_cfg.badchannel = {'A28'};
+% channel_repair_cfg.trials = 'all';
+% eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 % % detrend the data
 % eeg = my_detrend(eeg,bad_trials);
+% alert()
 
 % % verify the result
 % ft_databrowser(plot_detrend_cfg,eeg);
 
 % % add to data set
-% all_eeg = [all_eeg {eeg}];
+% all_eeg{6} = eeg;
 
-% subj 12 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_012.mat');
-% ft_databrowser(plot_cfg,eeg);
-all_eeg = [all_eeg {eeg}];
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
-
-% subj 13 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_013.mat');
-% ft_databrowser(plot_cfg,eeg);
-all_eeg = [all_eeg {eeg}];
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
-
-% subj 14 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_014.mat');
-% ft_databrowser(plot_cfg,eeg);
-all_eeg = [all_eeg {eeg}];
-trial_order = [trial_order {sort_trial_times(eeg,stim_events)}];
-
-muscle_cfg = [];
-muscle_cfg.artfctdef.muscle.channel = ft_channelselection({'EX*'},eeg);
-[cfg,artifact] = ft_artifact_muscle(muscle_cfg,eeg);
-
-
-% STEP 2: use mCCA to identify shared components
+% % STEP 3: use mCCA to identify shared components
 
 n_times = 6*64;
 n_trials = 150;
