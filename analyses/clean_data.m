@@ -13,7 +13,7 @@ plot_cfg.preproc.detrend = 'yes';
 plot_cfg.eegscale = 1;
 plot_cfg.mychan = ft_channelselection('EX*',eeg);
 plot_cfg.mychanscale = 1;
-plot_cfg.ylim = [-600 600];
+plot_cfg.ylim = [-20 20];
 
 % electrode geometry
 elec = ft_read_sens(fullfile(data_dir,'biosemi64.txt'));
@@ -262,31 +262,42 @@ all_eeg{6} = eeg;
 
 % subj 14 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_014.mat');
-% TODO: clean final subject
 
-% ft_rejectvisual(reject_cfg,eeg);
-% ft_databrowser(plot_cfg,eeg);
+ft_rejectvisual(reject_cfg,eeg);
+% trial 17 & 35
+ft_databrowser(plot_cfg,eeg);
+% 17: B1, B2, A1
+% 35: B26
 
-% bad_trials = [
-%     114
-%     150
-% ];
+channel_repair_cfg.badchannel = {'B1','B2','A1'};
+channel_repair_cfg.trials = 17;
+eeg = my_channelrepair(channel_repair_cfg,eeg);
 
-% % zero trials, interpolate channels
-% eeg = zero_trials(eeg,bad_trials);
-% channel_repair_cfg.badchannel = {'A28'};
-% channel_repair_cfg.trials = 'all';
-% eeg = my_channelrepair(channel_repair_cfg,eeg);
+channel_repair_cfg.badchannel = {'B26'};
+channel_repair_cfg.trials = 35;
+eeg = my_channelrepair(channel_repair_cfg,eeg);
 
-% % detrend the data
-% eeg = my_detrend(eeg,bad_trials);
-% alert()
+ft_rejectvisual(reject_cfg,eeg);
 
-% % verify the result
-% ft_databrowser(plot_detrend_cfg,eeg);
+bad_trials = [
+    17
+];
 
-% % add to data set
-% all_eeg{6} = eeg;
+% zero trials, interpolate channels
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'B1','B2','B14'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% add to data set
+all_eeg{7} = eeg;
 
 % % STEP 3: use mCCA to identify shared components
 
