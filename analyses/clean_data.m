@@ -49,6 +49,7 @@ plot_detrend_cfg.mychanscale = 50;
 
 % subj 8 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_008.mat');
+
 ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
@@ -74,6 +75,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{1} = eeg;
+trial_order{1} = sort_trial_times(eeg,stim_events);
 
 % subj 9 ----------------------------------------
 % NOTE: I may need to remove this participant
@@ -116,6 +118,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{2} = eeg;
+trial_order{2} = sort_trial_times(eeg,stim_events);
 
 % subj 10 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_010.mat');
@@ -143,9 +146,11 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{3} = eeg;
+trial_order{3} = sort_trial_times(eeg,stim_events);
 
 % subj 11 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_011.mat');
+ft_databrowser(plot_cfg,eeg);
 ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
@@ -193,6 +198,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{4} = eeg;
+trial_order{4} = sort_trial_times(eeg,stim_events);
 
 % subj 12 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_012.mat');
@@ -209,8 +215,6 @@ eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 ft_rejectvisual(reject_cfg,eeg);
 ft_databrowser(plot_cfg,eeg);
-
-% TODO: reject trials and channels
 
 bad_trials = [
     115
@@ -233,6 +237,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{5} = eeg;
+trial_order{5} = sort_trial_times(eeg,stim_events);
 
 % subj 13 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_013.mat');
@@ -259,6 +264,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{6} = eeg;
+trial_order{6} = sort_trial_times(eeg,stim_events);
 
 % subj 14 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_014.mat');
@@ -298,13 +304,17 @@ ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 all_eeg{7} = eeg;
+trial_order{7} = sort_trial_times(eeg,stim_events);
 
-% % STEP 3: use mCCA to identify shared components
+% TODO: where I left off
+% ======================================================================
+%% STEP 3: use mCCA to identify shared components
 
-n_times = 6*64;
+n_times = 7*64;
 n_trials = 150;
-n_chans = length(channel_indices);
+n_chans = size(all_eeg{1}.trial{1},1);
 x = zeros(n_trials*n_times,n_chans * length(all_eeg));
+
 for i = 1:length(all_eeg)
     for trial_i = 1:length(trial_order{i})
         trial = trial_order{i}(trial_i);
@@ -313,17 +323,18 @@ for i = 1:length(all_eeg)
             (1:n_chans);
         time_indices = (trial_i-1)*n_times + (1:length(trial_time_indices));
         x(time_indices,feature_indices) = ...
-            all_eeg{i}.trial{trial}(channel_indices,trial_time_indices)';
+            all_eeg{i}.trial{trial}(:,trial_time_indices)';
     end
 end
+
 chan_mean = mean(x,1);
 x = x - chan_mean; % subtract mean from each column
 C = x'*x; % covariance matrix
 
 [A,score,AA] = nt_mcca(C,n_chans);
 
-bar(score(1:200));
-nkeep = 2; % number of components to keep
+bar(score(1:50));
+nkeep = 12; % number of components to keep
 
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
@@ -334,13 +345,11 @@ for i = 1:length(all_eeg)
     for t = 1:length(all_eeg{i}.trial)
         all_eeg{i}.old_trial{t} = all_eeg{i}.trial{t};
         arr = all_eeg{i}.trial{t};
-        proj_arr = arr(channel_indices,:)';
-        mu = chan_means((i-1)*n_chans + (1:n_chans));
+        proj_arr = arr';
+        mu = chan_mean((i-1)*n_chans + (1:n_chans));
         proj_arr = proj_arr - mu;
         proj_arr = proj_arr * (iA*diag(selection)*pinv(iA));
-        arr(channel_indices,:) = (proj_arr + mu)';
-        arr(setdiff(1:end,channel_indices),:) = 0;
-        all_eeg{i}.trial{t} = arr;
+        all_eeg{i}.trial{t} = (proj_arr + mu)';
     end
 end
 
@@ -350,5 +359,4 @@ ft_databrowser(plot_cfg,all_eeg{1});
 % works any better (not super convinced it will, given that only 2
 % components were found)
 
-for i = 1:length(all_eeg)
 
