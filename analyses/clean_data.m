@@ -22,9 +22,6 @@ cfg.elec = elec;
 lay = ft_prepare_layout(cfg);
 ft_layoutplot(cfg)
 
-all_eeg = {}
-trial_order = {}
-
 % visual rejection plot
 reject_cfg          = [];
 reject_cfg.method   = 'summary';
@@ -74,8 +71,9 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{1} = eeg;
-trial_order{1} = sort_trial_times(eeg,stim_events);
+% trial_order{1} = sort_trial_times(eeg,stim_events);
+
+save_subject(eeg,'eeg_response_008_cleaned.mat');
 
 % subj 9 ----------------------------------------
 % NOTE: I may need to remove this participant
@@ -117,8 +115,8 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{2} = eeg;
-trial_order{2} = sort_trial_times(eeg,stim_events);
+% trial_order{2} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_009_cleaned.mat')
 
 % subj 10 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_010.mat');
@@ -145,8 +143,8 @@ ft_databrowser(plot_detrend_cfg,eeg);
 % TODO: what's with the differetn scales for different subjects?
 
 % add to data set
-all_eeg{3} = eeg;
-trial_order{3} = sort_trial_times(eeg,stim_events);
+% trial_order{3} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_010_cleaned.mat')
 
 % subj 11 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_011.mat');
@@ -197,9 +195,10 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{4} = eeg;
-trial_order{4} = sort_trial_times(eeg,stim_events);
+% trial_order{4} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_011_cleaned.mat')
 
+% TODO: stopped here
 % subj 12 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_012.mat');
 ft_rejectvisual(reject_cfg,eeg);
