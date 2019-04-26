@@ -1,7 +1,7 @@
 run('../util/setup.m')
 
 % ======================================================================
-% STEP 0: configuration
+% configuration
 
 % load first file, to get channel names
 [eeg,~,~] = load_subject('eeg_response_008.mat');
@@ -41,7 +41,7 @@ plot_detrend_cfg.mychan = ft_channelselection('EX*',eeg)
 plot_detrend_cfg.mychanscale = 50;
 
 % ======================================================================
-% STEP 1: clean the data: remove egregious artifacts, and de-trend the
+% clean the data: remove egregious artifacts, and de-trend the
 % data
 
 % subj 8 ----------------------------------------
@@ -235,8 +235,8 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{5} = eeg;
-trial_order{5} = sort_trial_times(eeg,stim_events);
+% trial_order{5} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_012_cleaned.mat')
 
 % subj 13 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_013.mat');
@@ -262,8 +262,8 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{6} = eeg;
-trial_order{6} = sort_trial_times(eeg,stim_events);
+% trial_order{6} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_013_cleaned.mat')
 
 % subj 14 ----------------------------------------
 [eeg,stim_events,~] = load_subject('eeg_response_014.mat');
@@ -274,9 +274,9 @@ ft_databrowser(plot_cfg,eeg);
 % 17: B1, B2, A1
 % 35: B26
 
-channel_repair_cfg.badchannel = {'B1','B2','A1'};
-channel_repair_cfg.trials = 17;
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+% channel_repair_cfg.badchannel = {'B1','B2','A1'};
+% channel_repair_cfg.trials = 17;
+% eeg = my_channelrepair(channel_repair_cfg,eeg);
 
 channel_repair_cfg.badchannel = {'B26'};
 channel_repair_cfg.trials = 35;
@@ -302,60 +302,5 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
-all_eeg{7} = eeg;
-trial_order{7} = sort_trial_times(eeg,stim_events);
-
-% TODO: where I left off
-% ======================================================================
-%% STEP 3: use mCCA to identify shared components
-
-n_times = 7*64;
-n_trials = 150;
-n_chans = size(all_eeg{1}.trial{1},1);
-x = zeros(n_trials*n_times,n_chans * length(all_eeg));
-
-for i = 1:length(all_eeg)
-    for trial_i = 1:length(trial_order{i})
-        trial = trial_order{i}(trial_i);
-        trial_time_indices = 1:min(size(all_eeg{i}.trial{trial},2),n_times);
-        feature_indices = (i-1)*n_chans + ...
-            (1:n_chans);
-        time_indices = (trial_i-1)*n_times + (1:length(trial_time_indices));
-        x(time_indices,feature_indices) = ...
-            all_eeg{i}.trial{trial}(:,trial_time_indices)';
-    end
-end
-
-chan_mean = mean(x,1);
-x = x - chan_mean; % subtract mean from each column
-C = x'*x; % covariance matrix
-
-[A,score,AA] = nt_mcca(C,n_chans);
-
-bar(score(1:50));
-nkeep = 12; % number of components to keep
-
-% Project out all but first "nkeep" components
-for i = 1:length(all_eeg)
-    iA = AA{i}; % subject-specific MCCA weights
-    selection = zeros(size(iA,2),1);
-    selection(1:nkeep) = 1;
-    all_eeg{i}.old_trial = {};
-    for t = 1:length(all_eeg{i}.trial)
-        all_eeg{i}.old_trial{t} = all_eeg{i}.trial{t};
-        arr = all_eeg{i}.trial{t};
-        proj_arr = arr';
-        mu = chan_mean((i-1)*n_chans + (1:n_chans));
-        proj_arr = proj_arr - mu;
-        proj_arr = proj_arr * (iA*diag(selection)*pinv(iA));
-        all_eeg{i}.trial{t} = (proj_arr + mu)';
-    end
-end
-
-ft_databrowser(plot_cfg,all_eeg{1});
-
-% TODO: save these data and see if this "cleaned" result
-% works any better (not super convinced it will, given that only 2
-% components were found)
-
-
+% trial_order{7} = sort_trial_times(eeg,stim_events);
+save_subject(eeg,'eeg_response_014_cleaned.mat');
