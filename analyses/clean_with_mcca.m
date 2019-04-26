@@ -1,9 +1,14 @@
 run('../util/setup.m')
 
-files = dir(fullfile(data_dir,'*_cleaned.mat'))
+files = dir(fullfile(data_dir,'*_cleaned.mat'));
 
-% TODO: something in here about tiral order, ala
-% trial_order{1} = sort_trial_times(eeg,stim_events);
+all_eeg = {};
+trial_order = {};
+for i = 1:length(files)
+    [eeg,stim_events] = load_subject(files(i).name);
+    all_eeg{i} = eeg;
+    trial_order{i} = sort_trial_times(eeg,stim_events);
+end
 
 n_times = 7*64;
 n_trials = 150;
