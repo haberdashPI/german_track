@@ -1,15 +1,29 @@
 run('../util/setup.m')
 
 % ======================================================================
+% STEP 0: configuration
+
+plot_cfg = [];
+plot_cfg.viewmode = 'vertical';
+plot_cfg.preproc.detrend = 'yes';
+plot_cfg.eegscale = 1;
+plot_cfg.mychan = ft_channelselection('EX*',eeg);
+plot_cfg.mychanscale = 1;
+plot_cfg.ylim = [-1 1];
+cleaned_eeg = all_eeg;
+
+% ======================================================================
 % STEP 1: load cleaned data
 files = dir(fullfile(data_dir,'*_cleaned.mat'));
 
 all_eeg = {};
 trial_order = {};
 for i = 1:length(files)
-    [eeg,stim_events] = load_subject(files(i).name);
+    [eeg,stim_events,sid] = load_subject(files(i).name);
     all_eeg{i} = eeg;
     trial_order{i} = sort_trial_times(eeg,stim_events);
+    all_eeg{i}.raw_trial = all_eeg{i}.trial;
+    all_eeg{i}.sid = sid;
 end
 
 n_times = 7*64;
@@ -39,39 +53,35 @@ C = x'*x; % covariance matrix
 
 [A,score,AA] = nt_mcca(C,n_chans);
 
-bar(score(1:100));
-nkeep = 50; % number of components to keep
+bar(score(1:300));
 
+nkeep = 5; % number of components to keep
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
-    iA = AA{i}; % subject-specific MCCA weights
-    selection = zeros(size(iA,2),1);
-    selection(1:nkeep) = 1;
-    all_eeg{i}.old_trial = {};
-    for t = 1:length(all_eeg{i}.trial)
-        all_eeg{i}.old_trial{t} = all_eeg{i}.trial{t};
-        arr = all_eeg{i}.trial{t};
-        proj_arr = arr';
-        mu = chan_mean((i-1)*n_chans + (1:n_chans));
-        proj_arr = proj_arr - mu;
-        proj_arr = proj_arr * (iA*diag(selection)*pinv(iA));
-        all_eeg{i}.trial{t} = (proj_arr + mu)';
-    end
+    mu = chan_mean((i-1)*n_chans + (1:n_chans));
+    all_eeg{i} = project_mcca(all_eeg{i},nkeep,AA{i},mu);
 end
 
-% pre-cleaning plot configuration
-plot_cfg = [];
-plot_cfg.viewmode = 'vertical';
-plot_cfg.preproc.detrend = 'yes';
-plot_cfg.eegscale = 1;
-plot_cfg.mychan = ft_channelselection('EX*',eeg);
-plot_cfg.mychanscale = 1;
-plot_cfg.ylim = [-20 20];
+% ft_databrowser(plot_cfg,all_eeg{3});
+% ft_databrowser(plot_cfg,cleaned_eeg{3});
 
-ft_databrowser(plot_cfg,all_eeg{3});
-ft_databrowser(plot_cfg,cleaned_eeg{3});
+for i = 1:length(all_eeg)
+    save_subject(all_eeg{i},...
+        sprintf('eeg_response_%03d_mcca%02d.mat',all_eeg{i}.sid,nkeep));
+end
 
-% TODO: save these data and see if this "cleaned" result
-% works any better (not super convinced it will, given that only 2
-% components were found)
+nkeep = 65; % number of components to keep
+% Project out all but first "nkeep" components
+for i = 1:length(all_eeg)
+    mu = chan_mean((i-1)*n_chans + (1:n_chans));
+    all_eeg{i} = project_mcca(all_eeg{i},nkeep,AA{i},mu);
+end
+
+% ft_databrowser(plot_cfg,all_eeg{3});
+% ft_databrowser(plot_cfg,cleaned_eeg{3});
+
+for i = 1:length(all_eeg)
+    save_subject(all_eeg{i},...
+        sprintf('eeg_response_%03d_mcca%02d.mat',all_eeg{i}.sid,nkeep));
+end
 
