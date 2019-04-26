@@ -1,17 +1,32 @@
 
-function load_subject(file)
+function load_subject(file,stim_info)
     mf = MatFile(file)
     data = get_mvariable(mf,:dat)
     close(mf)
+    stim_events = events_for_eeg(file)
 
-    sid = parse(Int,match(r"([0-9]+)(_ica)?\.mat$",file)[1])
+    data,stim_events,sid
+end
+
+function events_for_eeg(eeg_file,stim_info)
+    sid = parse(Int,match(r"([0-9]+)(_[a-z_]+)?\.mat$",file)[1])
 
     fdir, _ = splitdir(file)
     event_file = joinpath(fdir,@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(load(event_file))
 
-    data,stim_events,sid
+    target_times = convert(Array{Float64},
+        stim_info["test_block_cfg"]["target_times"][stim_events.sound_index])
+
+    # derrived columns
+    stim_events[:target_time] = target_times
+    stim_events[:target_present] = target_times .> 0
+    stim_events[:correct] = stim_events.target_present .==
+        (stim_events.response .== 2)
+
+    stim_events
 end
+
 
 function load_sentence(events,info,stim_i,source_i)
     stim_num = events.sound_index[stim_i]
