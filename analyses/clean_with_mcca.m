@@ -1,5 +1,7 @@
 run('../util/setup.m')
 
+% ======================================================================
+% STEP 1: load cleaned data
 files = dir(fullfile(data_dir,'*_cleaned.mat'));
 
 all_eeg = {};
@@ -28,14 +30,17 @@ for i = 1:length(all_eeg)
     end
 end
 
+% ======================================================================
+% STEP 2: run mcca
+
 chan_mean = mean(x,1);
 x = x - chan_mean; % subtract mean from each column
 C = x'*x; % covariance matrix
 
 [A,score,AA] = nt_mcca(C,n_chans);
 
-bar(score(1:50));
-nkeep = 12; % number of components to keep
+bar(score(1:100));
+nkeep = 50; % number of components to keep
 
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
@@ -54,7 +59,17 @@ for i = 1:length(all_eeg)
     end
 end
 
-ft_databrowser(plot_cfg,all_eeg{1});
+% pre-cleaning plot configuration
+plot_cfg = [];
+plot_cfg.viewmode = 'vertical';
+plot_cfg.preproc.detrend = 'yes';
+plot_cfg.eegscale = 1;
+plot_cfg.mychan = ft_channelselection('EX*',eeg);
+plot_cfg.mychanscale = 1;
+plot_cfg.ylim = [-20 20];
+
+ft_databrowser(plot_cfg,all_eeg{3});
+ft_databrowser(plot_cfg,cleaned_eeg{3});
 
 % TODO: save these data and see if this "cleaned" result
 % works any better (not super convinced it will, given that only 2
