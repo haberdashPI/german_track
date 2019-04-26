@@ -10,10 +10,10 @@ function trf_train(prefix,args...;group_suffix="",kwds...)
 end
 
 function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training",
-        bounds=nothing)
+        bounds=nothing,progress=Progress(indices,1,descr=name))
     sum_model = Float64[]
 
-    @showprogress name for i in indices
+    for i in indices
         stim = stim_fn(i)
         # for now, make signal monaural
         if size(stim,2) > 1
@@ -28,6 +28,7 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training",
         else
             sum_model .+= model
         end
+        next!(progress)
     end
 
     sum_model
@@ -161,10 +162,12 @@ function predict_trf(dir,response,model,lags,method)
     result
 end
 
-function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
+function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing",
+    progress=Progress(indices,1,descr=name))
+
     result = zeros(length(indices))
 
-    @showprogress name for (j,i) in enumerate(indices)
+    for (j,i) in enumerate(indices)
         stim = stim_fn(i)
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
@@ -173,6 +176,8 @@ function trf_corr(eeg,stim_info,model,lags,indices,stim_fn;name="Testing")
 
         pred = predict_trf(-1,response,model,lags,"Shrinkage")
         result[j] = cor(pred,stim_envelope)
+
+        next!(progress)
     end
     result
 end
@@ -242,6 +247,7 @@ function trf_train_speakers(name,files,stim_info;
             bounds = isnothing(stimulus_bounds) ? nothing :
                 stimulus_bounds[stim_events.sound_index]
 
+            # TODO: where I left off: insert progress bar for everything...
             male_model = trf_train(@sprintf("trf_%s_male_%s_sid_%03d",cond,name,sid),
                 eeg,stim_info,lags,indices,
                 name = @sprintf("Training SID %02d (Male): ",sid),
