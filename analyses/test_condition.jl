@@ -4,7 +4,7 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 # - train at target switches
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> endswith(x,".mat"),readdir(data_dir))
+eeg_files = filter(x -> occursin(r"_cleaned\.mat$",x),readdir(data_dir))
 
 maxlag = 0.25
 const male_index = 1

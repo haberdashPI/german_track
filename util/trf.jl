@@ -1,3 +1,4 @@
+using ShammaModel
 
 # TODO: once this is basically working, convert to an all julia implementation:
 # I don't really need the telluride toolbox to do what I'm doing right now and
@@ -213,3 +214,29 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
     result
 end
 
+function trf_train_test(pattern,files,stim_info;
+    bounds=[],train_correct=false,maxlag=0.25)
+
+    df = DataFrame(sid = Int[],condition = String[], speaker = String[],
+            corr = Float64[],test_correct = Bool[])
+
+    for file in files
+        eeg, stim_events, sid = load_subject(joinpath(data_dir,file))
+        lags = 0:round(Int,maxlag*mat"$eeg.fsample")
+        seed = hash(eeg_file)
+
+        target_times = convert(Array{Float64},
+            stim_info["test_block_cfg"]["target_times"][stim_events.sound_index])
+        stim_events[:target_present] = target_times .> 0
+        stim_events[:correct] = stim_events.target_present .==
+            (stim_events.response .== 2)
+
+        stim_events[:target_time] = target_times
+        target_len = convert(Float64,stim_info["target_len"])
+
+        for cond in unique(stim_events.condition)
+            test = findall(stim_events.condition .== cond)
+            train = findall((stim_events.condition .== cond) .&
+                (stim_events.correct))
+
+            bounds = switch_bounds[stim_events.sound_index]

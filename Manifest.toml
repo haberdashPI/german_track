@@ -18,6 +18,12 @@ git-tree-sha1 = "99dabbe853e4f641ab21a676131f2cf9fb29937e"
 uuid = "13072b0f-2c55-5437-9ae7-d433b7a33950"
 version = "0.3.0"
 
+[[AxisArrays]]
+deps = ["Compat", "Dates", "IntervalSets", "IterTools", "Random", "RangeArrays", "Test"]
+git-tree-sha1 = "2e2536e9e6f27c4f8d09d8442b61a7ae0b910c28"
+uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
+version = "0.3.0"
+
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
@@ -415,6 +421,12 @@ git-tree-sha1 = "75a54abd10709c01f1b86b84ec225d26e840ed58"
 uuid = "e89f7d12-3494-54d1-8411-f7d8b9ae1f27"
 version = "0.5.0"
 
+[[MetaArrays]]
+deps = ["Requires"]
+git-tree-sha1 = "fbb733588bbfcddd43a8e6aac71b715e69335312"
+uuid = "36b8f3f0-b776-11e8-061f-1f20094e1fc8"
+version = "0.2.4"
+
 [[Missings]]
 deps = ["Dates", "InteractiveUtils", "SparseArrays", "Test"]
 git-tree-sha1 = "d1d2585677f2bd93a97cfeb8faa7a0de0f982042"
@@ -462,9 +474,9 @@ version = "1.1.0"
 
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
-git-tree-sha1 = "b6c91fc0ab970c0563cbbe69af18d741a49ce551"
+git-tree-sha1 = "8b68513175b2dc4023a564cb0e917ce90e74fd69"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.9.6"
+version = "0.9.7"
 
 [[PaddedViews]]
 deps = ["OffsetArrays", "Test"]
@@ -481,6 +493,14 @@ version = "0.10.3"
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[PlotAxes]]
+deps = ["AxisArrays", "DataFrames", "Requires"]
+git-tree-sha1 = "1ec36bae6e854eff1b29feef669349f9e73398a5"
+repo-rev = "master"
+repo-url = "https://github.com/haberdashPI/PlotAxes.jl"
+uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
+version = "0.1.7"
 
 [[Polynomials]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -540,6 +560,12 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+[[RangeArrays]]
+deps = ["Compat"]
+git-tree-sha1 = "d925adfd5b01cb46fde89dc9548d167b3b136f4a"
+uuid = "b3c3ace0-ae52-54e7-9d0b-2c1406fd6b9d"
+version = "0.3.1"
+
 [[Ratios]]
 deps = ["Compat"]
 git-tree-sha1 = "cdbbe0f350581296f3a2e3e7a91b214121934407"
@@ -582,6 +608,14 @@ version = "2.0.0"
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
+[[ShammaModel]]
+deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
+git-tree-sha1 = "e04ffb4ae94a32b84f1930786de6bda38bbafed1"
+repo-rev = "master"
+repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
+uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
+version = "0.2.13"
+
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
@@ -622,10 +656,10 @@ deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsBase]]
-deps = ["DataStructures", "DelimitedFiles", "LinearAlgebra", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "435707791dc85a67d98d671c1c3fcf1b20b00f94"
+deps = ["DataStructures", "LinearAlgebra", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics"]
+git-tree-sha1 = "8a0f4b09c7426478ab677245ab2b0b68552143c7"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.29.0"
+version = "0.30.0"
 
 [[StatsFuns]]
 deps = ["Rmath", "SpecialFunctions", "Test"]
@@ -657,9 +691,9 @@ version = "0.4.0"
 
 [[Tables]]
 deps = ["IteratorInterfaceExtensions", "LinearAlgebra", "Requires", "TableTraits", "Test"]
-git-tree-sha1 = "719d5be11e89ae29d79b469c4238b63b53544d38"
+git-tree-sha1 = "4129c340d3960a49c0c5dbe71df2b3784bdc11c0"
 uuid = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
-version = "0.1.18"
+version = "0.1.19"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
