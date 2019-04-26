@@ -10,7 +10,7 @@ function trf_train(prefix,args...;group_suffix="",kwds...)
 end
 
 function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training",
-        bounds=nothing,progress=Progress(indices,1,descr=name))
+        bounds=true,progress=Progress(indices,1,descr=name))
     sum_model = Float64[]
 
     for i in indices
@@ -21,7 +21,7 @@ function trf_train_(prefix,eeg,stim_info,lags,indices,stim_fn;name="Training",
         end
 
         model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,stim,eeg,i,
-            -1,lags,"Shrinkage",isnothing(bounds) ? nothing : bounds[i])
+            -1,lags,"Shrinkage",bounds ? nothing : bounds[i])
         # model = find_trf(stim_envelope,response,-1,lags,"Shrinkage")
         if isempty(sum_model)
             sum_model = model
@@ -193,7 +193,7 @@ function single(x)
 end
 
 function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
-        bounds=nothing,name="Testing")
+        bounds=all_indices,name="Testing")
 
     result = zeros(length(indices))
 
@@ -202,7 +202,7 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        bounds_i = isnothing(bounds) ? nothing : bounds[i]
+        bounds_i = iseverything(bounds) ? all_indices : bounds[i]
         stim_envelope,response = find_signals(stim,eeg,i,bounds_i)
 
         subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d",prefix,i))
@@ -219,8 +219,11 @@ function trf_corr_cv_(prefix,eeg,stim_info,model,lags,indices,stim_fn;
     result
 end
 
+struct AllIndices end
+const all_indices = AllIndices()
+
 function trf_train_speakers(group_name,train_name,test_name,files,stim_info;
-    train_filter_fn=() -> true, test_filter_fn=() -> true, maxlag=0.25)
+    maxlag=0.25, train = "" => all_indices, test  = "" => all_indices)
 
     df = DataFrame(sid = Int[],condition = String[], speaker = String[],
             corr = Float64[],test_correct = Bool[])
@@ -228,8 +231,8 @@ function trf_train_speakers(group_name,train_name,test_name,files,stim_info;
     n = 0
     for file in files
         events = events_for_eeg(file)
-        n += train_filter_fn.(events)
-        n += test_filter_fn.(events)
+        n += sum(train[2].(events))
+        n += sum(test[2].(events))
     end
 
     for file in files
@@ -240,74 +243,49 @@ function trf_train_speakers(group_name,train_name,test_name,files,stim_info;
         target_len = convert(Float64,stim_info["target_len"])
 
         for cond in unique(stim_events.condition)
-            test = findall(stim_events.condition .== cond .&
-                .!isempty.(test_filter_fn.(stim_events)))
-            train = findall((stim_events.condition .== cond) .&
+            test_indices = findall(stim_events.condition .== cond .&
+                .!isempty.(test[2].(stim_events)))
+            train_indices = findall((stim_events.condition .== cond) .&
                 (stim_events.correct) .&
-                .!isempty.(train_filter_fn.(stim_events)))
+                .!isempty.(train[2].(stim_events)))
 
-            test_bounds = test_filter_fn.(stim_events)
-            train_bounds = train_filter_fn.(stim_events)
+            test_bounds = test[2].(stim_events)
+            train_bounds = train[2].(stim_events)
 
-            prefix = @sprintf("%s_trf_%s_male_sid_%03d",train_name,cond,sid)
-            male_model = trf_train(prefix,
-                eeg,stim_info,lags,train,
-                group_sufifx = "_"*group_name,
-                bounds = train_bounds,
-                progress = progress,
-                i -> load_sentence(stim_events,stim_info,i,male_index))
+            for (speaker_index,speaker) in enumerate(["male", "fem1", "fem2"])
 
-            prefix = @sprintf("%s_trf_%s_fem1_sid_%03d",train_name,cond,sid)
-            fem1_model = trf_train(prefix,
-                eeg,stim_info,lags,train,
-                group_sufifx = "_"*group_name,
-                bounds = train_bounds,
-                progress = progress,
-                i -> load_sentence(stim_events,stim_info,i,fem1_index))
+                prefix = @sprintf("%s_trf_%s_%s_sid_%03d",train_name,cond,
+                    speaker,sid)
 
-            prefix = @sprintf("%s_trf_%s_fem2_sid_%03d",train_name,cond,sid)
-            fem2_model = trf_train(prefix,
-                eeg,stim_info,lags,train,
-                group_sufifx = "_"*group_name,
-                bounds = train_bounds,
-                progress = progress,
-                i -> load_sentence(stim_events,stim_info,i,fem2_index))
+                model = trf_train(
+                    prefix,
+                    eeg,stim_info,lags,train_indices,
+                    group_sufifx = "_"*group_name,
+                    bounds = train_bounds,
+                    progress = progress,
+                    i -> load_sentence(stim_events,stim_info,i,male_index)
+                )
 
-            # should these also be bounded by the target?
-
-            prefix = @sprintf("%s_trf_%s_male_sid_%03d",test_name,cond,sid)
-            C = trf_corr_cv(prefix,eeg,
-                    stim_info,male_model,lags,test,
+                prefix = @sprintf("%s_trf_%s_%_sid_%03d",test_name,cond,
+                    speaker,sid)
+                C = trf_corr_cv(
+                    prefix,eeg,
+                    stim_info,model,lags,test_indices,
                     group_sufifx = "_"*group_name,
                     bounds = test_bounds,
                     progress = progress,
-                    i -> load_sentence(stim_events,stim_info,i,male_index))
-            df = vcat(df,DataFrame(sid = sid, condition = cond,
-                    speaker="male", corr = C,
-                    test_correct = stim_events.correct[test]))
+                    i -> load_sentence(stim_events,stim_info,i,speaker_index)
+                )
 
-            prefix = @sprintf("%s_trf_%s_fem1_sid_%03d",test_name,cond,sid)
-            C = trf_corr_cv(prefix,eeg,
-                    stim_info,fem1_model,lags,test,
-                    group_sufifx = "_"*group_name,
-                    bounds = test_bounds,
-                    progress = progress,
-                    i -> load_sentence(stim_events,stim_info,i,fem1_index))
-            df = vcat(df,DataFrame(sid = sid, condition = cond,
-                    speaker="fem1", corr = C,
-                    test_correct = stim_events.correct[test]))
-
-            prefix = @sprintf("%s_trf_%s_fem2_sid_%03d",test_name,cond,sid)
-            C = trf_corr_cv(prefix,eeg,
-                    stim_info,fem2_model,lags,test,
-                    group_sufifx = "_"*group_name,
-                    bounds = test_bounds,
-                    progress = progress,
-                    i -> load_sentence(stim_events,stim_info,i,fem2_index))
-            df = vcat(df,DataFrame(sid = sid, condition = cond,
-                    speaker="fem2", corr = C,
-                    test_correct = stim_events.correct[test]))
-
+                rows = DataFrame(
+                    sid = sid,
+                    condition = cond,
+                    speaker=speaker,
+                    corr = C,
+                    test_correct = stim_events[test_indices].correct
+                )
+                df = vcat(df,rows)
+            end
         end
     end
 

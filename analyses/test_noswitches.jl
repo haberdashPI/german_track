@@ -27,8 +27,8 @@ switch_times =
 switch_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
 
 df = trf_train_speakers(stim_info,
-    "noswitches",train_filter_fn = row -> switch_bounds[row.sound_index],
-    "noswitches",test_filter_fn = row -> switch_bounds[row.sound_index])
+    train = "noswitches" => row -> switch_bounds[row.sound_index],
+    test = "noswitches" => row -> switch_bounds[row.sound_index])
 save(joinpath(cache_dir,"test_switches.csv"),df)
 
 alert()
