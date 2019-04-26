@@ -3,16 +3,15 @@ function load_subject(file,stim_info)
     mf = MatFile(file)
     data = get_mvariable(mf,:dat)
     close(mf)
-    stim_events = events_for_eeg(file)
+    stim_events, sid = events_for_eeg(file,stim_info)
 
     data,stim_events,sid
 end
 
-function events_for_eeg(eeg_file,stim_info)
+function events_for_eeg(file,stim_info)
     sid = parse(Int,match(r"([0-9]+)(_[a-z_]+)?\.mat$",file)[1])
 
-    fdir, _ = splitdir(file)
-    event_file = joinpath(fdir,@sprintf("sound_events_%03d.csv",sid))
+    event_file = joinpath(data_dir,@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(load(event_file))
 
     target_times = convert(Array{Float64},
@@ -24,7 +23,7 @@ function events_for_eeg(eeg_file,stim_info)
     stim_events[:correct] = stim_events.target_present .==
         (stim_events.response .== 2)
 
-    stim_events
+    stim_events, sid
 end
 
 
