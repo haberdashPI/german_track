@@ -178,11 +178,11 @@ function predict_trf(dir,response,model,lags,method)
     result
 end
 
-function trf_corr_cv(;prefix,group_suffix="",name="Training",
+function trf_corr_cv(;prefix,indices=indices,group_suffix="",name="Training",
     progress=Progress(length(indices),1,desc=name),kwds...)
 
     cachefn(@sprintf("%s_corr%s",prefix,group_suffix),
-        trf_corr_cv_,;prefix=prefix,name=name,progress=progress,
+        trf_corr_cv_,;prefix=prefix,indices=indices,name=name,progress=progress,
         oncache = () -> update!(progress,progress.counter+length(indices)),
         kwds...)
 end
@@ -233,11 +233,27 @@ function trf_train_speakers(group_name,files,stim_info;
     df = DataFrame(sid = Int[],condition = String[], speaker = String[],
             corr = Float64[],test_correct = Bool[])
 
+    function setup_indices(events,cond)
+        test_bounds = test_fn.(eachrow(events))
+        train_bounds = train_fn.(eachrow(events))
+
+        test_indices = findall((events.condition .== cond) .&
+            (.!isempty.(test_bounds)) .&
+            (.!skip_bad_trials .| .!events.bad_trial))
+        train_indices = findall((events.condition .== cond) .&
+            (events.correct) .& (.!isempty.(train_bounds)) .&
+            (.!skip_bad_trials .| .!events.bad_trial))
+
+        test_bounds, test_indices, train_bounds, train_indices
+    end
+
     n = 0
     for file in files
-        events = eachrow(events_for_eeg(file,stim_info)[1])
-        n += sum(!isempty,train_fn.(events))
-        n += sum(!isempty,test_fn.(events))
+        events = events_for_eeg(file,stim_info)[1]
+        test_bounds, test_indices,
+            train_bounds, train_indices = setup_indices(events,cond)
+        n += length(test_indices)*3
+        n += length(train_indices)*3
     end
     progress = Progress(n;desc="Analyzing...")
 
@@ -245,18 +261,11 @@ function trf_train_speakers(group_name,files,stim_info;
         eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
         lags = 0:round(Int,maxlag*mat"$eeg.fsample")
 
-        test_bounds = test_fn.(eachrow(stim_events))
-        train_bounds = train_fn.(eachrow(stim_events))
-
         target_len = convert(Float64,stim_info["target_len"])
 
         for cond in unique(stim_events.condition)
-            test_indices = findall((stim_events.condition .== cond) .&
-                (.!isempty.(test_bounds)) .&
-                (.!skip_bad_trials .| .!stim_events.bad_trial))
-            train_indices = findall((stim_events.condition .== cond) .&
-                (stim_events.correct) .& (.!isempty.(train_bounds)) .&
-                (.!skip_bad_trials .| .!stim_events.bad_trial))
+            test_bounds, test_indices,
+             train_bounds, train_indices = setup_indices(stim_events,cond)
 
             sid_str = @sprintf("%03d",sid)
 
