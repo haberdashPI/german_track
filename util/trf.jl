@@ -213,6 +213,7 @@ function trf_corr_cv_(;prefix,eeg,stim_info,model,lags,indices,stim_fn,
 end
 
 function trf_train_speakers(group_name,files,stim_info;
+    skip_bad_trials = false,
     maxlag=0.25,
     train = "" => x -> AllIndices(x),
     test  = "" => x -> AllIndices(x))
@@ -242,9 +243,11 @@ function trf_train_speakers(group_name,files,stim_info;
 
         for cond in unique(stim_events.condition)
             test_indices = findall((stim_events.condition .== cond) .&
-                (.!isempty.(test_bounds)))
+                (.!isempty.(test_bounds)) .&
+                (.!skip_bad_trials .| .!stim_events.bad_trial))
             train_indices = findall((stim_events.condition .== cond) .&
-                (stim_events.correct) .& (.!isempty.(train_bounds)))
+                (stim_events.correct) .& (.!isempty.(train_bounds)) .&
+                (.!skip_bad_trials .| .!stim_events.bad_trial))
 
             sid_str = @sprintf("%03d",sid)
 
@@ -283,7 +286,7 @@ function trf_train_speakers(group_name,files,stim_info;
                     condition = cond,
                     speaker=speaker,
                     corr = C,
-                    test_correct = stim_events[test_indices].correct
+                    test_correct = stim_events.correct[test_indices]
                 )
                 df = vcat(df,rows)
             end

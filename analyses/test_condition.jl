@@ -8,7 +8,8 @@ eeg_files = filter(x -> occursin(r"_cleaned\.mat$",x),readdir(data_dir))
 
 df = trf_train_speakers("cleaned",eeg_files,stim_info,
     train = "condition" => all_indices,
-    test = "condition" => all_indices)
+    test = "condition" => all_indices,
+    skip_bad_trials = true)
 
 save(joinpath(cache_dir,"test_switches.csv"),df)
 

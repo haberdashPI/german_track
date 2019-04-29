@@ -45,7 +45,7 @@ plot_detrend_cfg.mychanscale = 50;
 % data
 
 % subj 8 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_008.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_008.mat');
 
 ft_rejectvisual(reject_cfg,eeg);
 
@@ -56,6 +56,9 @@ bad_trials = [
     117
     118
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -78,7 +81,7 @@ save_subject(eeg,'eeg_response_008_cleaned.mat');
 % subj 9 ----------------------------------------
 % NOTE: I may need to remove this participant
 % it's quite noisey data
-[eeg,stim_events,~] = load_subject('eeg_response_009.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_009.mat');
 ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
@@ -100,6 +103,9 @@ bad_trials = [
     142
     147
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -119,13 +125,16 @@ ft_databrowser(plot_detrend_cfg,eeg);
 save_subject(eeg,'eeg_response_009_cleaned.mat')
 
 % subj 10 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_010.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_010.mat');
 ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
     34
     118
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -147,7 +156,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 save_subject(eeg,'eeg_response_010_cleaned.mat')
 
 % subj 11 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_011.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_011.mat');
 ft_databrowser(plot_cfg,eeg);
 ft_rejectvisual(reject_cfg,eeg);
 
@@ -180,6 +189,9 @@ bad_trials = [
     134
     149
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -200,7 +212,7 @@ save_subject(eeg,'eeg_response_011_cleaned.mat')
 
 % TODO: stopped here
 % subj 12 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_012.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_012.mat');
 ft_rejectvisual(reject_cfg,eeg);
 ft_databrowser(plot_cfg,eeg);
 
@@ -218,6 +230,9 @@ ft_databrowser(plot_cfg,eeg);
 bad_trials = [
     115
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -239,7 +254,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 save_subject(eeg,'eeg_response_012_cleaned.mat')
 
 % subj 13 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_013.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_013.mat');
 ft_rejectvisual(reject_cfg,eeg);
 ft_databrowser(plot_cfg,eeg);
 
@@ -247,6 +262,9 @@ bad_trials = [
     114
     150
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
@@ -266,7 +284,7 @@ ft_databrowser(plot_detrend_cfg,eeg);
 save_subject(eeg,'eeg_response_013_cleaned.mat')
 
 % subj 14 ----------------------------------------
-[eeg,stim_events,~] = load_subject('eeg_response_014.mat');
+[eeg,stim_events,sid] = load_subject('eeg_response_014.mat');
 
 ft_rejectvisual(reject_cfg,eeg);
 % trial 17 & 35
@@ -287,6 +305,9 @@ ft_rejectvisual(reject_cfg,eeg);
 bad_trials = [
     17
 ];
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 
 % zero trials, interpolate channels
 eeg = zero_trials(eeg,bad_trials);
