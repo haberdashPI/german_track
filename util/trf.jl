@@ -7,7 +7,12 @@ using ShammaModel
 struct AllIndices end
 const all_indices = AllIndices()
 Base.getindex(x::AllIndices,i::Int) = x
-(x::AllIndices)(rows) = map(x -> all_indices,rows)
+Base.isempty(x::AllIndices) = false
+(x::AllIndices)(row) = all_indices
+
+struct NoIndices end
+const no_indices = NoIndices()
+Base.isempty(x::NoIndices) = true
 
 toindex(x,min,fs) = clamp.(round.(Int,x.*fs),1,min)
 
@@ -221,8 +226,8 @@ function trf_train_speakers(group_name,files,stim_info;
     n = 0
     for file in files
         events = eachrow(events_for_eeg(file,stim_info)[1])
-        n += length(train_fn.(events))
-        n += length(test_fn.(events))
+        n += sum(!isempty,train_fn.(events))
+        n += sum(!isempty,test_fn.(events))
     end
     progress = Progress(n;desc="Analyzing...")
 
@@ -230,12 +235,12 @@ function trf_train_speakers(group_name,files,stim_info;
         eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
         lags = 0:round(Int,maxlag*mat"$eeg.fsample")
 
+        test_bounds = test_fn.(eachrow(stim_events))
+        train_bounds = train_fn.(eachrow(stim_events))
+
         target_len = convert(Float64,stim_info["target_len"])
 
         for cond in unique(stim_events.condition)
-            test_bounds = test_fn.(eachrow(stim_events))
-            train_bounds = train_fn.(eachrow(stim_events))
-
             test_indices = findall((stim_events.condition .== cond) .&
                 (.!isempty.(test_bounds)))
             train_indices = findall((stim_events.condition .== cond) .&
@@ -251,10 +256,11 @@ function trf_train_speakers(group_name,files,stim_info;
                     eeg = eeg,
                     stim_info = stim_info,lags=lags,
                     indices = train_indices,
-                    group_sufifx = "_"*group_name,
+                    group_suffix = "_"*group_name,
                     bounds = train_bounds,
                     progress = progress,
-                    i -> load_sentence(stim_events,stim_info,i,male_index)
+                    stim_fn = i -> load_sentence(stim_events,stim_info,i,
+                        speaker_index)
                 )
 
                 prefix = join([test_name,"trf",cond,speaker,sid_str],"_")
@@ -265,10 +271,11 @@ function trf_train_speakers(group_name,files,stim_info;
                     model=model,
                     lags=lags,
                     indices = test_indices,
-                    group_sufifx = "_"*group_name,
+                    group_suffix = "_"*group_name,
                     bounds = test_bounds,
                     progress = progress,
-                    i -> load_sentence(stim_events,stim_info,i,speaker_index)
+                    stim_fn = i -> load_sentence(stim_events,stim_info,i,
+                        speaker_index)
                 )
 
                 rows = DataFrame(
