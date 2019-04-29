@@ -4,7 +4,6 @@ function load_subject(file,stim_info)
     data = get_mvariable(mf,:dat)
     close(mf)
     stim_events, sid = events_for_eeg(file,stim_info)
-    stim_events[:,:bad_trial] = convert.(Bool,stim_events.bad_trial)
 
     data,stim_events,sid
 end
@@ -24,6 +23,7 @@ function events_for_eeg(file,stim_info)
     stim_events[:target_present] = target_times .> 0
     stim_events[:correct] = stim_events.target_present .==
         (stim_events.response .== 2)
+    stim_events[:,:bad_trial] = convert.(Bool,stim_events.bad_trial)
 
     stim_events, sid
 end
