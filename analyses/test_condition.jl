@@ -11,6 +11,6 @@ df = trf_train_speakers("cleaned",eeg_files,stim_info,
     test = "condition" => all_indices,
     skip_bad_trials = true)
 
-save(joinpath(cache_dir,"test_switches.csv"),df)
+save(joinpath(cache_dir,"test_condition.csv"),df)
 
 alert()
