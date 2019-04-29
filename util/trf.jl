@@ -89,7 +89,7 @@ end
 # testing and training
 
 function trf_train(;prefix,group_suffix="",indices,name="Training",
-    progress=Progress(length(indices),1,descr=name),kwds...)
+    progress=Progress(length(indices),1,desc=name),kwds...)
 
     cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
         trf_train_;prefix=prefix,indices=indices,name=name,progress=progress,
@@ -98,7 +98,7 @@ function trf_train(;prefix,group_suffix="",indices,name="Training",
 end
 
 function trf_train_(;prefix,eeg,stim_info,lags,indices,stim_fn,name="Training",
-        bounds=all_indices,progress=Progress(length(indices),1,descr=name))
+        bounds=all_indices,progress=Progress(length(indices),1,desc=name))
     sum_model = Float64[]
 
     for i in indices
@@ -179,10 +179,10 @@ function predict_trf(dir,response,model,lags,method)
 end
 
 function trf_corr_cv(;prefix,group_suffix="",name="Training",
-    progress=Progress(length(indices),1,descr=name),kwds...)
+    progress=Progress(length(indices),1,desc=name),kwds...)
 
     cachefn(@sprintf("%s_corr%s",prefix,group_suffix),
-        trf_corr_cv_,;prefix=prefix,
+        trf_corr_cv_,;prefix=prefix,name=name,progress=progress,
         oncache = () -> update!(progress,progress.counter+length(indices)),
         kwds...)
 end
@@ -194,7 +194,7 @@ end
 
 function trf_corr_cv_(;prefix,eeg,stim_info,model,lags,indices,stim_fn,
     bounds=all_indices,name="Testing",
-    progress=Progress(length(indices),1,descr=name))
+    progress=Progress(length(indices),1,desc=name))
 
     result = zeros(length(indices))
 
