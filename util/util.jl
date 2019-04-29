@@ -10,7 +10,8 @@ function load_subject(file,stim_info)
 end
 
 function events_for_eeg(file,stim_info)
-    sid = parse(Int,match(r"([0-9]+)(_[a-z_]+)?\.mat$",file)[1])
+    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?\.mat$",file)
+    sid = parse(Int,matched[1])
 
     event_file = joinpath(data_dir,@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(load(event_file))
@@ -46,9 +47,10 @@ function load_other_sentence(events,info,stim_i,source_i)
     SampleBuf(x,fs)
 end
 
-function cachefn(prefix,fn,args...;kwds...)
+function cachefn(prefix,fn,args...;oncache=() -> nothing,kwds...)
     file = joinpath(cache_dir,prefix * ".jld2")
     if isfile(file)
+        oncache()
         load(file,"contents")
     else
         result = fn(args...;kwds...)

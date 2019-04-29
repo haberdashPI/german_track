@@ -88,13 +88,17 @@ end
 ################################################################################
 # testing and training
 
-function trf_train(;prefix,group_suffix="",kwds...)
+function trf_train(;prefix,group_suffix="",indices,name="Training",
+    progress=Progress(length(indices),1,descr=name),kwds...)
+
     cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        trf_train_;prefix=prefix,kwds...)
+        trf_train_;prefix=prefix,indices=indices,name=name,progress=progress,
+        oncache = () -> update!(progress,progress.counter+length(indices)),
+        kwds...)
 end
 
 function trf_train_(;prefix,eeg,stim_info,lags,indices,stim_fn,name="Training",
-        bounds=all_indices,progress=Progress(indices,1,descr=name))
+        bounds=all_indices,progress=Progress(length(indices),1,descr=name))
     sum_model = Float64[]
 
     for i in indices
@@ -174,9 +178,13 @@ function predict_trf(dir,response,model,lags,method)
     result
 end
 
-function trf_corr_cv(;prefix,group_suffix="",kwds...)
+function trf_corr_cv(;prefix,group_suffix="",name="Training",
+    progress=Progress(length(indices),1,descr=name),kwds...)
+
     cachefn(@sprintf("%s_corr%s",prefix,group_suffix),
-        trf_corr_cv_,;prefix=prefix,kwds...)
+        trf_corr_cv_,;prefix=prefix,
+        oncache = () -> update!(progress,progress.counter+length(indices)),
+        kwds...)
 end
 
 function single(x)
@@ -185,7 +193,8 @@ function single(x)
 end
 
 function trf_corr_cv_(;prefix,eeg,stim_info,model,lags,indices,stim_fn,
-    bounds=all_indices,name="Testing",progress=Progress(indices,1,descr=name))
+    bounds=all_indices,name="Testing",
+    progress=Progress(length(indices),1,descr=name))
 
     result = zeros(length(indices))
 
@@ -215,8 +224,8 @@ end
 function trf_train_speakers(group_name,files,stim_info;
     skip_bad_trials = false,
     maxlag=0.25,
-    train = "" => x -> AllIndices(x),
-    test  = "" => x -> AllIndices(x))
+    train = "" => all_indices,
+    test = train)
 
     train_name, train_fn = train
     test_name, test_fn = test
