@@ -252,12 +252,15 @@ function trf_train_speakers(group_name,files,stim_info;
         events = events_for_eeg(file,stim_info)[1]
         test_bounds, test_indices,
             train_bounds, train_indices = setup_indices(events,cond)
-        n += length(test_indices)*3
+        n += length(test_indices)*4
         n += length(train_indices)*3
     end
     progress = Progress(n;desc="Analyzing...")
+    @show n
+    @show progress
 
     for file in files
+        @show progress
         eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
         lags = 0:round(Int,maxlag*mat"$eeg.fsample")
 
@@ -309,6 +312,21 @@ function trf_train_speakers(group_name,files,stim_info;
                 df = vcat(df,rows)
             end
         end
+
+        prefix = join([test_name,"trf",cond,"male_other",sid_str],"_")
+        C = trf_corr_cv(
+            prefix=prefix,
+            eeg=eeg,
+            stim_info=stim_info,
+            model=model,
+            lags=lags,
+            indices = test_indices,
+            group_suffix = "_"*group_name,
+            bounds = test_bounds,
+            progress = progress,
+            stim_fn = i -> load_other_sentence(stim_events,stim_info,i,1)
+        )
+
     end
 
     df
