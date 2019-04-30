@@ -250,27 +250,25 @@ function trf_train_speakers(group_name,files,stim_info;
     n = 0
     for file in files
         events = events_for_eeg(file,stim_info)[1]
-        test_bounds, test_indices,
-            train_bounds, train_indices = setup_indices(events,cond)
-        n += length(test_indices)*4
-        n += length(train_indices)*3
+        for cond in unique(events.condition)
+            test_bounds, test_indices,
+                train_bounds, train_indices = setup_indices(events,cond)
+            n += length(train_indices)*3
+            n += length(test_indices)*(3+(cond == "male"))
+        end
     end
     progress = Progress(n;desc="Analyzing...")
-    @show n
-    @show progress
 
     for file in files
-        @show progress
         eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
         lags = 0:round(Int,maxlag*mat"$eeg.fsample")
+        sid_str = @sprintf("%03d",sid)
 
         target_len = convert(Float64,stim_info["target_len"])
 
         for cond in unique(stim_events.condition)
             test_bounds, test_indices,
              train_bounds, train_indices = setup_indices(stim_events,cond)
-
-            sid_str = @sprintf("%03d",sid)
 
             for (speaker_index,speaker) in enumerate(["male", "fem1", "fem2"])
 
@@ -301,7 +299,6 @@ function trf_train_speakers(group_name,files,stim_info;
                     stim_fn = i -> load_sentence(stim_events,stim_info,i,
                         speaker_index)
                 )
-
                 rows = DataFrame(
                     sid = sid,
                     condition = cond,
@@ -310,22 +307,33 @@ function trf_train_speakers(group_name,files,stim_info;
                     test_correct = stim_events.correct[test_indices]
                 )
                 df = vcat(df,rows)
+
+                if speaker == "male"
+                    prefix = join([test_name,"trf",cond,"male_other",sid_str],"_")
+                    C = trf_corr_cv(
+                        prefix=prefix,
+                        eeg=eeg,
+                        stim_info=stim_info,
+                        model=model,
+                        lags=lags,
+                        indices = test_indices,
+                        group_suffix = "_"*group_name,
+                        bounds = test_bounds,
+                        progress = progress,
+                        stim_fn = i -> load_other_sentence(stim_events,stim_info,i,1)
+                    )
+                    rows = DataFrame(
+                        sid = sid,
+                        condition = cond,
+                        speaker="male_other",
+                        corr = C,
+                        test_correct = stim_events.correct[test_indices]
+                    )
+                    df = vcat(df,rows)
+
+                end
             end
         end
-
-        prefix = join([test_name,"trf",cond,"male_other",sid_str],"_")
-        C = trf_corr_cv(
-            prefix=prefix,
-            eeg=eeg,
-            stim_info=stim_info,
-            model=model,
-            lags=lags,
-            indices = test_indices,
-            group_suffix = "_"*group_name,
-            bounds = test_bounds,
-            progress = progress,
-            stim_fn = i -> load_other_sentence(stim_events,stim_info,i,1)
-        )
 
     end
 
