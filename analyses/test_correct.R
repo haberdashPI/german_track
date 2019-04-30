@@ -19,6 +19,7 @@ ggplot(df,aes(x=speaker,y=corr,color=test_correct)) +
     scale_color_brewer(palette='Set1') +
     coord_cartesian(xlim=c(0.5,4.5)) +
     facet_grid(condition~sid)
+
 ggsave(file.path(dir,"correct_corr_vs_control.pdf"),width=9,height=7)
 
 dfcor = df %>%
