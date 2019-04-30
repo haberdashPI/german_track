@@ -20,21 +20,5 @@ ggplot(df,aes(x=speaker,y=corr,color=test_correct)) +
     scale_color_brewer(palette='Set1') +
     coord_cartesian(xlim=c(0.5,4.5)) +
     facet_grid(condition~sid)
+
 ggsave(file.path(dir,"switch_corr_vs_control.pdf"),width=9,height=7)
-
-# dfcor = df %>%
-#     group_by(sid,condition,trial,test_correct) %>%
-#     spread(speaker,corr)
-
-# ggplot(dfcor,aes(x=pmax(fem1,fem2),y=male)) +
-#     geom_point(aes(color=test_correct)) +
-#     geom_abline(intercept=0,slope=1) + facet_grid(condition~sid) +
-#     scale_color_brewer(palette='Set1')
-# ggsave(file.path(dir,"switch_corr_male_v_female_by_condition.pdf"),
-#     width=9,height=5)
-
-# ggplot(dfcor,aes(x=pmax(fem1,fem2),y=male)) +
-#     geom_point(aes(color=test_correct)) +
-#     geom_abline(intercept=0,slope=1) + facet_grid(~sid) +
-#     scale_color_brewer(palette='Set1')
-# ggsave(file.path(dir,"switch_corr_male_v_female.pdf"),width=9,height=2.5)
