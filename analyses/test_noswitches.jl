@@ -13,9 +13,9 @@ switch_times = convert(Array{Array{Float64}},
     stim_info["test_block_cfg"]["switch_times"])
 switch_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
 
-df = trf_train_speakers("cleaned",stim_info,
-    train = "noswitches" => row -> switch_bounds[row.sound_index],
-    test = "noswitches" => row -> switch_bounds[row.sound_index])
-save(joinpath(cache_dir,"test_switches.csv"),df)
+df = trf_train_speakers("",eeg_files,stim_info,
+    train = "clean_noswitches" => row -> switch_bounds[row.sound_index],
+    skip_bad_trials = true)
+save(joinpath(cache_dir,"test_noswitches.csv"),df)
 
 alert()
