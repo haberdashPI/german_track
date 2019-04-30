@@ -241,7 +241,7 @@ function trf_train_speakers(group_name,files,stim_info;
             (.!isempty.(test_bounds)) .&
             (.!skip_bad_trials .| .!events.bad_trial))
         train_indices = findall((events.condition .== cond) .&
-            (events.correct) .& (.!isempty.(train_bounds)) .&
+            (.!isempty.(train_bounds)) .&
             (.!skip_bad_trials .| .!events.bad_trial))
 
         test_bounds, test_indices, train_bounds, train_indices
