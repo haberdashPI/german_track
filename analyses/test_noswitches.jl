@@ -4,7 +4,7 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 # tracking may be confused
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_cleaned\.mat$",x),readdir(data_dir))
+eeg_files = filter(x -> occursin(r"_mcca65\.mat$",x),readdir(data_dir))
 
 maxlag = 0.25
 
@@ -14,7 +14,7 @@ switch_times = convert(Array{Array{Float64}},
 switch_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
 
 df = trf_train_speakers("",eeg_files,stim_info,
-    train = "clean_noswitches" => row -> switch_bounds[row.sound_index],
+    train = "mcca65_noswitches" => row -> switch_bounds[row.sound_index],
     skip_bad_trials = true)
 save(joinpath(cache_dir,"test_noswitches.csv"),df)
 
