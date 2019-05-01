@@ -1,3 +1,21 @@
+function mat2bson(file)
+    file
+end
+
+Base.@kwdef struct EEGData
+    label::Vector{String}
+    fs::Int
+    data::Vector{Matrix{Float64}}
+end
+
+function clean_eeg!(data)
+    EEGData(
+        label = convert(Vector{String},data["label"]),
+        fs = Int(data["fsample"]),
+        data = vec(Array{Matrix{Float64}}(data["trial"]))
+    )
+end
+
 
 function load_subject(file,stim_info)
     mf = MatFile(file)
