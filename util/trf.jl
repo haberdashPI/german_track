@@ -207,12 +207,19 @@ function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
     @assert dir == -1
     stim_envelope,response = find_signals(found_signals,stim,eeg,i,bounds)
 
-    X = withlags(response',lags)
+    # TODO: debug with working matlab method
+    # what's off? still not working
+
+    X = withlags(response',.-reverse(lags))
+    n = size(X,2)
     Y = stim_envelope
     XX = X'X
     XY = Y'X
-    XX = (1-k)XX + k*tr(XX)I
+    XX = (1-k)XX + k/n*tr(XX)I
     XX\XY'
+    # XY = qr!(Y'X)
+    # XX .*= (1-k) .+ k*tr(XX)I
+    # rdiv!(XX,XY)
 end
 
 function predict_trf(dir,response::MxArray,model,lags,method)
