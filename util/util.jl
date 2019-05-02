@@ -18,16 +18,37 @@ end
 
 
 function load_subject(file,stim_info)
-    mf = MatFile(file)
-    data = get_mvariable(mf,:dat)
-    close(mf)
+    if !isfile(file)
+        error("File '$file' does not exist.")
+    end
+
     stim_events, sid = events_for_eeg(file,stim_info)
 
-    data,stim_events,sid
+    if endswith(file,".mat")
+        mf = MatFile(file)
+        data = get_mvariable(mf,:dat)
+        close(mf)
+
+        data,stim_events,sid
+    elseif endswith(file,".bson")
+        @load file data
+        data,stim_events,sid
+    else
+        pat = match(r"\.(.+)$",file)
+        if pat != nothing
+            ext = pat[1]
+            error("Unsupported data format '.$ext'.")
+        else
+            error("Unknown file format for $file")
+        end
+    end
 end
 
 function events_for_eeg(file,stim_info)
-    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?\.mat$",file)
+    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?\.[a-z]+$",file)
+    if matched == nothing
+        error("Could not find subject id in filename '$file'.")
+    end
     sid = parse(Int,matched[1])
 
     event_file = joinpath(data_dir,@sprintf("sound_events_%03d.csv",sid))

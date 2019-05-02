@@ -1,5 +1,21 @@
 using ShammaModel
 
+SampledSignals.samplerate(x::EEGData) = x.fs
+function SampledSignals.samplerate(x::MxArray)
+    fs = mat"$x.fsample"
+    fs
+end
+
+function eegtrial(x::MxArray,i)
+    mat"response = $x.trial{$i};"
+    response = get_mvariable(:response)
+    response
+end
+
+function eegtrial(x::EEGData,i)
+    x.data[i]
+end
+
 ################################################################################
 # handle selecting various bounds of a signal
 
@@ -146,11 +162,9 @@ end
 # end
 function find_signals(stim,eeg,i,bounds=all_indices)
     # envelope and neural response
-    fs = mat"$eeg.fsample"
-    stim_envelope = find_envelope(stim,fs)
+    stim_envelope = find_envelope(stim,samplerate(eeg))
 
-    mat"response = $eeg.trial{$i};"
-    response = get_mvariable(:response)
+    response = eegtrial(eeg,i)
 
     min_len = min(size(stim_envelope,1),trunc(Int,size(response,2)));
 
@@ -160,7 +174,7 @@ function find_signals(stim,eeg,i,bounds=all_indices)
     stim_envelope,response
 end
 
-function find_trf(stim,eeg,i,dir,lags,method,bounds=all_indices;
+function find_trf(stim,eeg::MxArray,i,dir,lags,method,bounds=all_indices;
         found_signals=nothing)
     if isnothing(found_signals)
         stim_envelope,response = find_signals(stim,eeg,i,bounds)
@@ -173,9 +187,39 @@ function find_trf(stim,eeg,i,dir,lags,method,bounds=all_indices;
     result
 end
 
-function predict_trf(dir,response,model,lags,method)
+function find_trf(stim,eeg::Array,i,dir,lags,method,bounds=all_indices;
+        found_signals=nothing,k=0.2)
+
+    @assert method == "Shrinkage"
+    @assert dir == -1
+
+    if isnothing(found_signals)
+        stim_envelope,response = find_signals(stim,eeg,i,bounds)
+    else
+        stim_envelope,response = found_signals
+    end
+
+    # TODO: don't I have to reverse the lags?
+    # TODO: write `withlag` and debug
+
+    X = withlag(eeg,lags)
+    Y = stim
+    XX = X'X
+    XY = Y'X
+    XX = (1-k)XX + Diagonal(k*mean(eigvals(XX)))
+    XX\XY'
+end
+
+function predict_trf(dir,response::MxArray,model,lags,method)
     mat"[~,$result] = FindTRF([],[],-1,$response',$model,($lags)',$method);"
     result
+end
+
+function predict_trf(dir,response::Array,model,lags,method)
+    @assert method == "Shrinkage"
+    @assert dir == -1
+
+    withlag(eeg,lags) * model
 end
 
 function trf_corr_cv(;prefix,indices=indices,group_suffix="",name="Training",
@@ -261,7 +305,7 @@ function trf_train_speakers(group_name,files,stim_info;
 
     for file in files
         eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
-        lags = 0:round(Int,maxlag*mat"$eeg.fsample")
+        lags = 0:round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
 
         target_len = convert(Float64,stim_info["target_len"])

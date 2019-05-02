@@ -1,6 +1,6 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 
-eeg_files = filter(x -> occursin(r"\.mat$",x),readdir(data_dir))
+eeg_files = filter(x -> occursin(r"[a-z_][0-9]{2}\.mat$",x),readdir(data_dir))
 
 test_dir = joinpath(homedir(),"Documents","test")
 isdir(test_dir) || mkdir(test_dir)
