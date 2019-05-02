@@ -3,7 +3,7 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 # - train at correct targets
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.mat$",x),readdir(data_dir))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 
 df = trf_train_speakers("",eeg_files,stim_info,
     train = "mcca65_correct" =>

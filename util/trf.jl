@@ -160,9 +160,11 @@ end
 #     mat "result = CreateLoudnessFeature($(stim.data),$(samplerate(stim)),$tofs)"
 #     get_mvariable(:result)
 # end
-function find_signals(stim,eeg,i,bounds=all_indices)
+find_signals(found_signals,stim,eeg,i,bounds=all_indices) = found_signals
+function find_signals(::Nothing,stim,eeg,i,bounds=all_indices)
     # envelope and neural response
-    stim_envelope = find_envelope(stim,samplerate(eeg))
+    fs = samplerate(eeg)
+    stim_envelope = find_envelope(stim,fs)
 
     response = eegtrial(eeg,i)
 
@@ -176,37 +178,40 @@ end
 
 function find_trf(stim,eeg::MxArray,i,dir,lags,method,bounds=all_indices;
         found_signals=nothing)
-    if isnothing(found_signals)
-        stim_envelope,response = find_signals(stim,eeg,i,bounds)
-    else
-        stim_envelope,response = found_signals
-    end
+    @assert method == "Shrinkage"
+    @assert dir == -1
+    stim_envelope,response = find_signals(found_signals,stim,eeg,i,bounds)
 
     lags = collect(lags)
     mat"$result = FindTRF($stim_envelope,$response',-1,[],[],($lags)',$method);"
     result
 end
 
-function find_trf(stim,eeg::Array,i,dir,lags,method,bounds=all_indices;
-        found_signals=nothing,k=0.2)
+function withlags(x,lags)
+    nl = length(lags)
+    y = similar(x,size(x,1),size(x,2)*nl)
+    z = zero(eltype(x))
+    for I in CartesianIndices(x)
+        for (l,lag) in enumerate(lags)
+            r,c = I[1],I[2]
+            r_ = r + lag
+            y[r,(l-1)*nl+c] = z < r_ <= size(x,1) ? x[r_,c] : z
+        end
+    end
+    y
+end
 
+function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
+        found_signals=nothing,k=0.2)
     @assert method == "Shrinkage"
     @assert dir == -1
+    stim_envelope,response = find_signals(found_signals,stim,eeg,i,bounds)
 
-    if isnothing(found_signals)
-        stim_envelope,response = find_signals(stim,eeg,i,bounds)
-    else
-        stim_envelope,response = found_signals
-    end
-
-    # TODO: don't I have to reverse the lags?
-    # TODO: write `withlag` and debug
-
-    X = withlag(eeg,lags)
-    Y = stim
+    X = withlags(response',lags)
+    Y = stim_envelope
     XX = X'X
     XY = Y'X
-    XX = (1-k)XX + Diagonal(k*mean(eigvals(XX)))
+    XX = (1-k)XX + k*tr(XX)I
     XX\XY'
 end
 
@@ -219,7 +224,7 @@ function predict_trf(dir,response::Array,model,lags,method)
     @assert method == "Shrinkage"
     @assert dir == -1
 
-    withlag(eeg,lags) * model
+    withlags(response',lags) * model
 end
 
 function trf_corr_cv(;prefix,indices=indices,group_suffix="",name="Training",
@@ -247,7 +252,7 @@ function trf_corr_cv_(;prefix,eeg,stim_info,model,lags,indices,stim_fn,
         if size(stim,2) > 1
             stim = sum(stim,dims=2)
         end
-        stim_envelope,response = find_signals(stim,eeg,i,bounds[i])
+        stim_envelope,response = find_signals(nothing,stim,eeg,i,bounds[i])
 
         subj_model_file = joinpath(cache_dir,@sprintf("%s_%02d",prefix,i))
         # subj_model = load(subj_model_file,"contents")

@@ -1,15 +1,8 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
-    ProgressMeter, JLD2, FileIO, Statistics, Query, LinearAlgebra,
-    ShammaModel, BSON
-
-# TODO: once julia version working
-# this will allow us to not depend on MATLAB
-# const using_matlab = true
-
-# @static if using_matlab
-#     using MATLAB
-# end
+    ProgressMeter, FileIO, Statistics, Query, LinearAlgebra,
+    ShammaModel, MATLAB
+using BSON: @save, @load
 
 base_dir = realpath(joinpath(@__DIR__,".."))
 _, name = splitdir(base_dir)

@@ -87,14 +87,15 @@ function load_other_sentence(events,info,stim_i,source_i)
 end
 
 function cachefn(prefix,fn,args...;oncache=() -> nothing,kwds...)
-    file = joinpath(cache_dir,prefix * ".jld2")
+    file = joinpath(cache_dir,prefix * ".bson")
     if isfile(file)
         oncache()
-        load(file,"contents")
+        @load file contents
+        contents
     else
-        result = fn(args...;kwds...)
-        save(file,"contents",result)
-        result
+        contents = fn(args...;kwds...)
+        @save file contents
+        contents
     end
 end
 
