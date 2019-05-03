@@ -10,5 +10,7 @@ stimuli/mixtures/**/*.wav
 stimuli/mixtures/**/*.txt
 *.swp
 .tags
+tags
+.undo/*
 .vscode
 install.json
