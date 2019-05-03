@@ -1,7 +1,7 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
     ProgressMeter, FileIO, Statistics, Query, LinearAlgebra,
-    ShammaModel, MATLAB
+    ShammaModel, MATLAB, StatsBase
 using BSON: @save, @load
 
 base_dir = realpath(joinpath(@__DIR__,".."))

@@ -189,18 +189,22 @@ end
 
 function withlags(x,lags)
     nl = length(lags)
-    y = similar(x,size(x,1),size(x,2)*nl)
-    z = zero(eltype(x))
+    n,m = size(x)
+    y = similar(x,size(x,1),m*nl)
+    z = zero(eltype(y))
     for I in CartesianIndices(x)
         for (l,lag) in enumerate(lags)
-            r,c = I[1],I[2]
-            r_ = r + lag
-            y[r,(l-1)*nl+c] = z < r_ <= size(x,1) ? x[r_,c] : z
+            #= @show =# r,c = I[1],I[2]
+            # @show (l,lag)
+            # @show (l-1)*m+c
+            r_ = r - lag
+            y[r,(l-1)*m+c] = 0 < r_ <= n ? x[r_,c] : z
         end
     end
     y
 end
 
+scale(x) = mapslices(zscore,x,dims=1)
 function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
         found_signals=nothing,k=0.2)
     @assert method == "Shrinkage"
@@ -209,17 +213,23 @@ function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
 
     # TODO: debug with working matlab method
     # what's off? still not working
+    # plan: run find_trf for the same data, both EEGData and MxArray
+    # format, and compare results
 
-    X = withlags(response',.-reverse(lags))
+    X = withlags(scale(response'),.-reverse(lags))
     n = size(X,2)
-    Y = stim_envelope
+    Y = scale(stim_envelope)
     XX = X'X
-    XY = Y'X
-    XX = (1-k)XX + k/n*tr(XX)I
-    XX\XY'
-    # XY = qr!(Y'X)
-    # XX .*= (1-k) .+ k*tr(XX)I
-    # rdiv!(XX,XY)
+    # XY = Y'X
+    # XX = (1-k)XX + k/n*tr(XX)I
+    # result = XX\XY'
+    XY = qr!(Y'X)
+    # TODO: how to add diagonal without initializting
+    XX .*= (1-k) .+ k*tr(XX)I
+    result = rdiv!(XX,XY)
+    @show result[1:5,1:5]
+    # TODO: vewrify the reshape
+    reshape(result,length(lags),size(x,2),size(Y,2))
 end
 
 function predict_trf(dir,response::MxArray,model,lags,method)
@@ -231,7 +241,7 @@ function predict_trf(dir,response::Array,model,lags,method)
     @assert method == "Shrinkage"
     @assert dir == -1
 
-    withlags(response',lags) * model
+    withlags(scale(response'),.-reverse(lags)) * reshape(model,:,size(model,3))
 end
 
 function trf_corr_cv(;prefix,indices=indices,group_suffix="",name="Training",
