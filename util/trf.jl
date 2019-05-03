@@ -205,31 +205,21 @@ function withlags(x,lags)
 end
 
 scale(x) = mapslices(zscore,x,dims=1)
+adddiag(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
 function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
         found_signals=nothing,k=0.2)
     @assert method == "Shrinkage"
     @assert dir == -1
     stim_envelope,response = find_signals(found_signals,stim,eeg,i,bounds)
 
-    # TODO: debug with working matlab method
-    # what's off? still not working
-    # plan: run find_trf for the same data, both EEGData and MxArray
-    # format, and compare results
-
     X = withlags(scale(response'),.-reverse(lags))
-    n = size(X,2)
     Y = scale(stim_envelope)
-    XX = X'X
-    # XY = Y'X
-    # XX = (1-k)XX + k/n*tr(XX)I
-    # result = XX\XY'
-    XY = qr!(Y'X)
-    # TODO: how to add diagonal without initializting
-    XX .*= (1-k) .+ k*tr(XX)I
-    result = rdiv!(XX,XY)
-    @show result[1:5,1:5]
-    # TODO: vewrify the reshape
-    reshape(result,length(lags),size(x,2),size(Y,2))
+
+    XX = X'X; XY = Y'X
+    λ̄ = tr(XX)/size(X,2)
+    XX .*= (1-k); adddiag(XX,k*λ̄)
+    result = XX\XY'
+    reshape(result,size(response,1),length(lags),size(Y,2))
 end
 
 function predict_trf(dir,response::MxArray,model,lags,method)
