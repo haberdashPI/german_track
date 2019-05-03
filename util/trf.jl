@@ -205,7 +205,8 @@ function withlags(x,lags)
 end
 
 scale(x) = mapslices(zscore,x,dims=1)
-adddiag(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
+# adds v to the diagonal of matrix (or tensor) x
+adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
 function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
         found_signals=nothing,k=0.2)
     @assert method == "Shrinkage"
@@ -217,8 +218,8 @@ function find_trf(stim,eeg::EEGData,i,dir,lags,method,bounds=all_indices;
 
     XX = X'X; XY = Y'X
     λ̄ = tr(XX)/size(X,2)
-    XX .*= (1-k); adddiag(XX,k*λ̄)
-    result = XX\XY'
+    XX .*= (1-k); adddiag!(XX,k*λ̄)
+    result = XX\XY' # TODO: in Julia 1.2, this can probably be replaced by rdiv!
     reshape(result,size(response,1),length(lags),size(Y,2))
 end
 
