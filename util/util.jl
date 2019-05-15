@@ -2,12 +2,6 @@ function mat2bson(file)
     file
 end
 
-Base.@kwdef struct EEGData
-    label::Vector{String}
-    fs::Int
-    data::Vector{Matrix{Float64}}
-end
-
 function clean_eeg!(data)
     EEGData(
         label = convert(Vector{String},data["label"]),
@@ -15,7 +9,6 @@ function clean_eeg!(data)
         data = vec(Array{Matrix{Float64}}(data["trial"]))
     )
 end
-
 
 function load_subject(file,stim_info)
     if !isfile(file)
@@ -86,19 +79,6 @@ function load_other_sentence(events,info,stim_i,source_i)
     SampleBuf(x,fs)
 end
 
-function cachefn(prefix,fn,args...;oncache=() -> nothing,kwds...)
-    file = joinpath(cache_dir,prefix * ".bson")
-    if isfile(file)
-        oncache()
-        @load file contents
-        contents
-    else
-        contents = fn(args...;kwds...)
-        @save file contents
-        contents
-    end
-end
-
 function folds(k,indices)
     len = length(indices)
     fold_size = ceil(Int,len / k)
@@ -110,7 +90,6 @@ function folds(k,indices)
     end
 end
 
-# TODO: select the switch areas
 function only_switches(switches,max_time;window=(-0.250,0.250))
     result = Array{Tuple{Float64,Float64}}(undef,length(switches))
 

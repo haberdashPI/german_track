@@ -24,9 +24,8 @@ or Unix) or `install.cmd` (Windows). The install script requires an
 install.json file containing `{"data": "[data dir]"}` with `[data dir]`
 replaced with the directory containing the preprocessed data (stored
 separately from the git repository). Create this file before running the
-install script. For this installation to work R must be installed, it must be
-on your `PATH`, and you must have the package `rjson` installed (i.e.
-`install.packages('rjson')`).
+install script. For this installation to work julia must be installed and it
+[must be on your `PATH`](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started).
 
 ## Regenerating the preprocessed data
 

@@ -1,1 +1,1 @@
-Rscript util\install.R
+julia util\install.jl

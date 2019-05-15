@@ -1,7 +1,6 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
-using JSON, Revise, CSVFiles, DataFrames, Printf, SampledSignals,
-    ProgressMeter, FileIO, Statistics, Query, LinearAlgebra,
-    ShammaModel, MATLAB, StatsBase
+using JSON, Revise, DataFrames, Printf, SampledSignals,
+    ProgressMeter, FileIO, MATLAB, EEGCoding
 using BSON: @save, @load
 
 base_dir = realpath(joinpath(@__DIR__,".."))
@@ -11,10 +10,9 @@ if name != "german_track"
 end
 
 includet(joinpath(base_dir,"util","util.jl"))
-includet(joinpath(base_dir,"util","trf.jl"))
 
 analysis_dir = joinpath(base_dir,"analyses")
-cache_dir = joinpath(base_dir,"analyses","cache")
+EEGCoding.set_cache_dir!(joinpath(base_dir,"analyses","cache"))
 data_dir = joinpath(base_dir,"data")
 stimulus_dir = joinpath(base_dir,"stimuli")
 

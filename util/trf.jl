@@ -1,4 +1,5 @@
 using ShammaModel
+using
 
 SampledSignals.samplerate(x::EEGData) = x.fs
 function SampledSignals.samplerate(x::MxArray)
@@ -194,9 +195,7 @@ function withlags(x,lags)
     z = zero(eltype(y))
     for I in CartesianIndices(x)
         for (l,lag) in enumerate(lags)
-            #= @show =# r,c = I[1],I[2]
-            # @show (l,lag)
-            # @show (l-1)*m+c
+            r,c = I[1],I[2]
             r_ = r - lag
             y[r,(l-1)*m+c] = 0 < r_ <= n ? x[r_,c] : z
         end
