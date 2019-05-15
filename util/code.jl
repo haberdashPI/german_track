@@ -10,26 +10,31 @@ using Unitful
 """
     code(y,X,[state];params...)
 
-Solve online encoding or decoding problem. For decoding y = speech stiμlus,
-and X = eeg data. For encoding, y = eeg data, X = speech stiμlus. You should
-pass α single window of data to the function, with rows representing time
-slices, and columsn representing channels (for eeg data) or features (for
-stiμlus data).
+Solve single step of online encoding or decoding problem. For decoding y =
+speech stimulus, and X = eeg data. For encoding, y = eeg data, X = speech
+stimulus. You should pass a single window of data to the function, with rows
+representing time slices, and columns representing channels (for eeg data) or
+features (for stimulus data).
 
 The coding coefficients are computed according to the following optimization
 problem
 
-argmin θ: Σᵢ λ^(k-i) ||yᵢ - Xᵢθ||² + γ||θ||
-where y is the output, X the input, and θ the parameters to be solved for
+```math
+\underset{\theta}{\mathrm{arg\ min}} \quad \sum_i
+    \lambda^{k-i} \left\lVert y_i - X_i\theta \right\rVert^2 +
+    \gamma\left\lVert\theta\right\rVert
+```
 
+In the above equation, y is the output, X the input, and θ the parameters to
+be solved for
 
-Returns an internal state and α solution
+Returns an internal state and a solution
 """
 function code; end # see full defintion below
 
 # defines the objective of optimization
 struct Objective <: ProximableFunction
-    α::Matrix{Float64}
+    A::Matrix{Float64}
     b::Matrix{Float64}
     θ::Matrix{Float64}
     function Objective(y::Union{Vector,Matrix},X::Matrix)
@@ -51,20 +56,20 @@ ProximalOperators.fun_expr(f::Objective) = "x ↦ x'Ax - 2bx"
 ProximalOperators.fun_params(f::Objective) = "" # parameters will be too large...
 
 function update!(f::Objective,y,X,λ)
-    f.α .*= λ; f.α .+= X'X
+    f.A .*= λ; f.A .+= X'X
     f.b .*= λ; f.b .+= y'X
     f
 end
 
 function (f::Objective)(θ)
-    α,b = f.α,f.b
-    y = θ'α*θ; y -= 2 .* b*θ
+    A,b = f.A,f.b
+    y = θ'A*θ; y -= 2 .* b*θ
     sum(y)
 end
 
 function ProximalOperators.gradient!(y::AbstractArray,f::Objective,x::AbstractArray)
-    α,b = f.α,f.b
-    y .= 2 .* α*x .- 2 .* b'
+    A,b = f.A,f.b
+    y .= 2 .* A*x .- 2 .* b'
     f(x)
 end
 
@@ -97,7 +102,7 @@ function marker(eeg,targets...;
     min_norm=1e-4,
     code_params...)
 
-    # TODO: this thing about the lag doesn't actually make μch sense ... I
+    # TODO: this thing about the lag doesn't actually make much sense ... I
     # think that's for compensating for something we're not doing here
 
     nt = length(targets)
@@ -134,7 +139,7 @@ sig(x) = 1/(1+exp(-x))
 """
     attention(x,y)
 
-Given two attention markers, x and y, use α batch, probabilistic state space
+Given two attention markers, x and y, use a batch, probabilistic state space
 module to compute smoothed markers.
 """
 function attention(x1,x2;
