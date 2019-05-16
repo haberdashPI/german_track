@@ -19,7 +19,10 @@ scene = Scene()
 lines!(scene,axes(m1)[1],clamp.(m1,1,4))
 lines!(scene,axes(m2)[1],clamp.(m2,1,4),color=:blue)
 
-y = EEGCoding.attention(m1,m2)
+y,sig = EEGCoding.attention(m1,m2)
 
+scene = Scene()
+band!(scene,axes(y)[1],vec(y .- 1.68.*sqrt.(sig)),vec(y .+ 1.68.*sqrt.(sig)))
+lines!(scene,axes(y)[1],y)
 
 
