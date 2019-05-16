@@ -1,5 +1,6 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 using MetaArrays
+using Makie
 
 mf = MatFile(joinpath(data_dir,"test","test.mat"))
 Y1 = get_variable(mf,:Y1)
@@ -13,10 +14,12 @@ SampledSignals.samplerate(x::MetaArray) = x.samplerate
 eegd = meta(eeg,samplerate=200)
 
 m1,m2 = EEGCoding.marker(eegd,Y1,Y2)
-# TODO: plot the results to verify them
 
-# TODO: use marker to regenerate m1 and m2 (load from matlab)
+scene = Scene()
+lines!(scene,axes(m1)[1],clamp.(m1,1,4))
+lines!(scene,axes(m2)[1],clamp.(m2,1,4),color=:blue)
+
+y = EEGCoding.attention(m1,m2)
 
 
-# TODO: use attention to regenerate
 
