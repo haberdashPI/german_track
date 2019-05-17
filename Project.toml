@@ -1,6 +1,7 @@
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSVFiles = "5d742f6a-9f54-50ce-8119-2520741973ca"
 ClusterManagers = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Debugger = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
@@ -17,4 +18,5 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SampledSignals = "bd7594eb-a658-542f-9e75-4c4d8908c167"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 WAV = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
