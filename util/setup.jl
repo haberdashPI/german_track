@@ -1,6 +1,6 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, Revise, DataFrames, Printf, SampledSignals,
-    ProgressMeter, FileIO, MATLAB, EEGCoding, CSVFiles
+    ProgressMeter, FileIO, MATLAB, EEGCoding, CSVFiles, Statistics
 using BSON: @save, @load
 
 base_dir = realpath(joinpath(@__DIR__,".."))

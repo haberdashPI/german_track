@@ -37,6 +37,24 @@ function load_subject(file,stim_info)
     end
 end
 
+function decodetrial(eeg,stim_events,stim_info,trial;params...)
+    defaults = (maxit=250,tol=1e-2,progress=true,lag=250ms,
+        min_norm=1e-16,estimation_length=10s,γ=2e-3)
+
+    male = load_sentence(stim_events,stim_info,trial,1)
+    malev = EEGCoding.find_envelope(male,samplerate(eeg))
+    fem1 = load_sentence(stim_events,stim_info,trial,2)
+    fem1v = EEGCoding.find_envelope(fem1,samplerate(eeg))
+    fem2 = load_sentence(stim_events,stim_info,trial,3)
+    fem2v = EEGCoding.find_envelope(fem2,samplerate(eeg))
+
+    malea,fem1a,fem2a = attention_marker(eeg.data[trial]',malev,fem1v,fem2v,
+        samplerate=samplerate(eeg);merge(defaults,params.data)...)
+
+    μ = mean(mean.((malea,fem1a,fem2a)))
+    (malea./μ, fem1a./μ, fem2a./μ)
+end
+
 function events_for_eeg(file,stim_info)
     matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?\.[a-z]+$",file)
     if matched == nothing
