@@ -32,7 +32,7 @@ function trf_train_speakers(group_name,files,stim_info;
             test_bounds, test_indices,
                 train_bounds, train_indices = setup_indices(events,cond)
             n += length(train_indices)*3
-            n += length(test_indices)*(3+(cond == "male"))
+            n += length(test_indices)*4
         end
     end
     progress = Progress(n;desc="Analyzing...")
