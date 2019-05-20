@@ -244,7 +244,7 @@ uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "0.8.1"
 
 [[EEGCoding]]
-deps = ["BSON", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "Statistics", "StatsBase", "Unitful"]
+deps = ["BSON", "DSP", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "Statistics", "StatsBase", "Unitful"]
 path = "/Users/davidlittle/Documents/juliadev/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.0"
@@ -366,6 +366,12 @@ version = "0.8.1"
 git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
 version = "1.0.0"
+
+[[JLD2]]
+deps = ["CodecZlib", "DataStructures", "FileIO", "LinearAlgebra", "Mmap", "Printf", "Random", "Test"]
+git-tree-sha1 = "3ba90ff93e1d5b9b2103588051c2d349fae54dac"
+uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+version = "0.1.2"
 
 [[JSON]]
 deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
@@ -594,10 +600,10 @@ uuid = "a725b495-10eb-56fe-b38b-717eba820537"
 version = "0.10.1"
 
 [[QuadGK]]
-deps = ["DataStructures", "LinearAlgebra", "Test"]
-git-tree-sha1 = "3ce467a8e76c6030d4c3786e7d3a73442017cdc0"
+deps = ["DataStructures", "LinearAlgebra"]
+git-tree-sha1 = "389fd27b958a33df5234772cc464b663b208273d"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.0.3"
+version = "2.0.4"
 
 [[Quadmath]]
 deps = ["Random", "SpecialFunctions"]
@@ -672,6 +678,14 @@ version = "2.0.0"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[ShammaModel]]
+deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
+git-tree-sha1 = "e04ffb4ae94a32b84f1930786de6bda38bbafed1"
+repo-rev = "cb5f8543ea0ce2589b1119aedcfb0398b05b2adc"
+repo-url = "https://github.com/haberdashPI/ShammaModel.jl"
+uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
+version = "0.2.13"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
