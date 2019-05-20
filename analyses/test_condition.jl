@@ -9,12 +9,12 @@ eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 
-df = trf_train_speakers("cleaned",eeg_files,stim_info,
-    train = "condition" => all_indices,
-    test = "condition" => all_indices,
-    envelope_method = :audiospect,
+df = trf_train_speakers("",eeg_files,stim_info,
+    train = "rms_condition" => all_indices,
+    test = "rms_condition" => all_indices,
+    envelope_method = :rms,
     skip_bad_trials = true)
 
-save(joinpath(cache_dir(),"test_condition.csv"),df)
+save(joinpath(cache_dir(),"test_condition_rms.csv"),df)
 
 alert()

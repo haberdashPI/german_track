@@ -3,7 +3,7 @@ source("util/setup.R")
 dir = file.path(plot_dir,paste("run",Sys.Date(),sep="_"))
 dir.exists(dir) || dir.create(dir)
 
-df = read.csv(file.path(cache_dir,"test_condition.csv"))
+df = read.csv(file.path(cache_dir,"test_condition_rms.csv"))
 df = df %>% group_by(sid,condition,speaker) %>%
     mutate(trial = 1:length(corr))
 
