@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
+using BenchmarkTools
 using MetaArrays
 using Makie
 using Unitful
@@ -8,6 +9,9 @@ stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 file = eeg_files[1]
 eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
+
+# TODO: start with a single participant, to make sure my pipeline
+# is working
 
 # TODO: start by creating a script that generates a plot for each trial. The
 # figure should include the swithces for the sources and a marker for the
@@ -26,6 +30,8 @@ t = ustrip.(uconvert.(s,axes(malea)[1].*250ms))
 lines!(scene,t,malea)
 lines!(scene,t,fem1a,color=:blue)
 lines!(scene,t,fem2a,color=:red)
+
+@btime attention_prob($malea,max.($fem2a,$fem1a))
 
 scene = Scene()
 y,lo,up = attention_prob(malea,max.(fem2a,fem1a))
