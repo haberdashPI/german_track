@@ -9,12 +9,14 @@ eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 
-df = train_speakers(StaticMethod(),"",eeg_files,stim_info,
-    train = "rms_condition" => all_indices,
-    test = "rms_condition" => all_indices,
+# start with a limited data subset (subj 1, object only)
+result = train_speakers(OnlineMethod(),"",eeg_files[1:1],stim_info,
+    train = "rms_online" => no_indices,
+    test = "rms_online" => row ->
+        row.condition == "object" ? all_indices : no_indices,
     envelope_method = :rms,
     skip_bad_trials = true)
 
-save(joinpath(cache_dir(),"test_condition_rms.csv"),df)
+save(joinpath(cache_dir(),"test_online_rms.bson"),result)
 
 alert()

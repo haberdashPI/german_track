@@ -41,9 +41,9 @@ function decodetrial(eeg,stim_events,stim_info,trial;params...)
     defaults = (maxit=250,tol=1e-2,progress=true,lag=250ms,
         min_norm=1e-16,estimation_length=10s,γ=2e-3)
 
-    malev = load_sentence(stim_events,stim_info,trial,1)
-    fem1v = load_sentence(stim_events,stim_info,trial,2)
-    fem2v = load_sentence(stim_events,stim_info,trial,3)
+    malev = load_sentence(stim_events,samplerate(eeg),stim_info,trial,1)
+    fem1v = load_sentence(stim_events,samplerate(eeg),stim_info,trial,2)
+    fem2v = load_sentence(stim_events,samplerate(eeg),stim_info,trial,3)
 
     malea,fem1a,fem2a = attention_marker(eeg.data[trial]',malev,fem1v,fem2v,
         samplerate=samplerate(eeg);merge(defaults,params.data)...)
@@ -75,29 +75,36 @@ function events_for_eeg(file,stim_info)
     stim_events, sid
 end
 
-const envelopes = Dict{Tuple{Int,Symbol},Vector{Floa64}}()
+const envelopes = Dict{Tuple{Int,Int},Vector{Float64}}()
 function load_sentence(events,tofs,info,stim_i,source_i;envelope_method=:rms)
     stim_num = events.sound_index[stim_i]
+    load_sentence_(events,tofs,info,stim_num,source_i,envelope_method)
+end
+
+function load_sentence_(events,tofs,info,stim_num,source_i,envelope_method)
     if stim_num ∈ keys(envelopes)
         envelopes[stim_num]
     else
         x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
             @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
+        if size(x,2) > 1
+            x = sum(x,dims=2)
+        end
         result = find_envelope(SampleBuf(x,fs),tofs,method=envelope_method)
-        envelopes[stim_num] = result
+        envelopes[(stim_num,source_i)] = result
         result
     end
 end
 
-function load_other_sentence(events,info,stim_i,source_i)
+function load_other_sentence(events,tofs,info,stim_i,source_i;
+    envelope_method=:rms)
+
     stim_num = events.sound_index[stim_i]
     sentences = info["test_block_cfg"]["trial_sentences"][:,source_i]
     # randomly select one of the stimuli != stim_i
     selected = rand(vcat(1:stim_num-1,stim_num+1:length(sentences)))
 
-    x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
-        @sprintf("trial_%02d_%1d.wav",selected,source_i)))
-    SampleBuf(x,fs)
+    load_sentence_(events,tofs,info,selected,source_i,envelope_method)
 end
 
 function folds(k,indices)

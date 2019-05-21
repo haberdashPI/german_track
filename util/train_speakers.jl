@@ -1,22 +1,28 @@
 # TODO: generify this method, so that it can be used to generate the results
 # for either the static or the online analysis
 
-abstract type TrainMethod; end
+abstract type TrainMethod
+end
 
-struct StaticMethod <: TrainMethod; end
-label(::StaticMethod) = "trf" # legacy name, should be changed in the future
+struct StaticMethod <: TrainMethod
+end
+
+label(::StaticMethod) = "static"
 function init_result(::StaticMethod)
     DataFrame(sid = Int[],condition = String[], speaker = String[],
-        corr = Float64[],test_correct = Bool[])
+        trial = Int[], corr = Float64[],test_correct = Bool[])
 end
 train(::StaticMethod;kwds...) = trf_train(;kwds...)
-function test(result,::StaticMethod;sid,condition,speaker,correct,kwds...)
-    C = trf_corr_cv(;kwds...)
+function test!(result,::StaticMethod;sid,condition,indices,sources,correct,
+    kwds...)
 
-    vcat(result,DataFrame(
+    C = trf_corr_cv(;sources=sources,indices=indices,kwds...)
+
+    append!(result,DataFrame(
         sid = sid,
         condition = cond,
-        speaker = speaker,
+        trial = indices,
+        speaker = repeat(sources,outer=length(indices)),
         corr = C,
         test_correct = correct
     ))
@@ -24,33 +30,53 @@ end
 
 struct OnlineMethod <: TrainMethod; end
 label(::OnlineMethod) = "online"
-struct OnlineResult
+Base.@kwdef struct OnlineResult
     sid::Int
     condition::String
     speaker::String
     test_correct::Bool
+    trial::Int
     norms::Vector{Float64}
+    probs::Vector{Float64}
+    lower::Vector{Float64}
+    upper::Vector{Float64}
 end
 
 function init_result(::OnlineMethod)
-    Array{OnlineResult}()
+    Vector{OnlineResult}()
 end
-train(::OnlineMethod;kwds...) = nothing
-function test(result,::OnlineMethod;bounds=all_indices,sid,condition,speaker,
-    correct,kwds...)
-    if bounds !== all_indices
-        error("Online method does not currently support limited time range.")
+function train(::OnlineMethod;indices,kwds...)
+    if length(indices) > 0
+        error("Online algorithm uses no batch training, use an empty training set.")
+    end
+    nothing
+end
+
+function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
+    indices,correct,model,kwds...)
+    @assert isnothing(model)
+
+    if any(x -> !(x == all_indices || x == no_indices),bounds)
+        error("Online method does not currently support limited time ranges.")
     end
 
-    coefs = online_decode(;kwds...)
-
-    vcat(result,OnlineResult(
-        sid = sid,
-        condition = cond,
-        speaker = speaker,
-        norms =
-        test_correct = correct
-    ))
+    all_results = online_decode(;indices=indices,sources=sources,kwds...)
+    for (trial_results,index,correct) in zip(all_results,indices,correct)
+        for (source,(norms,probs,lower,upper)) in zip(sources,trial_results)
+            result = append!(result,[OnlineResult(
+                trial = index,
+                sid = sid,
+                condition = condition,
+                speaker = source,
+                norms = norms,
+                probs = probs,
+                lower = lower,
+                upper = upper,
+                test_correct = correct
+            ) for norm in norms])
+        end
+    end
+    result
 end
 
 # TODO: analyze all envelopes as one call to method, this will avoid some
@@ -83,14 +109,15 @@ function train_speakers(method,group_name,files,stim_info;
         test_bounds, test_indices, train_bounds, train_indices
     end
 
+    speakers = ["male", "fem1", "fem2"]
     n = 0
     for file in files
         events = events_for_eeg(file,stim_info)[1]
         for cond in unique(events.condition)
             test_bounds, test_indices,
                 train_bounds, train_indices = setup_indices(events,cond)
-            n += length(train_indices)*3
-            n += length(test_indices)*4
+            n += length(train_indices)*length(speakers)
+            n += length(test_indices)*(length(speakers)+1)
         end
     end
     progress = Progress(n;desc="Analyzing...")
@@ -108,69 +135,44 @@ function train_speakers(method,group_name,files,stim_info;
             test_bounds, test_indices,
              train_bounds, train_indices = setup_indices(stim_events,cond)
 
-            for (speaker_index,speaker) in enumerate(["male", "fem1", "fem2"])
+            prefix = join([train_name,label(method),cond,
+                sid_str],"_")
+            model = Main.train(method,
+                sources = speakers,
+                prefix = prefix,
+                eeg = eeg,
+                lags=lags,
+                indices = train_indices,
+                group_suffix = "_"*group_name,
+                bounds = train_bounds,
+                progress = progress,
+                stim_fn = (i,j) -> load_sentence(stim_events,samplerate(eeg),
+                    stim_info,i,j,envelope_method = envelope_method)
+            )
 
-                prefix = join([train_name,label(method),cond,speaker,
-                    sid_str],"_")
-                model = Main.train(method,
-                    prefix = prefix,
-                    eeg = eeg,
-                    stim_info = stim_info,lags=lags,
-                    indices = train_indices,
-                    group_suffix = "_"*group_name,
-                    bounds = train_bounds,
-                    progress = progress,
-                    stim_fn = i -> load_sentence(stim_events,stim_info,i,
-                        speaker_index,envelope_method = envelope_method)
-                )
-
-                prefix = join([test_name,label(method),cond,speaker,
-                    sid_str],"_")
-                result = Main.test(result,method;
-                    sid = sid,
-                    condition = cond,
-                    speaker = speaker,
-                    correct = stim_events.correct[test_indices],
-                    prefix=prefix,
-                    eeg=eeg,
-                    stim_info=stim_info,
-                    model=model,
-                    lags=lags,
-                    indices = test_indices,
-                    group_suffix = "_"*group_name,
-                    bounds = test_bounds,
-                    progress = progress,
-                    envelope_method = envelope_method,
-                    stim_fn = i -> load_sentence(stim_events,stim_info,i,
-                        speaker_index,envelope_method = envelope_method)
-                )
-
-                if speaker == "male"
-                    prefix = join([test_name,label(method),cond,"male_other",
-                        sid_str],"_")
-                    result = Main.test(result,method;
-                        sid = sid,
-                        condition = cond,
-                        speaker="male_other",
-                        correct = stim_events.correct[test_indices],
-                        prefix=prefix,
-                        eeg=eeg,
-                        stim_info=stim_info,
-                        model=model,
-                        lags=lags,
-                        indices = test_indices,
-                        group_suffix = "_"*group_name,
-                        bounds = test_bounds,
-                        progress = progress,
-                        envelope_method = envelope_method,
-                        stim_fn = i -> load_other_sentence(stim_events,stim_info,i,
-                            speaker_index,envelope_method = envelope_method)
-                    )
-                end
-            end
+            prefix = join([test_name,label(method),cond,
+                sid_str],"_")
+            Main.test!(result,method;
+                sid = sid,
+                condition = cond,
+                sources = [speakers..., "male_other"],
+                correct = stim_events.correct[test_indices],
+                prefix=prefix,
+                eeg=eeg,
+                model=model,
+                lags=lags,
+                indices = test_indices,
+                group_suffix = "_"*group_name,
+                bounds = test_bounds,
+                progress = progress,
+                stim_fn = (i,j) -> j <= length(speakers) ?
+                    load_sentence(stim_events,samplerate(eeg),stim_info,i,
+                        j,envelope_method = envelope_method) :
+                    load_other_sentence(stim_events,samplerate(eeg),stim_info,i,
+                        1,envelope_method = envelope_method)
+            )
         end
-
     end
 
-    df
+    result
 end
