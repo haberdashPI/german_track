@@ -28,7 +28,10 @@ function test!(result,::StaticMethod;sid,condition,indices,sources,correct,
     ))
 end
 
-struct OnlineMethod <: TrainMethod; end
+struct OnlineMethod{S} <: TrainMethod
+    params::S
+end
+OnlineMethod(;kwds...) = OnlineMethod(kwds.data)
 label(::OnlineMethod) = "online"
 Base.@kwdef struct OnlineResult
     sid::Int
@@ -60,10 +63,11 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
         error("Online method does not currently support limited time ranges.")
     end
 
-    all_results = online_decode(;indices=indices,sources=sources,kwds...)
+    all_results = online_decode(;indices=indices,sources=sources,
+        merge(kwds,method.settings)...)
     for (trial_results,index,correct) in zip(all_results,indices,correct)
         for (source,(norms,probs,lower,upper)) in zip(sources,trial_results)
-            result = append!(result,[OnlineResult(
+            result = push!(result,OnlineResult(
                 trial = index,
                 sid = sid,
                 condition = condition,
@@ -73,7 +77,7 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
                 lower = lower,
                 upper = upper,
                 test_correct = correct
-            ) for norm in norms])
+            ))
         end
     end
     result

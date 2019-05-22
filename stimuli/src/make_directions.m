@@ -31,7 +31,7 @@ function [directions,critical_times] = make_directions(config,block_cfg,trial,au
     to_angle;
 
     % send results to return values
-    directions = {dir1; dir2; dir2};
+    directions = {dir1; dir2; dir3};
 
     function sec1
         dir1 = make_jitter(round((section_lengths(1)+min_stay_len)*config.fs),0);

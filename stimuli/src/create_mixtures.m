@@ -41,11 +41,31 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
     function saveto(str,stim,i)
         audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
     end
+    function savedirec(str,direc,i)
+        filename = fullfile(indir,sprintf(str,i));
+        id = fopen(filename,'w');
+
+        dir1 = resample(direc{1},1,128);
+        dir2 = resample(direc{2},1,128);
+        dir3 = resample(direc{3},1,128);
+
+        fwrite(id,config.fs/128,'double');
+
+        fwrite(id,length(dir1),'int64');
+        fwrite(id,length(dir2),'int64');
+        fwrite(id,length(dir3),'int64');
+
+        fwrite(id,dir1,'double');
+        fwrite(id,dir2,'double');
+        fwrite(id,dir3,'double');
+        fclose(id);
+    end
 
     textprogressbar('Generating mixtures...');
     onCleanup(@() textprogressbar('\n'));
     bad_trials = [];
     block_cfg.trial_length_s = zeros(1,block_cfg.num_trials);
+    skips = [];
     for trial_idx=1:block_cfg.num_trials
 
         idxs = block_cfg.trial_sentences(trial_idx,:);
@@ -56,6 +76,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 
         if exist(sprintf(fullfile(indir,'mixture_components',...
             'trial_%02d_3.wav'),trial_idx),'file')
+            skips = [skips trial_idx];
             continue
         end
         % should the target be louder?
@@ -67,7 +88,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
             loud_target = 0;
         end
 
-        [stim,target,hrtf] = make_stim(config,block_cfg,trial_idx,audiodata,...
+        [stim,target,hrtf,direc] = make_stim(config,block_cfg,trial_idx,audiodata,...
             hrtfs,loud_target);
 
         lastwarn('');
@@ -80,6 +101,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         saveto(fullfile('mixture_components','trial_%02d_1.wav'),hrtf{1},trial_idx);
         saveto(fullfile('mixture_components','trial_%02d_2.wav'),hrtf{2},trial_idx);
         saveto(fullfile('mixture_components','trial_%02d_3.wav'),hrtf{3},trial_idx);
+        savedirec('trial_%02d.direc',direc,trial_idx);
 
         [~,id] = lastwarn;
         if strcmp(id,'MATLAB:audiovideo:audiowrite:dataClipped')
@@ -100,6 +122,10 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
 
     if ~isempty(bad_trials)
         warning(['Some of the trials had clipped audio: ' num2str(bad_trials)])
+    end
+
+    if ~isempty(skips)
+        warning(['Skipped previously generated trials ' num2str(skips)])
     end
 end
 
@@ -160,7 +186,7 @@ function save_target_info(block_cfg,indir)
     dlmwrite(fullfile(indir,'target_info_dir.txt'),this_info,'delimiter',' ');
 end
 
-function [stim,target_stim,hrtf_stims] = make_stim(config,block_cfg,trial,...
+function [stim,target_stim,hrtf_stims,direc] = make_stim(config,block_cfg,trial,...
     audiodata,hrtfs,loud_target)
 
     % get the targets

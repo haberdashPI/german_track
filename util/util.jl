@@ -1,3 +1,5 @@
+using Colors
+
 function mat2bson(file)
     file
 end
@@ -37,19 +39,102 @@ function load_subject(file,stim_info)
     end
 end
 
-function decodetrial(eeg,stim_events,stim_info,trial;params...)
-    defaults = (maxit=250,tol=1e-2,progress=true,lag=250ms,
-        min_norm=1e-16,estimation_length=10s,γ=2e-3)
+function single(x,message="Expected a single element.")
+    it = iterate(x)
+    if isnothing(it)
+        error(message)
+    else
+        x_, state = it
+        if !isnothing(iterate(x,state))
+            error(message)
+        end
+    end
+    x_
+end
 
-    malev = load_sentence(stim_events,samplerate(eeg),stim_info,trial,1)
-    fem1v = load_sentence(stim_events,samplerate(eeg),stim_info,trial,2)
-    fem2v = load_sentence(stim_events,samplerate(eeg),stim_info,trial,3)
+function plotatten!(scene,method,results;colors=[:black,:red,:blue],raw=false)
+    len = minimum(map(x -> length(x.probs),results))
+    step = ustrip.(uconvert.(s,method.params.window))
+    t = step.*((1:len) .- 1)
+    if raw
+        for (col,result) in zip(colors,results)
+            @views lines!(scene,float(t),result.norms[1:len],color=col)
+        end
+    else
+        for (col,result) in zip(colors,results)
+            @views band!(scene,float(t),result.lower[1:len],result.upper[1:len],
+                color=RGBA(0.0,0.0,0.0,0.2))
+            @views lines!(scene,float(t),result.probs[1:len],color=col,
+                linewidth=3.0)
+        end
+    end
 
-    malea,fem1a,fem2a = attention_marker(eeg.data[trial]',malev,fem1v,fem2v,
-        samplerate=samplerate(eeg);merge(defaults,params.data)...)
+    scene
+end
 
-    μ = mean(mean.((malea,fem1a,fem2a)))
-    (malea./μ, fem1a./μ, fem2a./μ)
+function plottarget!(scene,method,results,stim_info,file)
+    trial = single(unique(map(r->r.trial,results)),
+        "Expected single trial number")
+    stim_events, = events_for_eeg(file,stim_info)
+    if stim_events.target_present[trial]
+        stim_index = stim_events.sound_index[trial]
+        start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
+        stop_time = stim_info["target_len"]+start_time
+
+        poly!(scene,color=RGBA(0.2,0.75,0.3,0.3),Point2f0[
+            [start_time,-3],
+            [start_time,3],
+            [stop_time,3],
+            [stop_time,-3]
+        ])
+    end
+
+    scene
+end
+
+function plotswitches!(scene,method,results,stim_info,file;
+    colors=[:black,:red,:blue])
+
+    trial = single(unique(map(r->r.trial,results)),
+        "Expected single trial number")
+    stim_events, = events_for_eeg(file,stim_info)
+    stim_index = stim_events.sound_index[trial]
+    direc_file = joinpath(stimulus_dir,"mixtures","testing",
+        @sprintf("trial_%02d.direc",stim_index))
+    dirs = load_directions(direc_file)
+    len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
+    t = (1:len)./dirs.samplerate
+    lines!(scene,t,dirs.dir1,color=colors[1])
+    lines!(scene,t,dirs.dir2,color=colors[2])
+    lines!(scene,t,dirs.dir3,color=colors[3])
+
+    scene
+end
+
+struct Directions
+    dir1::Vector{Float64}
+    dir2::Vector{Float64}
+    dir3::Vector{Float64}
+    samplerate::Float64
+end
+
+function load_directions(file)
+    open(file,read=true) do stream
+        samplerate = read(stream,Float64)
+        len1 = read(stream,Int)
+        len2 = read(stream,Int)
+        len3 = read(stream,Int)
+
+        dir1 = reinterpret(Float64,read(stream,sizeof(Float64)*len1))
+        dir2 = reinterpret(Float64,read(stream,sizeof(Float64)*len1))
+        dir3 = reinterpret(Float64,read(stream,sizeof(Float64)*len1))
+
+        @assert length(dir1) == len1
+        @assert length(dir2) == len2
+        @assert length(dir3) == len3
+
+        Directions(dir1,dir2,dir3,samplerate)
+    end
 end
 
 function events_for_eeg(file,stim_info)
@@ -109,7 +194,7 @@ end
 
 function folds(k,indices)
     len = length(indices)
-    fold_size = ceil(Int,len / k)
+    fold_size = cld(len,k)
     map(1:k) do fold
         test = indices[((fold-1)fold_size+1) : (min(len,fold*fold_size))]
         train = setdiff(indices,test)
