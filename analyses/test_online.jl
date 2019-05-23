@@ -44,7 +44,23 @@ Makie.save("online_test.png",trials);
 # estimation_length
 # smoothness parameters
 
+# most of these don't seem to make a large difference in the outcomes, at least
+# when looking at a single trial; even sparsity doesn't matter too much as long
+# as some exists. I haven't messed around with lag though. As long as the
+# values are somewhat "reasonable" about the same result is found
+
 # things to count up:
-# -
+# - does the attended speaker help us predict correct responses?
+# - does the attended speaker depend on the switches?
+# - does the "buildup-up curve" help us predict the behavioral data?
+
+# Goal: do we have any evidence that the decoding is real?
+# that is, does it correspond to behavior somehow
+
+# Do the same analysis for:
+# 1. mixture envelope (with and without the target speaker?? may not matter)
+# 2. the audiospect envelope
+# 3. left vs. right on the feature condition
+# 4. both LvR and Speakers for the global condition
 
 alert()

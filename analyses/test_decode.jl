@@ -1,7 +1,7 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
+using Makie
 using BenchmarkTools
 using MetaArrays
-using Makie
 using Unitful
 using Unitful: ms, s
 
@@ -28,19 +28,23 @@ malea, fem1a, fem2a = attention_marker(
     min_norm=1e-16,samplerate=samplerate(eeg),
     eegtrial(eeg,51)',
     (load_sentence(stim_events,samplerate(eeg),stim_info,51,i) for i in 1:3)...)
+μ = mean(mean.((malea,fem1a,fem2a)))
+malea ./= μ
+fem1a ./= μ
+fem2a ./= μ
 
 scene = Scene()
 t = ustrip.(uconvert.(s,axes(malea)[1].*250ms))
 lines!(scene,t,malea)
 lines!(scene,t,fem1a,color=:blue)
 lines!(scene,t,fem2a,color=:red)
-
-@btime attention_prob($malea,max.($fem2a,$fem1a))
+lines!(scene,t,(malea .+ fem1a .+ fem2a)./3,color=:gray)
 
 scene = Scene()
-y,lo,up = attention_prob(malea,max.(fem2a,fem1a))
+y,lo,up = attention_prob(max.(1e-4,malea),max.(1e-4,fem2a,fem1a))
 band!(scene,t,lo,up,color=:lightgray)
-lines!(scene,t,y)
+lines!(scene,t,y,color=:black)
+
 y,lo,up = attention_prob(fem1a,max.(malea,fem2a))
 band!(scene,t,lo,up,color=:lightgray)
 lines!(scene,t,y,color=:blue)
