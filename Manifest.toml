@@ -171,6 +171,12 @@ git-tree-sha1 = "3891a62fd843662af9f78f25bdd415530b9b9c1e"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 version = "0.18.2"
 
+[[DataKnots]]
+deps = ["PrettyPrinting", "Tables"]
+git-tree-sha1 = "f5e9b7c6ced7d71d68f8d12676a6ec5aac894b2c"
+uuid = "f3f2b2ad-91c8-5588-b964-d77e2d3bb090"
+version = "0.8.0"
+
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections", "Random", "Serialization", "Test"]
 git-tree-sha1 = "ca971f03e146cf144a9e2f2ce59674f5bf0e8038"
@@ -239,9 +245,9 @@ version = "0.7.0"
 
 [[DoubleFloats]]
 deps = ["GenericSVD", "GenericSchur", "LinearAlgebra", "Polynomials", "Quadmath", "Random"]
-git-tree-sha1 = "9da6779fd9a5b0760320f2c97477afd19fe82835"
+git-tree-sha1 = "a1e82c58531c88b82a0a658a44bd38f208435a17"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
-version = "0.8.1"
+version = "0.8.2"
 
 [[EEGCoding]]
 deps = ["BSON", "DSP", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "Statistics", "StatsBase", "Unitful"]
@@ -381,9 +387,9 @@ version = "0.20.0"
 
 [[JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "553281260578bb50d6d550977f438754e7e93397"
+git-tree-sha1 = "599cc7c6683e54cd0b3786ee37800db037e22df4"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.5.1"
+version = "0.5.2"
 
 [[Juno]]
 deps = ["Base64", "Logging", "Media", "Profile", "Test"]
@@ -572,6 +578,12 @@ deps = ["LinearAlgebra", "Test"]
 git-tree-sha1 = "957c3dd7c33895469760ce873082fbb6b3620641"
 uuid = "85a6dd25-e78a-55b7-8502-1745935b8125"
 version = "0.2.2"
+
+[[PrettyPrinting]]
+deps = ["Markdown", "Pkg"]
+git-tree-sha1 = "d81528303e2715c32706d4519b2ddf0550805533"
+uuid = "54e16d92-306c-5ea0-a30b-337be88ac337"
+version = "0.1.0"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -777,10 +789,10 @@ deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TextParse]]
-deps = ["CodecZlib", "DataStructures", "Dates", "DoubleFloats", "Mmap", "Nullables", "PooledArrays", "Random", "Test", "WeakRefStrings"]
-git-tree-sha1 = "cc7aa42aea3490a68552fcdb1df9ce5732a6a4de"
+deps = ["CodecZlib", "DataStructures", "Dates", "DoubleFloats", "Mmap", "Nullables", "PooledArrays", "WeakRefStrings"]
+git-tree-sha1 = "26b43d6746b52cca13c4cdef90f89652273b413e"
 uuid = "e0df1984-e451-5cb5-8b61-797a481e67e3"
-version = "0.9.0"
+version = "0.9.1"
 
 [[Tokenize]]
 deps = ["Printf", "Test"]
@@ -826,10 +838,10 @@ uuid = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
 version = "1.0.1"
 
 [[WeakRefStrings]]
-deps = ["Missings", "Random", "Test"]
-git-tree-sha1 = "960639a12ffd223ee463e93392aeb260fa325566"
+deps = ["Random", "Test"]
+git-tree-sha1 = "9a0bb82eede528debe631b642eeb48a631a69bc2"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
-version = "0.5.8"
+version = "0.6.1"
 
 [[WoodburyMatrices]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]

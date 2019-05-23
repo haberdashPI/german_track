@@ -40,7 +40,9 @@ config.hrtf_file = fullfile('hrtfs','hrtf_b_nh172.sofa');
 config = configure_mixtures(fullfile(base_dir,'stimuli'),config);
 
 % This actually generates the audio, based on config.json. You can generate the
-% same exact audio again by using the same config.json file.
+% same exact audio again by using the same config.json file. (Just re-run this
+% line alone)
+
 create_mixtures(fullfile(base_dir,'stimuli'));
 
 % TODO: auto generate description for the location of the target

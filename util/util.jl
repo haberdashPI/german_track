@@ -4,6 +4,16 @@ function mat2bson(file)
     file
 end
 
+# function Base.convert(::Type{DataKnot},xs::Vector{OnlineResult})
+#     tuples = map(xs) do x
+#         NamedTuple{fieldnames(OnlineResult),
+#             Tuple{fieldtypes(OnlineResult)...}}(
+#             tuple((getfield(x,field) for field in fieldnames(OnlineResult))...)
+#         )
+#     end
+#     convert(DataKnot,tuples)
+# end
+
 function clean_eeg!(data)
     EEGData(
         label = convert(Vector{String},data["label"]),
@@ -72,7 +82,39 @@ function plotatten!(scene,method,results;colors=[:black,:red,:blue],raw=false)
     scene
 end
 
-function plottarget!(scene,method,results,stim_info,file)
+function plottrial(method,results,stim_info,file;
+    colors=[:black,:red,:blue],raw=false)
+
+    main = Scene()
+    plotresponse!(main,method,results,stim_info,file)
+    plottarget!(main,method,results,stim_info,file;colors=colors)
+    plotatten!(main,method,results,raw=raw)
+
+    stimulus = Scene()
+    plotswitches!(stimulus,method,results,stim_info,file)
+
+    hbox(stimulus,main,sizes=[0.3,0.7])
+end
+
+function plotresponse!(scene,method,results,stim_info,file)
+    trial = single(unique(map(r->r.trial,results)),
+        "Expected single trial number")
+    stim_events, = events_for_eeg(file,stim_info)
+    step = ustrip.(uconvert.(s,method.params.window))
+    len = minimum(map(x -> length(x.probs),results))*step
+
+    if stim_events.target_present[trial] == stim_events.correct[trial]
+        poly!(scene,color=RGBA(0,0,0,0.25),Point2f0[
+            [0,-3],[0,3], [len,3],[len,-3]
+        ])
+    end
+
+    scene
+end
+
+function plottarget!(scene,method,results,stim_info,file;
+    colors=[:black,:red,:blue])
+
     trial = single(unique(map(r->r.trial,results)),
         "Expected single trial number")
     stim_events, = events_for_eeg(file,stim_info)
@@ -81,7 +123,12 @@ function plottarget!(scene,method,results,stim_info,file)
         start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
         stop_time = stim_info["target_len"]+start_time
 
-        poly!(scene,color=RGBA(0.2,0.75,0.3,0.3),Point2f0[
+        target_speaker =
+            stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
+        col = parse(Colorant,colors[target_speaker])
+        col = RGBA(col.r,col.g,col.b,0.3)
+
+        poly!(scene,color=col,Point2f0[
             [start_time,-3],
             [start_time,3],
             [stop_time,3],

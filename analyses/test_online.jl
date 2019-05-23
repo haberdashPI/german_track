@@ -1,6 +1,8 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 using Makie
 using Unitful
+using DataKnots
+using Tables
 
 # - train on correct trials only
 # - train at target switches
@@ -19,21 +21,30 @@ data = train_speakers(method,"",eeg_files,stim_info,
     envelope_method = :rms,
     skip_bad_trials = true)
 
-@save joinpath(cache_dir(),"test_online_rms.bson") data
-# @load joinpath(cache_dir(),"test_online_rms.bson") data
+@save joinpath(data_dir,"test_online_rms.bson") data
+# @load joinpath(data_dir,"test_online_rms.bson") data
+data = convert(Array{OnlineResult},data)
 
-scene = Scene()
-plottarget!(scene,method,data[5:8],stim_info,sidfile(data[1].sid))
+main = Scene();
+trials = map(Iterators.take(groupby(DataFrame(data),:trial),24)) do results
+   plottrial(method,eachrow(results),stim_info,sidfile(data[1].sid))
+end;
+trials = vbox(map(x -> hbox(x...),Iterators.partition(trials,6))...);
+Makie.save("online_test.png",trials);
 
-# TODO: the target marker needs to indicate which stimulus is modulated
-plotatten!(scene,method,data[5:8],raw=false)
+# + step 1: show the lines and bands
+# + step 2: show the target
+# + step 3: show the switches
+# + step 4: indicate if the resposne was correct
+# + step 5: show all 50 plots simultaneously
 
-plotswitches!(scene,method,data[5:8],stim_info,sidfile(data[1].sid))
+# parameters to mess around with & tune:
+# sparsity \gamma
+# lag
+# estimation_length
+# smoothness parameters
 
-# step 1: show the lines and bands
-# step 2: show the target
-# step 3: show the switches
-# step 4: indicate if the resposne was correct
-# step 5: show all 50 plots simultaneously
+# things to count up:
+# -
 
 alert()

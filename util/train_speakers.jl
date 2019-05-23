@@ -45,6 +45,12 @@ Base.@kwdef struct OnlineResult
     upper::Vector{Float64}
 end
 
+Tables.istable(::Type{<:AbstractVector{OnlineResult}}) = true
+Tables.rowaccess(::Type{<:AbstractVector{OnlineResult}}) = true
+Tables.rows(x::AbstractVector{OnlineResult}) = x
+Tables.schema(x::AbstractVector{OnlineResult}) =
+    Tables.Schema(fieldnames(OnlineResult),fieldtypes(OnlineResult))
+
 function init_result(::OnlineMethod)
     Vector{OnlineResult}()
 end

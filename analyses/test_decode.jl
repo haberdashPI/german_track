@@ -23,7 +23,11 @@ eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
 # NOTE: I also need to think about the smoothness of attention_prob can I
 # change this to be less smooth and see more potential detail?
 
-malea, fem1a, fem2a = decodetrial(eeg,stim_events,stim_info,51)
+malea, fem1a, fem2a = attention_marker(
+    window=250ms,lag=250ms,estimation_length=10s,γ=2e-3,maxit=250,tol=1e-2,
+    min_norm=1e-16,samplerate=samplerate(eeg),
+    eegtrial(eeg,51)',
+    (load_sentence(stim_events,samplerate(eeg),stim_info,51,i) for i in 1:3)...)
 
 scene = Scene()
 t = ustrip.(uconvert.(s,axes(malea)[1].*250ms))
