@@ -95,9 +95,11 @@ version = "0.5.4"
 
 [[ClusterManagers]]
 deps = ["Distributed", "Sockets"]
-git-tree-sha1 = "60a1c6dc3278910716fcf87eb602968fdf72e44d"
+git-tree-sha1 = "fa847adf4bcbb11587b9d46bff71054fa89c19c2"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaParallel/ClusterManagers.jl.git"
 uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
-version = "0.3.2"
+version = "0.3.2+"
 
 [[CodeTracking]]
 deps = ["InteractiveUtils", "Test", "UUIDs"]
@@ -227,7 +229,7 @@ version = "0.9.1"
 
 [[EEGCoding]]
 deps = ["BSON", "DSP", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "Statistics", "StatsBase", "Unitful"]
-path = "/Users/davidlittle/Documents/juliadev/EEGCoding"
+path = "/home/davidlittle/Documents/juliadev/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.0"
 
@@ -482,7 +484,7 @@ version = "0.6.8"
 
 [[MetaArrays]]
 deps = ["Requires"]
-path = "/Users/davidlittle/Documents/juliadev/MetaArrays"
+git-tree-sha1 = "3baae0ac02f2bbbaecdd1384650a3a49668ae3a7"
 uuid = "36b8f3f0-b776-11e8-061f-1f20094e1fc8"
 version = "0.2.5"
 

@@ -56,12 +56,14 @@ using Dates
 plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
 isdir(plot_dir) || mkdir(plot_dir)
 
+addprocs(SlurmManager(length(eeg_files)), partition="CPU", t="02:00:00",
+         cpus_per_task=4,enable_threaded_blas=true)
+@everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
+
 # - train on correct trials only
 # - train at target switches
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
-sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
+
 
 ############################################################
 # speaker analysis
@@ -74,11 +76,14 @@ sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
 speakers = SpeakerStimMethod(envelope_method=:rms)
 
-data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
+data_ = pmap(eachindex(eeg_files)) do i
+    train_stimuli(method,speakers,eeg_files[i:i],stim_info,
     train = "none" => no_indices,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
     skip_bad_trials = true)
+end
+data = reduce(vcat,data)
 
 @save joinpath(data_dir,"test_all_online_speakers.bson") data
 # @load joinpath(data_dir,"test_all_online_rms.bson") data

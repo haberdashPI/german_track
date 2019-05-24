@@ -135,6 +135,7 @@ function train_stimuli(method,stim_method,files,stim_info;
     maxlag=0.25,
     train = "" => all_indices,
     test = train,
+    progress = true,
     envelope_method=:rms)
 
     train_name, train_fn = train
@@ -167,8 +168,8 @@ function train_stimuli(method,stim_method,files,stim_info;
             n += length(test_indices)*length(test_sources)
         end
     end
-
-    progress = Progress(n;desc="Analyzing...")
+    progress = !(progress isa Bool) ? progress :
+        progress ? Progress(n;desc="Analyzing...") : false
 
     for file in files
         # TODO: this relies on experiment specific details how to generify
