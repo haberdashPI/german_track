@@ -15,3 +15,5 @@ tags
 .undo/*
 .vscode
 install.json
+job*.out
+*.code-workspace
