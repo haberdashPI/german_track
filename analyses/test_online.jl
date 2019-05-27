@@ -1,4 +1,5 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
+using Gadfly
 using Makie
 using Unitful
 using DataKnots
@@ -23,14 +24,28 @@ data = train_speakers(method,"",eeg_files,stim_info,
 
 @save joinpath(data_dir,"test_online_rms.bson") data
 # @load joinpath(data_dir,"test_online_rms.bson") data
-data = convert(Array{OnlineResult},data)
+data = DataFrame(convert(Array{OnlineResult},data))
+
 
 main = Scene();
-trials = map(Iterators.take(groupby(DataFrame(data),:trial),24)) do results
-   plottrial(method,eachrow(results),stim_info,sidfile(data[1].sid))
-end;
-trials = vbox(map(x -> hbox(x...),Iterators.partition(trials,6))...);
-Makie.save("online_test.png",trials);
+sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
+
+trials = []
+for trial in groupby(sid8,:trial)
+   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
+end
+
+Makie.save("online_test.png",vbox(map(x -> hbox(x...),
+    Iterators.partition(trials,6))...));
+
+# stim_events, = events_for_eeg(sidfile(row.sid),stim_info)
+
+dfat = by(data,:sid) do dfsid
+    stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
+    dfsid[:targetattend] = map(row -> targetattend(row,stim_events,stim_info),eachrow(dfsid))
+    dfsid
+end
+
 
 # + step 1: show the lines and bands
 # + step 2: show the target

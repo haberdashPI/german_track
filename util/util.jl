@@ -96,6 +96,20 @@ function plottrial(method,results,stim_info,file;
     hbox(stimulus,main,sizes=[0.3,0.7])
 end
 
+function targetattend(row,stim_events,stim_info)
+    stim_index = stim_events.sound_index[row.trial]
+    if stim_events.target_present[trial]
+        target =
+            stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
+        others = setdiff(1:3,target)
+        t = row.probs[target]
+        o1 = row.probs[others[1]]
+        o2 = row.probs[others[2]]
+        mean((ti,o1i,o2i) -> ti > o1i && ti > o2i,t,o1,o2)
+    end
+    0.0
+end
+
 function plotresponse!(scene,method,results,stim_info,file)
     trial = single(unique(map(r->r.trial,results)),
         "Expected single trial number")
