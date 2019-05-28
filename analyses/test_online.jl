@@ -1,3 +1,13 @@
+#=
+- left right priority
+- start decoding from switch
+- start from target
+
+- test left/right and pseakers with opposite conditions (and global)
+
+=#
+
+
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 using Gadfly, Cairo, Fontconfig
 using DependentBootstrap
