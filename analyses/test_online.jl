@@ -7,7 +7,6 @@
 
 =#
 
-
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 using Gadfly, Cairo, Fontconfig
 using DependentBootstrap
@@ -47,6 +46,9 @@ data = train_speakers(method,"",eeg_files,stim_info,
 @save joinpath(data_dir,"test_online_rms.bson") data
 # @load joinpath(data_dir,"test_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
+
+# TODO: include the 'other' speaker
+# to see how well it compare
 
 ########################################
 # individual plot
@@ -104,7 +106,6 @@ dfat = by(data,:sid) do dfsid
     end
 end
 
-# TODO: group by condition as well as sid
 dfat_mean = by(dfat,[:test_correct,:sid,:condition],
     :targetattend => function(x)
         lower,upper = dbootconf(copy(x),bootmethod=:iid,alpha=0.25)

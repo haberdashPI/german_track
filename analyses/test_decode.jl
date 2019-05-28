@@ -27,7 +27,7 @@ malea, fem1a, fem2a = attention_marker(
     window=250ms,lag=250ms,estimation_length=10s,γ=2e-3,maxit=250,tol=1e-2,
     min_norm=1e-16,samplerate=samplerate(eeg),
     eegtrial(eeg,51)',
-    (load_sentence(stim_events,samplerate(eeg),stim_info,51,i) for i in 1:3)...)
+    (load_speaker(stim_events,samplerate(eeg),stim_info,51,i) for i in 1:3)...)
 μ = mean(mean.((malea,fem1a,fem2a)))
 malea ./= μ
 fem1a ./= μ

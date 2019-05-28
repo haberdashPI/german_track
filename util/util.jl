@@ -234,12 +234,12 @@ function events_for_eeg(file,stim_info)
 end
 
 const envelopes = Dict{Tuple{Int,Int},Vector{Float64}}()
-function load_sentence(events,tofs,info,stim_i,source_i;envelope_method=:rms)
+function load_speaker(events,tofs,info,stim_i,source_i;envelope_method=:rms)
     stim_num = events.sound_index[stim_i]
-    load_sentence_(events,tofs,info,stim_num,source_i,envelope_method)
+    load_speaker_(events,tofs,info,stim_num,source_i,envelope_method)
 end
 
-function load_sentence_(events,tofs,info,stim_num,source_i,envelope_method)
+function load_speaker_(events,tofs,info,stim_num,source_i,envelope_method)
     if stim_num ∈ keys(envelopes)
         envelopes[stim_num]
     else
@@ -254,7 +254,7 @@ function load_sentence_(events,tofs,info,stim_num,source_i,envelope_method)
     end
 end
 
-function load_other_sentence(events,tofs,info,stim_i,source_i;
+function load_other_speaker(events,tofs,info,stim_i,source_i;
     envelope_method=:rms)
 
     stim_num = events.sound_index[stim_i]
@@ -262,7 +262,7 @@ function load_other_sentence(events,tofs,info,stim_i,source_i;
     # randomly select one of the stimuli != stim_i
     selected = rand(vcat(1:stim_num-1,stim_num+1:length(sentences)))
 
-    load_sentence_(events,tofs,info,selected,source_i,envelope_method)
+    load_speaker_(events,tofs,info,selected,source_i,envelope_method)
 end
 
 function folds(k,indices)

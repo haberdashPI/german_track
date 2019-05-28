@@ -1,5 +1,7 @@
-# TODO: generify this method, so that it can be used to generate the results
-# for either the static or the online analysis
+# TODO: we can have the speaker specific elements of the loop separated as part
+# of a "TrainMethod" (we're going to have to come up with a name other than
+# method, since this component is orthogonal to the static vs. online piece
+# maybe TrainStimulus?
 
 abstract type TrainMethod
 end
@@ -36,7 +38,7 @@ label(::OnlineMethod) = "online"
 Base.@kwdef struct OnlineResult
     sid::Int
     condition::String
-    speaker::String
+    source::String
     test_correct::Bool
     trial::Int
     norms::Vector{Float64}
@@ -77,7 +79,7 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
                 trial = index,
                 sid = sid,
                 condition = condition,
-                speaker = source,
+                source = source,
                 norms = norms,
                 probs = probs,
                 lower = lower,
@@ -89,9 +91,6 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
     result
 end
 
-# TODO: analyze all envelopes as one call to method, this will avoid some
-# redundancy (e.g. calling `withlags` on eeg multiple times, and is more
-# consistent with the interface for the online method)
 
 function train_speakers(method,group_name,files,stim_info;
     skip_bad_trials = false,
@@ -119,6 +118,7 @@ function train_speakers(method,group_name,files,stim_info;
         test_bounds, test_indices, train_bounds, train_indices
     end
 
+    # TAG: speaker specific
     speakers = ["male", "fem1", "fem2"]
     n = 0
     for file in files
@@ -156,7 +156,7 @@ function train_speakers(method,group_name,files,stim_info;
                 group_suffix = "_"*group_name,
                 bounds = train_bounds,
                 progress = progress,
-                stim_fn = (i,j) -> load_sentence(stim_events,samplerate(eeg),
+                stim_fn = (i,j) -> load_speaker(stim_events,samplerate(eeg),
                     stim_info,i,j,envelope_method = envelope_method)
             )
 
@@ -176,9 +176,9 @@ function train_speakers(method,group_name,files,stim_info;
                 bounds = test_bounds,
                 progress = progress,
                 stim_fn = (i,j) -> j <= length(speakers) ?
-                    load_sentence(stim_events,samplerate(eeg),stim_info,i,
+                    load_speaker(stim_events,samplerate(eeg),stim_info,i,
                         j,envelope_method = envelope_method) :
-                    load_other_sentence(stim_events,samplerate(eeg),stim_info,i,
+                    load_other_speaker(stim_events,samplerate(eeg),stim_info,i,
                         1,envelope_method = envelope_method)
             )
         end
