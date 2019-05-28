@@ -5,6 +5,7 @@ using Makie
 using Unitful
 using DataKnots
 using Tables
+using Dates
 
 plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
 isdir(plot_dir) || mkdir(plot_dir)
@@ -25,6 +26,7 @@ sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
+
 data = train_speakers(method,"",eeg_files,stim_info,
     train = "rms_online" => no_indices,
     test = "rms_online" => row -> row.condition == "object" ?
@@ -55,6 +57,24 @@ for trial in groupby(sid8,:trial)
 end
 Makie.save(joinpath(plot_dir,"online_test_sid08_2.png"),
     vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+
+main = Scene();
+sid9 = @query(data, filter((sid == 9) & (trial <= 75))) |> DataFrame
+trials = []
+for trial in groupby(sid9,:trial)
+   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
+end
+Makie.save(joinpath(plot_dir,"online_test_sid09_1.png"),
+    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+
+sid9 = @query(data, filter((sid == 9) & (trial > 75))) |> DataFrame
+trials = []
+for trial in groupby(sid9,:trial)
+   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
+end
+Makie.save(joinpath(plot_dir,"online_test_sid09_2.png"),
+    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+
 
 # stim_events, = events_for_eeg(sidfile(row.sid),stim_info)
 
