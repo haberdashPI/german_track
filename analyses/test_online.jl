@@ -1,9 +1,13 @@
 include(joinpath(@__DIR__,"..","util","setup.jl"))
-using Gadfly
+using Gadfly, Cairo, Fontconfig
+using DependentBootstrap
 using Makie
 using Unitful
 using DataKnots
 using Tables
+
+plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
+isdir(plot_dir) || mkdir(plot_dir)
 
 # - train on correct trials only
 # - train at target switches
@@ -29,22 +33,46 @@ data = DataFrame(convert(Array{OnlineResult},data))
 
 main = Scene();
 sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
-
 trials = []
 for trial in groupby(sid8,:trial)
    push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
 end
+Makie.save(joinpath(plot_dir,"online_test_sid08_1.png"),
+    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
 
-Makie.save("online_test.png",vbox(map(x -> hbox(x...),
-    Iterators.partition(trials,6))...));
+sid8 = @query(data, filter((sid == 8) & (trial > 75))) |> DataFrame
+trials = []
+for trial in groupby(sid8,:trial)
+   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
+end
+Makie.save(joinpath(plot_dir,"online_test_sid08_2.png"),
+    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
 
 # stim_events, = events_for_eeg(sidfile(row.sid),stim_info)
 
 dfat = by(data,:sid) do dfsid
     stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
-    dfsid[:targetattend] = map(row -> targetattend(row,stim_events,stim_info),eachrow(dfsid))
-    dfsid
+    by(data,:trial) do dftrial
+        attend = targetattend(eachrow(dftrial),stim_events,stim_info,
+            ustrip(uconvert(Hz,1/method.params.window)))
+        DataFrame(
+            targetattend = attend,
+            test_correct = dftrial.test_correct[1],
+            condition = dftrial.condition[1]
+        )
+    end
 end
+
+# TODO: group by condition as well as sid
+dfat_mean = by(dfat,[:test_correct,:sid,:condition],
+    :targetattend => function(x)
+        lower,upper = dbootconf(copy(x),bootmethod=:iid,alpha=0.25)
+        (mean=mean(x),lower=lower,upper=upper)
+    end)
+
+plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
+    xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) |>
+    PDF(joinpath(plot_dir,"attend_speakers.pdf"),8inch,4inch)
 
 
 # + step 1: show the lines and bands
@@ -65,7 +93,7 @@ end
 # values are somewhat "reasonable" about the same result is found
 
 # things to count up:
-# - does the attended speaker help us predict correct responses?
+# + does the attended speaker help us predict correct responses?
 # - does the attended speaker depend on the switches?
 # - does the "buildup-up curve" help us predict the behavioral data?
 

@@ -203,6 +203,12 @@ version = "0.4.0"
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
+[[DependentBootstrap]]
+deps = ["DataFrames", "Distributions", "Random", "StatsBase", "Test", "TimeSeries"]
+git-tree-sha1 = "086075563c372b44e943707cf7fa21ab513b4adb"
+uuid = "191d1da1-0f37-5779-b8ea-a655caa0c150"
+version = "1.1.1"
+
 [[DiffEqDiffTools]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "07991282c76bcd9331f96f786acbeb1775f1f8d5"
@@ -430,9 +436,9 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
-git-tree-sha1 = "c530b90b64249b525f1e40e71f64d5382c62f073"
+git-tree-sha1 = "dc151afc3125e225267a55e2b5592d0b90fb0e1a"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "0.3.4"
+version = "0.3.5"
 
 [[MATLAB]]
 deps = ["Libdl", "SparseArrays", "Test"]
@@ -793,6 +799,12 @@ deps = ["CodecZlib", "DataStructures", "Dates", "DoubleFloats", "Mmap", "Nullabl
 git-tree-sha1 = "26b43d6746b52cca13c4cdef90f89652273b413e"
 uuid = "e0df1984-e451-5cb5-8b61-797a481e67e3"
 version = "0.9.1"
+
+[[TimeSeries]]
+deps = ["Dates", "DelimitedFiles", "Random", "RecipesBase", "Reexport", "Statistics", "Test"]
+git-tree-sha1 = "4bcd2713b71a46f1a0d708fd13eed367893c2403"
+uuid = "9e3dc215-6440-5c97-bce1-76c03772f85e"
+version = "0.14.1"
 
 [[Tokenize]]
 deps = ["Printf", "Test"]

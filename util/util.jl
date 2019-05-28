@@ -1,4 +1,5 @@
 using Colors
+using Debugger
 
 function mat2bson(file)
     file
@@ -96,18 +97,29 @@ function plottrial(method,results,stim_info,file;
     hbox(stimulus,main,sizes=[0.3,0.7])
 end
 
-function targetattend(row,stim_events,stim_info)
-    stim_index = stim_events.sound_index[row.trial]
+function targetattend(rows,stim_events,stim_info,fs)
+    trial = single(unique(map(r->r.trial,rows)),
+        "Expected single trial number")
+    target_len = stim_info["target_len"]
+    stim_index = stim_events.sound_index[trial]
+    stim_fs = stim_info["fs"]
+
     if stim_events.target_present[trial]
         target =
             stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
+        target_time = stim_info["test_block_cfg"]["target_times"][stim_index]
+        start = clamp(floor(Int,target_time * fs),1,length(rows[1].probs))
+        stop = clamp(ceil(Int,(target_time + target_len) * fs),1,length(rows[1].probs))
         others = setdiff(1:3,target)
-        t = row.probs[target]
-        o1 = row.probs[others[1]]
-        o2 = row.probs[others[2]]
-        mean((ti,o1i,o2i) -> ti > o1i && ti > o2i,t,o1,o2)
+        @views begin
+            t = rows[target].probs[start:stop]
+            o1 = rows[others[1]].probs[start:stop]
+            o2 = rows[others[2]].probs[start:stop]
+        end
+        mean((t .> o1) .& (t .> o2))
+    else
+        0.0
     end
-    0.0
 end
 
 function plotresponse!(scene,method,results,stim_info,file)
