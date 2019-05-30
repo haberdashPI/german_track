@@ -6,37 +6,37 @@
 abstract type StimMethod
 end
 
-struct SpeakerStimMethod <: StimMethod
-    envelop_method::Symbol
+Base.@kwdef struct SpeakerStimMethod <: StimMethod
+    envelope_method::Symbol
 end
-label(x::SpeakerStimMethod) = "speakers_"*string(envelop_method)
+label(x::SpeakerStimMethod) = "speakers_"*string(envelope_method)
 sources(::SpeakerStimMethod) =
     ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "male_other"]
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 3
             load_speaker(stim_events,fs,i,j,
-                envelop_method=method.envelop_method)
+                envelope_method=method.envelope_method)
         else
-            load_other_speaker(stim_events,fs,i,1,
-                envelop_method=method.envelop_method)
+            load_other_speaker(stim_events,fs,stim_info,i,1,
+                envelope_method=method.envelope_method)
         end
     end
 end
 
-struct ChannelStimMethod <: StimMethod
+Base.@kwdef struct ChannelStimMethod <: StimMethod
     envelope_method::Symbol
 end
-label(x::ChannelStimMethod) = "channels_"*string(envelop_method)
+label(x::ChannelStimMethod) = "channels_"*string(x.envelope_method)
 sources(::ChannelStimMethod) = ["left", "right"], ["left", "right", "left_other"]
 function load_source_fn(method::ChannelStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 2
             load_channel(stim_events,fs,i,j,
-                envelop_method=method.envelop_method)
+                envelope_method=method.envelope_method)
         else
-            load_other_channel(stim_events,fs,i,1,
-                envelop_method=method.envelop_method)
+            load_other_channel(stim_events,fs,stim_info,i,1,
+                envelope_method=method.envelope_method)
         end
     end
 end
@@ -102,8 +102,8 @@ function train(::OnlineMethod;indices,kwds...)
     nothing
 end
 
-function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
-    indices,correct,model,kwds...)
+function test!(result,method::OnlineMethod;bounds=all_indices,sid,condition,
+    sources,indices,correct,model,kwds...)
     @assert isnothing(model)
 
     if any(x -> !(x == all_indices || x == no_indices),bounds)
@@ -111,7 +111,7 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
     end
 
     all_results = online_decode(;indices=indices,sources=sources,
-        merge(kwds,method.settings)...)
+        merge(kwds.data,method.params)...)
     for (trial_results,index,correct) in zip(all_results,indices,correct)
         for (source,(norms,probs,lower,upper)) in zip(sources,trial_results)
             result = push!(result,OnlineResult(
