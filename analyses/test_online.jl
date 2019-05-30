@@ -1,5 +1,5 @@
 #=
-- left right priority
+- [wip] left right priority
 - start decoding from switch
 - start from target
 
@@ -35,15 +35,15 @@ sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
+speakers = SpeakerStimMethod(envelope_method=:rms)
 
-data = train_speakers(method,"",eeg_files,stim_info,
-    train = "rms_online" => no_indices,
-    test = "rms_online" => row -> row.condition == "object" ?
+data = train_speakers(method,eeg_files,stim_info,
+    train = "none" => no_indices,
+    test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
-    envelope_method = :rms,
     skip_bad_trials = true)
 
-@save joinpath(data_dir,"test_online_rms.bson") data
+@save joinpath(data_dir,"test_online_speakers.bson") data
 # @load joinpath(data_dir,"test_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
@@ -118,14 +118,18 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 
 ############################################################
 # channel analysis
-
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
-data = train_channels(method,"",eeg_files,stim_info,
-    train = "rms_online" => no_indices,
-    test = "rms_online" => row -> row.condition == "object" ?
+speakers = ChannelStimMethod(envelope_method=:rms)
+
+data = train_speakers(method,eeg_files,stim_info,
+    train = "none" => no_indices,
+    test = "all_feature" => row -> row.condition == "feature" ?
         all_indices : no_indices,
-    envelope_method = :rms,
     skip_bad_trials = true)
+
+@save joinpath(data_dir,"test_online_channels.bson") data
+# @load joinpath(data_dir,"test_online_rms.bson") data
+data = DataFrame(convert(Array{OnlineResult},data))
 
 # things to count up:
 # - does the attended speaker depend on the switches?

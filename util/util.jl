@@ -233,15 +233,17 @@ function events_for_eeg(file,stim_info)
     stim_events, sid
 end
 
-const envelopes = Dict{Tuple{Int,Int},Vector{Float64}}()
-function load_speaker(events,tofs,info,stim_i,source_i;envelope_method=:rms)
+const envelopes = Dict{Any,Vector{Float64}}()
+
+function load_speaker(events,tofs,stim_i,source_i;envelope_method=:rms)
     stim_num = events.sound_index[stim_i]
-    load_speaker_(events,tofs,info,stim_num,source_i,envelope_method)
+    load_speaker_(tofs,stim_num,source_i,envelope_method)
 end
 
-function load_speaker_(events,tofs,info,stim_num,source_i,envelope_method)
-    if stim_num ∈ keys(envelopes)
-        envelopes[stim_num]
+function load_speaker_(tofs,stim_num,source_i,envelope_method)
+    key = (:speaker,tofs,stim_num,source_i,envelope_method)
+    if key ∈ keys(envelopes)
+        envelopes[key]
     else
         x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
             @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
@@ -249,7 +251,7 @@ function load_speaker_(events,tofs,info,stim_num,source_i,envelope_method)
             x = sum(x,dims=2)
         end
         result = find_envelope(SampleBuf(x,fs),tofs,method=envelope_method)
-        envelopes[(stim_num,source_i)] = result
+        envelopes[key] = result
         result
     end
 end
@@ -258,11 +260,42 @@ function load_other_speaker(events,tofs,info,stim_i,source_i;
     envelope_method=:rms)
 
     stim_num = events.sound_index[stim_i]
-    sentences = info["test_block_cfg"]["trial_sentences"][:,source_i]
-    # randomly select one of the stimuli != stim_i
-    selected = rand(vcat(1:stim_num-1,stim_num+1:length(sentences)))
+    stimuli = info["test_block_cfg"]["trial_sentences"]
+    sentence_num = stimuli[stim_num][source_i]
+    selected = rand(filter(stimuli[i][source_i] != sentence_num,
+        1:length(stimuli)))
 
-    load_speaker_(events,tofs,info,selected,source_i,envelope_method)
+    load_speaker_(tofs,selected,source_i,envelope_method)
+end
+
+function load_channel(events,tofs,stim_i,source_i;envelope_method=:rms)
+    stim_num = events.sound_index[stim_i]
+    load_channel_(tofs,stim_num,source_i,envelope_method)
+end
+
+function load_channel_(tofs,stim_num,source_i,envelope_method)
+    @assert source_i ∈ [1,2]
+    key = (:channel,tofs,stim_num,source_i,envelope_method)
+    if key ∈ keys(envelopes)
+        envelopes[key]
+    else
+        x,fs = load(joinpath(stimulus_dir,"mixtures","testing",
+            @sprintf("trial_%02d.wav",stim_num)))
+        result = find_envelope(SampleBuf(x[:,source_i],fs),tofs,
+            method=envelope_method)
+        envelopes[key] = result
+        result
+    end
+end
+
+function load_other_channel(events,tofs,info,stim_i,source_i;
+    envelope_method=:rms)
+
+    stim_num = events.sound_index[stim_i]
+    n = length(info["test_block_cfg"]["trial_sentences"])
+    selected = rand(setdiff(1:n,stim_num))
+
+    load_channel_(tofs,selected,source_i,envelope_method)
 end
 
 function folds(k,indices)

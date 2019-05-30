@@ -3,6 +3,45 @@
 # method, since this component is orthogonal to the static vs. online piece
 # maybe TrainStimulus?
 
+abstract type StimMethod
+end
+
+struct SpeakerStimMethod <: StimMethod
+    envelop_method::Symbol
+end
+label(x::SpeakerStimMethod) = "speakers_"*string(envelop_method)
+sources(::SpeakerStimMethod) =
+    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "male_other"]
+function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)
+    function(i,j)
+        if j <= 3
+            load_speaker(stim_events,fs,i,j,
+                envelop_method=method.envelop_method)
+        else
+            load_other_speaker(stim_events,fs,i,1,
+                envelop_method=method.envelop_method)
+        end
+    end
+end
+
+struct ChannelStimMethod <: StimMethod
+    envelope_method::Symbol
+end
+label(x::ChannelStimMethod) = "channels_"*string(envelop_method)
+sources(::ChannelStimMethod) = ["left", "right"], ["left", "right", "left_other"]
+function load_source_fn(method::ChannelStimMethod,stim_events,fs,stim_info)
+    function(i,j)
+        if j <= 2
+            load_channel(stim_events,fs,i,j,
+                envelop_method=method.envelop_method)
+        else
+            load_other_channel(stim_events,fs,i,1,
+                envelop_method=method.envelop_method)
+        end
+    end
+end
+
+
 abstract type TrainMethod
 end
 
@@ -92,7 +131,7 @@ function test!(result,::OnlineMethod;bounds=all_indices,sid,condition,sources,
 end
 
 
-function train_speakers(method,group_name,files,stim_info;
+function train_stimuli(method,stim_method,files,stim_info;
     skip_bad_trials = false,
     maxlag=0.25,
     train = "" => all_indices,
@@ -118,18 +157,18 @@ function train_speakers(method,group_name,files,stim_info;
         test_bounds, test_indices, train_bounds, train_indices
     end
 
-    # TAG: speaker specific
-    speakers = ["male", "fem1", "fem2"]
+    train_sources, test_sources = sources(stim_method)
     n = 0
     for file in files
         events = events_for_eeg(file,stim_info)[1]
         for cond in unique(events.condition)
             test_bounds, test_indices,
                 train_bounds, train_indices = setup_indices(events,cond)
-            n += length(train_indices)*length(speakers)
-            n += length(test_indices)*(length(speakers)+1)
+            n += length(train_indices)*length(train_sources)
+            n += length(test_indices)*length(test_sources)
         end
     end
+
     progress = Progress(n;desc="Analyzing...")
 
     for file in files
@@ -145,41 +184,36 @@ function train_speakers(method,group_name,files,stim_info;
             test_bounds, test_indices,
              train_bounds, train_indices = setup_indices(stim_events,cond)
 
-            prefix = join([train_name,label(method),cond,
-                sid_str],"_")
+            prefix = join([train_name,!skip_bad_trials ? "bad" : "",
+                label(method),label(stim_method),cond, sid_str],"_")
             model = Main.train(method,
-                sources = speakers,
+                sources = train_sources,
                 prefix = prefix,
                 eeg = eeg,
                 lags=lags,
                 indices = train_indices,
-                group_suffix = "_"*group_name,
                 bounds = train_bounds,
                 progress = progress,
-                stim_fn = (i,j) -> load_speaker(stim_events,samplerate(eeg),
-                    stim_info,i,j,envelope_method = envelope_method)
+                stim_fn = load_source_fn(stim_method,stim_events,
+                    samplerate(eeg),stim_info)
             )
 
-            prefix = join([test_name,label(method),cond,
-                sid_str],"_")
+            prefix = join([test_name,!skip_bad_trials ? "bad" : "",
+                label(method),label(stim_method),cond,sid_str],"_")
             Main.test!(result,method;
                 sid = sid,
                 condition = cond,
-                sources = [speakers..., "male_other"],
+                sources = test_sources,
                 correct = stim_events.correct[test_indices],
                 prefix=prefix,
                 eeg=eeg,
                 model=model,
                 lags=lags,
                 indices = test_indices,
-                group_suffix = "_"*group_name,
                 bounds = test_bounds,
                 progress = progress,
-                stim_fn = (i,j) -> j <= length(speakers) ?
-                    load_speaker(stim_events,samplerate(eeg),stim_info,i,
-                        j,envelope_method = envelope_method) :
-                    load_other_speaker(stim_events,samplerate(eeg),stim_info,i,
-                        1,envelope_method = envelope_method)
+                stim_fn = load_source_fn(stim_method,stim_events,
+                    samplerate(eeg),stim_info)
             )
         end
     end
