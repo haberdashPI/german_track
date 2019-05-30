@@ -11,7 +11,7 @@ if name != "german_track"
 end
 
 includet(joinpath(base_dir,"util","util.jl"))
-includet(joinpath(base_dir,"util","train_speakers.jl"))
+includet(joinpath(base_dir,"util","train_stimuli.jl"))
 
 analysis_dir = joinpath(base_dir,"analyses")
 EEGCoding.set_cache_dir!(joinpath(base_dir,"analyses","cache"))
