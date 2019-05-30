@@ -5,8 +5,8 @@ library(cowplot)
 
 source("util/setup.R")
 
-sid = 14
-
+for(sid in 8:14){
+cat(paste0('Sid: ',sid,'\n'))
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
 sr = 2048
@@ -21,7 +21,6 @@ ef = ef %>% arrange(sample) %>%
 
 p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
     xlab("minutes")
-p1
 
 presfiles = list.files(file.path(raw_data_dir),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
@@ -46,37 +45,43 @@ pf = raw_pf %>% rename(subtrial=Trial) %>%
 
     pf = pf %>% filter(condition %in% c("test","object","feature"),
                        !is.na(response)) %>%
-    arrange(time)
+    arrange(time) %>%
+    mutate(trial = trial - first(trial)+1)
 
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
 
-sound_events = filter(ef,bit == 5)
-# sound_events = filter(ef,bit == 4) # for subject 9 only
+# browser()
 
-# note: comment out the below for subject 9
-if(nrow(sound_events) != 154)
-    stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+if(sid == 9){
+    # subject 9's first trial was not recorded (in the eeg)
+    sound_events = filter(ef,bit == 4)
+    pf = pf[2:nrow(pf),]
+    pf$trial = pf$trial - 1
+    if(nrow(sound_events) != 153)
+        stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+}else{
+    sound_events = filter(ef,bit == 5)
+    if(nrow(sound_events) != 154)
+        stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+}
+#
 
-# these extra rows, which we're skipping, are practice trials during the intro
-# to the 'feature' and 'object' conditions of the experiment
-
-# duriung recording for subject 9, the first event was lost
-sound_events = sound_events[c(1:50,53:102,105:154),]
-# sound_events = sound_events[c(2:50,53:102,105:154)-1,] # subject 9 only
-# pf = pf[2:nrow(pf),] # subject 9 only
 
 pf = pf %>%
     rename(pres_time = time) %>%
-    mutate(sample = sound_events$sample,
-           time = sound_events$time)
+    mutate(sample = sound_events$sample[trial],
+           time = sound_events$time[trial]) %>%
+    mutate(trial = trial - ifelse(trial < 50,0,ifelse(trial < 105,2,4)))
 
 pf %>%
-    select(sample,time,condition,response,sound_index) %>%
-    write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)))
+    select(trial,sample,time,condition,response,sound_index) %>%
+    write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)),
+        row.names=F)
 
 pf %>%
     mutate(index = as.numeric(condition)) %>%
-    select(time,index,sound_index) %>%
+    select(trial,time,index,sound_index) %>%
     write.table(file.path(data_dir,sprintf("sound_events_%03d.txt",sid)),
                 quote=F,sep="\t",row.names=F)
+}
