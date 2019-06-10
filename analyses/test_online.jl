@@ -1,9 +1,21 @@
 #=
-- [wip] left right priority
 - start decoding from switch
 - start from target
+- what to do with male_other?
 
 - test left/right and pseakers with opposite conditions (and global)
+
+# TODO: merge below comments with above comments
+
+# things to count up:
+# - does the attended speaker depend on the switches?
+# - does the "buildup-up curve" help us predict the behavioral data?
+
+# Do the same analysis for:
+# 1. mixture envelope (with and without the target speaker?? may not matter)
+# 2. the audiospect envelope
+# 3. left vs. right on the feature condition
+# 4. both LvR and Speakers for the global condition
 
 =#
 
@@ -96,7 +108,7 @@ Makie.save(joinpath(plot_dir,"online_test_sid09_2.png"),
 dfat = by(data,:sid) do dfsid
     stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
     by(dfsid,:trial) do dftrial
-        attend = targetattend(eachrow(dftrial),stim_events,stim_info,
+        attend = speakerattend(dftrial,stim_events,stim_info,
             ustrip(uconvert(Hz,1/method.params.window)))
         DataFrame(
             targetattend = attend,
@@ -119,9 +131,9 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 ############################################################
 # channel analysis
 online = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
-speakers = ChannelStimMethod(envelope_method=:rms)
+channels = ChannelStimMethod(envelope_method=:rms)
 
-data = train_stimuli(online,speakers,eeg_files,stim_info,
+data = train_stimuli(online,channels,eeg_files,stim_info,
     train = "none" => no_indices,
     test = "all_feature" => row -> row.condition == "feature" ?
         all_indices : no_indices,
@@ -134,21 +146,18 @@ data = DataFrame(convert(Array{OnlineResult},data))
 ########################################
 # summary plot
 
-# TODO: this doesn't work yet because targetattend is built assuming the
-# sources are speakers
-
-# dfat = by(data,:sid) do dfsid
-#     stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
-#     by(dfsid,:trial) do dftrial
-#         attend = targetattend(eachrow(dftrial),stim_events,stim_info,
-#             ustrip(uconvert(Hz,1/online.params.window)))
-#         DataFrame(
-#             targetattend = attend,
-#             test_correct = dftrial.test_correct[1],
-#             condition = dftrial.condition[1]
-#         )
-#     end
-# end
+dfat = by(data,:sid) do dfsid
+    stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
+    by(dfsid,:trial) do dftrial
+        attend = channelattend(dftrial,stim_events,stim_info,
+            ustrip(uconvert(Hz,1/online.params.window)))
+        DataFrame(
+            targetattend = attend,
+            test_correct = dftrial.test_correct[1],
+            condition = dftrial.condition[1]
+        )
+    end
+end
 
 dfat_mean = by(dfat,[:test_correct,:sid,:condition],
     :targetattend => function(x)
@@ -160,15 +169,29 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
     xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) |>
     PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
 
+############################################################
+# first switch speaker analysis
 
-# things to count up:
-# - does the attended speaker depend on the switches?
-# - does the "buildup-up curve" help us predict the behavioral data?
+########################################
+# anlaysis
 
-# Do the same analysis for:
-# 1. mixture envelope (with and without the target speaker?? may not matter)
-# 2. the audiospect envelope
-# 3. left vs. right on the feature condition
-# 4. both LvR and Speakers for the global condition
+# TODO: we don't need this file format, we can use the 65 components directly,
+# to reduce memory load.
+method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
+speakers = SpeakerStimMethod(envelope_method=:rms)
+
+# TODO: determine bound from start of first switch to end of stimulus
+
+data = train_stimuli(method,speakers,eeg_files,stim_info,
+    train = "none" => no_indices,
+    test = "first_switch" => row -> row.condition == "object" ?
+        first_switch[row.sound_index] : no_indices,
+    skip_bad_trials = true)
+
+@save joinpath(data_dir,"test_online_speakers.bson") data
+# @load joinpath(data_dir,"test_online_rms.bson") data
+data = DataFrame(convert(Array{OnlineResult},data))
+
+
 
 alert()

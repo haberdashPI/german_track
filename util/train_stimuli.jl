@@ -102,13 +102,9 @@ function train(::OnlineMethod;indices,kwds...)
     nothing
 end
 
-function test!(result,method::OnlineMethod;bounds=all_indices,sid,condition,
+function test!(result,method::OnlineMethod;sid,condition,
     sources,indices,correct,model,kwds...)
     @assert isnothing(model)
-
-    if any(x -> !(x == all_indices || x == no_indices),bounds)
-        error("Online method does not currently support limited time ranges.")
-    end
 
     all_results = online_decode(;indices=indices,sources=sources,
         merge(kwds.data,method.params)...)

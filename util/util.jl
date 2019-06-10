@@ -97,9 +97,42 @@ function plottrial(method,results,stim_info,file;
     hbox(stimulus,main,sizes=[0.3,0.7])
 end
 
-function targetattend(rows,stim_events,stim_info,fs)
-    trial = single(unique(map(r->r.trial,rows)),
-        "Expected single trial number")
+function channelattend(rows,stim_events,stim_info,fs)
+    trial = single(unique(rows.trial),"Expected single trial number")
+    sources = ["left","right","left_other"]
+    @assert :source in names(rows)
+    @assert all(rows.source .∈ Ref(sources))
+
+    target_len = stim_info["target_len"]
+    stim_index = stim_events.sound_index[trial]
+    stim_fs = stim_info["fs"]
+
+    if stim_events.target_present[trial]
+        target_dir = stim_info["test_block_cfg"]["trial_target_dir"][stim_index]
+        target_time = stim_info["test_block_cfg"]["target_times"][stim_index]
+        start = clamp(floor(Int,target_time * fs),1,length(rows.probs[1]))
+        stop = clamp(ceil(Int,(target_time + target_len) * fs),1,length(rows.probs[1]))
+
+        @assert target_dir in ("left","right")
+        other_dir = target_dir == "left" ? "right" : "left"
+
+        ti,oi = indexin(rows.source, [target_dir,other_dir])
+        @views begin
+            t = rows[ti,:probs][start:stop]
+            o = rows[oi,:probs][start:stop]
+        end
+        mean(t .> o)
+    else
+        0.0
+    end
+end
+
+function speakerattend(rows,stim_events,stim_info,fs)
+    trial = single(unique(rows.trial),"Expected single trial number")
+    sources = ["male","fem1","fem2","male_other"]
+    @assert :source in names(rows)
+    @assert all(rows.source .∈ Ref(sources))
+
     target_len = stim_info["target_len"]
     stim_index = stim_events.sound_index[trial]
     stim_fs = stim_info["fs"]
@@ -108,13 +141,14 @@ function targetattend(rows,stim_events,stim_info,fs)
         target =
             stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
         target_time = stim_info["test_block_cfg"]["target_times"][stim_index]
-        start = clamp(floor(Int,target_time * fs),1,length(rows[1].probs))
-        stop = clamp(ceil(Int,(target_time + target_len) * fs),1,length(rows[1].probs))
+        start = clamp(floor(Int,target_time * fs),1,length(rows.probs[1]))
+        stop = clamp(ceil(Int,(target_time + target_len) * fs),1,length(rows.probs[1]))
         others = setdiff(1:3,target)
+        ti,o1i,o2i = indexin(rows.source,map(i->sources[i],[target,others...]))
         @views begin
-            t = rows[target].probs[start:stop]
-            o1 = rows[others[1]].probs[start:stop]
-            o2 = rows[others[2]].probs[start:stop]
+            t = rows[ti,:probs][start:stop]
+            o1 = rows[o1i,:probs][start:stop]
+            o2 = rows[o2i,:probs][start:stop]
         end
         mean((t .> o1) .& (t .> o2))
     else
