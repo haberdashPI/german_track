@@ -20,7 +20,7 @@
 =#
 
 include(joinpath(@__DIR__,"..","util","setup.jl"))
-using Gadfly, Cairo, Fontconfig
+# using Gadfly, Cairo, Fontconfig
 using DependentBootstrap
 # using Makie
 using Unitful
@@ -180,7 +180,8 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
 speakers = SpeakerStimMethod(envelope_method=:rms)
 
-# TODO: determine bound from start of first switch to end of stimulus
+switch_times =
+    convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
 
 data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
