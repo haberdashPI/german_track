@@ -9,7 +9,7 @@ end
 Base.@kwdef struct SpeakerStimMethod <: StimMethod
     envelope_method::Symbol
 end
-label(x::SpeakerStimMethod) = "speakers_"*string(envelope_method)
+label(x::SpeakerStimMethod) = "speakers_"*string(x.envelope_method)
 sources(::SpeakerStimMethod) =
     ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "male_other"]
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)

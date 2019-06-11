@@ -182,6 +182,8 @@ speakers = SpeakerStimMethod(envelope_method=:rms)
 
 switch_times =
     convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
+fs = convert(Float64,stim_info["fs"])
+first_switch = map(x -> (x[1]/fs,10.0),switch_times)
 
 data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
@@ -189,7 +191,7 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
         first_switch[row.sound_index] : no_indices,
     skip_bad_trials = true)
 
-@save joinpath(data_dir,"test_online_speakers.bson") data
+@save joinpath(data_dir,"test_online_first_switch_speakers.bson") data
 # @load joinpath(data_dir,"test_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 

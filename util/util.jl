@@ -296,7 +296,7 @@ function load_other_speaker(events,tofs,info,stim_i,source_i;
     stim_num = events.sound_index[stim_i]
     stimuli = info["test_block_cfg"]["trial_sentences"]
     sentence_num = stimuli[stim_num][source_i]
-    selected = rand(filter(stimuli[i][source_i] != sentence_num,
+    selected = rand(filter(i -> stimuli[i][source_i] != sentence_num,
         1:length(stimuli)))
 
     load_speaker_(tofs,selected,source_i,envelope_method)
