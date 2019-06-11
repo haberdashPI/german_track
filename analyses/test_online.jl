@@ -2,12 +2,20 @@
 - start decoding from switch
 - start from target
 - what to do with male_other?
+- behavioral true/false is a high bar
+  let's try to just figure out how things go from, e.g. the first switch
+  also worth looking at "all vs. 1" decoding instead of 1+1 vs. 1 decoding
+  just because a speaker isn't attended doesn't mean they can't respond
+  and just because it is attended doesn't mean they will respond
+
+what about other ways of looking at the behavioral responses
 
 - test left/right and pseakers with opposite conditions (and global)
 
 # TODO: merge below comments with above comments
 
 # things to count up:
+# - first switch, before target
 # - does the attended speaker depend on the switches?
 # - does the "buildup-up curve" help us predict the behavioral data?
 
