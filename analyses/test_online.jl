@@ -8,6 +8,9 @@
   just because a speaker isn't attended doesn't mean they can't respond
   and just because it is attended doesn't mean they will respond
 
+
+# TODO: plot raw coefficients
+
 what about other ways of looking at the behavioral responses
 
 - test left/right and pseakers with opposite conditions (and global)
@@ -214,6 +217,10 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
 @save joinpath(data_dir,"test_online_first_switch_speakers.bson") data
 # @load joinpath(data_dir,"test_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
+
+# TODO: think through this summary (there are some issues also
+# noted in the top-level comments. Also worth plotting individual
+# data )
 
 dfat = by(data,:sid) do dfsid
     stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
