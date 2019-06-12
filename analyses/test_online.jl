@@ -191,7 +191,19 @@ speakers = SpeakerStimMethod(envelope_method=:rms)
 switch_times =
     convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
 fs = convert(Float64,stim_info["fs"])
-first_switch = map(x -> (x[1]/fs,10.0),switch_times)
+first_switch = map(enumerate(switch_times)) do (i,times)
+    target_time = stim_info["test_block_cfg"]["target_times"][i]
+    if target_time > 0
+        j = findlast(x -> x/fs < target_time,times)
+        if j == nothing
+            (0,10.0)
+        else
+            (times[j]/fs,10.0)
+        end
+    else
+        no_indices
+    end
+end
 
 data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
@@ -203,6 +215,26 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
 # @load joinpath(data_dir,"test_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
+dfat = by(data,:sid) do dfsid
+    stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
+    by(dfsid,:trial) do dftrial
+        attend = speakerattend(dftrial,stim_events,stim_info,
+            ustrip(uconvert(Hz,1/method.params.window)))
+        DataFrame(
+            targetattend = attend,
+            test_correct = dftrial.test_correct[1],
+            condition = dftrial.condition[1]
+        )
+    end
+end
 
+dfat_mean = by(dfat,[:test_correct,:sid,:condition],
+    :targetattend => function(x)
+        lower,upper = dbootconf(copy(x),bootmethod=:iid,alpha=0.25)
+        (mean=mean(x),lower=lower,upper=upper)
+    end)
 
-alert()
+plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
+    xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) # |>
+    # PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
+
