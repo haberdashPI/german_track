@@ -1,5 +1,6 @@
 using Colors
 using Debugger
+using VegaLite
 
 function mat2bson(file)
     file
@@ -63,27 +64,126 @@ function single(x,message="Expected a single element.")
     x_
 end
 
-function plotatten!(scene,method,results;colors=[:black,:red,:blue],raw=false)
+function plotresponse(method,results,stim_events,trial)
+    len = minimum(map(x -> length(x.probs),results))
+    step = ustrip.(uconvert.(s,method.params.window))
+    if stim_events.target_present[trial] == stim_events.correct[trial]
+        DataFrame(start=0,stop=len*step) |> @vlplot() +
+            @vlplot(:rect, x=:start, x2=:stop, opacity={value=0.15},
+                color={value="#000"})
+    end
+end
+
+function plottarget(stim_events,trial,stim_info)
+    if stim_events.target_present[trial]
+        stim_index = stim_events.sound_index[trial]
+        start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
+        stop_time = stim_info["target_len"]+start_time
+
+        target_speaker_i =
+            stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
+        target_speaker = target_speaker_i == 1 ? "male" :
+            target_speaker_i == 2 ? "fem1" :
+            "unknown"
+
+        DataFrame(start=start_time,stop=stop_time,source=target_speaker) |>
+            @vlplot() +
+            @vlplot(:rect, x=:start, x2=:stop, color=:source,
+                opacity={value=0.2})
+    end
+end
+
+function plotatten(method,results,raw)
     len = minimum(map(x -> length(x.probs),results))
     step = ustrip.(uconvert.(s,method.params.window))
     t = step.*((1:len) .- 1)
-    if raw
-        for (col,result) in zip(colors,results)
-            @views lines!(scene,float(t),result.norms[1:len],color=col)
+
+    df = DataFrame()
+    plot = if raw
+        for result in results
+            df = vcat(df,DataFrame(time=float(t),level=result.norms[1:len],
+                source=result.source))
         end
+        df |> @vlplot() + @vlplot(
+            :line,
+            x={:time,axis={title="Time (s)"}},
+            y={:level,axis={title="Level"}},
+            color=:source
+        )
     else
-        for (col,result) in zip(colors,results)
-            @views band!(scene,float(t),result.lower[1:len],result.upper[1:len],
-                color=RGBA(0.0,0.0,0.0,0.2))
-            @views lines!(scene,float(t),result.probs[1:len],color=col,
-                linewidth=3.0)
+        for result in results
+            df = vcat(df,DataFrame(
+                time=float(t),
+                level=result.probs[1:len],
+                source=result.source,
+                lower=result.lower[1:len],
+                upper=result.upper[1:len]
+            ))
         end
+        df |> @vlplot() +
+            @vlplot(:area,
+                x=:time,
+                y=:lower,
+                y2=:upper,opacity={value=0.3},
+                color=:source
+            ) + @vlplot(:line,
+                encoding={
+                    x={:time,axis={title="Time (s)"}},
+                    y={:level,axis={title="Level"}}
+                },
+                color=:source
+            )
     end
 
-    scene
+    t[end], plot
 end
 
-function plottrial(method,results,stim_info,file;
+# function plotswitches()
+
+combine(x,y) =
+    isnothing(x) ? y :
+    isnothing(y) ? x :
+    x + y
+combine(x,y,z,more...) = reduce(combine,(x,y,z,more...))
+
+function plotswitches(trial,duration,stim_events)
+    stim_index = stim_events.sound_index[trial]
+    direc_file = joinpath(stimulus_dir,"mixtures","testing",
+        @sprintf("trial_%02d.direc",stim_index))
+    dirs = load_directions(direc_file)
+    len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
+    t = (1:len)./dirs.samplerate
+
+    df = vcat(
+        DataFrame(time=t,dir=dirs.dir1,source="male"),
+        DataFrame(time=t,dir=dirs.dir2,source="fem1"),
+        DataFrame(time=t,dir=dirs.dir3,source="fem2")
+    )
+    df[df.time .< duration,:] |> @vlplot(:line,
+        height=60,
+        x={:time,axis=nothing},
+        y={:dir,axis={title="direciton (° Azimuth)"}},color=:source)
+end
+
+function plottrial(method,results,stim_info,file;raw=false)
+    trial = single(unique(map(r->r.trial,results)),
+        "Expected single trial number")
+    stim_events, = events_for_eeg(file,stim_info)
+    duration, attenplot = plotatten(method,results,raw)
+
+    @vlplot(title=string("Trial ",trial),
+        spacing = 15,bounds = "flush") +
+    [
+        plotswitches(trial,duration,stim_events);
+        combine(
+            plotresponse(method,results,stim_events,trial),
+            plottarget(stim_events,trial,stim_info),
+            attenplot
+        );
+    ]
+end
+
+function old_plottrial(method,results,stim_info,file;
     colors=[:black,:red,:blue],raw=false)
 
     main = Scene()

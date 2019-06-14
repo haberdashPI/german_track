@@ -215,12 +215,14 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
     skip_bad_trials = true)
 
 @save joinpath(data_dir,"test_online_first_switch_speakers.bson") data
-# @load joinpath(data_dir,"test_online_rms.bson") data
+# @load joinpath(data_dir,"test_online_first_switch_speakers.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
 # TODO: think through this summary (there are some issues also
 # noted in the top-level comments. Also worth plotting individual
 # data )
+
+# TODO: save the time points, to make plotting easier
 
 dfat = by(data,:sid) do dfsid
     stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
@@ -235,13 +237,25 @@ dfat = by(data,:sid) do dfsid
     end
 end
 
-dfat_mean = by(dfat,[:test_correct,:sid,:condition],
-    :targetattend => function(x)
-        lower,upper = dbootconf(copy(x),bootmethod=:iid,alpha=0.25)
-        (mean=mean(x),lower=lower,upper=upper)
-    end)
+sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
 
-plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
-    xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) # |>
-    # PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
+# testing...
+# TODO: this is technically wrong, since the event file is always for 8
+plots = map(1:10) do i
+    plottrial(method,eachrow(groupby(sid8,:trial)[i]),stim_info,
+        sidfile(data.sid[1]),raw=true)
+end;
+# TODO: allow wrapping concatenation of the figures
+# or just figure out a good grid to put these in
+@vlplot() + reduce(vcat,plots)
+
+# dfat_mean = by(dfat,[:test_correct,:sid,:condition],
+#     :targetattend => function(x)
+#         lower,upper = dbootconf(copy(x),bootmethod=:iid,alpha=0.25)
+#         (mean=mean(x),lower=lower,upper=upper)
+#     end)
+
+# plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
+#     xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) # |>
+#     # PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
 
