@@ -138,7 +138,6 @@ function plotatten(method,results,raw)
     t[end], plot
 end
 
-# function plotswitches()
 
 combine(x,y) =
     isnothing(x) ? y :
@@ -181,20 +180,6 @@ function plottrial(method,results,stim_info,file;raw=false)
             attenplot
         );
     ]
-end
-
-function old_plottrial(method,results,stim_info,file;
-    colors=[:black,:red,:blue],raw=false)
-
-    main = Scene()
-    plotresponse!(main,method,results,stim_info,file)
-    plottarget!(main,method,results,stim_info,file;colors=colors)
-    plotatten!(main,method,results,raw=raw)
-
-    stimulus = Scene()
-    plotswitches!(stimulus,method,results,stim_info,file)
-
-    hbox(stimulus,main,sizes=[0.3,0.7])
 end
 
 function channelattend(rows,stim_events,stim_info,fs)
@@ -254,68 +239,6 @@ function speakerattend(rows,stim_events,stim_info,fs)
     else
         0.0
     end
-end
-
-function plotresponse!(scene,method,results,stim_info,file)
-    trial = single(unique(map(r->r.trial,results)),
-        "Expected single trial number")
-    stim_events, = events_for_eeg(file,stim_info)
-    step = ustrip.(uconvert.(s,method.params.window))
-    len = minimum(map(x -> length(x.probs),results))*step
-
-    if stim_events.target_present[trial] == stim_events.correct[trial]
-        poly!(scene,color=RGBA(0,0,0,0.25),Point2f0[
-            [0,-3],[0,3], [len,3],[len,-3]
-        ])
-    end
-
-    scene
-end
-
-function plottarget!(scene,method,results,stim_info,file;
-    colors=[:black,:red,:blue])
-
-    trial = single(unique(map(r->r.trial,results)),
-        "Expected single trial number")
-    stim_events, = events_for_eeg(file,stim_info)
-    if stim_events.target_present[trial]
-        stim_index = stim_events.sound_index[trial]
-        start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
-        stop_time = stim_info["target_len"]+start_time
-
-        target_speaker =
-            stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
-        col = parse(Colorant,colors[target_speaker])
-        col = RGBA(col.r,col.g,col.b,0.3)
-
-        poly!(scene,color=col,Point2f0[
-            [start_time,-3],
-            [start_time,3],
-            [stop_time,3],
-            [stop_time,-3]
-        ])
-    end
-
-    scene
-end
-
-function plotswitches!(scene,method,results,stim_info,file;
-    colors=[:black,:red,:blue])
-
-    trial = single(unique(map(r->r.trial,results)),
-        "Expected single trial number")
-    stim_events, = events_for_eeg(file,stim_info)
-    stim_index = stim_events.sound_index[trial]
-    direc_file = joinpath(stimulus_dir,"mixtures","testing",
-        @sprintf("trial_%02d.direc",stim_index))
-    dirs = load_directions(direc_file)
-    len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
-    t = (1:len)./dirs.samplerate
-    lines!(scene,t,dirs.dir1,color=colors[1])
-    lines!(scene,t,dirs.dir2,color=colors[2])
-    lines!(scene,t,dirs.dir3,color=colors[3])
-
-    scene
 end
 
 struct Directions
