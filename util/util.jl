@@ -68,11 +68,16 @@ function single(x,message="Expected a single element.")
     x_
 end
 
-function plotresponse(method,results,stim_events,trial)
+totuples(::AllIndices,len) = [(0,len)]
+totuples((lo,hi)::Tuple,len) = [(lo,min(lo+len,hi))]
+totuples(xs::Array{<:Tuple},len) = map(((lo,hi)) -> (lo,min(xs[1][1]+len,hi)),xs)
+
+function plotresponse(method,results,bounds,stim_events,trial)
     len = minimum(map(x -> length(x.probs),results))
     step = ustrip.(uconvert.(s,method.params.window))
+    bounds = totuples(bounds,len*step)
     if stim_events.target_present[trial] == stim_events.correct[trial]
-        DataFrame(start=0,stop=len*step) |> @vlplot() +
+        DataFrame(start=map(@λ(_[1]),bounds),stop=map(@λ(_[2]),bounds)) |> @vlplot() +
             @vlplot(:rect, x=:start, x2=:stop, opacity={value=0.15},
                 color={value="#000"})
     end
@@ -99,21 +104,22 @@ end
 
 totimes(::AllIndices,step,len) = step.*((1:len) .- 1)
 totimes(x::Tuple,step,len) =
-    filter(@λ(inbound(_,x)),range(0,x[2],step=step))
+    filter(@λ(inbound(_,x)),range(0,x[2],step=step))[1:len]
 totimes(x::Array{<:Tuple},step,len) =
-    filter(@λ(inbounds(_,x)),range(0,maximum(getindex.(x,2)),step=step))
+    filter(@λ(inbounds(_,x)),range(0,maximum(getindex.(x,2)),step=step))[1:len]
 
 function plotatten(method,results,raw,bounds)
     len = minimum(map(x -> length(x.probs),results))
     step = ustrip.(uconvert.(s,method.params.window))
     t = totimes(bounds,step,len)
-    @bp
 
     df = DataFrame()
     plot = if raw
         for result in results
-            df = vcat(df,DataFrame(time=float(t),level=result.norms[1:len],
-                source=result.source))
+            if !isempty(t)
+                df = vcat(df,DataFrame(time=float(t),level=result.norms[1:len],
+                    source=result.source))
+            end
         end
         df |> @vlplot() + @vlplot(
             :line,
@@ -175,7 +181,7 @@ function plotswitches(trial,bounds,stim_events)
     )
     df[inbound.(df.time,Ref(bounds)),:] |> @vlplot(:line,
         height=60,
-        x={:time,axis=nothing},
+        x={:time,scale={domain=t[[1,end]]},axis=nothing},
         y={:dir,axis={title="direciton (° Azimuth)"}},color=:source)
 end
 
@@ -191,7 +197,7 @@ function plottrial(method,results,stim_info,file;raw=false,bounds=all_indices)
     [
         plotswitches(trial,bounds,stim_events);
         combine(
-            plotresponse(method,results,stim_events,trial),
+            plotresponse(method,results,bounds,stim_events,trial),
             plottarget(stim_events,trial,stim_info),
             attenplot
         );
@@ -307,6 +313,22 @@ function events_for_eeg(file,stim_info)
 end
 
 const envelopes = Dict{Any,Vector{Float64}}()
+function load_speaker_mix(events,tofs,stim_i;envelope_method=:rms)
+    stim_num = events.sound_index[stim_i]
+    key = (:mix,tofs,stim_num,envelope_method)
+    if key ∈ keys(envelopes)
+        envelopes[key]
+    else
+        x,fs = load(joinpath(stimulus_dir,"mixtures","testing",
+            @sprintf("trial_%02d.wav",stim_num)))
+        if size(x,2) > 1
+            x = sum(x,dims=2)
+        end
+        result = find_envelope(SampleBuf(x,fs),tofs,method=envelope_method)
+        envelopes[key] = result
+        result
+    end
+end
 
 function load_speaker(events,tofs,stim_i,source_i;envelope_method=:rms)
     stim_num = events.sound_index[stim_i]

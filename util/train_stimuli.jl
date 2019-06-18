@@ -11,11 +11,14 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.envelope_method)
 sources(::SpeakerStimMethod) =
-    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "male_other"]
+    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "all", "male_other"]
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 3
             load_speaker(stim_events,fs,i,j,
+                envelope_method=method.envelope_method)
+        elseif j == 4
+            load_speaker_mix(stim_events,fs,i,
                 envelope_method=method.envelope_method)
         else
             load_other_speaker(stim_events,fs,stim_info,i,1,

@@ -211,8 +211,6 @@ first_switch = map(enumerate(switch_times)) do (i,times)
 end
 
 
-# NEXT TASK: verify the first switch, and fix the
-# way first switch data are plotted
 # THEN: run first switch for all participants
 # THEN: run different conditions
 #   - all vs. 1,
@@ -232,22 +230,19 @@ data = DataFrame(convert(Array{OnlineResult},data))
 # noted in the top-level comments. Also worth plotting individual
 # data )
 
-sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
 
 # testing...
 # TODO: this is technically wrong, since the event file is always for 8
-function dummy()
-    map(1:10) do i
-        plottrial(method,eachrow(groupby(sid8,:trial)[i]),stim_info,
-            sidfile(data.sid[1]),bounds = row -> first_switch[row.sound_index],
-            raw=true)
-    end
-end
+plots = map(unique(sid8.trial)) do i
+    plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
+        sidfile(sid8.sid[1]),bounds = row -> first_switch[row.sound_index],
+        raw=true)
+end;
 
-plots = dummy()
 # TODO: allow wrapping concatenation of the figures
 # or just figure out a good grid to put these in
-@vlplot() + reduce(vcat,plots)
+@vlplot() + reduce(hcat,plots)
 
 # dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 #     :targetattend => function(x)
