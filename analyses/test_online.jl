@@ -1,7 +1,21 @@
 #=
-- start decoding from switch
-- start from target
-- what to do with male_other?
+
+- next steps:
+    - summary of the mean coefficients from start,
+        - from switch
+        - look at the male voice
+        - examine different envelopes for the online analysis
+        - all - target
+        - is there some advantage of the male speaker
+            relative to the other conditions
+        - focus on the male speaker in the object condition
+    - show all speaker for the static analysis
+
+summary:
+try and fix the male (look at other subjects first)
+then, do we see an advantage of the male speaker in the object conditio
+at the start? near narget (before, within, after???)
+
 - behavioral true/false is a high bar
   - let's try to just figure out how things go from, e.g. the first switch
   - worth looking at "all vs. 1" decoding instead of 1+1 vs. 1 decoding
@@ -10,8 +24,6 @@
   attended doesn't mean they can't respond and just because it is attended
   doesn't mean they will respond
 
-
-# TODO: plot raw coefficients
 
 what about other ways of looking at the behavioral responses
 
@@ -190,12 +202,11 @@ first_switch = map(enumerate(switch_times)) do (i,times)
 end
 
 
-# THEN: run first switch for all participants
 # THEN: run different conditions
-#   - all vs. 1,
 #   - audiospect envelope
+# THEN: run first switch for all participants
 
-data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
+data = train_stimuli(method,speakers,eeg_files[1:3],stim_info,
     train = "none" => no_indices,
     test = "first_switch" => row -> row.condition == "object" ?
         first_switch[row.sound_index] : no_indices,
@@ -221,7 +232,7 @@ end;
 
 # TODO: allow wrapping concatenation of the figures
 # or just figure out a good grid to put these in
-@vlplot() + reduce(hcat,plots)
+@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,3))...)
 
 # dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 #     :targetattend => function(x)
