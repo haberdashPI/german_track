@@ -349,6 +349,12 @@ git-tree-sha1 = "599cc7c6683e54cd0b3786ee37800db037e22df4"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
 version = "0.5.2"
 
+[[LambdaFn]]
+deps = ["MacroTools", "Printf"]
+git-tree-sha1 = "ddfd684187decf92c5f34e979293bc7aed1cb265"
+uuid = "fcefd6c4-8de0-11e9-0d15-03bc7c8ec982"
+version = "0.1.0"
+
 [[LibCURL]]
 deps = ["BinaryProvider", "Libdl"]
 git-tree-sha1 = "5ee138c679fa202ebe211b2683d1eee2a87b3dbe"

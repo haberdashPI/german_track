@@ -3,10 +3,12 @@
 - start from target
 - what to do with male_other?
 - behavioral true/false is a high bar
-  let's try to just figure out how things go from, e.g. the first switch
-  also worth looking at "all vs. 1" decoding instead of 1+1 vs. 1 decoding
-  just because a speaker isn't attended doesn't mean they can't respond
-  and just because it is attended doesn't mean they will respond
+  - let's try to just figure out how things go from, e.g. the first switch
+  - worth looking at "all vs. 1" decoding instead of 1+1 vs. 1 decoding
+  - worth considering a different envelope
+  - rethink relationship to behavioral data: just because a speaker isn't
+  attended doesn't mean they can't respond and just because it is attended
+  doesn't mean they will respond
 
 
 # TODO: plot raw coefficients
@@ -208,7 +210,15 @@ first_switch = map(enumerate(switch_times)) do (i,times)
     end
 end
 
-data = train_stimuli(method,speakers,eeg_files,stim_info,
+
+# NEXT TASK: verify the first switch, and fix the
+# way first switch data are plotted
+# THEN: run first switch for all participants
+# THEN: run different conditions
+#   - all vs. 1,
+#   - audiospect envelope
+
+data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
     train = "none" => no_indices,
     test = "first_switch" => row -> row.condition == "object" ?
         first_switch[row.sound_index] : no_indices,
@@ -222,29 +232,19 @@ data = DataFrame(convert(Array{OnlineResult},data))
 # noted in the top-level comments. Also worth plotting individual
 # data )
 
-# TODO: save the time points, to make plotting easier
-
-dfat = by(data,:sid) do dfsid
-    stim_events, = events_for_eeg(sidfile(dfsid.sid[1]),stim_info)
-    by(dfsid,:trial) do dftrial
-        attend = speakerattend(dftrial,stim_events,stim_info,
-            ustrip(uconvert(Hz,1/method.params.window)))
-        DataFrame(
-            targetattend = attend,
-            test_correct = dftrial.test_correct[1],
-            condition = dftrial.condition[1]
-        )
-    end
-end
-
 sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
 
 # testing...
 # TODO: this is technically wrong, since the event file is always for 8
-plots = map(1:10) do i
-    plottrial(method,eachrow(groupby(sid8,:trial)[i]),stim_info,
-        sidfile(data.sid[1]),raw=true)
-end;
+function dummy()
+    map(1:10) do i
+        plottrial(method,eachrow(groupby(sid8,:trial)[i]),stim_info,
+            sidfile(data.sid[1]),bounds = row -> first_switch[row.sound_index],
+            raw=true)
+    end
+end
+
+plots = dummy()
 # TODO: allow wrapping concatenation of the figures
 # or just figure out a good grid to put these in
 @vlplot() + reduce(vcat,plots)

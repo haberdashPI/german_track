@@ -1,6 +1,10 @@
 using Colors
 using Debugger
 using VegaLite
+using LambdaFn
+using Debugger
+
+import EEGCoding: AllIndices
 
 function mat2bson(file)
     file
@@ -93,10 +97,17 @@ function plottarget(stim_events,trial,stim_info)
     end
 end
 
-function plotatten(method,results,raw)
+totimes(::AllIndices,step,len) = step.*((1:len) .- 1)
+totimes(x::Tuple,step,len) =
+    filter(@λ(inbound(_,x)),range(0,x[2],step=step))
+totimes(x::Array{<:Tuple},step,len) =
+    filter(@λ(inbounds(_,x)),range(0,maximum(getindex.(x,2)),step=step))
+
+function plotatten(method,results,raw,bounds)
     len = minimum(map(x -> length(x.probs),results))
     step = ustrip.(uconvert.(s,method.params.window))
-    t = step.*((1:len) .- 1)
+    t = totimes(bounds,step,len)
+    @bp
 
     df = DataFrame()
     plot = if raw
@@ -135,7 +146,7 @@ function plotatten(method,results,raw)
             )
     end
 
-    t[end], plot
+    plot
 end
 
 
@@ -145,7 +156,11 @@ combine(x,y) =
     x + y
 combine(x,y,z,more...) = reduce(combine,(x,y,z,more...))
 
-function plotswitches(trial,duration,stim_events)
+inbound(x,::AllIndices) = true
+inbound(x,(lo,hi)::Tuple) = lo <= x <= hi
+inbound(x,bounds::Array{<:Tuple}) = inbound.(Ref(x),bounds)
+
+function plotswitches(trial,bounds,stim_events)
     stim_index = stim_events.sound_index[trial]
     direc_file = joinpath(stimulus_dir,"mixtures","testing",
         @sprintf("trial_%02d.direc",stim_index))
@@ -158,22 +173,23 @@ function plotswitches(trial,duration,stim_events)
         DataFrame(time=t,dir=dirs.dir2,source="fem1"),
         DataFrame(time=t,dir=dirs.dir3,source="fem2")
     )
-    df[df.time .< duration,:] |> @vlplot(:line,
+    df[inbound.(df.time,Ref(bounds)),:] |> @vlplot(:line,
         height=60,
         x={:time,axis=nothing},
         y={:dir,axis={title="direciton (° Azimuth)"}},color=:source)
 end
 
-function plottrial(method,results,stim_info,file;raw=false)
+function plottrial(method,results,stim_info,file;raw=false,bounds=all_indices)
     trial = single(unique(map(r->r.trial,results)),
         "Expected single trial number")
     stim_events, = events_for_eeg(file,stim_info)
-    duration, attenplot = plotatten(method,results,raw)
+    bounds = bounds(stim_events[trial,:])
+    attenplot = plotatten(method,results,raw,bounds)
 
     @vlplot(title=string("Trial ",trial),
         spacing = 15,bounds = "flush") +
     [
-        plotswitches(trial,duration,stim_events);
+        plotswitches(trial,bounds,stim_events);
         combine(
             plotresponse(method,results,stim_events,trial),
             plottarget(stim_events,trial,stim_info),
