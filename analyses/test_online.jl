@@ -220,19 +220,17 @@ data = DataFrame(convert(Array{OnlineResult},data))
 # noted in the top-level comments. Also worth plotting individual
 # data )
 
-sid8 = @query(data, filter((sid == 8))) |> DataFrame
+sid10 = @query(data, filter((sid == 10))) |> DataFrame
 
 # testing...
 # TODO: this is technically wrong, since the event file is always for 8
-plots = map(unique(sid8.trial)) do i
-    plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
-        sidfile(sid8.sid[1]),bounds = row -> first_switch[row.sound_index],
+plots = map(unique(sid10.trial)) do i
+    plottrial(method,eachrow(sid10[sid10.trial .== i,:]),stim_info,
+        sidfile(sid10.sid[1]),bounds = row -> first_switch[row.sound_index],
         raw=true)
 end;
 
-# TODO: allow wrapping concatenation of the figures
-# or just figure out a good grid to put these in
-@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,3))...)
+@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
 
 # dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 #     :targetattend => function(x)
