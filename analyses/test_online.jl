@@ -62,14 +62,14 @@ sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
 speakers = SpeakerStimMethod(envelope_method=:rms)
 
-data = train_stimuli(method,speakers,eeg_files,stim_info,
+data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
     train = "none" => no_indices,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
     skip_bad_trials = true)
 
-@save joinpath(data_dir,"test_online_speakers.bson") data
-# @load joinpath(data_dir,"test_online_rms.bson") data
+@save joinpath(data_dir,"test_all_online_speakers.bson") data
+# @load joinpath(data_dir,"test_all_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
 # TODO: include the 'other' speaker
@@ -78,39 +78,18 @@ data = DataFrame(convert(Array{OnlineResult},data))
 ########################################
 # individual plot
 
-main = Scene();
-sid8 = @query(data, filter((sid == 8) & (trial <= 75))) |> DataFrame
-trials = []
-for trial in groupby(sid8,:trial)
-   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
-end
-Makie.save(joinpath(plot_dir,"online_test_sid08_1.png"),
-    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
 
-sid8 = @query(data, filter((sid == 8) & (trial > 75))) |> DataFrame
-trials = []
-for trial in groupby(sid8,:trial)
-   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
-end
-Makie.save(joinpath(plot_dir,"online_test_sid08_2.png"),
-    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+# testing...
+# TODO: this is technically wrong, since the event file is always for 8
+plots = map(unique(sid8.trial)) do i
+    plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
+        sidfile(sid8.sid[1]),raw=true)
+end;
 
-main = Scene();
-sid9 = @query(data, filter((sid == 9) & (trial <= 75))) |> DataFrame
-trials = []
-for trial in groupby(sid9,:trial)
-   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
-end
-Makie.save(joinpath(plot_dir,"online_test_sid09_1.png"),
-    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
-
-sid9 = @query(data, filter((sid == 9) & (trial > 75))) |> DataFrame
-trials = []
-for trial in groupby(sid9,:trial)
-   push!(trials,plottrial(method,eachrow(trial),stim_info,sidfile(data.sid[1])))
-end
-Makie.save(joinpath(plot_dir,"online_test_sid09_2.png"),
-    vbox(map(x -> hbox(x...), Iterators.partition(trials,6))...));
+# TODO: allow wrapping concatenation of the figures
+# or just figure out a good grid to put these in
+@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,3))...)
 
 
 # stim_events, = events_for_eeg(sidfile(row.sid),stim_info)
