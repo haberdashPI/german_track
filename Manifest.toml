@@ -94,8 +94,8 @@ uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 version = "0.5.4"
 
 [[ClusterManagers]]
-deps = ["Distributed", "Sockets"]
-git-tree-sha1 = "fa847adf4bcbb11587b9d46bff71054fa89c19c2"
+deps = ["Distributed", "Logging", "Sockets"]
+git-tree-sha1 = "d78967b695ff5486fd5a6396cbc41824457750a5"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaParallel/ClusterManagers.jl.git"
 uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
@@ -565,6 +565,12 @@ version = "0.5.2"
 git-tree-sha1 = "6e8c38927cb6e9ae144f7277c753714861b27d14"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "0.5.2"
+
+[[PositiveFactorizations]]
+deps = ["LinearAlgebra", "Test"]
+git-tree-sha1 = "957c3dd7c33895469760ce873082fbb6b3620641"
+uuid = "85a6dd25-e78a-55b7-8502-1745935b8125"
+version = "0.2.2"
 
 [[PrettyPrinting]]
 deps = ["Markdown", "Pkg"]
