@@ -182,7 +182,7 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
-speakers = SpeakerStimMethod(envelope_method=:rms)
+speakers = SpeakerStimMethod(envelope_method=:audiospect)
 
 switch_times =
     convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
@@ -206,27 +206,27 @@ end
 #   - audiospect envelope
 # THEN: run first switch for all participants
 
-data = train_stimuli(method,speakers,eeg_files[1:3],stim_info,
+data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
     train = "none" => no_indices,
     test = "first_switch" => row -> row.condition == "object" ?
         first_switch[row.sound_index] : no_indices,
     skip_bad_trials = true)
 
-@save joinpath(data_dir,"test_online_first_switch_speakers.bson") data
-# @load joinpath(data_dir,"test_online_first_switch_speakers.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
+@save joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data
+# @load joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data
 
 # TODO: think through this summary (there are some issues also
 # noted in the top-level comments. Also worth plotting individual
 # data )
 
-sid10 = @query(data, filter((sid == 10))) |> DataFrame
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
 
 # testing...
 # TODO: this is technically wrong, since the event file is always for 8
-plots = map(unique(sid10.trial)) do i
-    plottrial(method,eachrow(sid10[sid10.trial .== i,:]),stim_info,
-        sidfile(sid10.sid[1]),bounds = row -> first_switch[row.sound_index],
+plots = map(unique(sid8.trial)) do i
+    plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
+        sidfile(sid8.sid[1]),bounds = row -> first_switch[row.sound_index],
         raw=true)
 end;
 

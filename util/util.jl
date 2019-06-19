@@ -2,7 +2,6 @@ using Colors
 using Debugger
 using VegaLite
 using LambdaFn
-using Debugger
 
 import EEGCoding: AllIndices
 
