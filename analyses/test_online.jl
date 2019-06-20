@@ -181,7 +181,8 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
-method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
+method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,
+    γ=2e-3,tol=1e-2)
 speakers = SpeakerStimMethod(envelope_method=:audiospect)
 
 switch_times =
