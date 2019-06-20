@@ -18,6 +18,32 @@ end
 #     end
 #     convert(DataKnot,tuples)
 # end
+EEGCoding.progress_update!(prog::RemoteChannel{Union{Int,Nothing}},n=1) =
+    put!(n)
+
+function progress_pmap(fn,args...)
+    progress = Progress(100)
+    function setup_progress(n)
+        progress.n = n
+        progress
+    end
+    channel = RemoteChannel(()->Channel{Union{Int,Nothing}}(),1)
+    @sync begin
+        @async begin
+            update = take!(channel)
+            while !isnothing(update)
+                progress_update!(progress,update)
+            end
+        end
+
+        @async begin
+            pmap(args...) do a...
+               fn(progress,a...)
+            end
+            put!(channel,nothing)
+        end
+    end
+end
 
 function clean_eeg!(data)
     EEGData(

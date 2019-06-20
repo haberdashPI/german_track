@@ -168,7 +168,7 @@ function train_stimuli(method,stim_method,files,stim_info;
             n += length(test_indices)*length(test_sources)
         end
     end
-    progress = !(progress isa Bool) ? progress :
+    progress = !(progress isa Bool) ? progress(n) :
         progress ? Progress(n;desc="Analyzing...") : false
 
     for file in files

@@ -45,25 +45,21 @@ what about other ways of looking at the behavioral responses
 =#
 
 include(joinpath(@__DIR__,"..","util","setup.jl"))
-# using Gadfly, Cairo, Fontconfig
 using DependentBootstrap
-# using Makie
 using Unitful
 using DataKnots
 using Tables
 using Dates
+using Distributed
 
 plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
 isdir(plot_dir) || mkdir(plot_dir)
 
-addprocs(SlurmManager(length(eeg_files)), partition="CPU", t="02:00:00",
-         cpus_per_task=4,enable_threaded_blas=true)
-@everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
-
-# - train on correct trials only
-# - train at target switches
-
-
+if endswith(gethostname(),".cluster")
+    addprocs(SlurmManager(length(eeg_files)), partition="CPU", t="02:00:00",
+            cpus_per_task=4,enable_threaded_blas=true)
+    @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
+end
 
 ############################################################
 # speaker analysis
@@ -212,11 +208,15 @@ end
 #   - audiospect envelope
 # THEN: run first switch for all participants
 
-data = train_stimuli(method,speakers,eeg_files[1:1],stim_info,
+data_ = progress_pmap(eachindex(eeg_files)) do progress,i
+    train_stimuli(method,speakers,eeg_files[i:i],stim_info,
     train = "none" => no_indices,
-    test = "first_switch" => row -> row.condition == "object" ?
-        first_switch[row.sound_index] : no_indices,
+    test = "all_object" => row -> row.condition == "object" ?
+        all_indices : no_indices,
+    progress=progress,
     skip_bad_trials = true)
+end
+data = reduce(vcat,data_)
 
 data = DataFrame(convert(Array{OnlineResult},data))
 @save joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data
