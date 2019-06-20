@@ -229,7 +229,7 @@ version = "0.9.1"
 
 [[EEGCoding]]
 deps = ["BSON", "DSP", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "Statistics", "StatsBase", "Unitful"]
-path = "/home/davidlittle/Documents/juliadev/EEGCoding"
+path = "/Users/davidlittle/Documents/juliadev/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.0"
 
@@ -565,12 +565,6 @@ version = "0.5.2"
 git-tree-sha1 = "6e8c38927cb6e9ae144f7277c753714861b27d14"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "0.5.2"
-
-[[PositiveFactorizations]]
-deps = ["LinearAlgebra", "Test"]
-git-tree-sha1 = "957c3dd7c33895469760ce873082fbb6b3620641"
-uuid = "85a6dd25-e78a-55b7-8502-1745935b8125"
-version = "0.2.2"
 
 [[PrettyPrinting]]
 deps = ["Markdown", "Pkg"]
