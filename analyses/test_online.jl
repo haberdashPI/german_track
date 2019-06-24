@@ -15,7 +15,6 @@ summary:
 try and fix the male (look at other subjects first)
 then, do we see an advantage of the male speaker in the object conditio
 at the start? near target (before, within, after???)
-
 # work on these summary statistics NEXT!!
 
 - behavioral true/false is a high bar
@@ -57,6 +56,10 @@ if endswith(gethostname(),".cluster")
             cpus_per_task=4,enable_threaded_blas=true)
     @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 end
+
+stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 
 ############################################################
 # speaker analysis

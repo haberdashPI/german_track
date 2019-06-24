@@ -23,43 +23,46 @@ end
 
 abstract type ProgressMessage end
 isdone(x::ProgressMessage) = false
-struct ProgressAmmendTotal
+struct ProgressAmmendTotal <: ProgressMessage
     x::Int
 end
-struct ProgressIncrement
+struct ProgressIncrement <: ProgressMessage
     x::Int
 end
-struct ProgressDone end
+struct ProgressDone <: ProgressMessage end
 isdone(x::ProgressDone) = true
 
 EEGCoding.progress_update!(prog::RemoteChannel{Channel{ProgressMessage}},n=1) =
-    put!(ProgressIncrement(n))
+    put!(prog,ProgressIncrement(n))
 EEGCoding.progress_ammend!(prog::RemoteChannel{Channel{ProgressMessage}},n) =
-    put!(ProgressAmmendTotal(n))
+    put!(prog,ProgressAmmendTotal(n))
 
 
 function progress_pmap(fn,args...)
     progress = Progress(0)
-    channel = RemoteChannel(()->Channel{ProgressMessage}(),1)
+    channel = RemoteChannel(()->Channel{ProgressMessage}(2^8),1)
+    result = nothing
     @sync begin
         @async begin
             update = take!(channel)
             while true
                 @match update begin
                     ProgressDone() => break
-                    ProgressIncrement(n) => progress_update!(progress,n)
-                    ProgressAmmendTotal(n) => progress_ammend!(progress,n)
+                    ProgressIncrement(n) => EEGCoding.progress_update!(progress,n)
+                    ProgressAmmendTotal(n) => EEGCoding.progress_ammend!(progress,n)
                 end
+                update = take!(channel)
             end
         end
 
         @async begin
-            pmap(args...) do a...
-               fn(progress,a...)
+            result = pmap(args...) do a...
+               fn(channel,a...)
             end
             put!(channel,ProgressDone())
         end
     end
+    result
 end
 
 function clean_eeg!(data)
