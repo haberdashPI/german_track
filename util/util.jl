@@ -2,6 +2,8 @@ using Colors
 using Debugger
 using VegaLite
 using LambdaFn
+using Match
+using Distributed
 
 import EEGCoding: AllIndices
 
@@ -18,21 +20,36 @@ end
 #     end
 #     convert(DataKnot,tuples)
 # end
-EEGCoding.progress_update!(prog::RemoteChannel{Union{Int,Nothing}},n=1) =
-    put!(n)
+
+abstract type ProgressMessage end
+isdone(x::ProgressMessage) = false
+struct ProgressAmmendTotal
+    x::Int
+end
+struct ProgressIncrement
+    x::Int
+end
+struct ProgressDone end
+isdone(x::ProgressDone) = true
+
+EEGCoding.progress_update!(prog::RemoteChannel{Channel{ProgressMessage}},n=1) =
+    put!(ProgressIncrement(n))
+EEGCoding.progress_ammend!(prog::RemoteChannel{Channel{ProgressMessage}},n) =
+    put!(ProgressAmmendTotal(n))
+
 
 function progress_pmap(fn,args...)
-    progress = Progress(100)
-    function setup_progress(n)
-        progress.n = n
-        progress
-    end
-    channel = RemoteChannel(()->Channel{Union{Int,Nothing}}(),1)
+    progress = Progress(0)
+    channel = RemoteChannel(()->Channel{ProgressMessage}(),1)
     @sync begin
         @async begin
             update = take!(channel)
-            while !isnothing(update)
-                progress_update!(progress,update)
+            while true
+                @match update begin
+                    ProgressDone() => break
+                    ProgressIncrement(n) => progress_update!(progress,n)
+                    ProgressAmmendTotal(n) => progress_ammend!(progress,n)
+                end
             end
         end
 
@@ -40,7 +57,7 @@ function progress_pmap(fn,args...)
             pmap(args...) do a...
                fn(progress,a...)
             end
-            put!(channel,nothing)
+            put!(channel,ProgressDone())
         end
     end
 end

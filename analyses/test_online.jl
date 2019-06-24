@@ -9,12 +9,14 @@
         - is there some advantage of the male speaker
             relative to the other conditions
         - focus on the male speaker in the object condition
-    - show all speaker for the static analysis
+    - show all-speaker for the static analysis
 
 summary:
 try and fix the male (look at other subjects first)
 then, do we see an advantage of the male speaker in the object conditio
-at the start? near narget (before, within, after???)
+at the start? near target (before, within, after???)
+
+# work on these summary statistics NEXT!!
 
 - behavioral true/false is a high bar
   - let's try to just figure out how things go from, e.g. the first switch
@@ -44,13 +46,8 @@ what about other ways of looking at the behavioral responses
 
 =#
 
+using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include(joinpath(@__DIR__,"..","util","setup.jl"))
-using DependentBootstrap
-using Unitful
-using DataKnots
-using Tables
-using Dates
-using Distributed
 
 plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
 isdir(plot_dir) || mkdir(plot_dir)
