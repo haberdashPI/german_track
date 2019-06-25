@@ -2,7 +2,6 @@ using Colors
 using Debugger
 using VegaLite
 using LambdaFn
-using Match
 using Distributed
 
 import EEGCoding: AllIndices
@@ -20,50 +19,6 @@ end
 #     end
 #     convert(DataKnot,tuples)
 # end
-
-abstract type ProgressMessage end
-isdone(x::ProgressMessage) = false
-struct ProgressAmmendTotal <: ProgressMessage
-    x::Int
-end
-struct ProgressIncrement <: ProgressMessage
-    x::Int
-end
-struct ProgressDone <: ProgressMessage end
-isdone(x::ProgressDone) = true
-
-EEGCoding.progress_update!(prog::RemoteChannel{Channel{ProgressMessage}},n=1) =
-    put!(prog,ProgressIncrement(n))
-EEGCoding.progress_ammend!(prog::RemoteChannel{Channel{ProgressMessage}},n) =
-    put!(prog,ProgressAmmendTotal(n))
-
-
-function progress_pmap(fn,args...)
-    progress = Progress(0)
-    channel = RemoteChannel(()->Channel{ProgressMessage}(2^8),1)
-    result = nothing
-    @sync begin
-        @async begin
-            update = take!(channel)
-            while true
-                @match update begin
-                    ProgressDone() => break
-                    ProgressIncrement(n) => EEGCoding.progress_update!(progress,n)
-                    ProgressAmmendTotal(n) => EEGCoding.progress_ammend!(progress,n)
-                end
-                update = take!(channel)
-            end
-        end
-
-        @async begin
-            result = pmap(args...) do a...
-               fn(channel,a...)
-            end
-            put!(channel,ProgressDone())
-        end
-    end
-    result
-end
 
 function clean_eeg!(data)
     EEGData(
@@ -358,6 +313,36 @@ function events_for_eeg(file,stim_info)
 end
 
 const envelopes = Dict{Any,Vector{Float64}}()
+
+function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;envelope_method=:rms)
+    stim_num = events.sound_index[stim_i]
+    key = (:mix_minus,tofs,stim_num,nosource_i,envelope_method)
+    if key ∈ keys(envelopes)
+        envelopes[key]
+    else
+        fs = 0.0
+        sources = map(setdiff(1:3,nosource_i)) do source_i
+            x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+            @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
+
+            x
+        end
+        minlen = mapreduce(x -> size(x,1),min,sources)
+        mix = zeros(minlen)
+        for t in eachindex(mix)
+            for s in 1:length(sources)
+                for c in 1:size(sources[s],2)
+                    mix[t] += sources[s][t,c]
+                end
+            end
+        end
+
+        result = find_envelope(SampleBuf(mix,fs),tofs,method=envelope_method)
+        envelopes[key] = result
+        result
+    end
+end
+
 function load_speaker_mix(events,tofs,stim_i;envelope_method=:rms)
     stim_num = events.sound_index[stim_i]
     key = (:mix,tofs,stim_num,envelope_method)

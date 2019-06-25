@@ -11,14 +11,14 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.envelope_method)
 sources(::SpeakerStimMethod) =
-    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "all", "male_other"]
+    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "all-male", "male_other"]
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 3
             load_speaker(stim_events,fs,i,j,
                 envelope_method=method.envelope_method)
         elseif j == 4
-            load_speaker_mix(stim_events,fs,i,
+            load_speaker_mix_minus(stim_events,fs,i,1,
                 envelope_method=method.envelope_method)
         else
             load_other_speaker(stim_events,fs,stim_info,i,1,
@@ -129,6 +129,35 @@ function test!(result,method::OnlineMethod;sid,condition,
     result
 end
 
+#= function train_stimulus_steps(method,stim_method,files,stim_info;
+    skip_bad_trials = false)
+
+    train_sources, test_sources = sources(stim_method)
+    n = 0
+    for file in files
+        events = events_for_eeg(file,stim_info)[1]
+        for cond in unique(events.condition)
+            test_bounds, test_indices,
+                train_bounds, train_indices = setup_indices(events,cond)
+            n += length(train_indices)*length(train_sources)
+            n += length(test_indices)*length(test_sources)
+        end
+    end
+
+    function setup_indices(events,cond)
+        test_bounds = test_fn.(eachrow(events))
+        train_bounds = train_fn.(eachrow(events))
+
+        test_indices = findall((events.condition .== cond) .&
+            (.!isempty.(test_bounds)) .&
+            (.!skip_bad_trials .| .!events.bad_trial))
+        train_indices = findall((events.condition .== cond) .&
+            (.!isempty.(train_bounds)) .&
+            (.!skip_bad_trials .| .!events.bad_trial))
+
+        test_bounds, test_indices, train_bounds, train_indices
+    end
+end =#
 
 function train_stimuli(method,stim_method,files,stim_info;
     skip_bad_trials = false,
@@ -168,53 +197,53 @@ function train_stimuli(method,stim_method,files,stim_info;
             n += length(test_indices)*length(test_sources)
         end
     end
-    progress = !(progress isa Bool) ? progress(n) :
-        progress ? Progress(n;desc="Analyzing...") : false
 
-    for file in files
-        # TODO: this relies on experiment specific details how to generify
-        # this (or should we just move this whole function back)?
-        eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
-        lags = 0:round(Int,maxlag*samplerate(eeg))
-        sid_str = @sprintf("%03d",sid)
+    parallel_progress(n,progress) do progress
+        for file in files
+            # TODO: this relies on experiment specific details how to generify
+            # this (or should we just move this whole function back)?
+            eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
+            lags = 0:round(Int,maxlag*samplerate(eeg))
+            sid_str = @sprintf("%03d",sid)
 
-        target_len = convert(Float64,stim_info["target_len"])
+            target_len = convert(Float64,stim_info["target_len"])
 
-        for cond in unique(stim_events.condition)
-            test_bounds, test_indices,
-             train_bounds, train_indices = setup_indices(stim_events,cond)
+            for cond in unique(stim_events.condition)
+                test_bounds, test_indices,
+                train_bounds, train_indices = setup_indices(stim_events,cond)
 
-            prefix = join([train_name,!skip_bad_trials ? "bad" : "",
-                label(method),label(stim_method),cond, sid_str],"_")
-            model = Main.train(method,
-                sources = train_sources,
-                prefix = prefix,
-                eeg = eeg,
-                lags=lags,
-                indices = train_indices,
-                bounds = train_bounds,
-                progress = progress,
-                stim_fn = load_source_fn(stim_method,stim_events,
-                    samplerate(eeg),stim_info)
-            )
+                prefix = join([train_name,!skip_bad_trials ? "bad" : "",
+                    label(method),label(stim_method),cond, sid_str],"_")
+                model = Main.train(method,
+                    sources = train_sources,
+                    prefix = prefix,
+                    eeg = eeg,
+                    lags=lags,
+                    indices = train_indices,
+                    bounds = train_bounds,
+                    progress = progress,
+                    stim_fn = load_source_fn(stim_method,stim_events,
+                        samplerate(eeg),stim_info)
+                )
 
-            prefix = join([test_name,!skip_bad_trials ? "bad" : "",
-                label(method),label(stim_method),cond,sid_str],"_")
-            Main.test!(result,method;
-                sid = sid,
-                condition = cond,
-                sources = test_sources,
-                correct = stim_events.correct[test_indices],
-                prefix=prefix,
-                eeg=eeg,
-                model=model,
-                lags=lags,
-                indices = test_indices,
-                bounds = test_bounds,
-                progress = progress,
-                stim_fn = load_source_fn(stim_method,stim_events,
-                    samplerate(eeg),stim_info)
-            )
+                prefix = join([test_name,!skip_bad_trials ? "bad" : "",
+                    label(method),label(stim_method),cond,sid_str],"_")
+                Main.test!(result,method;
+                    sid = sid,
+                    condition = cond,
+                    sources = test_sources,
+                    correct = stim_events.correct[test_indices],
+                    prefix=prefix,
+                    eeg=eeg,
+                    model=model,
+                    lags=lags,
+                    indices = test_indices,
+                    bounds = test_bounds,
+                    progress = progress,
+                    stim_fn = load_source_fn(stim_method,stim_events,
+                        samplerate(eeg),stim_info)
+                )
+            end
         end
     end
 

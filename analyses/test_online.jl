@@ -70,23 +70,28 @@ sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
-speakers = SpeakerStimMethod(envelope_method=:rms)
+speakers = SpeakerStimMethod(envelope_method=:audiospect)
 
-data_ = pmap(eachindex(eeg_files)) do i
-    train_stimuli(method,speakers,eeg_files[i:i],stim_info,
+data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
+    # progress=progress,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
     skip_bad_trials = true)
-end
-data = reduce(vcat,data)
 
 @save joinpath(data_dir,"test_all_online_speakers.bson") data
 # @load joinpath(data_dir,"test_all_online_rms.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
-# TODO: include the 'other' speaker
-# to see how well it compare
+# testing...
+# TODO: this is technically wrong, since the event file is always for 8
+plots = map(unique(data.trial)) do i
+    plottrial(method,eachrow(data[data.trial .== i,:]),stim_info,
+        sidfile(data.sid[1]),raw=true)
+end;
+
+@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
+
 
 ########################################
 # individual plot
@@ -208,15 +213,11 @@ end
 #   - audiospect envelope
 # THEN: run first switch for all participants
 
-data_ = progress_pmap(eachindex(eeg_files)) do progress,i
-    train_stimuli(method,speakers,eeg_files[i:i],stim_info,
+data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
-    progress=progress,
     skip_bad_trials = true)
-end
-data = reduce(vcat,data_)
 
 data = DataFrame(convert(Array{OnlineResult},data))
 @save joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data

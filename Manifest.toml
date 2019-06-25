@@ -216,8 +216,8 @@ uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "0.9.1"
 
 [[EEGCoding]]
-deps = ["BSON", "DSP", "DataFrames", "Distributions", "LinearAlgebra", "MATLAB", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "Statistics", "StatsBase", "Unitful"]
-path = "/Users/davidlittle/Documents/juliadev/EEGCoding"
+deps = ["BSON", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
+path = "/Users/davidlittle/Documents/juliadev/EEGCoding/"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.0"
 
