@@ -16,4 +16,3 @@ tags
 .vscode
 install.json
 job*.out
-*.code-workspace

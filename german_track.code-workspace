@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "/Users/davidlittle/Documents/juliadev/EEGCoding"
+		}
+	],
+	"settings": {},
+	"extensions": {
+		"recommendations": [
+			"ikuyadeu.r",
+			"julialang.language-julia",
+			"colinfang.markdown-julia",
+			"davidanson.vscode-markdownlint",
+            "haberdashPI.terminal-polyglot",
+            "gimly81.matlab",
+			"haberdashpi.matlab-in-julia"
+		]
+	}
+}
