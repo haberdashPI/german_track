@@ -109,6 +109,8 @@ function test!(result,method::OnlineMethod;sid,condition,
     sources,indices,correct,model,kwds...)
     @assert isnothing(model)
 
+    # @info "Call online decode"
+
     all_results = online_decode(;indices=indices,sources=sources,
         merge(kwds.data,method.params)...)
     for (trial_results,index,correct) in zip(all_results,indices,correct)
@@ -198,6 +200,8 @@ function train_stimuli(method,stim_method,files,stim_info;
         end
     end
 
+    # @info "HELLO!"
+
     parallel_progress(n,progress) do progress
         for file in files
             # TODO: this relies on experiment specific details how to generify
@@ -211,6 +215,8 @@ function train_stimuli(method,stim_method,files,stim_info;
             for cond in unique(stim_events.condition)
                 test_bounds, test_indices,
                 train_bounds, train_indices = setup_indices(stim_events,cond)
+
+                # @info "Testing"
 
                 prefix = join([train_name,!skip_bad_trials ? "bad" : "",
                     label(method),label(stim_method),cond, sid_str],"_")

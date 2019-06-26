@@ -48,6 +48,10 @@ what about other ways of looking at the behavioral responses
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 
+stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
+
 plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
 isdir(plot_dir) || mkdir(plot_dir)
 
@@ -55,11 +59,10 @@ if endswith(gethostname(),".cluster")
     addprocs(SlurmManager(length(eeg_files)), partition="CPU", t="02:00:00",
             cpus_per_task=4,enable_threaded_blas=true)
     @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
+else
+    addprocs()
+    @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 end
-
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
-sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 
 ############################################################
 # speaker analysis
@@ -77,6 +80,7 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
     # progress=progress,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,
+    progress = false,
     skip_bad_trials = true)
 
 @save joinpath(data_dir,"test_all_online_speakers.bson") data
