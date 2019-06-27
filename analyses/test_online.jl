@@ -60,7 +60,7 @@ if endswith(gethostname(),".cluster")
             cpus_per_task=4,enable_threaded_blas=true)
     @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 else
-    addprocs()
+    addprocs(min(length(eeg_files),Sys.CPU_THREADS))
     @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 end
 

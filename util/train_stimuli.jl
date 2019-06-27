@@ -57,19 +57,19 @@ function init_result(::StaticMethod)
         trial = Int[], corr = Float64[],test_correct = Bool[])
 end
 train(::StaticMethod;kwds...) = trf_train(;kwds...)
-function test!(result,::StaticMethod;sid,condition,indices,sources,correct,
+function test(result,::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
     C = trf_corr_cv(;sources=sources,indices=indices,kwds...)
 
-    append!(result,DataFrame(
+    DataFrame(
         sid = sid,
         condition = cond,
         trial = indices,
         speaker = repeat(sources,outer=length(indices)),
         corr = C,
         test_correct = correct
-    ))
+    )
 end
 
 struct OnlineMethod{S} <: TrainMethod
@@ -105,12 +105,13 @@ function train(::OnlineMethod;indices,kwds...)
     nothing
 end
 
-function test!(result,method::OnlineMethod;sid,condition,
+function test(method::OnlineMethod;sid,condition,
     sources,indices,correct,model,kwds...)
     @assert isnothing(model)
 
     # @info "Call online decode"
 
+    result = OnlineResult[]
     all_results = online_decode(;indices=indices,sources=sources,
         merge(kwds.data,method.params)...)
     for (trial_results,index,correct) in zip(all_results,indices,correct)
@@ -203,7 +204,8 @@ function train_stimuli(method,stim_method,files,stim_info;
     # @info "HELLO!"
 
     parallel_progress(n,progress) do progress
-        for file in files
+        @distributed (vcat) for file in files
+        # mapreduce(vcat,files) do file
             # TODO: this relies on experiment specific details how to generify
             # this (or should we just move this whole function back)?
             eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
@@ -212,11 +214,9 @@ function train_stimuli(method,stim_method,files,stim_info;
 
             target_len = convert(Float64,stim_info["target_len"])
 
-            for cond in unique(stim_events.condition)
+            mapreduce(vcat,unique(stim_events.condition)) do cond
                 test_bounds, test_indices,
                 train_bounds, train_indices = setup_indices(stim_events,cond)
-
-                # @info "Testing"
 
                 prefix = join([train_name,!skip_bad_trials ? "bad" : "",
                     label(method),label(stim_method),cond, sid_str],"_")
@@ -234,7 +234,7 @@ function train_stimuli(method,stim_method,files,stim_info;
 
                 prefix = join([test_name,!skip_bad_trials ? "bad" : "",
                     label(method),label(stim_method),cond,sid_str],"_")
-                Main.test!(result,method;
+                Main.test(method;
                     sid = sid,
                     condition = cond,
                     sources = test_sources,
@@ -252,6 +252,4 @@ function train_stimuli(method,stim_method,files,stim_info;
             end
         end
     end
-
-    result
 end
