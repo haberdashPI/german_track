@@ -12,17 +12,17 @@ git-tree-sha1 = "a3fef8402bd5e79a5dac2eafb74c320f29dbf6f6"
 uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
 version = "0.2.1"
 
+[[Adapt]]
+deps = ["LinearAlgebra", "Test"]
+git-tree-sha1 = "53d8fec4f662088c1202530e338a11a919407f3b"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "0.4.2"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra"]
 git-tree-sha1 = "07a2c077bdd4b6d23a40342a8a108e2ee5e58ab6"
 uuid = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 version = "0.3.1"
-
-[[ArrayInterface]]
-deps = ["Requires", "Test"]
-git-tree-sha1 = "6a1a371393e56f5e8d5657fe4da4b11aea0bfbae"
-uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "0.1.1"
 
 [[AxisAlgorithms]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
@@ -83,7 +83,7 @@ version = "0.5.4"
 
 [[ClusterManagers]]
 deps = ["Distributed", "Logging", "Sockets"]
-git-tree-sha1 = "d78967b695ff5486fd5a6396cbc41824457750a5"
+git-tree-sha1 = "f66851748f75a206c28132b0fff51b7dc0c360f5"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaParallel/ClusterManagers.jl.git"
 uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
@@ -216,7 +216,7 @@ uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "0.9.1"
 
 [[EEGCoding]]
-deps = ["BSON", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "SampledSignals", "ShammaModel", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
+deps = ["BSON", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "ShammaModel", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
 path = "/Users/davidlittle/Documents/juliadev/EEGCoding/"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.0"
@@ -492,10 +492,9 @@ uuid = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
 version = "0.5.2"
 
 [[OffsetArrays]]
-deps = ["DelimitedFiles"]
-git-tree-sha1 = "49a6d9b5b3dedec18035e4d97ce77e2b2a182c05"
+git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "0.11.0"
+version = "0.11.1"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
@@ -557,10 +556,12 @@ uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "0.9.0"
 
 [[ProximalAlgorithms]]
-deps = ["AbstractOperators", "DelimitedFiles", "LinearAlgebra", "Printf", "ProximalOperators", "Random", "RecursiveArrayTools", "SparseArrays", "Test"]
-git-tree-sha1 = "a84be3cea325c75d89ac1e1b1491096843e4b072"
+deps = ["LinearAlgebra", "Printf", "ProximalOperators"]
+git-tree-sha1 = "a6fa90faca077bd18d6ca1174c4e74a875ad0c0c"
+repo-rev = "master"
+repo-url = "https://github.com/kul-forbes/ProximalAlgorithms.jl.git"
 uuid = "140ffc9f-1907-541a-a177-7475e0a401e9"
-version = "0.2.1"
+version = "0.2.1+"
 
 [[ProximalOperators]]
 deps = ["IterativeSolvers", "LinearAlgebra", "OSQP", "Random", "SparseArrays", "SuiteSparse", "TSVD", "Test"]
@@ -604,12 +605,6 @@ version = "0.3.1"
 git-tree-sha1 = "7bdce29bc9b2f5660a6e5e64d64d91ec941f6aa2"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 version = "0.7.0"
-
-[[RecursiveArrayTools]]
-deps = ["ArrayInterface", "RecipesBase", "Requires", "StaticArrays", "Statistics", "Test"]
-git-tree-sha1 = "187ea7dd541955102c7035a6668613bdf52022ca"
-uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "0.20.0"
 
 [[Reexport]]
 deps = ["Pkg"]

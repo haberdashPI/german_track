@@ -47,6 +47,7 @@ what about other ways of looking at the behavioral responses
 
 using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include(joinpath(@__DIR__,"..","util","setup.jl"))
+using ClusterManagers
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
@@ -83,9 +84,9 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
     progress = false,
     skip_bad_trials = true)
 
+data = DataFrame(convert(Array{OnlineResult},data))
 @save joinpath(data_dir,"test_all_online_speakers.bson") data
 # @load joinpath(data_dir,"test_all_online_rms.bson") data
-data = DataFrame(convert(Array{OnlineResult},data))
 
 # testing...
 # TODO: this is technically wrong, since the event file is always for 8
