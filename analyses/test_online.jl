@@ -61,8 +61,8 @@ if endswith(gethostname(),".cluster")
             cpus_per_task=4,enable_threaded_blas=true)
     @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 else
-    addprocs(min(length(eeg_files),Sys.CPU_THREADS))
-    @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
+    # addprocs(min(length(eeg_files),Sys.CPU_THREADS))
+    # @everywhere include(joinpath(@__DIR__,"..","util","setup.jl"))
 end
 
 ############################################################
@@ -86,18 +86,33 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
 
 data = DataFrame(convert(Array{OnlineResult},data))
 @save joinpath(data_dir,"test_all_online_speakers.bson") data
-# @load joinpath(data_dir,"test_all_online_rms.bson") data
+# @load joinpath(data_dir,"test_all_online_speakers.bson") data
 
 # testing...
-# TODO: this is technically wrong, since the event file is always for 8
-plots = map(unique(data.trial)) do i
-    plottrial(method,eachrow(data[data.trial .== i,:]),stim_info,
-        sidfile(data.sid[1]),raw=true)
+plots = map(unique(data[data.sid .== 8,:trial])) do i
+    plottrial(method,eachrow(data[(data.trial .== i) .& (data.sid .== 8),:]),
+        stim_info, sidfile(data.sid[i]),raw=true)
 end;
 
 @vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
 
+####################
+# testing an individual trial (to figure out why things fail)
+eeg, stim_events, sid = load_subject(joinpath(data_dir,sidfile(data[1,:sid])),stim_info)
+fs = samplerate(eeg)
+stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
+    envelope_method=:audiospect),1:5)
 
+result = attention_marker(eegtrial(eeg,1)',stimuli...,samplerate=samplerate(eeg),
+    γ=2e-3,tol=1e-2,maxit=10^2,verbose=0)
+
+n = round(Int,uconvert(s*Hz,250ms * (fs*Hz)))
+eegw = withlags(eegtrial(eeg,1)',-17:0)[1:n,:]
+stimw = stimuli[1][1:n]
+
+λ=1-n/(round(Int,uconvert(s*Hz,10s * (fs*Hz))))
+result = EEGCoding.code(stimw,eegw,nothing;λ=λ,γ=1e-4,tol=1e-3,maxit=10^3,
+    verbose=1)
 ########################################
 # individual plot
 
@@ -235,7 +250,6 @@ data = DataFrame(convert(Array{OnlineResult},data))
 sid8 = @query(data, filter((sid == 8))) |> DataFrame
 
 # testing...
-# TODO: this is technically wrong, since the event file is always for 8
 plots = map(unique(sid8.trial)) do i
     plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
         sidfile(sid8.sid[1]),bounds = row -> first_switch[row.sound_index],
