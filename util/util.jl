@@ -28,6 +28,32 @@ function clean_eeg!(data)
     )
 end
 
+# find mean within 1s start window for each speaker
+indices = 1:round(Int,1s/method.params.window)
+function meanat(indices)
+    function(xs)
+        mean(view(single(xs),indices))
+    end
+end
+
+const eventcache = Dict{Int,DataFrame}()
+function neartimes(from,to,times)
+    function row2switch(sid,trial,norms)
+        events = get!(eventcache,sid) do
+            events_for_eeg(sidfile(sid),stim_info)[1]
+        end
+        i = events.sound_index[trial]
+        if ismissing(times[i])
+            return missing
+        else
+            start = clamp(round(Int,(from + times[i]*s)/method.params.window),1,length(norms))
+            stop = clamp(round(Int,(to + times[i]*s)/method.params.window),1,length(norms))
+            meanat(start:stop)((norms,))
+        end
+    end
+    rows -> map(row2switch,rows.sid,rows.trial,rows.norms)
+end
+
 function load_subject(file,stim_info)
     if !isfile(file)
         error("File '$file' does not exist.")

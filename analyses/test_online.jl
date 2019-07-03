@@ -73,7 +73,7 @@ end
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
-method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
+method = OnlineMethod(window=250ms,lag=250ms,estimation_length=1.5s,γ=2e-3)
 speakers = SpeakerStimMethod(envelope_method=:audiospect)
 
 data = train_stimuli(method,speakers,eeg_files,stim_info,
@@ -95,6 +95,53 @@ plots = map(unique(data[data.sid .== 8,:trial])) do i
 end;
 
 @vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
+
+means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean from 0 - 1 second") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
+
+
+switch_times =
+    convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
+fs = convert(Float64,stim_info["fs"])
+first_switch = map(enumerate(switch_times)) do (i,times)
+    target_time = stim_info["test_block_cfg"]["target_times"][i]
+    if target_time > 0
+        j = findlast(x -> x/fs < target_time,times)
+        if j == nothing
+            0
+        else
+            times[j]/fs
+        end
+    else
+        missing
+    end
+end
+
+means = by(data,[:trial,:sid,:source],
+    norm = (:trial,:sid,:norms) => neartimes(0.0s,500.0ms,first_switch))
+
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of switch before target") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
+
+target_times = stim_info["test_block_cfg"]["target_times"]
+target_times = ifelse.(target_times .> 0,target_times,missing)
+means = by(data,[:trial,:sid,:source],
+    norm = (:trial,:sid,:norms) => neartimes(0.0s,500.0ms,target_times))
+
+# TODO: eliminate all fem1 target rows
+
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of target") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 ####################
 # testing an individual trial (to figure out why things fail)
