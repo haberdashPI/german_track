@@ -96,6 +96,7 @@ end;
 
 @vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
 
+indices = 1:round(Int,500ms / method.params.window)
 means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
 means |> @vlplot(columns=4,facet={field=:sid},title="Mean from 0 - 1 second") +
     (@vlplot(x="source:o",color=:source) +
@@ -174,8 +175,7 @@ end;
 
 # TODO: allow wrapping concatenation of the figures
 # or just figure out a good grid to put these in
-@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,3))...)
-
+@vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
 
 # stim_events, = events_for_eeg(sidfile(row.sid),stim_info)
 
@@ -254,7 +254,7 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
-method = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,
+method = OnlineMethod(window=250ms,lag=250ms,estimation_length=1.5s,
     γ=2e-3,tol=1e-2)
 speakers = SpeakerStimMethod(envelope_method=:audiospect)
 
@@ -294,16 +294,21 @@ data = DataFrame(convert(Array{OnlineResult},data))
 # noted in the top-level comments. Also worth plotting individual
 # data )
 
-sid8 = @query(data, filter((sid == 8))) |> DataFrame
-
 # testing...
-plots = map(unique(sid8.trial)) do i
-    plottrial(method,eachrow(sid8[sid8.trial .== i,:]),stim_info,
-        sidfile(sid8.sid[1]),bounds = row -> first_switch[row.sound_index],
-        raw=true)
+plots = map(unique(data[data.sid .== 8,:trial])) do i
+    plottrial(method,eachrow(data[(data.trial .== i) .& (data.sid .== 8),:]),
+        stim_info, bounds = row -> first_switch[row.sound_index],
+        sidfile(data.sid[i]),raw=true)
 end;
 
 @vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
+
+means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
+means |> @vlplot(columns=4,facet={field=:sid},title="first 500ms of 'first switch' decoder") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 # dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 #     :targetattend => function(x)

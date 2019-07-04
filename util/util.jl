@@ -32,7 +32,8 @@ end
 indices = 1:round(Int,1s/method.params.window)
 function meanat(indices)
     function(xs)
-        mean(view(single(xs),indices))
+        isempty(xs[1]) ? missing :
+            mean(view(single(xs),clamp.(indices,1,length(xs[1]))))
     end
 end
 
