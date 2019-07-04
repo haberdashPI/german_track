@@ -98,11 +98,14 @@ end;
 
 indices = 1:round(Int,500ms / method.params.window)
 means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean from 0 - 1 second") +
+plot = means |> @vlplot(columns=4,facet={field=:sid},title="Mean from 0 - 1 second") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
         @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
+
+file = joinpath(plot_dir,"response_summary.pdf")
+save(file,plot)
 
 
 switch_times =
@@ -133,12 +136,36 @@ means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of sw
 
 target_times = stim_info["test_block_cfg"]["target_times"]
 target_times = ifelse.(target_times .> 0,target_times,missing)
+speakers = stim_info["test_block_cfg"]["trial_target_speakers"]
+
 means = by(data,[:trial,:sid,:source],
     norm = (:trial,:sid,:norms) => neartimes(0.0s,500.0ms,target_times))
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
+means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
 
-# TODO: eliminate all fem1 target rows
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of male target") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of target") +
+means = by(data,[:trial,:sid,:source],
+    norm = (:trial,:sid,:norms) => neartimes(-500ms,0ms,target_times))
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
+means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
+
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean 500ms before male target") +
+    (@vlplot(x="source:o",color=:source) +
+        @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
+        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
+
+means = by(data,[:trial,:sid,:source],
+    norm = (:trial,:sid,:norms) => neartimes(1s,1.5s,target_times))
+sid8 = @query(data, filter((sid == 8))) |> DataFrame
+means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
+
+means |> @vlplot(columns=4,facet={field=:sid},title="Mean 500ms after male target") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
         @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +

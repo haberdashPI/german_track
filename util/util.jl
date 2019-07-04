@@ -38,12 +38,16 @@ function meanat(indices)
 end
 
 const eventcache = Dict{Int,DataFrame}()
+function sound_index(sid,trial)
+    events = get!(eventcache,sid) do
+        events_for_eeg(sidfile(sid),stim_info)[1]
+    end
+    events.sound_index[trial]
+end
+
 function neartimes(from,to,times)
     function row2switch(sid,trial,norms)
-        events = get!(eventcache,sid) do
-            events_for_eeg(sidfile(sid),stim_info)[1]
-        end
-        i = events.sound_index[trial]
+        i = sound_index(sid,trial)
         if ismissing(times[i])
             return missing
         else
