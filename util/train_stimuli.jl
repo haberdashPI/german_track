@@ -203,53 +203,68 @@ function train_stimuli(method,stim_method,files,stim_info;
 
     # @info "HELLO!"
 
-    parallel_progress(n,progress) do progress
-        @distributed (vcat) for file in files
-        # mapreduce(vcat,files) do file
-            # TODO: this relies on experiment specific details how to generify
-            # this (or should we just move this whole function back)?
-            eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
-            lags = 0:round(Int,maxlag*samplerate(eeg))
-            sid_str = @sprintf("%03d",sid)
-
-            target_len = convert(Float64,stim_info["target_len"])
-
-            mapreduce(vcat,unique(stim_events.condition)) do cond
-                test_bounds, test_indices,
-                train_bounds, train_indices = setup_indices(stim_events,cond)
-
-                prefix = join([train_name,!skip_bad_trials ? "bad" : "",
-                    label(method),label(stim_method),cond, sid_str],"_")
-                model = Main.train(method,
-                    sources = train_sources,
-                    prefix = prefix,
-                    eeg = eeg,
-                    lags=lags,
-                    indices = train_indices,
-                    bounds = train_bounds,
-                    progress = progress,
-                    stim_fn = load_source_fn(stim_method,stim_events,
-                        samplerate(eeg),stim_info)
-                )
-
-                prefix = join([test_name,!skip_bad_trials ? "bad" : "",
-                    label(method),label(stim_method),cond,sid_str],"_")
-                Main.test(method;
-                    sid = sid,
-                    condition = cond,
-                    sources = test_sources,
-                    correct = stim_events.correct[test_indices],
-                    prefix=prefix,
-                    eeg=eeg,
-                    model=model,
-                    lags=lags,
-                    indices = test_indices,
-                    bounds = test_bounds,
-                    progress = progress,
-                    stim_fn = load_source_fn(stim_method,stim_events,
-                        samplerate(eeg),stim_info)
-                )
+    function maybe_parallel(fn,n,progress,files)
+        if nprocs() > 1
+            @info "Running on multiple child processes"
+            parallel_progress(n,progress) do progress
+                @distributed (vcat) for file in files
+                    fn(file,progress)
+                end
             end
+        else
+            @info "Running all file analyses in a single process."
+            mapreduce(vcat,files) do file
+                fn(file,progress)
+            end
+        end
+    end
+
+    maybe_parallel(n,progress,files) do file,progress
+        global data_dir
+        # mapreduce(vcat,files) do file
+        # TODO: this relies on experiment specific details how to generify
+        # this (or should we just move this whole function back)?
+        eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
+        lags = 0:round(Int,maxlag*samplerate(eeg))
+        sid_str = @sprintf("%03d",sid)
+
+        target_len = convert(Float64,stim_info["target_len"])
+
+        mapreduce(vcat,unique(stim_events.condition)) do cond
+            test_bounds, test_indices,
+            train_bounds, train_indices = setup_indices(stim_events,cond)
+
+            prefix = join([train_name,!skip_bad_trials ? "bad" : "",
+                label(method),label(stim_method),cond, sid_str],"_")
+            model = Main.train(method,
+                sources = train_sources,
+                prefix = prefix,
+                eeg = eeg,
+                lags=lags,
+                indices = train_indices,
+                bounds = train_bounds,
+                progress = progress,
+                stim_fn = load_source_fn(stim_method,stim_events,
+                    samplerate(eeg),stim_info)
+            )
+
+            prefix = join([test_name,!skip_bad_trials ? "bad" : "",
+                label(method),label(stim_method),cond,sid_str],"_")
+            Main.test(method;
+                sid = sid,
+                condition = cond,
+                sources = test_sources,
+                correct = stim_events.correct[test_indices],
+                prefix=prefix,
+                eeg=eeg,
+                model=model,
+                lags=lags,
+                indices = test_indices,
+                bounds = test_bounds,
+                progress = progress,
+                stim_fn = load_source_fn(stim_method,stim_events,
+                    samplerate(eeg),stim_info)
+            )
         end
     end
 end

@@ -29,7 +29,6 @@ function clean_eeg!(data)
 end
 
 # find mean within 1s start window for each speaker
-indices = 1:round(Int,1s/method.params.window)
 function meanat(indices)
     function(xs)
         isempty(xs[1]) ? missing :
