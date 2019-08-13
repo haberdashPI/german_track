@@ -98,10 +98,12 @@ end;
 
 indices = 1:round(Int,500ms / method.params.window)
 means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
-plot = means |> @vlplot(columns=4,facet={field=:sid},title="Mean from 0 - 1 second") +
+plot = means |>
+    @vlplot(columns=4,facet={field=:sid}, title="Mean from 0 - 1 second") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 file = joinpath(plot_dir,"response_summary.pdf")
@@ -128,10 +130,13 @@ end
 means = by(data,[:trial,:sid,:source],
     norm = (:trial,:sid,:norms) => neartimes(0.0s,500.0ms,first_switch))
 
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of switch before target") +
+means |>
+    @vlplot(columns=4,facet={field=:sid},
+            title="Mean from first 500ms of switch before target") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 target_times = stim_info["test_block_cfg"]["target_times"]
@@ -143,10 +148,13 @@ means = by(data,[:trial,:sid,:source],
 sid8 = @query(data, filter((sid == 8))) |> DataFrame
 means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
 
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean from first 500ms of male target") +
+means |>
+    @vlplot(columns=4,facet={field=:sid},
+            title="Mean from first 500ms of male target") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 means = by(data,[:trial,:sid,:source],
@@ -154,10 +162,13 @@ means = by(data,[:trial,:sid,:source],
 sid8 = @query(data, filter((sid == 8))) |> DataFrame
 means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
 
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean 500ms before male target") +
+means |>
+    @vlplot(columns=4,facet={field=:sid},
+            title="Mean 500ms before male target") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 means = by(data,[:trial,:sid,:source],
@@ -165,20 +176,25 @@ means = by(data,[:trial,:sid,:source],
 sid8 = @query(data, filter((sid == 8))) |> DataFrame
 means[speakers[sound_index.(means.sid,means.trial)] .== 1,:]
 
-means |> @vlplot(columns=4,facet={field=:sid},title="Mean 500ms after male target") +
+means |>
+    @vlplot(columns=4,facet={field=:sid},
+            title="Mean 500ms after male target") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 ####################
 # testing an individual trial (to figure out why things fail)
-eeg, stim_events, sid = load_subject(joinpath(data_dir,sidfile(data[1,:sid])),stim_info)
+eeg, stim_events, sid =
+    load_subject(joinpath(data_dir,sidfile(data[1,:sid])),stim_info)
 fs = samplerate(eeg)
 stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
     envelope_method=:audiospect),1:5)
 
-result = attention_marker(eegtrial(eeg,1)',stimuli...,samplerate=samplerate(eeg),
+result = attention_marker(eegtrial(eeg,1)',stimuli...,
+    samplerate=samplerate(eeg),
     γ=2e-3,tol=1e-2,maxit=10^2,verbose=0)
 
 n = round(Int,uconvert(s*Hz,250ms * (fs*Hz)))
@@ -331,10 +347,13 @@ end;
 @vlplot() + vcat((hcat(pl...) for pl in Iterators.partition(plots,6))...)
 
 means = by(data,[:trial,:sid,:source],norm = :norms => meanat(indices))
-means |> @vlplot(columns=4,facet={field=:sid},title="first 500ms of 'first switch' decoder") +
+means |>
+    @vlplot(columns=4,facet={field=:sid},
+            title="first 500ms of 'first switch' decoder") +
     (@vlplot(x="source:o",color=:source) +
         @vlplot(mark={:point,size=1,xOffset=-10},y=:norm,scale={zero=false}) +
-        @vlplot(mark={:point, size=50, filled=true},y={"mean(norm)",scale={zero=false}}) +
+        @vlplot(mark={:point, size=50, filled=true},
+                y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
 # dfat_mean = by(dfat,[:test_correct,:sid,:condition],
