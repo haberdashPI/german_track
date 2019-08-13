@@ -11,18 +11,29 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.envelope_method)
 sources(::SpeakerStimMethod) =
-    ["male", "fem1", "fem2"], ["male", "fem1", "fem2", "all-male", "male_other"]
-function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info)
+    ["male", "fem1", "fem2", "all-male"],
+        ["male", "fem1", "fem2", "all-male", "male_other"]
+train_source_indices(::SpeakerStimMethod) = (1,2,3,4,1)
+function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
+    test=false)
+
     function(i,j)
-        if j <= 3
+        if 0 < j <= 3
             load_speaker(stim_events,fs,i,j,
                 envelope_method=method.envelope_method)
         elseif j == 4
             load_speaker_mix_minus(stim_events,fs,i,1,
                 envelope_method=method.envelope_method)
+        elseif j == 5
+            if test
+                load_speaker(stim_events,fs,i,1,
+                    envelope_method=method.envelope_method)
+            else
+                load_other_speaker(stim_events,fs,stim_info,i,1,
+                    envelope_method=method.envelope_method)
+            end
         else
-            load_other_speaker(stim_events,fs,stim_info,i,1,
-                envelope_method=method.envelope_method)
+            error("Did not expect j == $j.")
         end
     end
 end
@@ -31,7 +42,9 @@ Base.@kwdef struct ChannelStimMethod <: StimMethod
     envelope_method::Symbol
 end
 label(x::ChannelStimMethod) = "channels_"*string(x.envelope_method)
-sources(::ChannelStimMethod) = ["left", "right"], ["left", "right", "left_other"]
+sources(::ChannelStimMethod) =
+    ["left", "right"], ["left", "right", "left_other"]
+train_source_indices(::ChannelStimMethod) = (1,2,1)
 function load_source_fn(method::ChannelStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 2
@@ -57,19 +70,16 @@ function init_result(::StaticMethod)
         trial = Int[], corr = Float64[],test_correct = Bool[])
 end
 train(::StaticMethod;kwds...) = trf_train(;kwds...)
-function test(result,::StaticMethod;sid,condition,indices,sources,correct,
+function test(::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
-    C = trf_corr_cv(;sources=sources,indices=indices,kwds...)
+    speaker = trf_corr_cv(;sources=sources,indices=indices,kwds...)
+    speaker[!,:sid] .= sid
+    speaker[!,:condition] .= condition
+    speaker[!,:trial] = indices[speaker.index]
+    speaker[!,:test_correct] = correct[speaker.index]
 
-    DataFrame(
-        sid = sid,
-        condition = cond,
-        trial = indices,
-        speaker = repeat(sources,outer=length(indices)),
-        corr = C,
-        test_correct = correct
-    )
+    speaker
 end
 
 struct OnlineMethod{S} <: TrainMethod
@@ -213,9 +223,8 @@ function train_stimuli(method,stim_method,files,stim_info;
             end
         else
             @info "Running all file analyses in a single process."
-            mapreduce(vcat,files) do file
-                fn(file,progress)
-            end
+            prog = (progress isa Bool && progress) ? Progress(n) : prog
+            mapreduce(file -> fn(file,prog),vcat,files)
         end
     end
 
@@ -254,6 +263,7 @@ function train_stimuli(method,stim_method,files,stim_info;
                 sid = sid,
                 condition = cond,
                 sources = test_sources,
+                train_source_indices = train_source_indices(stim_method),
                 correct = stim_events.correct[test_indices],
                 prefix=prefix,
                 eeg=eeg,
@@ -263,7 +273,7 @@ function train_stimuli(method,stim_method,files,stim_info;
                 bounds = test_bounds,
                 progress = progress,
                 stim_fn = load_source_fn(stim_method,stim_events,
-                    samplerate(eeg),stim_info)
+                    samplerate(eeg),stim_info,test=true)
             )
         end
     end
