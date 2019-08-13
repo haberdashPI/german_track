@@ -7,7 +7,9 @@
 			"path": "/Users/davidlittle/Documents/juliadev/EEGCoding"
 		}
 	],
-	"settings": {},
+	"settings": {
+		"julia.environmentPath": "/Users/davidlittle/Documents/work/projects/german_track"
+	},
 	"extensions": {
 		"recommendations": [
 			"ikuyadeu.r",
