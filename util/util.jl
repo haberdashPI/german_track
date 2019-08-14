@@ -333,11 +333,11 @@ function events_for_eeg(file,stim_info)
         stim_info["test_block_cfg"]["target_times"][stim_events.sound_index])
 
     # derrived columns
-    stim_events[:target_time] = target_times
-    stim_events[:target_present] = target_times .> 0
-    stim_events[:correct] = stim_events.target_present .==
+    stim_events[!,:target_time] = target_times
+    stim_events[!,:target_present] .= target_times .> 0
+    stim_events[!,:correct] .= stim_events.target_present .==
         (stim_events.response .== 2)
-    stim_events[:,:bad_trial] = convert.(Bool,stim_events.bad_trial)
+    stim_events[!,:bad_trial] = convert.(Bool,stim_events.bad_trial)
 
     stim_events, sid
 end

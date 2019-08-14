@@ -1,20 +1,12 @@
 
 # Plans
 
-## Current anlaysis steps
-
-Try cleaning up the data more
-Improve analysis scripts (make more general) ??
-Try training switches on everything, not just the correct trials
-
-
-## Current experiment steps
-
-fix Presentation triggers (seems to be using older bit signals...?)
-organize consent form
-
-## Notes
-
-[This article](https://doi.org/10.1101/530220) suggests now high-pass
-filtering should be used, and any de-trending should involve some sort of
-more robust method.
+- filter data using 
+  - alpha for spatial?
+  - gamma for others?
+- static windows around locations of interest
+- stimulus encoding: consider multiple frequency bands
+- include surprisal (e.g. pitch derivative) for target
+- do we compare across conditions (with same stimulus and subject)
+    - in online decoding, does the increase look different?
+    - does the target event get detected better across conditions?

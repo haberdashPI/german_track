@@ -20,6 +20,7 @@ analysis_dir = joinpath(base_dir,"analyses")
 EEGCoding.set_cache_dir!(joinpath(base_dir,"analyses","cache"))
 data_dir = joinpath(base_dir,"data")
 stimulus_dir = joinpath(base_dir,"stimuli")
+plot_dir = joinpath(base_dir,"plots")
 
 config = JSON.parsefile(joinpath(base_dir,"config.json"))
 ismatch = false

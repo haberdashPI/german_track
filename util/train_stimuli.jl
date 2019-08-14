@@ -25,7 +25,7 @@ function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
             load_speaker_mix_minus(stim_events,fs,i,1,
                 envelope_method=method.envelope_method)
         elseif j == 5
-            if test
+            if !test
                 load_speaker(stim_events,fs,i,1,
                     envelope_method=method.envelope_method)
             else

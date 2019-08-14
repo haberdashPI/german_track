@@ -6,9 +6,6 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 
-# for now, just for testing, use a single file
-eeg_files = eeg_files[1:1]
-
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 
@@ -20,6 +17,8 @@ df = train_stimuli(
     skip_bad_trials = true
 )
 
+dir = joinpath(plot_dir,string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
 R"""
 
 library(dplyr)
@@ -37,6 +36,8 @@ ggplot(df,aes(x=source,y=corr,color=source)) +
     scale_color_brewer(palette='Set1') +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
+
+ggsave(file.path($dir,"by_condition.pdf"),width=9,height=7)
 
 """
 
