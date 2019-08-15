@@ -9,11 +9,12 @@ using BSON: @save, @load
 includet(joinpath(srcdir(),"julia","util","util.jl"))
 includet(joinpath(srcdir(),"julia","util","train_stimuli.jl"))
 
+dates = JSON.parsefile(joinpath(projectdir(),"dateconfig.json"))
 EEGCoding.set_cache_dir!(joinpath(projectdir(),"_research","cache"))
-data_dir = joinpath(datadir(),"exp_pro","eeg")
+data_dir = joinpath(datadir(),"exp_pro","eeg",dates["data_dir"])
 stimulus_dir = joinpath(datadir(),"exp_pro","stimuli")
 
-config = JSON.parsefile(joinpath(datadir(),"exp_raw","config.json"))
+config = JSON.parsefile(joinpath(datadir(),"exp_raw","eeg","config.json"))
 ismatch = false
 default_i = 1
 for i in 1:length(config)

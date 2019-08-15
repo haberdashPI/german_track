@@ -33,24 +33,26 @@ There are few steps necessary to regenerate the preprocessed data files
 (which are stored in the `data/exp_pro` subfolder). In
 `data/exp_raw/config.json` you can specify the location of the raw BDF files
 and Presentation *.log files for your local machine. Once specified, you can
-use the following steps to generate the preprocessed data on your. This
-pipeline will skip file generation if it finds existing files in `data/` so
-you can also use this pipeline to add preprocessed data for a new
-participant, by including their raw BDF file in the same location as all
-other participant's raw data.
+use the following steps to generate the preprocessed data on your computer.
+This pipeline will skip file generation if it finds existing files in the
+output directory so you can also use this pipeline to add preprocessed data
+for a new participant, by including their raw BDF file in the same location
+as all other participant's raw data.
 
-1. Call `scripts/matlab//read_eeg_events.m` to generate *.csv files with the event triggers
-2. Call `scripts/matlab/read_sound_events.R` to filter the events based on the
+1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers. 
+2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
+2. If you skipped step 2, update the dated directory in `dateconfig.json`.
+3. Call `scripts/matlab/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
    to the start of the 50 trials for each of the three conditions. This
    script must be run incrementally: i.e. copy each section of code to R
    and verify the output, as you run it. (e.g. there is a graph that gets
    generated of all events in the EEG file).
-3. Call `scripts/matlab/read_eeg_response.m` to generate the `*.mat` files
+4. Call `scripts/matlab/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
-4. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.
-5. Call `scripts/matlab/clean_with_mcca.m` and run to generate data cleaned with MCCA.
-6. Optionally call `scripts/julia/mat2bson.jl` to convert the matlab files to
+5. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.
+6. Call `scripts/matlab/clean_with_mcca.m` and run to generate data cleaned with MCCA.
+7. Optionally call `scripts/julia/mat2bson.jl` to convert the matlab files to
 bson files for easy loading in julia.
 
 ## Project organization
@@ -66,6 +68,7 @@ bson files for easy loading in julia.
 
 ## Notes on specific files in `scripts`
 
+- `matlab/generate_stimuli` - Used to create the experimental stimuli. *Read comments carefully* if you regenerate the experimental stimuli.
 - `matlab/read_eeg_events.m` - Load the event markers for the onset of each stimulus.
 - `R/read_sound_events.R` - Further processing of events to combine them with
   the event files which describe which stimuli were presented when.

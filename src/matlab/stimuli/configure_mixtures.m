@@ -1,25 +1,24 @@
 
-function config = configure_mixtures(indir,config)
+function config = configure_mixtures(outdir,config)
+    global raw_stim_dir;
     config.mix_dir = 'mixtures';
 
-    disp(indir);
-    if ~exist(fullfile(indir,config.hrtf_file),'file')
-        error(['Could not find specified HRTF file: ' config.hrtf_file])
-    end
+    disp(outdir);
 
-
-    sentence_dir = fullfile(indir,'sentences');
+    config.sentence_dir = 'sentences';
+    sentence_dir = fullfile(raw_stim_dir,config.sentence_dir);
     if ~exist(sentence_dir,'dir')
-        error(['The directory ' sentence_dir ' must exist and contain ' ...
+        error(['The directory "' sentence_dir '" must exist and contain ' ...
                'all sentences used to create mixtures.']);
     end
-    config.sentence_dir = sentence_dir;
 
-    sentence_dir = 'sentences';
-    [audiodata,fs] = read_sentences(fullfile(indir,sentence_dir),...
-        config.speaker_order);
+    [audiodata,fs] = read_sentences(sentence_dir, config.speaker_order);
     config.sentence_dir = sentence_dir;
     config.fs = fs;
+
+    if isempty(audiodata{1})
+        error('Could not find any data files in "%s".\n',sentence_dir)
+    end
 
     [select_perms,select_perms_train] = ...
       select_trial_sentences(audiodata,...
@@ -30,9 +29,9 @@ function config = configure_mixtures(indir,config)
     config.train_block_cfg = configure_block(config,config.train_block_cfg,...
         select_perms_train,audiodata);
 
-    config_file = fullfile(indir,'config.json');
+    config_file = fullfile(outdir,'config.json');
     write_json(config_file,config);
-    fprintf('Saved configuration to "%s".',config_file);
+    fprintf('Saved configuration to "%s".\n',config_file);
 end
 
 function [select_perms,select_perms_train] = ...

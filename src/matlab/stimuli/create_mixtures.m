@@ -1,5 +1,5 @@
-function create_mixtures(indir)
-
+function create_mixtures(outdir,hrtf_file)
+    global raw_stim_dir;
     % GOOD GOD: I really wish people would write *modular* functions.
     % Non-local relationships between variables are abundant here. So.
     % Confusing.  I would love to clean this code up more, but it is simply not
@@ -8,14 +8,18 @@ function create_mixtures(indir)
     % NOTE: no audio files will be saved in the config file, since these will
     % be generated as *.wav files.
 
-    config_file = fullfile(indir,'config.json');
+    config_file = fullfile(outdir,'config.json');
     config = read_json(config_file);
-    fprintf('Read configuration from "%s".',config_file);
+    fprintf('Read configuration from "%s".\n',config_file);
 
-    hrtfs = SOFAload(fullfile(indir,'hrtfs','hrtf_b_nh172.sofa'));
+    hrtfs = SOFAload(hrtf_file);
 
-    [audiodata,fs] = read_sentences(fullfile(indir,config.sentence_dir),...
-        config.speaker_order);
+    sentence_dir = fullfile(raw_stim_dir,config.sentence_dir);
+    [audiodata,fs] = read_sentences(sentence_dir, config.speaker_order);
+    if isempty(audiodata{1})
+        error('Could not find any data files in "%s".\n',sentence_dir)
+    end
+
     if fs ~= config.fs
         error(['Sample rates of audio files (' num2str(fs) ...
                ') and configuration (' num2str(config.fs) ') do not match.']);
@@ -23,26 +27,26 @@ function create_mixtures(indir)
 
     disp('Training stimuli:');
     generate_stimuli(config,config.train_block_cfg,...
-        fullfile(indir,config.mix_dir,'training'),audiodata,hrtfs,1);
+        fullfile(outdir,config.mix_dir,'training'),audiodata,hrtfs,1);
     disp('Testing stimuli:');
     generate_stimuli(config,config.test_block_cfg,...
-        fullfile(indir,config.mix_dir,'testing'),audiodata,hrtfs,0);
+        fullfile(outdir,config.mix_dir,'testing'),audiodata,hrtfs,0);
 end
 
-function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
-    ensuredir(indir);
-    ensuredir(fullfile(indir,'target_component'));
-    ensuredir(fullfile(indir,'mixture_components'));
+function generate_stimuli(config,block_cfg,outdir,audiodata,hrtfs,is_training)
+    ensuredir(outdir);
+    ensuredir(fullfile(outdir,'target_component'));
+    ensuredir(fullfile(outdir,'mixture_components'));
 
-    % delete(fullfile(indir,'*.wav'));
-    % delete(fullfile(indir,'target_component','*.wav'));
-    % delete(fullfile(indir,'mixture_components','*.wav'));
+    % delete(fullfile(outdir,'*.wav'));
+    % delete(fullfile(outdir,'target_component','*.wav'));
+    % delete(fullfile(outdir,'mixture_components','*.wav'));
 
     function saveto(str,stim,i)
-        audiowrite(fullfile(indir,sprintf(str,i)),stim,config.fs);
+        audiowrite(fullfile(outdir,sprintf(str,i)),stim,config.fs);
     end
     function savedirec(str,direc,i)
-        filename = fullfile(indir,sprintf(str,i));
+        filename = fullfile(outdir,sprintf(str,i));
         id = fopen(filename,'w');
 
         dir1 = resample(direc{1},1,128);
@@ -74,7 +78,7 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         l3 = audiodata{3}(idxs(3)).length_s;
         block_cfg.trial_length_s(trial_idx) = equalize_lengths(l1,l2,l3);
 
-        if exist(sprintf(fullfile(indir,'mixture_components',...
+        if exist(sprintf(fullfile(outdir,'mixture_components',...
             'trial_%02d_3.wav'),trial_idx),'file')
             skips = [skips trial_idx];
             continue
@@ -111,9 +115,9 @@ function generate_stimuli(config,block_cfg,indir,audiodata,hrtfs,is_training)
         textprogressbar(100*(trial_idx/block_cfg.num_trials));
     end
 
-    save_target_info(block_cfg,indir)
+    save_target_info(block_cfg,outdir)
     if is_training
-        fid = fopen(fullfile(indir,'train_messages.txt'),'wt');
+        fid = fopen(fullfile(outdir,'train_messages.txt'),'wt');
         for i = 1:block_cfg.num_trials
             fprintf(fid,'%s\n#\n',describe_target(config,block_cfg,i));
         end
@@ -157,7 +161,7 @@ function str = describe_target(config,block_cfg,trial)
     end
 end
 
-function save_target_info(block_cfg,indir)
+function save_target_info(block_cfg,outdir)
     trial_target_speakers = block_cfg.trial_target_speakers;
     [~,~,ac] = unique(trial_target_speakers,'stable');
     trial_target_speakers(trial_target_speakers>0) = ...
@@ -173,17 +177,17 @@ function save_target_info(block_cfg,indir)
     sal = trial_target_speakers>-1;
     this_info = [block_cfg.target_times sal trial_target_speakers ...
         trial_target_dir];
-    dlmwrite(fullfile(indir,'target_info_all.txt'),this_info,'delimiter',' ');
+    dlmwrite(fullfile(outdir,'target_info_all.txt'),this_info,'delimiter',' ');
 
     sal = trial_target_speakers==1;
     this_info = [block_cfg.target_times sal trial_target_speakers ...
         trial_target_dir];
-    dlmwrite(fullfile(indir,'target_info_obj.txt'),this_info,'delimiter',' ');
+    dlmwrite(fullfile(outdir,'target_info_obj.txt'),this_info,'delimiter',' ');
 
     sal = trial_target_dir==1;
     this_info = [block_cfg.target_times sal trial_target_speakers ...
         trial_target_dir];
-    dlmwrite(fullfile(indir,'target_info_dir.txt'),this_info,'delimiter',' ');
+    dlmwrite(fullfile(outdir,'target_info_dir.txt'),this_info,'delimiter',' ');
 end
 
 function [stim,target_stim,hrtf_stims,direc] = make_stim(config,block_cfg,trial,...

@@ -1,4 +1,8 @@
+run(fullfile('..','..','src','matlab','util','setup.m'));
 addpath('../../src/matlab/util/'); setup;
+
+% setup a new, dated folder for a new pass at reading in the eeg data
+data_dir = redatedir(data_dir);
 
 eeg_files = dir(fullfile(raw_data_dir,'*.bdf'));
 for i = 1:length(eeg_files)
