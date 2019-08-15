@@ -29,64 +29,57 @@ install script. For this installation to work julia must be installed and it
 
 ## Regenerating the preprocessed data
 
-**NOTE**: This is undergoing a substantial re-write in julia
-to make organizing my analyses easier
-
 There are few steps necessary to regenerate the preprocessed data files
-(which are stored in the `data/` subfolder). In `config.json` you can
-specify the location of the raw BDF files and Presentation *.log files for
-your local machine. Once specified, you can use the following steps to
-generate the preprocessed data on your. This pipeline will skip file
-generation if it finds existing files in `data/` so you can also use this
-pipeline to add preprocessed data for a new participant, by including their
-raw BDF file in the same location as all other participant's raw data.
+(which are stored in the `data/exp_pro` subfolder). In
+`data/exp_raw/config.json` you can specify the location of the raw BDF files
+and Presentation *.log files for your local machine. Once specified, you can
+use the following steps to generate the preprocessed data on your. This
+pipeline will skip file generation if it finds existing files in `data/` so
+you can also use this pipeline to add preprocessed data for a new
+participant, by including their raw BDF file in the same location as all
+other participant's raw data.
 
-1. Call `analyses/read_eeg_events.m` to generate *.csv files with the event triggers
-2. Call `analyses/read_sound_events.R` to filter the events based on the
+1. Call `scripts/matlab//read_eeg_events.m` to generate *.csv files with the event triggers
+2. Call `scripts/matlab/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
    to the start of the 50 trials for each of the three conditions. This
    script must be run incrementally: i.e. copy each section of code to R
    and verify the output, as you run it. (e.g. there is a graph that gets
    generated of all events in the EEG file).
-3. Call `analyses/read_eeg_response.m` to generate the `*.mat` files
+3. Call `scripts/matlab/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
-
-Note that some subjects require a slighlty different procedure to analyze: see
-the notes below.
+4. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.
+5. Call `scripts/matlab/clean_with_mcca.m` and run to generate data cleaned with MCCA.
+6. Optionally call `scripts/julia/mat2bson.jl` to convert the matlab files to
+bson files for easy loading in julia.
 
 ## Project organization
 
-- `analyses` The top-level scripts called from Matlab or R to analyze the data.
-   This includes the EEG files, event files, and a *.mat file describing the
-   stimuli used in the experiment.
-- `util` all supporting routines called from the top-level scripts
-- `data` all of the raw experimental data
+- `scripts` The top-level scripts called to analyze the data.
+- `src` all supporting code called from the top-level scripts
+- `data` all of the raw and processed experimental data
 - `plots` the code to generate plots, and their resulting pdfs (mostly in R)
+- `_research` contains various temporary files
+- `notebooks` will contain any notebooks with plots / analyses in them
+- `papers` will contain research papers on this project
+- `test` any unit tests (almost nothing at this point)
 
-## Notes on specific files in `analyses`
+## Notes on specific files in `scripts`
 
-- `read_eeg_events.m` - Load the event markers for the onset of each stimulus.
-- `read_sound_events.R` - Further processing of events to combine them with
+- `matlab/read_eeg_events.m` - Load the event markers for the onset of each stimulus.
+- `R/read_sound_events.R` - Further processing of events to combine them with
   the event files which describe which stimuli were presented when.
-- `read_eeg_response.m` - Load and preprocess the data for the EEG channels
-- `ica00X.m` - A series of files to remove ICA components that look like eyeblinks
-   these are currently out of date
+- `matlab/read_eeg_response.m` - Load and preprocess the data for the EEG channels
+- `matlab/clean_data.m` - manually clean egregious artifacts from data.
+- `matlab/clean_with_mcca.m` - following manual cleaning, clean using MCCA analysis.
+- `R/test_[other].R` - all files with this prefix are out of date, and should not be used
+- `julia/test_condition.jl` - run a static analysis over each condition
+- `julia/test_online.jl` - run several online anlayses over each condition
+- `julia/test_[other].jl` - these files are out of date
 
-*TODO*: replace these files with new analysis pipeline (files below are out of date)
+## Notes on specific files in `src`
 
-- `k_fold_test.m`, `cv_test.m`,  These are the scripts that actually
-  run and test models on the individual listeners. They produce files
-  that are stored in `models` and a set of intermediate analysis results
-  in `cache`. The `plots` script use this `cache` to generate figures
-  of the resulting analyses.
-
-## Notes on specific files in `util`
-
-- `train_model.m` trains a specific type of model on the eeg data, see
-  documentation in file
-- `test_model.m` tests a trained model on a subset of eeg data
-- `prepare_data.m` select the specific set of data to use for training
-- `trial_audio.m`
+**TODO**
 
 ## Subject notes
 
@@ -106,11 +99,4 @@ trial (of 150) was lost. `read_sound_events.R` must be slighlty modified
 Comment out the checks for 150 trials and align to the second rather than the
 first stimulus event form Presentation: there are commented out lines of code
 to do this in the file.
-
-## Usage notes
-
-Many the scripts cannot be simply run. Parts of the code must be run step
-by step and the results evaluated manually to ensure that the outputs make
-sense. Very little of the data checking is automated at this point (and probably
-shouldn't be???).
 
