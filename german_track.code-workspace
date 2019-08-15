@@ -2,21 +2,18 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "/Users/davidlittle/Documents/juliadev/EEGCoding"
 		}
 	],
 	"settings": {
-		"julia.environmentPath": "/Users/davidlittle/Documents/work/projects/german_track"
+		"julia.environmentPath": "german_track"
 	},
 	"extensions": {
 		"recommendations": [
 			"ikuyadeu.r",
 			"julialang.language-julia",
 			"colinfang.markdown-julia",
-            "haberdashPI.terminal-polyglot",
-            "gimly81.matlab",
+			"haberdashPI.terminal-polyglot",
+			"gimly81.matlab",
 			"haberdashpi.matlab-in-julia"
 		]
 	}
