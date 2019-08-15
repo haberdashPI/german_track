@@ -5,7 +5,6 @@
 		}
 	],
 	"settings": {
-		"julia.environmentPath": "german_track"
 	},
 	"extensions": {
 		"recommendations": [
