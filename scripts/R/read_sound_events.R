@@ -1,11 +1,9 @@
+source("src/R/setup.R")
 library(magrittr)
-library(dplyr)
-library(ggplot2)
 library(cowplot)
 
-source("util/setup.R")
-
 for(sid in 8:14){
+
 cat(paste0('Sid: ',sid,'\n'))
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
@@ -24,8 +22,8 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
 
 presfiles = list.files(file.path(raw_data_dir),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
-    stop(do.call(paste,c(list(sprintf("Multiple files matching pattern for sid = %d:",sid)),
-                         as.list(presfiles),list(sep="\n"))))
+    msg = sprintf("Multiple files matching pattern for sid = %d:",sid)
+    stop(do.call(paste,c(list(msg), as.list(presfiles),list(sep="\n"))))
 }
 presfile = file.path(raw_data_dir,presfiles)
 

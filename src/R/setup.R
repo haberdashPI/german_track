@@ -10,16 +10,15 @@ if(basename(base_dir) != 'german_track'){ ## TODO: change to 'german_track'
                   basename(base_dir)))
 }
 
-analysis_dir = file.path(base_dir,'analyses')
-model_dir = file.path(base_dir,'model')
-cache_dir = file.path(analysis_dir,'cache')
-data_dir = file.path(base_dir,'data')
+analysis_dir = file.path(base_dir,'scripts','R')
+cache_dir = file.path(base_dir,'_research','cache','cache')
+data_dir = file.path(base_dir,'data','exp_pro')
 plot_dir = file.path(base_dir,'plots')
 
 hostname = Sys.info()["nodename"]
 match = F
 default_i = 0
-config = fromJSON(file = file.path(base_dir,'config.json'))
+config = fromJSON(file = file.path(base_dir,'data','exp_raw','config.json'))
 for(i in 1:length(config)){
     if(config[[i]]$host == 'default'){
         default_i = i
