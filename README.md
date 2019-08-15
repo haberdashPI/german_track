@@ -1,31 +1,22 @@
 # German Track
 
-This project aims to decode EEG signals from a three-speaker experiment
-to determine which listening condition an individual is in: listening to
-all speakers--the *global* condition--listening to one speaker--the *object* 
-condition--or listening to one ear--the *feature* condition.
+This project aims to decode EEG signals from a three-speaker experiment that
+includes three listening conditions: listening to all speakers--the *global*
+condition--listening to one speaker--the *object* condition--or listening to
+one ear--the *feature* condition.
 
 TODO: more details about the project should eventually go here.
 
-## Stimulus Generation
-
-To reproduce the stimuli, re-run `create_mixtures` (under `stimuli/src`)
-as shown in `generate_stimuli` (also under `stimuli/src`). This will use
-`config.json` to create the experimental stimuli. 
-
-You can generate a new stimulus set, with the same configuration parameters,
-but a different random seed, by using the `configure_mixtures`, (udner
-`stimuli/src`) as shown in `generate_stimuli`.
-
 ## Installation
 
-To setup these analysis scripts on a new computer, run `install.sh` (Mac OS X
-or Unix) or `install.cmd` (Windows). The install script requires an
-install.json file containing `{"data": "[data dir]"}` with `[data dir]`
-replaced with the directory containing the preprocessed data (stored
-separately from the git repository). Create this file before running the
-install script. For this installation to work julia must be installed and it
-[must be on your `PATH`](https://en.wikibooks.org/wiki/Introducing_Julia/Getting_started).
+To setup these analysis scripts on a new computer:
+
+1. Install [MATALB](https://www.mathworks.com)
+2. Install [R](https://www.r-project.org)
+3. Install [Julia](https://julialang.org)
+4. Create a file called `install.json` in the base directory containing `{"data": "[data dir]"}` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
+
+Run `scripts/julia/install.jl` in julia.
 
 ## Regenerating the preprocessed data
 
