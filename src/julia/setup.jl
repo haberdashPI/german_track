@@ -1,28 +1,19 @@
-using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 using JSON, Revise, DataFrames, Printf, SampledSignals,
     ProgressMeter, FileIO, MATLAB, EEGCoding, CSVFiles, Statistics,
     Tables, DataKnots, Tables, Dates, Distributed, Unitful,
     DependentBootstrap
 using BSON: @save, @load
 
-base_dir = realpath(joinpath(@__DIR__,".."))
-_, name = splitdir(base_dir)
-if name != "german_track"
-    @warn("Expected root directory to be named 'german_track'. Was '$name'.")
-end
+# include(joinpath(projectdir(),"util","util.jl"))
+# include(joinpath(projectdir(),"util","train_speakers.jl"))
+includet(joinpath(srcdir(),"julia","util","util.jl"))
+includet(joinpath(srcdir(),"julia","util","train_stimuli.jl"))
 
-# include(joinpath(base_dir,"util","util.jl"))
-# include(joinpath(base_dir,"util","train_speakers.jl"))
-includet(joinpath(base_dir,"util","util.jl"))
-includet(joinpath(base_dir,"util","train_stimuli.jl"))
+EEGCoding.set_cache_dir!(joinpath(projectdir(),"_research","cache"))
+data_dir = joinpath(datadir(),"exp_pro","eeg")
+stimulus_dir = joinpath(datadir(),"exp_pro","stimuli")
 
-analysis_dir = joinpath(base_dir,"analyses")
-EEGCoding.set_cache_dir!(joinpath(base_dir,"analyses","cache"))
-data_dir = joinpath(base_dir,"data")
-stimulus_dir = joinpath(base_dir,"stimuli")
-plot_dir = joinpath(base_dir,"plots")
-
-config = JSON.parsefile(joinpath(base_dir,"config.json"))
+config = JSON.parsefile(joinpath(datadir(),"exp_raw","config.json"))
 ismatch = false
 default_i = 1
 for i in 1:length(config)

@@ -29,7 +29,7 @@ global stimulus_dir;
 
 analysis_dir = fullfile(base_dir,'scripts','matlab');
 cache_dir = fullfile(base_dir,'_research','cache');
-data_dir = fullfile(base_dir,'data','exp_pro');
+data_dir = fullfile(base_dir,'data','exp_pro','eeg');
 stimulus_dir = fullfile(base_dir,'src','matlab','stimuli');
 
 [ret,hostname] = system('hostname');

@@ -1,4 +1,5 @@
-include(joinpath(@__DIR__,"..","util","setup.jl"))
+using DrWatson; quickactivate(@__DIR__,"german_track")
+include(joinpath(srcdir(),"julia","setup.jl"))
 
 # - train on correct trials only
 # - train at target switches
@@ -16,8 +17,9 @@ df = train_stimuli(
     train = "all" => all_indices,
     skip_bad_trials = true
 )
+alert()
 
-dir = joinpath(plot_dir,string("results_",Date(now())))
+dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 R"""
 
@@ -41,6 +43,3 @@ ggsave(file.path($dir,"by_condition.pdf"),width=9,height=7)
 
 """
 
-save(joinpath(cache_dir(),"test_condition_rms.csv"),df)
-
-alert()
