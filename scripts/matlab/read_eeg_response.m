@@ -1,4 +1,4 @@
-run('../util/setup.m')
+addpath('../../src/matlab/util/'); setup;
 usecache = 1;
 
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));

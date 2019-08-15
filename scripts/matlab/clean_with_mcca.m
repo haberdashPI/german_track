@@ -1,7 +1,9 @@
-run('../util/setup.m')
+addpath('../../src/matlab/util/'); setup;
 
 % ======================================================================
 % STEP 0: configuration
+
+[eeg,~,~] = load_subject('eeg_response_008.mat');
 
 plot_cfg = [];
 plot_cfg.viewmode = 'vertical';

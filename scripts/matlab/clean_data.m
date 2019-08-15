@@ -1,4 +1,4 @@
-run('../util/setup.m')
+addpath('../../src/matlab/util/'); setup;
 
 % ======================================================================
 % configuration
