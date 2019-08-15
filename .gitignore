@@ -7,11 +7,6 @@ data
 _research/cache
 _research/results
 
-scripts/stimuli/mixtures/**/*.wav
-scripts/stimuli/mixtures/**/*.direc
-scripts/stimuli/mixtures/**/*.txt
-
-
 ################################################################################
 #                                    Config                                    #
 ################################################################################
