@@ -25,8 +25,7 @@ for i = 1:length(eegfiles)
     % TODO: define the length based on the audio
     % to simplify my life later on
     baseline_samples = floor(baseline*fs);
-    trial_len_samples = arrayfun(@(i)trial_length(fs,stim_events,i,0.5),...
-        1:size(stim_events,1));
+    trial_len_samples = arrayfun(@(i)trial_length(fs,stim_events,i,0.5), 1:size(stim_events,1));
 
     % load the trials
     cfg = [];

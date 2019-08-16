@@ -10,6 +10,16 @@ function mat2bson(file)
     file
 end
 
+function clear_cache!()
+    cachedir = EEGCoding.cache_dir()
+    files = filter(@λ(endswith(_,"bson")),readdir(EEGCoding.cache_dir()))
+    for file in files
+        file = joinpath(cachedir,file)
+        isfile(file) && rm(file)
+    end
+    @info "$(length(files)) files were removed from $cachedir."
+end
+
 # function Base.convert(::Type{DataKnot},xs::Vector{OnlineResult})
 #     tuples = map(xs) do x
 #         NamedTuple{fieldnames(OnlineResult),
@@ -58,22 +68,66 @@ function neartimes(from,to,times)
     rows -> map(row2switch,rows.sid,rows.trial,rows.norms)
 end
 
-function load_subject(file,stim_info)
+function read_mcca_proj(filename)
+    # @info "Reading projected components"
+    open(filename) do file
+        # number of channels
+        nchan = read(file,Int32)
+        # @show nchan
+        # channels names
+        channels = Vector{String}(undef,nchan)
+        for i in 1:nchan
+            len = read(file,Int32)
+            # @show len
+            channels[i] = String(read(file,len))
+        end
+        # @show channels
+        # number of components
+        ncomp = read(file,Int32)
+        # @show ncomp
+        # components
+        comp = Array{Float64}(undef,ncomp,nchan)
+        read!(file,comp)
+        # @show size(comp)
+        # number of trials
+        ntrials = read(file,Int32)
+        # @show ntrials
+        # sample rate
+        fs = read(file,Int32)
+        # @show fs
+        # projected trials
+        trials = Vector{Array{Float64}}(undef,ntrials)
+        for i in 1:ntrials
+            # trial size
+            row = read(file,Int32)
+            col = read(file,Int32)
+            # @show (row,col)
+            # trial
+            trial = Array{Float64}(undef,row,col)
+            read!(file,trial)
+            trials[i] = trial #(trial'comp)'
+        end
+
+       EEGData(data=trials,label=channels,fs=fs)
+    end
+end
+
+
+function load_subject(file,stim_info;resample=nothing)
     if !isfile(file)
         error("File '$file' does not exist.")
     end
 
     stim_events, sid = events_for_eeg(file,stim_info)
 
-    if endswith(file,".mat")
+    data = if endswith(file,".mat")
         mf = MatFile(file)
-        data = get_mvariable(mf,:dat)
-        close(mf)
-
-        data,stim_events,sid
+        get_mvariable(mf,:dat)
     elseif endswith(file,".bson")
         @load file data
-        data,stim_events,sid
+        data
+    elseif endswith(file,".mcca_proj")
+        read_mcca_proj(file)
     else
         pat = match(r"\.(.+)$",file)
         if pat != nothing
@@ -83,6 +137,13 @@ function load_subject(file,stim_info)
             error("Unknown file format for $file")
         end
     end
+
+    if !isnothing(resample)
+        @info "Resample EEG to $resample Hz."
+        data = resample!(data,resample)
+    end
+
+    data, stim_events, sid
 end
 
 function single(x,message="Expected a single element.")
@@ -320,8 +381,8 @@ function load_directions(file)
 end
 
 function events_for_eeg(file,stim_info)
-    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?\.[a-z]+$",file)
-    if matched == nothing
+    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$",file)
+    if isnothing(matched)
         error("Could not find subject id in filename '$file'.")
     end
     sid = parse(Int,matched[1])
@@ -337,7 +398,12 @@ function events_for_eeg(file,stim_info)
     stim_events[!,:target_present] .= target_times .> 0
     stim_events[!,:correct] .= stim_events.target_present .==
         (stim_events.response .== 2)
-    stim_events[!,:bad_trial] = convert.(Bool,stim_events.bad_trial)
+    if :bad_trial ∈ names(stim_events)
+        stim_events[!,:bad_trial] = convert.(Bool,stim_events.bad_trial)
+    else
+        @warn "Could not find `bad_trial` column in file '$event_file'."
+        stim_events[!,:bad_trial] .= false
+    end
 
     stim_events, sid
 end
@@ -505,4 +571,14 @@ function remove_switches(switches,max_time;wait_time=0.5)
     end
 
     view(result,1:i)
+end
+
+function alert(message="Done!")
+    if Sys.isapple()
+        run(`osascript -e 'display notification "'$message'" with title "Julia"'`)
+    elseif Sys.iswindows()
+        run(`cmd sg "%username%" $message`)
+    else
+        @info message
+    end
 end

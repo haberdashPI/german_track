@@ -15,7 +15,8 @@ plot_cfg.ylim = [-1 1];
 
 % ======================================================================
 % STEP 1: load cleaned data
-files = dir(fullfile(data_dir,'*_cleaned.mat'));
+files = dir(fullfile(data_dir,'*.mat'));
+files = files(cellfun(@(x) ~isempty(regexp(x,'[0-9]{3}_cleaned\.mat')),{files.name}));
 
 all_eeg = {};
 trial_order = {};
@@ -37,8 +38,7 @@ for i = 1:length(all_eeg)
     for trial_i = 1:length(trial_order{i})
         trial = trial_order{i}(trial_i);
         trial_time_indices = 1:min(size(all_eeg{i}.trial{trial},2),n_times);
-        feature_indices = (i-1)*n_chans + ...
-            (1:n_chans);
+        feature_indices = (i-1)*n_chans + (1:n_chans);
         time_indices = (trial_i-1)*n_times + (1:length(trial_time_indices));
         x(time_indices,feature_indices) = ...
             all_eeg{i}.trial{trial}(:,trial_time_indices)';
@@ -55,8 +55,9 @@ C = x'*x; % covariance matrix
 [A,score,AA] = nt_mcca(C,n_chans);
 
 bar(score(1:300));
+% nkeep = sum(score > 4);
+nkeep = 34;
 
-nkeep = 5; % number of components to keep
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
     mu = chan_mean((i-1)*n_chans + (1:n_chans));
@@ -67,12 +68,8 @@ end
 % ft_databrowser(plot_cfg,cleaned_eeg{3});
 
 for i = 1:length(all_eeg)
-    resample_cfg = [];
-    resample_cfg.resamplefs = 64;
-    result = ft_resampledata(resample_cfg,all_eeg{i});
-    result.raw_trial = [];
-    save_subject(result,...
-        sprintf('eeg_response_%03d_mcca%02d.mat',all_eeg{i}.sid,nkeep));
+    filename = sprintf('eeg_response_%03d_mcca%02d.mcca_proj',all_eeg{i}.sid,nkeep);
+    save_subject_components(all_eeg{i}, fullfile(data_dir,filename));
 end
 
 % TODO: does result have raw_trial? if so, remove it
@@ -92,7 +89,7 @@ for i = 1:length(all_eeg)
     resample_cfg.resamplefs = 64;
     result = ft_resampledata(resample_cfg,all_eeg{i});
     result.raw_trial = [];
-    save_subject(result,...
-        sprintf('eeg_response_%03d_mcca%02d.mat',all_eeg{i}.sid,nkeep));
+    save_subject_components(result,...
+        sprintf('eeg_response_%03d_mcca%02d.raw',all_eeg{i}.sid,nkeep));
 end
 

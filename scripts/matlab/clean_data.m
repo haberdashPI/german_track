@@ -16,7 +16,7 @@ plot_cfg.mychanscale = 1;
 plot_cfg.ylim = [-20 20];
 
 % electrode geometry
-elec = ft_read_sens(fullfile(data_dir,'biosemi64.txt'));
+elec = ft_read_sens(fullfile(raw_data_dir,'biosemi64.txt'));
 cfg = [];
 cfg.elec = elec;
 lay = ft_prepare_layout(cfg);

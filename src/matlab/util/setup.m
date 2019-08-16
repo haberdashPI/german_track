@@ -24,6 +24,7 @@ global analysis_dir;
 global cache_dir;
 global data_dir;
 global raw_data_dir;
+global stim_data_dir;
 global stimulus_dir;
 global raw_stim_dir;
 
@@ -33,22 +34,6 @@ analysis_dir = fullfile(base_dir,'scripts','matlab');
 cache_dir = fullfile(base_dir,'_research','cache');
 data_dir = fullfile(base_dir,'data','exp_pro','eeg',dates.data_dir);
 raw_stim_dir = fullfile(base_dir,'data','exp_raw','stimuli');
-stimdata_dir = fullfile(base_dir,'data','exp_pro','stimuli',dates.stim_data_dir);
+stim_data_dir = fullfile(base_dir,'data','exp_pro','stimuli',dates.stim_data_dir);
 stimulus_dir = fullfile(base_dir,'src','matlab','stimuli');
-
-[ret,hostname] = system('hostname');
-config = read_json(fullfile(base_dir,'data','exp_raw','eeg','config.json'));
-
-match = 0;
-default_i = 1;
-for i = 1:length(config)
-    if strcmp(config(i).host,'default')
-        default_i = i;
-    elseif startsWith(hostname,config(i).host)
-        raw_data_dir = config(i).raw_data_dir;
-        match = 1;
-    end
-end
-if ~match
-    raw_data_dir = config(default_i).raw_data_dir;
-end
+raw_data_dir = fullfile(base_dir,'data','exp_raw','eeg');

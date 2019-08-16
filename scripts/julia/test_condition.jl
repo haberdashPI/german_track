@@ -5,7 +5,11 @@ include(joinpath(srcdir(),"julia","setup.jl"))
 # - train at target switches
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+# eeg_files = filter(x -> occursin(r"_mcca34_unclean\.mcca_proj$",x),readdir(data_dir))
+eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir))
+# eeg_files = filter(x -> occursin(r"_mcca65\.mcca_proj$",x),readdir(data_dir))
+# eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+eeg_files = eeg_files[1:1]
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
@@ -13,9 +17,10 @@ eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
 df = train_stimuli(
     StaticMethod(),
     SpeakerStimMethod(envelope_method=:audiospect),
+    resample = 64,
     eeg_files,stim_info,
     train = "all" => all_indices,
-    skip_bad_trials = true
+    skip_bad_trials = true,
 )
 alert()
 
@@ -39,7 +44,7 @@ ggplot(df,aes(x=source,y=corr,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"by_condition.pdf"),width=9,height=7)
+ggsave(file.path($dir,"by_condition_34comp_juliaresample_projected.pdf"),width=9,height=7)
 
 """
 

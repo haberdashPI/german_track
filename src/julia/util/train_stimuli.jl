@@ -177,6 +177,7 @@ function train_stimuli(method,stim_method,files,stim_info;
     maxlag=0.25,
     train = "" => all_indices,
     test = train,
+    resample = nothing,
     progress = true,
     envelope_method=:rms)
 
@@ -233,7 +234,8 @@ function train_stimuli(method,stim_method,files,stim_info;
         # mapreduce(vcat,files) do file
         # TODO: this relies on experiment specific details how to generify
         # this (or should we just move this whole function back)?
-        eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info)
+        eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info,
+            resample=resample)
         lags = 0:round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
 
