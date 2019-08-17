@@ -1,9 +1,14 @@
 
 # Plans
 
-- verify `test_correct`
 
-- filter data using 
+## checks
++ verify `test_correct`
+
+- analyze behavioral data
+
+## new features
+- filter eeg data using 
   - alpha for spatial?
         - in Frey et al 2014 (J Neuro), they find the band to be around 8-16 Hz (looked at synchronization (e.g. phase coherence))
         - in Müller and Weisz 2012 (C Cortex) in the range of 5-15, and further filtered to 9 ± 3 (looked at power)
@@ -19,11 +24,15 @@
     - approach: filter the signal within this range
         correlate alpha power, phase coherence within this range
 
-- analyze behavioral data
+- analyze sound using:
+    - mean while, include multiple frequency bands of stimulus (check out ed lalor's recent publications)
+    - and a pitch analysis 
+    - stimulus encoding: consider multiple frequency bands
+    - include surprisal (e.g. pitch derivative) for target
+
+## new analysis config
 - do we compare across conditions (with same stimulus and subject)
     - in online decoding, does the increase look different?
     - does the target event get detected better across conditions?
 - static windows around locations of interest
-- stimulus encoding: consider multiple frequency bands
-- include surprisal (e.g. pitch derivative) for target
 
