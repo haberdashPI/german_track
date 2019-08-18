@@ -20,6 +20,10 @@
   - gamma for others?
         - 30-50 Hz (need to use higher sampling rate)
         - (we need more specific measures here, can't really get an envelope following response here)
+
+   - or we could just look at a general, spectral decomposition of the data
+     and then filter by particular frequency bands, to examine if that improves
+     the performance
     
     - approach: filter the signal within this range
         correlate alpha power, phase coherence within this range
@@ -36,3 +40,6 @@
     - does the target event get detected better across conditions?
 - static windows around locations of interest
 
+# new algorithms
+- try an L1 loss
+- try a 1-layer (should be similar to regression), and then multilayer DNN

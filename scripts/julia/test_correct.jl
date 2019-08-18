@@ -46,7 +46,7 @@ ggplot(df,aes(x=source,y=corr,color=test_correct)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"test_correct.pdf"),width=9,height=7)
+ggsave(file.path($dir,"test_correct_new.pdf"),width=9,height=7)
 
 """
 
