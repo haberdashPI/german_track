@@ -380,6 +380,16 @@ function load_directions(file)
     end
 end
 
+timeline(nt;kwds...) = timeline(nt.target_time,nt.target_present,nt.correct;kwds...)
+function timeline(target_time,target_present,correct;step=0.05,len=8)
+    times = range(0,len,step=step)
+    values = Array{Union{Int,Missing}}(missing,length(times))
+    if target_present
+        values[times .> target_time] .= correct
+    end
+    DataFrame(value=values, time=times)
+end
+
 function events_for_eeg(file,stim_info)
     matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$",file)
     if isnothing(matched)

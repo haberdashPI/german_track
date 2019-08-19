@@ -35,3 +35,18 @@ condition = dfsum |>
     @vlplot(mark={:point}, y={:dp, scale={zero=false}, title="d'"})
 
 save(joinpath(dir,"behavior_summary.pdf"),condition)
+
+# TODO: I don't think the timeline function is quite right
+# because it's averaging over all times after the first respons
+# I think it needs something different; maybe we just get
+# accuracies along a line for each subject... and then connec them
+# inbetween spots??
+
+nan_2_missing(x) = ifelse.(isnan.(x),missing,x)
+dftiming = by(df,[:sid,:condition]) do subj
+    df_ = reduce(vcat,timeline.(eachrow(subj)))
+    by(df_,:time,value = :value => nan_2_missing ∘ mean ∘ skipmissing)
+end
+
+timing = dftiming |>
+    @vlplot(:line,x=:time,y=:value,color="sid:o",column=:condition)
