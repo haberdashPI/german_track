@@ -592,6 +592,18 @@ git-tree-sha1 = "0d177ab3217bd6347d01bdf56e5da0571222d7f3"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 version = "0.5.0"
 
+[[Query]]
+deps = ["DataValues", "IterableTables", "MacroTools", "QueryOperators", "Statistics"]
+git-tree-sha1 = "e1f3d6ed16d400bf6933f440ee28e7cc168e9ce5"
+uuid = "1a8c2f83-1ff3-5112-b086-8aa67b057ba1"
+version = "0.12.1"
+
+[[QueryOperators]]
+deps = ["DataStructures", "DataValues", "IteratorInterfaceExtensions", "TableShowUtils"]
+git-tree-sha1 = "407859870969b7a01476a4b4f5174347680f9853"
+uuid = "2aef5ad7-51ca-5a8f-8e88-e75cf067b44b"
+version = "0.9.0"
+
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -797,6 +809,12 @@ deps = ["LinearAlgebra", "Random"]
 git-tree-sha1 = "75efb362655883381d03004ca53a3a95facb9a54"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
 version = "0.16.0"
+
+[[VegaDatasets]]
+deps = ["DataStructures", "DataValues", "FilePaths", "IterableTables", "IteratorInterfaceExtensions", "JSON", "TableShowUtils", "TableTraits", "TableTraitsUtils", "TextParse"]
+git-tree-sha1 = "50b2b2ea477e85472f3b100f3bd6b750625cde20"
+uuid = "0ae4a718-28b7-58ec-9efb-cded64d6d5b4"
+version = "1.0.0"
 
 [[VegaLite]]
 deps = ["DataValues", "Dates", "FileIO", "FilePaths", "IterableTables", "IteratorInterfaceExtensions", "JSON", "JSONSchema", "MacroTools", "NodeJS", "REPL", "Random", "TableTraits", "URIParser"]

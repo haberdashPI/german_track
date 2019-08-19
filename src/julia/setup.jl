@@ -1,7 +1,7 @@
 using JSON, Revise, DataFrames, Printf, SampledSignals,
     ProgressMeter, FileIO, MATLAB, EEGCoding, CSVFiles, Statistics,
-    Tables, DataKnots, Tables, Dates, Distributed, Unitful,
-    DependentBootstrap
+    Tables, Query, Dates, Distributed, Unitful,
+    DependentBootstrap, Distributions
 using BSON: @save, @load
 
 # include(joinpath(projectdir(),"util","util.jl"))
