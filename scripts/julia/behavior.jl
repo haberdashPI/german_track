@@ -14,9 +14,10 @@ end
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-meanb(x) = (sum(x)+1)/length(x)
-dprime(hits,falarm) =
-    quantile(Normal(),meanb(hits)) - quantile(Normal(),meanb(falarm))
+meanb(x,n=1) = (sum(x)+(n/2))/(length(x)+n)
+function dprime(hits,falarm,n=1)
+    quantile(Normal(),meanb(hits,n)) - quantile(Normal(),meanb(falarm,n))
+end
 
 dfsum = df |>
     @groupby({_.sid,_.condition}) |>
@@ -42,11 +43,14 @@ save(joinpath(dir,"behavior_summary.pdf"),condition)
 # accuracies along a line for each subject... and then connec them
 # inbetween spots??
 
-nan_2_missing(x) = ifelse.(isnan.(x),missing,x)
-dftiming = by(df,[:sid,:condition]) do subj
-    df_ = reduce(vcat,timeline.(eachrow(subj)))
-    by(df_,:time,value = :value => nan_2_missing ∘ mean ∘ skipmissing)
-end
+dftiming = df |>
+    @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>
+    @map({key(_)...,
+          dp = dprime(_.target_present .& _.correct,
+                 .!_.target_present .& .!_.correct,1)}) |>
+    DataFrame
 
 timing = dftiming |>
-    @vlplot(:line,x=:time,y=:value,color="sid:o",column=:condition)
+    @vlplot(:line,x=:time_bin,y=:dp,color="sid:o",column=:condition)
+
+save(joinpath(dir,"behavior_bytype.pdf"),timing)
