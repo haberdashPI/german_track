@@ -34,10 +34,6 @@ function trf_train_(;prefix,eeg,lags,indices,stim_fn,name="Training",
         # time is spent computing the regression)
         for (source_index,source) in enumerate(sources)
             stim = stim_fn(i,source_index)
-            # for now, make signal monaural
-            if size(stim,2) > 1
-                stim = sum(stim,dims=2)
-            end
 
             model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,stim,
                 eeg,i,-1,lags,"Shrinkage";bounds=bounds[i],kwds...)
@@ -159,8 +155,6 @@ function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
                 lags, "Shrinkage")
 
             # TODO: figure out how to handle multi-channel stimulus
-            @show size(pred)
-            @show size(stim)
             push!(df,(corr = single(cor(vec(pred),vec(stim))),
                 source = source, index = j))
             next!(progress)

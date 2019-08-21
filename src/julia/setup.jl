@@ -7,6 +7,7 @@ using BSON: @save, @load
 # include(joinpath(projectdir(),"util","util.jl"))
 # include(joinpath(projectdir(),"util","train_speakers.jl"))
 includet(joinpath(srcdir(),"julia","util","util.jl"))
+includet(joinpath(srcdir(),"julia","util","stimuli.jl"))
 includet(joinpath(srcdir(),"julia","util","train_stimuli.jl"))
 
 dates = JSON.parsefile(joinpath(projectdir(),"dateconfig.json"))

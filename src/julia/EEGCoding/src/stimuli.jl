@@ -1,4 +1,5 @@
-export encode_stimulus, RMSEnvelope, ASEnvelope, ASBins, TargetSuprisal, JointEncoding
+export encode_stimulus, RMSEnvelope, ASEnvelope, ASBins, TargetSurprisal,
+    JointEncoding
 
 abstract type StimEncoding
 end
@@ -58,14 +59,16 @@ function encode_stimulus(stim,tofs,_,method::ASBins)
     hcat(bins)
 end
 
-struct TargetSuprisal <: StimEncoding
+struct TargetSurprisal <:
+    StimEncoding
 end
-Base.string(bin::TargetSuprisal) = "tpitch"
+Base.string(bin::TargetSurprisal) = "tpitch"
 
-function encode_stimulus(stim,tofs,target_time,method::TargetSuprisal)
+function encode_stimulus(stim,tofs,target_time,method::TargetSurprisal)
+
     len = ceil(Int,size(stim,1) * tofs/samplerate(stim))
     result = zeros(len)
-    if target_time > 0
+    if !ismissing(target_time)
         target_frame = floor(Int,target_time * tofs)
         result[target_frame] = 1.0
     end

@@ -1,5 +1,6 @@
 using DrWatson; quickactivate(@__DIR__,"german_track")
 include(joinpath(srcdir(),"julia","setup.jl"))
+using RCall
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir))
@@ -7,9 +8,9 @@ eeg_files = eeg_files[1:1]
 
 fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],digits=-1))
 
-df = train_stimuli(
-    StaticMethod(),
-    SpeakerStimMethod(encoding=ASBins(fbounds)),
+encoding = JointEncoding(TargetSurprisal(),ASBins(fbounds))
+
+df = train_stimuli(StaticMethod(), SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
     train = "all" => all_indices,
@@ -37,7 +38,7 @@ ggplot(df,aes(x=source,y=corr,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"by_condition_34comp_juliaresample_projected.pdf"),width=9,height=7)
+ggsave(file.path($dir,"by_condition_with_binned_spect.pdf"),width=9,height=7)
 
 """
 
