@@ -15,3 +15,5 @@ EEGCoding.set_cache_dir!(joinpath(projectdir(),"_research","cache"))
 data_dir = joinpath(datadir(),"exp_pro","eeg",dates["data_dir"])
 raw_data_dir = joinpath(datadir(),"exp_raw","eeg")
 stimulus_dir = joinpath(datadir(),"exp_pro","stimuli",dates["stim_data_dir"])
+raw_stim_dir = joinpath(datadir(),"exp_raw","stimuli")
+

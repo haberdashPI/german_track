@@ -18,7 +18,38 @@ To setup these analysis scripts on a new computer:
 
 Run `scripts/julia/install.jl` in julia.
 
-## Regenerating the preprocessed data
+## Project organization
+
+- `scripts` The top-level scripts called to analyze the data.
+- `src` all supporting code called from the top-level scripts
+- `data` all of the raw and processed experimental data
+- `plots` the code to generate plots, and their resulting pdfs (mostly in R)
+- `_research` contains various temporary files
+- `notebooks` will contain any notebooks with plots / analyses in them
+- `papers` will contain research papers on this project
+- `test` any unit tests (almost nothing at this point)
+
+### Notes on specific files in `scripts`
+
+- `matlab/generate_stimuli` - Used to create the experimental stimuli. *Read comments carefully* if you regenerate the experimental stimuli.
+- `matlab/read_eeg_events.m` - Load the event markers for the onset of each stimulus.
+- `R/read_sound_events.R` - Further processing of events to combine them with
+  the event files which describe which stimuli were presented when.
+- `matlab/read_eeg_response.m` - Load and preprocess the data for the EEG channels
+- `matlab/clean_data.m` - manually clean egregious artifacts from data.
+- `matlab/clean_with_mcca.m` - following manual cleaning, clean using MCCA analysis.
+- `R/test_[other].R` - all files with this prefix are out of date, and should not be used
+- `julia/test_condition.jl` - run a static analysis over each condition
+- `julia/test_online.jl` - run several online anlayses over each condition
+- `julia/test_[other].jl` - these files are out of date
+
+### Notes on specific files in `src`
+
+**TODO**
+
+## Regenerating processed data
+
+### EEG data
 
 There are few steps necessary to regenerate the preprocessed data files
 (which are stored in the `data/exp_pro` subfolder). In
@@ -43,37 +74,11 @@ as all other participant's raw data.
    with the preprocessed event streams.
 5. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.
 6. Call `scripts/matlab/clean_with_mcca.m` and run to generate data cleaned with MCCA.
-7. Optionally call `scripts/julia/mat2bson.jl` to convert the matlab files to
-bson files for easy loading in julia.
 
-## Project organization
+### Pitch Estimates
 
-- `scripts` The top-level scripts called to analyze the data.
-- `src` all supporting code called from the top-level scripts
-- `data` all of the raw and processed experimental data
-- `plots` the code to generate plots, and their resulting pdfs (mostly in R)
-- `_research` contains various temporary files
-- `notebooks` will contain any notebooks with plots / analyses in them
-- `papers` will contain research papers on this project
-- `test` any unit tests (almost nothing at this point)
-
-## Notes on specific files in `scripts`
-
-- `matlab/generate_stimuli` - Used to create the experimental stimuli. *Read comments carefully* if you regenerate the experimental stimuli.
-- `matlab/read_eeg_events.m` - Load the event markers for the onset of each stimulus.
-- `R/read_sound_events.R` - Further processing of events to combine them with
-  the event files which describe which stimuli were presented when.
-- `matlab/read_eeg_response.m` - Load and preprocess the data for the EEG channels
-- `matlab/clean_data.m` - manually clean egregious artifacts from data.
-- `matlab/clean_with_mcca.m` - following manual cleaning, clean using MCCA analysis.
-- `R/test_[other].R` - all files with this prefix are out of date, and should not be used
-- `julia/test_condition.jl` - run a static analysis over each condition
-- `julia/test_online.jl` - run several online anlayses over each condition
-- `julia/test_[other].jl` - these files are out of date
-
-## Notes on specific files in `src`
-
-**TODO**
+I used [CREPE](https://github.com/marl/crepe) to estimate the pitch of each speaker. Follow the directions there to install CREPE and then run the file
+`scripts/julia/find_pitches.jl`
 
 ## Subject notes
 
