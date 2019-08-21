@@ -2,7 +2,7 @@ using DrWatson; quickactivate(@__DIR__,"german_track")
 include(joinpath(srcdir(),"julia","setup.jl"))
 using PlotAxes
 
-sound,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+sound,fs = load(joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
     "trial_01_1.wav"))
 plotaxes(vec(sum(sound,dims=2)),quantize=(1000,))
 

@@ -3,9 +3,9 @@ include(joinpath(srcdir(),"julia","setup.jl"))
 
 # - train at correct targets
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir))
-# eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
+# eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir()))
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.

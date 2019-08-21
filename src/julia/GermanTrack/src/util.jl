@@ -1,10 +1,6 @@
-using Colors
-using Debugger
-using VegaLite
-using LambdaFn
-using Distributed
-
 import EEGCoding: AllIndices
+export clear_cache!, plottrial, events_for_eeg, alert, only_switches,
+    remove_switches
 
 function mat2bson(file)
     file
@@ -259,7 +255,7 @@ inbound(x,bounds::Array{<:Tuple}) = inbound.(Ref(x),bounds)
 
 function plotswitches(trial,bounds,stim_events)
     stim_index = stim_events.sound_index[trial]
-    direc_file = joinpath(stimulus_dir,"mixtures","testing",
+    direc_file = joinpath(stimulus_dir(),"mixtures","testing",
         @sprintf("trial_%02d.direc",stim_index))
     dirs = load_directions(direc_file)
     len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
@@ -397,8 +393,8 @@ function events_for_eeg(file,stim_info)
     end
     sid = parse(Int,matched[1])
 
-    event_file = joinpath(data_dir,@sprintf("sound_events_%03d.csv",sid))
-    stim_events = DataFrame(load(event_file))
+    event_file = joinpath(data_dir(),@sprintf("sound_events_%03d.csv",sid))
+    stim_events = DataFrame(CSV.File(event_file))
 
     target_times = convert(Array{Float64},
         stim_info["test_block_cfg"]["target_times"][stim_events.sound_index])

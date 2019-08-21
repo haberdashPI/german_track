@@ -1,12 +1,12 @@
 using DrWatson; quickactivate(@__DIR__,"german_track")
-include(joinpath(srcdir(),"julia","setup.jl"))
-using RCall
+using GermanTrack
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir))
+stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
 eeg_files = eeg_files[1:1]
 
-fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],digits=-1))
+fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
+    digits=-1))
 
 encoding = JointEncoding(TargetSurprisal(),ASBins(fbounds))
 

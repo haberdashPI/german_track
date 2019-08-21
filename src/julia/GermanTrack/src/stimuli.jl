@@ -9,7 +9,7 @@ function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;encoding=:rms)
     else
         fs = 0.0
         sources = map(setdiff(1:3,nosource_i)) do source_i
-            x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+            x,fs = load(joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
             @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
 
             x
@@ -39,7 +39,7 @@ function load_speaker_mix(events,tofs,stim_i;encoding=:rms)
     if key ∈ keys(encodings)
         encodings[key]
     else
-        x,fs = load(joinpath(stimulus_dir,"mixtures","testing",
+        x,fs = load(joinpath(stimulus_dir(),"mixtures","testing",
             @sprintf("trial_%02d.wav",stim_num)))
         if size(x,2) > 1
             x = sum(x,dims=2)
@@ -64,7 +64,7 @@ function load_speaker_(tofs,stim_num,source_i,target_time,encoding)
     if key ∈ keys(encodings)
         encodings[key]
     else
-        x,fs = load(joinpath(stimulus_dir,"mixtures","testing","mixture_components",
+        x,fs = load(joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
             @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
         if size(x,2) > 1
             x = sum(x,dims=2)
@@ -100,7 +100,7 @@ function load_channel_(tofs,stim_num,source_i,encoding)
     if key ∈ keys(encodings)
         encodings[key]
     else
-        x,fs = load(joinpath(stimulus_dir,"mixtures","testing",
+        x,fs = load(joinpath(stimulus_dir(),"mixtures","testing",
             @sprintf("trial_%02d.wav",stim_num)))
         result = encode_stimulus(SampleBuf(x[:,source_i],fs),tofs,
             method=encoding)

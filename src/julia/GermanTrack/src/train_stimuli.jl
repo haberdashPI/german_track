@@ -1,3 +1,6 @@
+export StaticMethod, SpeakerStimMethod, ChannelStimMethod, OnlineMethod,
+    train_stimuli
+
 # TODO: we can have the speaker specific elements of the loop separated as part
 # of a "TrainMethod" (we're going to have to come up with a name other than
 # method, since this component is orthogonal to the static vs. online piece
@@ -234,7 +237,7 @@ function train_stimuli(method,stim_method,files,stim_info;
         # mapreduce(vcat,files) do file
         # TODO: this relies on experiment specific details how to generify
         # this (or should we just move this whole function back)?
-        eeg, stim_events, sid = load_subject(joinpath(data_dir,file),stim_info,
+        eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             resample=resample)
         lags = 0:round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
@@ -247,7 +250,7 @@ function train_stimuli(method,stim_method,files,stim_info;
 
             prefix = join([train_name,!skip_bad_trials ? "bad" : "",
                 label(method),label(stim_method),cond, sid_str],"_")
-            model = Main.train(method,
+            model = GermanTrack.train(method,
                 sources = train_sources,
                 prefix = prefix,
                 eeg = eeg,
@@ -261,7 +264,7 @@ function train_stimuli(method,stim_method,files,stim_info;
 
             prefix = join([test_name,!skip_bad_trials ? "bad" : "",
                 label(method),label(stim_method),cond,sid_str],"_")
-            Main.test(method;
+            GermanTrack.test(method;
                 sid = sid,
                 condition = cond,
                 sources = test_sources,

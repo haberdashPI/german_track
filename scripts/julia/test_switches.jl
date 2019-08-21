@@ -4,8 +4,8 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 # TODO: get only the areas before a switch to avoid areas where attentional
 # tracking may be confused
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_cleaned\.mat$",x),readdir(data_dir))
+stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
+eeg_files = filter(x -> occursin(r"_cleaned\.mat$",x),readdir(data_dir()))
 
 df = DataFrame(sid = Int[],condition = String[], speaker = String[],
         corr = Float64[],test_correct = Bool[])
@@ -20,4 +20,4 @@ df = trf_train_speakers("",eeg_files,stim_info,
     test = "clean_switch_only" => row -> switch_bounds[row.sound_index],
     skip_bad_trials=true)
 
-save(joinpath(cache_dir,"test_only_switches.csv"))
+save(joinpath(cache_dir(),"test_only_switches.csv"))

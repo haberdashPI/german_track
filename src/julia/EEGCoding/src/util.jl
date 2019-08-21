@@ -18,7 +18,7 @@ progress_ammend!(prog::Bool,n) = @assert !prog
 
 function cachefn(prefix,fn,args...;__oncache__=() -> nothing,kwds...)
     if cache_dir_[] == ""
-        @warn "Using default cache directory `$(abspath(cache_dir_))`;"*
+        @warn "Using default cache directory `$(abspath(cache_dir_[]))`;"*
             " use EEGCoding.set_cache_dir! to change where results are cached."
     end
 

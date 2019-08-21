@@ -69,12 +69,6 @@ git-tree-sha1 = "13240cfcc884837fc1aa89b60d500a652bcc3f10"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 version = "0.5.5"
 
-[[ClusterManagers]]
-deps = ["Distributed", "Sockets"]
-git-tree-sha1 = "60a1c6dc3278910716fcf87eb602968fdf72e44d"
-uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
-version = "0.3.2"
-
 [[CodecZlib]]
 deps = ["BinaryProvider", "Libdl", "TranscodingStreams"]
 git-tree-sha1 = "05916673a2627dd91b4969ff8ba6941bc85a960e"
@@ -195,7 +189,7 @@ version = "0.7.0"
 
 [[EEGCoding]]
 deps = ["BSON", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
-path = "src/julia/EEGCoding"
+path = "../EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
 
@@ -232,12 +226,6 @@ version = "0.5.3"
 [[Future]]
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
-
-[[GermanTrack]]
-deps = ["BSON", "CSV", "DataFrames", "Dates", "DependentBootstrap", "Distributed", "Distributions", "DrWatson", "EEGCoding", "FileIO", "JSON", "LambdaFn", "MATLAB", "Printf", "ProgressMeter", "Query", "RCall", "Reexport", "SampledSignals", "Statistics", "Tables", "Unitful", "VegaLite", "WAV"]
-path = "src/julia/GermanTrack"
-uuid = "2bc61200-6a9c-4319-aa6b-e00ff93368c1"
-version = "0.1.0"
 
 [[Graphics]]
 deps = ["Colors", "Compat", "NaNMath"]
@@ -656,14 +644,6 @@ version = "0.5.0"
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
-
-[[TOML]]
-deps = ["Dates"]
-git-tree-sha1 = "e9fd97ec8b0cf1ffa41a3ab9c27296dbb8797125"
-repo-rev = "3064b9660627539a6ae0609099ede7099e044d3a"
-repo-url = "https://github.com/wildart/TOML.jl"
-uuid = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
-version = "0.4.0"
 
 [[TSVD]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]

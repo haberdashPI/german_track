@@ -10,10 +10,10 @@
 ## new features
 - filter eeg data using 
   - let's start with something simple: include these features of the sound
-    - N-bank logarithmic filtering of the sound (N = 3-4)
-    - ground-truth target change derivative
-    - (eventually) actual pitch derivative of each source?
+    + N-bank logarithmic filtering of the sound (N = 3-4)
+    - pitch derivative
 
+  - TODO: reorganize analysis files into a local package
   - include these features of the EEG
     - eeg channels
     - alpha band amplitudes and phases (5-15Hz) in log-frequency bands?

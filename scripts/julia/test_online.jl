@@ -49,12 +49,12 @@ using Pkg; Pkg.activate(joinpath(@__DIR__,".."))
 include(joinpath(@__DIR__,"..","util","setup.jl"))
 using ClusterManagers
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir()))
 sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 
-plot_dir = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
-isdir(plot_dir) || mkdir(plot_dir)
+plot_dir() = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
+isdir(plot_dir()) || mkdir(plot_dir())
 
 if endswith(gethostname(),".cluster")
     addprocs(SlurmManager(length(eeg_files)), partition="CPU", t="02:00:00",
@@ -85,8 +85,8 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
     skip_bad_trials = true)
 
 data = DataFrame(convert(Array{OnlineResult},data))
-@save joinpath(data_dir,"test_all_online_speakers.bson") data
-# @load joinpath(data_dir,"test_all_online_speakers.bson") data
+@save joinpath(data_dir(),"test_all_online_speakers.bson") data
+# @load joinpath(data_dir(),"test_all_online_speakers.bson") data
 
 # testing...
 plots = map(unique(data[data.sid .== 8,:trial])) do i
@@ -106,7 +106,7 @@ plot = means |>
                 y={"mean(norm)",scale={zero=false}}) +
         @vlplot(mark={:errorbar,extent=:ci},y="norm:q"))
 
-file = joinpath(plot_dir,"response_summary.pdf")
+file = joinpath(plot_dir(),"response_summary.pdf")
 save(file,plot)
 
 
@@ -188,7 +188,7 @@ means |>
 ####################
 # testing an individual trial (to figure out why things fail)
 eeg, stim_events, sid =
-    load_subject(joinpath(data_dir,sidfile(data[1,:sid])),stim_info)
+    load_subject(joinpath(data_dir(),sidfile(data[1,:sid])),stim_info)
 fs = samplerate(eeg)
 stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
     encoding=:audiospect),1:5)
@@ -246,7 +246,7 @@ dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 
 plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
     xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) |>
-    PDF(joinpath(plot_dir,"attend_speakers.pdf"),8inch,4inch)
+    PDF(joinpath(plot_dir(),"attend_speakers.pdf"),8inch,4inch)
 
 ############################################################
 # channel analysis
@@ -259,8 +259,8 @@ data = train_stimuli(online,channels,eeg_files,stim_info,
         all_indices : no_indices,
     skip_bad_trials = true)
 
-@save joinpath(data_dir,"test_online_channels.bson") data
-# @load joinpath(data_dir,"test_online_channels.bson") data
+@save joinpath(data_dir(),"test_online_channels.bson") data
+# @load joinpath(data_dir(),"test_online_channels.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
 ########################################
@@ -287,7 +287,7 @@ dfat_mean = by(dfat,[:test_correct,:sid,:condition],
 
 plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
     xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) |>
-    PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
+    PDF(joinpath(plot_dir(),"attend_channels.pdf"),8inch,4inch)
 
 ############################################################
 # first switch speaker analysis
@@ -330,8 +330,8 @@ data = train_stimuli(method,speakers,eeg_files,stim_info,
     skip_bad_trials = true)
 
 data = DataFrame(convert(Array{OnlineResult},data))
-@save joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data
-# @load joinpath(data_dir,"test_online_first_switch_speakers_audiospect.bson") data
+@save joinpath(data_dir(),"test_online_first_switch_speakers_audiospect.bson") data
+# @load joinpath(data_dir(),"test_online_first_switch_speakers_audiospect.bson") data
 
 # TODO: think through this summary (there are some issues also
 # noted in the top-level comments. Also worth plotting individual
@@ -364,5 +364,5 @@ means |>
 
 # plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 #     xgroup=:sid,Geom.subplot_grid(Geom.errorbar,Geom.point)) # |>
-#     # PDF(joinpath(plot_dir,"attend_channels.pdf"),8inch,4inch)
+#     # PDF(joinpath(plot_dir(),"attend_channels.pdf"),8inch,4inch)
 

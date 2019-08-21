@@ -2,8 +2,8 @@ using DrWatson; quickactivate(@__DIR__,"german_track")
 include(joinpath(srcdir(),"julia","setup.jl"))
 using VegaLite
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir,"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir))
+stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir()))
 
 df = mapreduce(vcat,eeg_files) do file
     df_, sid = events_for_eeg(file,stim_info)
