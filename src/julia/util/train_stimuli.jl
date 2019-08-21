@@ -7,9 +7,9 @@ abstract type StimMethod
 end
 
 Base.@kwdef struct SpeakerStimMethod <: StimMethod
-    envelope_method::Symbol
+    encoding::EEGCoding.StimEncoding
 end
-label(x::SpeakerStimMethod) = "speakers_"*string(x.envelope_method)
+label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
 sources(::SpeakerStimMethod) =
     ["male", "fem1", "fem2", "all-male"],
         ["male", "fem1", "fem2", "all-male", "male_other"]
@@ -20,17 +20,17 @@ function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
     function(i,j)
         if 0 < j <= 3
             load_speaker(stim_events,fs,i,j,
-                envelope_method=method.envelope_method)
+                encoding=method.encoding)
         elseif j == 4
             load_speaker_mix_minus(stim_events,fs,i,1,
-                envelope_method=method.envelope_method)
+                encoding=method.encoding)
         elseif j == 5
             if !test
                 load_speaker(stim_events,fs,i,1,
-                    envelope_method=method.envelope_method)
+                    encoding=method.encoding)
             else
                 load_other_speaker(stim_events,fs,stim_info,i,1,
-                    envelope_method=method.envelope_method)
+                    encoding=method.encoding)
             end
         else
             error("Did not expect j == $j.")
@@ -39,9 +39,9 @@ function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
 end
 
 Base.@kwdef struct ChannelStimMethod <: StimMethod
-    envelope_method::Symbol
+    encoding::Symbol
 end
-label(x::ChannelStimMethod) = "channels_"*string(x.envelope_method)
+label(x::ChannelStimMethod) = "channels_"*string(x.encoding)
 sources(::ChannelStimMethod) =
     ["left", "right"], ["left", "right", "left_other"]
 train_source_indices(::ChannelStimMethod) = (1,2,1)
@@ -49,10 +49,10 @@ function load_source_fn(method::ChannelStimMethod,stim_events,fs,stim_info)
     function(i,j)
         if j <= 2
             load_channel(stim_events,fs,i,j,
-                envelope_method=method.envelope_method)
+                encoding=method.encoding)
         else
             load_other_channel(stim_events,fs,stim_info,i,1,
-                envelope_method=method.envelope_method)
+                encoding=method.encoding)
         end
     end
 end
@@ -179,7 +179,7 @@ function train_stimuli(method,stim_method,files,stim_info;
     test = train,
     resample = nothing,
     progress = true,
-    envelope_method=:rms)
+    encoding=:rms)
 
     train_name, train_fn = train
     test_name, test_fn = test

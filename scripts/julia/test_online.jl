@@ -74,7 +74,7 @@ end
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=1.5s,γ=2e-3)
-speakers = SpeakerStimMethod(envelope_method=:audiospect)
+speakers = SpeakerStimMethod(encoding=ASEnvelope)
 
 data = train_stimuli(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
@@ -191,7 +191,7 @@ eeg, stim_events, sid =
     load_subject(joinpath(data_dir,sidfile(data[1,:sid])),stim_info)
 fs = samplerate(eeg)
 stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
-    envelope_method=:audiospect),1:5)
+    encoding=:audiospect),1:5)
 
 result = attention_marker(eegtrial(eeg,1)',stimuli...,
     samplerate=samplerate(eeg),
@@ -251,7 +251,7 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 ############################################################
 # channel analysis
 online = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
-channels = ChannelStimMethod(envelope_method=:rms)
+channels = ChannelStimMethod(encoding=:rms)
 
 data = train_stimuli(online,channels,eeg_files,stim_info,
     train = "none" => no_indices,
@@ -299,7 +299,7 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 # to reduce memory load.
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=1.5s,
     γ=2e-3,tol=1e-2)
-speakers = SpeakerStimMethod(envelope_method=:audiospect)
+speakers = SpeakerStimMethod(encoding=:audiospect)
 
 switch_times =
     convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])

@@ -100,10 +100,10 @@ uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
 version = "0.7.0"
 
 [[Colors]]
-deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Printf", "Reexport", "Test"]
-git-tree-sha1 = "9f0a0210450acb91c730b730a994f8eef1d3d543"
+deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Printf", "Reexport"]
+git-tree-sha1 = "c9c1845d6bf22e34738bee65c357a69f416ed5d1"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.9.5"
+version = "0.9.6"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -122,6 +122,12 @@ deps = ["Compat", "Rotations", "StaticArrays"]
 git-tree-sha1 = "47f05d0b7f4999609f92e657147df000818c1f24"
 uuid = "150eb455-5306-5404-9cee-2592286d6298"
 version = "0.5.0"
+
+[[CorticalSpectralTemporalResponses]]
+deps = ["AxisArrays", "Colors", "Compat", "DSP", "DataFrames", "FFTW", "FileIO", "ImageInTerminal", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
+git-tree-sha1 = "7f638aee96ffab4d4e883da6e9cac12ceb4e8e07"
+uuid = "82ec0db2-aa68-11e9-08e4-e3d69fc08b96"
+version = "0.4.0"
 
 [[Crayons]]
 deps = ["Test"]
@@ -175,9 +181,9 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[Debugger]]
 deps = ["CodeTracking", "Crayons", "Highlights", "InteractiveUtils", "JuliaInterpreter", "Markdown", "REPL"]
-git-tree-sha1 = "56025e74b60af987c2de0ef0bac1cca0d62dbd64"
+git-tree-sha1 = "aaf5878418d2dcc7281c3a0438fa958c6e701ca9"
 uuid = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
-version = "0.5.0"
+version = "0.6.0"
 
 [[DelimitedFiles]]
 deps = ["Mmap"]
@@ -218,10 +224,10 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "0.7.0"
 
 [[EEGCoding]]
-deps = ["BSON", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "ShammaModel", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
+deps = ["BSON", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
-version = "0.1.0"
+version = "0.1.1"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "BinaryProvider", "Conda", "Libdl", "LinearAlgebra", "Reexport", "Test"]
@@ -285,10 +291,10 @@ uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.4"
 
 [[Highlights]]
-deps = ["DocStringExtensions", "InteractiveUtils", "REPL", "Test"]
-git-tree-sha1 = "286ff83d696dd92748e603a3219618d9e407e872"
+deps = ["DocStringExtensions", "InteractiveUtils", "REPL"]
+git-tree-sha1 = "7c11ddfe03e192ec33aec1d78838ed039320ae27"
 uuid = "eafb193a-b7ab-5a9e-9068-77385905fa72"
-version = "0.3.1"
+version = "0.4.1"
 
 [[IdentityRanges]]
 deps = ["OffsetArrays", "Test"]
@@ -384,9 +390,9 @@ version = "0.1.1"
 
 [[JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "fd92b23285fb16884bbe54d4516615c6bf550adb"
+git-tree-sha1 = "a4bb251f96cb22141cff4185b724c2e4f46245d2"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.6.1"
+version = "0.7.0"
 
 [[LambdaFn]]
 deps = ["MacroTools", "Printf"]
@@ -604,6 +610,12 @@ git-tree-sha1 = "407859870969b7a01476a4b4f5174347680f9853"
 uuid = "2aef5ad7-51ca-5a8f-8e88-e75cf067b44b"
 version = "0.9.0"
 
+[[RCall]]
+deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Missings", "REPL", "Random", "Requires", "StatsModels", "WinReg"]
+git-tree-sha1 = "828332205a09377da6a8ebd1e615b11a22f8def6"
+uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
+version = "0.13.3"
+
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
@@ -671,12 +683,6 @@ version = "2.0.0"
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
-[[ShammaModel]]
-deps = ["AxisArrays", "Colors", "DSP", "DataFrames", "FFTW", "FileIO", "ImageInTerminal", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "f240c415b11f57d49e9604d7c6fc999dcf854145"
-uuid = "80f90042-ac61-11e8-0ace-f1a8d5e03555"
-version = "0.3.2"
-
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
@@ -721,6 +727,12 @@ deps = ["Rmath", "SpecialFunctions", "Test"]
 git-tree-sha1 = "b3a4e86aa13c732b8a8c0ba0c3d3264f55e6bb3e"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.8.0"
+
+[[StatsModels]]
+deps = ["Compat", "DataFrames", "StatsBase", "Test"]
+git-tree-sha1 = "b5a735dcd2be05f0af86709750d4d5f62ca4a25d"
+uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
+version = "0.5.0"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
@@ -839,6 +851,12 @@ deps = ["Random", "Test"]
 git-tree-sha1 = "9a0bb82eede528debe631b642eeb48a631a69bc2"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "0.6.1"
+
+[[WinReg]]
+deps = ["Test"]
+git-tree-sha1 = "808380e0a0483e134081cc54150be4177959b5f4"
+uuid = "1b915085-20d7-51cf-bf83-8f477d6f5128"
+version = "0.3.1"
 
 [[WoodburyMatrices]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]

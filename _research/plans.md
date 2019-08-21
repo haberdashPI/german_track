@@ -5,34 +5,19 @@
 ## checks
 + verify `test_correct`
 
-- analyze behavioral data
++ analyze behavioral data
 
 ## new features
 - filter eeg data using 
-  - alpha for spatial?
-        - in Frey et al 2014 (J Neuro), they find the band to be around 8-16 Hz (looked at synchronization (e.g. phase coherence))
-        - in Müller and Weisz 2012 (C Cortex) in the range of 5-15, and further filtered to 9 ± 3 (looked at power)
-        - in region of 11 ± 3 with filtering (from a window of 6 - 15 Hz)
-    - approach: use fft on trial? (sftf?)
-        correlate alpha power with envelope?
-        correlate filtered signal with envelope? (seems unlikely)
+  - let's start with something simple: include these features of the sound
+    - N-bank logarithmic filtering of the sound (N = 3-4)
+    - ground-truth target change derivative
+    - (eventually) actual pitch derivative of each source?
 
-  - gamma for others?
-        - 30-50 Hz (need to use higher sampling rate)
-        - (we need more specific measures here, can't really get an envelope following response here)
-
-   - or we could just look at a general, spectral decomposition of the data
-     and then filter by particular frequency bands, to examine if that improves
-     the performance
-    
-    - approach: filter the signal within this range
-        correlate alpha power, phase coherence within this range
-
-- analyze sound using:
-    - mean while, include multiple frequency bands of stimulus (check out ed lalor's recent publications)
-    - and a pitch analysis 
-    - stimulus encoding: consider multiple frequency bands
-    - include surprisal (e.g. pitch derivative) for target
+  - include these features of the EEG
+    - eeg channels
+    - alpha band amplitudes and phases (5-15Hz) in log-frequency bands?
+    - gamma band amplitudes and phases (30-100Hz) in log-frequency bands?
 
 ## new analysis config
 - do we compare across conditions (with same stimulus and subject)

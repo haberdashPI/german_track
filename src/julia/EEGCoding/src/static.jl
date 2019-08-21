@@ -1,11 +1,11 @@
-export withlags, trf_corr_cv, trf_train, find_envelope
+export withlags, trf_corr_cv, trf_train
 
 using MetaArrays
 using Printf
 using DataFrames
 using StatsBase
 using Statistics
-using ShammaModel
+using CorticalSpectralTemporalResponses
 using DSP
 
 ################################################################################
@@ -52,44 +52,6 @@ function trf_train_(;prefix,eeg,lags,indices,stim_fn,name="Training",
     end
 
     sum_models
-end
-
-find_envelope(stim,tofs;method=:rms) = find_envelope(stim,tofs,Val(method))
-
-function find_envelope(stim,tofs,::Val{:rms})
-    N = round(Int,size(stim,1)/samplerate(stim)*tofs)
-    result = zeros(N)
-    window_size = 1.5/tofs
-    toindex(t) = clamp(round(Int,t*samplerate(stim)),1,size(stim,1))
-
-    for i in 1:N
-        t = i/tofs
-        from = toindex(t-window_size)
-        to = toindex(t+window_size)
-        result[i] = mean(x^2 for x in view(stim.data,from:to,:))
-    end
-
-    result
-end
-
-function find_envelope(stim,tofs,::Val{:audiospect})
-    @assert size(stim,2) == 1
-
-    spect_fs = ShammaModel.fixed_fs
-    resampled = Filters.resample(vec(stim),spect_fs/samplerate(stim))
-    spect = filt(audiospect,SampleBuf(resampled,spect_fs),false)
-    envelope = vec(sum(spect,dims=2))
-    Filters.resample(envelope,ustrip(tofs*Δt(spect)))
-end
-
-function find_envelope(stim,tofs,::Val{:sparsespect})
-    @assert size(stim,2) == 1
-
-    spect_fs = ShammaModel.fixed_fs
-    resampled = Filters.resample(vec(stim),spect_fs/samplerate(stim))
-    spect = filt(Audiospect(freq_step=8),SampleBuf(resampled,spect_fs),false)
-    envelope = vec(sum(spect,dims=2))
-    Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
 
 find_signals(found_signals,stim,eeg,i;kwds...) = found_signals
@@ -196,7 +158,11 @@ function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
             pred = predict_trf(-1,response,(r1.*stim_model .- r2.*subj_model),
                 lags, "Shrinkage")
 
-            push!(df,(corr = single(cor(pred,stim)), source = source, index = j))
+            # TODO: figure out how to handle multi-channel stimulus
+            @show size(pred)
+            @show size(stim)
+            push!(df,(corr = single(cor(vec(pred),vec(stim))),
+                source = source, index = j))
             next!(progress)
         end
     end

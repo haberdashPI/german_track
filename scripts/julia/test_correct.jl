@@ -12,7 +12,7 @@ eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir))
 
 df = train_stimuli(
     StaticMethod(),
-    SpeakerStimMethod(envelope_method=:audiospect),
+    SpeakerStimMethod(encoding=ASEnvelope()),
     resample = 64,
     eeg_files,stim_info,
     train = "correct" =>
