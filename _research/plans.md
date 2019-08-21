@@ -1,7 +1,6 @@
 
 # Plans
 
-
 ## checks
 + verify `test_correct`
 
@@ -12,8 +11,9 @@
   - let's start with something simple: include these features of the sound
     + N-bank logarithmic filtering of the sound (N = 3-4)
     - pitch derivative
+      - verify that the pitch outputs from CEDAR are reasonable
 
-  - TODO: reorganize analysis files into a local package
+  + TODO: reorganize analysis files into a local package
   - include these features of the EEG
     - eeg channels
     - alpha band amplitudes and phases (5-15Hz) in log-frequency bands?

@@ -4,13 +4,13 @@ export encode_stimulus, RMSEnvelope, ASEnvelope, ASBins, TargetSurprisal,
 abstract type StimEncoding
 end
 
-encode_stimulus(stim,tofs,target_time;method=RMSEnvelope()) =
-    encode_stimulus(stim,tofs,target_time,method)
+encode_stimulus(stim,file,tofs,target_time;method=RMSEnvelope()) =
+    encode_stimulus(stim,file,tofs,target_time,method)
 
 struct RMSEnvelope <: StimEncoding end
 Base.string(::RMSEnvelope) = "rms_envelope"
 
-function encode_stimulus(stim,tofs,_,::RMSEnvelope)
+function encode_stimulus(stim,file,tofs,_,::RMSEnvelope)
     N = round(Int,size(stim,1)/samplerate(stim)*tofs)
     result = zeros(N)
     window_size = 1.5/tofs
@@ -29,7 +29,7 @@ end
 struct ASEnvelope <: StimEncoding end
 Base.string(::ASEnvelope) = "audiospect_envelope"
 
-function encode_stimulus(stim,tofs,_,::ASEnvelope)
+function encode_stimulus(stim,file,tofs,_,::ASEnvelope)
     @assert size(stim,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
@@ -44,7 +44,7 @@ struct ASBins <: StimEncoding
 end
 Base.string(bin::ASBins) = string("freqbins_",join(bin.bounds,"-"))
 
-function encode_stimulus(stim,tofs,_,method::ASBins)
+function encode_stimulus(stim,file,tofs,_,method::ASBins)
     @assert size(stim,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
@@ -59,32 +59,15 @@ function encode_stimulus(stim,tofs,_,method::ASBins)
     hcat(bins)
 end
 
-struct TargetSurprisal <:
-    StimEncoding
-end
-Base.string(bin::TargetSurprisal) = "tpitch"
-
-function encode_stimulus(stim,tofs,target_time,method::TargetSurprisal)
-
-    len = ceil(Int,size(stim,1) * tofs/samplerate(stim))
-    result = zeros(len)
-    if !ismissing(target_time)
-        target_frame = floor(Int,target_time * tofs)
-        result[target_frame] = 1.0
-    end
-
-    result
-end
-
 struct JointEncoding <: StimEncoding
     children::Vector{StimEncoding}
 end
 JointEncoding(xs...) = JointEncoding(collect(xs))
 Base.string(x::JointEncoding) = join(map(string,x.children),"_")
 
-function encode_stimulus(stim,tofs,target_time,method::JointEncoding)
+function encode_stimulus(stim,file,tofs,target_time,method::JointEncoding)
     encodings = map(method.children) do child
-        encode_stimulus(stim,tofs,target_time,child)
+        encode_stimulus(stim,file,tofs,target_time,child)
     end
 
     # like reduce(hcat,x) but pad the values with zero
@@ -98,4 +81,37 @@ function encode_stimulus(stim,tofs,target_time,method::JointEncoding)
     end
 
     result
+end
+
+struct PitchEncoding <: StimEncoding
+end
+Base.string(::PitchEncoding) = "pitch"
+
+function load_pitch(file)
+    pitchfile = replace(file,r"\.wav$" => ".f0.csv")
+    DataFrame(CSV.File(pitchfile))
+end
+
+function encode_stimulus(stim,file,tofs,target_time,method::PitchEncoding)::Array{Float64}
+    pitches = load_pitch(file)
+    pitches.pitch
+end
+
+struct PitchSurpriseEncoding <: StimEncoding
+end
+Base.string(::PitchSurpriseEncoding) = "pitchsur"
+
+function encode_stimulus(stim,file,tofs,target_time,method::PitchEncoding)::Array{Float64}
+    pitches = load_pitch(file)
+    clean_nan(p,c) = iszero(p) ? zero(c) : c
+    pitches.confidence = clean_nan.(pitches.pitch,pitches.confidence)
+
+    surprisal = [0;diff(pitches.frequency)] * pitches.confidence
+    delta = diff(pitches[1:2])
+    @assert all(==(delta),diff(pitches))
+    if !isapprox(tofs*delta,1.0,atol=1e-4)
+        DSP.resample(surprisal,tofs*delta)
+    else
+        surprisal
+    end
 end

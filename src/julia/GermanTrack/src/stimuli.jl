@@ -1,7 +1,9 @@
 using EEGCoding
 const encodings = Dict{Any,Array{Float64}}()
 
-function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;encoding=:rms)
+function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;
+        encoding=RMSEncoding())
+
     stim_num = events.sound_index[stim_i]
     key = (:mix_minus,tofs,stim_num,nosource_i,encoding)
     if key ∈ keys(encodings)
@@ -26,14 +28,14 @@ function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;encoding=:rms)
 
         target_time = events.target_source[stim_i] ∈ [2,3] ?
             events.target_time[stim_i] : missing
-        result = encode_stimulus(SampleBuf(mix,fs),tofs,target_time,
+        result = encode_stimulus(SampleBuf(mix,fs),nothing,tofs,target_time,
             method=encoding)
         encodings[key] = result
         result
     end
 end
 
-function load_speaker_mix(events,tofs,stim_i;encoding=:rms)
+function load_speaker_mix(events,tofs,stim_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
     key = (:mix,tofs,stim_num,encoding)
     if key ∈ keys(encodings)
@@ -45,14 +47,14 @@ function load_speaker_mix(events,tofs,stim_i;encoding=:rms)
             x = sum(x,dims=2)
         end
         target_time = events.target_time[stim_i]
-        result = encode_stimulus(SampleBuf(x,fs),tofs,target_time,
+        result = encode_stimulus(SampleBuf(x,fs),nothing,tofs,target_time,
             method=encoding)
         encodings[key] = result
         result
     end
 end
 
-function load_speaker(events,tofs,stim_i,source_i;encoding=:rms)
+function load_speaker(events,tofs,stim_info,stim_i,source_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
     target_time = events.target_source[stim_i] == source_i ?
         events.target_time[stim_i] : missing
@@ -64,19 +66,21 @@ function load_speaker_(tofs,stim_num,source_i,target_time,encoding)
     if key ∈ keys(encodings)
         encodings[key]
     else
-        x,fs = load(joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
-            @sprintf("trial_%02d_%1d.wav",stim_num,source_i)))
+        file = joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
+            @sprintf("trial_%02d_%1d.wav",stim_num,source_i))
+        x,fs = load(file)
         if size(x,2) > 1
             x = sum(x,dims=2)
         end
-        result = encode_stimulus(SampleBuf(x,fs),tofs,target_time,method=encoding)
+        result = encode_stimulus(SampleBuf(x,fs),file,tofs,
+            target_time,method=encoding)
         encodings[key] = result
         result
     end
 end
 
 function load_other_speaker(events,tofs,info,stim_i,source_i;
-    encoding=:rms)
+    encoding=RMSEncoding())
 
     stim_num = events.sound_index[stim_i]
     stimuli = info["test_block_cfg"]["trial_sentences"]
@@ -102,7 +106,7 @@ function load_channel_(tofs,stim_num,source_i,encoding)
     else
         x,fs = load(joinpath(stimulus_dir(),"mixtures","testing",
             @sprintf("trial_%02d.wav",stim_num)))
-        result = encode_stimulus(SampleBuf(x[:,source_i],fs),tofs,
+        result = encode_stimulus(SampleBuf(x[:,source_i],fs),nothing,tofs,
             method=encoding)
         encodings[key] = result
         result

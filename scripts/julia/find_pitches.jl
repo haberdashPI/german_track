@@ -1,9 +1,7 @@
 using DrWatson; quickactivate(@__DIR__,"german_track")
-include(joinpath(srcdir(),"julia","setup.jl"))
+using GermanTrack
 
-dir = joinpath(raw_stim_dir(),"sentences")
-resultdir = joinpath(stimulus_dir(),"pitches")
-isdir(resultdir) || mkdir(resultdir)
+dir = joinpath(stimulus_dir(),"mixtures","testing","mixture_components")
 
 # NOTE: this will only work if `crepe` is installed (see README.md)
-run(`crepe $dir -o $resultdir`)
+run(`crepe $dir`)
