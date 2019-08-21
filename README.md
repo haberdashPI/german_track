@@ -73,7 +73,7 @@ as all other participant's raw data.
 4. Call `scripts/matlab/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
 5. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.
-6. Call `scripts/matlab/clean_with_mcca.m` and run to generate data cleaned with MCCA.
+6. Call `scripts/matlab/clean_with_mcca.m` and run through the steps manually to generate data cleaned with MCCA.
 
 ### Pitch Estimates
 
@@ -85,7 +85,7 @@ I used [CREPE](https://github.com/marl/crepe) to estimate the pitch of each spea
 The first three subjects' events are likely poorly aligned due to some
 issues with the sound drivers on the computer presenting stimuli.
 
-Subjects up to 7 used an old stimulus set, for which we do not have ground
+Subjects 1-7 used an old stimulus set, for which we do not have ground
 truth of the target modulation or HRTF transformed sentences. These subjects
 data must also be loaded in a slightly different way, which can be found by
 checking out older versions of the repository.
@@ -94,8 +94,5 @@ Subjects 8-10: ex1,3,5 swapped (on right instead of left side)
 Subjects 8-11: A28 seems to be a bad electrode.
 
 Subject 9 used an older version of the trigger codes, and the first test
-trial (of 150) was lost. `read_sound_events.R` must be slighlty modified
-Comment out the checks for 150 trials and align to the second rather than the
-first stimulus event form Presentation: there are commented out lines of code
-to do this in the file.
+trial (of 150) was lost (the scripts loading 9's data account for this).
 
