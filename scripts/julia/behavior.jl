@@ -37,12 +37,6 @@ condition = dfsum |>
 
 save(joinpath(dir,"behavior_summary.pdf"),condition)
 
-# TODO: I don't think the timeline function is quite right
-# because it's averaging over all times after the first respons
-# I think it needs something different; maybe we just get
-# accuracies along a line for each subject... and then connec them
-# inbetween spots??
-
 dftiming = df |>
     @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>
     @map({key(_)...,
