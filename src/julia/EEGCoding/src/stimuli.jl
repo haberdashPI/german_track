@@ -59,8 +59,8 @@ function encode_stimulus(stim,tofs,_,method::ASBins)
 end
 
 struct TargetSuprisal <: StimEncoding
-
-end Base.string(bin::TargetSuprisal) = "tpitch"
+end
+Base.string(bin::TargetSuprisal) = "tpitch"
 
 function encode_stimulus(stim,tofs,target_time,method::TargetSuprisal)
     len = ceil(Int,size(stim,1) * tofs/samplerate(stim))
