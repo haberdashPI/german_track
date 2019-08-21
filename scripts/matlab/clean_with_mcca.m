@@ -71,25 +71,3 @@ for i = 1:length(all_eeg)
     filename = sprintf('eeg_response_%03d_mcca%02d.mcca_proj',all_eeg{i}.sid,nkeep);
     save_subject_components(all_eeg{i}, fullfile(data_dir,filename));
 end
-
-% TODO: does result have raw_trial? if so, remove it
-
-nkeep = 65; % number of components to keep
-% Project out all but first "nkeep" components
-for i = 1:length(all_eeg)
-    mu = chan_mean((i-1)*n_chans + (1:n_chans));
-    all_eeg{i} = project_mcca(all_eeg{i},nkeep,AA{i},mu);
-end
-
-% ft_databrowser(plot_cfg,all_eeg{3});
-% ft_databrowser(plot_cfg,cleaned_eeg{3});
-
-for i = 1:length(all_eeg)
-    resample_cfg = [];
-    resample_cfg.resamplefs = 64;
-    result = ft_resampledata(resample_cfg,all_eeg{i});
-    result.raw_trial = [];
-    save_subject_components(result,...
-        sprintf('eeg_response_%03d_mcca%02d.raw',all_eeg{i}.sid,nkeep));
-end
-
