@@ -35,8 +35,8 @@ function trf_train_(;prefix,eeg,lags,indices,stim_fn,name="Training",
         for (source_index,source) in enumerate(sources)
             stim = stim_fn(i,source_index)
 
-            model = cachefn(@sprintf("%s_%02d",prefix,i),find_trf,stim,
-                eeg,i,-1,lags,"Shrinkage";bounds=bounds[i],kwds...)
+            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,i),find_trf,
+                stim,eeg,i,-1,lags,"Shrinkage";bounds=bounds[i],kwds...)
 
             if isempty(sum_models[source_index])
                 sum_models[source_index] = model
@@ -137,25 +137,36 @@ function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
 
     for (j,i) in enumerate(indices)
         for (source_index, source) in enumerate(sources)
-            stim = stim_fn(i,source_index)
-            stim,response = find_signals(nothing,stim,eeg,i,
+            train_index = train_source_indices[source_index]
+            train_stim = stim_fn(i,train_index)
+            train_stim,response = find_signals(nothing,train_stim,eeg,i,
                 bounds=bounds[i])
 
             stim_model = model[train_source_indices[source_index]]
+            train_source = sources[train_source_indices[source_index]]
             subj_model_file =
-                joinpath(cache_dir(),@sprintf("%s_%02d",prefix,i))
+                joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,prefix,i))
             # subj_model = load(subj_model_file,"contents")
-            subj_model = cachefn(subj_model_file,find_trf,stim,eeg,i,-1,lags,
+            subj_model = cachefn(subj_model_file,find_trf,train_stim,eeg,i,-1,lags,
                 "Shrinkage",bounds = bounds[i],
-                found_signals = (stim,response))
+                found_signals = (train_stim,response))
+
+            test_stim = stim_fn(i,source_index)
+            test_stim,response = find_signals(nothing,test_stim,eeg,i,
+                bounds=bounds[i])
+
+            # @show subj_model_file
+
             n = length(indices)
             r1, r2 = (n-1)/n, 1/n
 
             pred = predict_trf(-1,response,(r1.*stim_model .- r2.*subj_model),
                 lags, "Shrinkage")
 
-            # TODO: figure out how to handle multi-channel stimulus
-            push!(df,(corr = single(cor(vec(pred),vec(stim))),
+            # @show size(pred)
+            # @show size(test_stim)
+            # @show source
+            push!(df,(corr = single(cor(vec(pred),vec(test_stim))),
                 source = source, index = j))
             next!(progress)
         end

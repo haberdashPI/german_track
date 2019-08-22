@@ -1,18 +1,21 @@
 using DrWatson; quickactivate(@__DIR__,"german_track")
-include(joinpath(srcdir(),"julia","setup.jl"))
-
-# - train at correct targets
+using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-# eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(data_dir()))
+eeg_files = eeg_files[1:1]
 
 # TODO: we don't need this file format, we can use the 65 components directly,
 # to reduce memory load.
 
+fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
+    digits=-1))
+
+encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
+
 df = train_stimuli(
     StaticMethod(),
-    SpeakerStimMethod(encoding=ASEnvelope()),
+    SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
     train = "correct" =>
@@ -46,7 +49,7 @@ ggplot(df,aes(x=source,y=corr,color=test_correct)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"test_correct_new.pdf"),width=9,height=7)
+ggsave(file.path($dir,"test_correct.pdf"),width=9,height=7)
 
 """
 

@@ -90,13 +90,14 @@ struct PitchEncoding <: StimEncoding
 end
 Base.string(::PitchEncoding) = "pitch"
 
+load_pitch(file::Nothing) = nothing
 function load_pitch(file)
     pitchfile = replace(file,r"\.wav$" => ".f0.csv")
     DataFrame(CSV.File(pitchfile))
 end
 
 function pitch_resample_helper(x,tofs,pitches)
-    delta = pitches.time[2] - pitches.times[1]
+    delta = pitches.time[2] - pitches.time[1]
     @assert all(x -> isapprox(delta,x),diff(pitches.time))
     if !isapprox(tofs*delta,1.0,atol=1e-4)
         DSP.resample(x,tofs*delta)
@@ -105,9 +106,10 @@ function pitch_resample_helper(x,tofs,pitches)
     end
 end
 
-function encode(stim::Stimulus,tofs,method::PitchEncoding)::Array{Float64}
+function encode(stim::Stimulus,file::String,tofs,method::PitchEncoding)::Array{Float64}
     pitches = load_pitch(stim.file)
-    pitch_resample_helper(pitches.frequency,tofs,pitches)
+    isnothing(pitches) ? Array{Float64}(undef,0,0) :
+        pitch_resample_helper(pitches.frequency,tofs,pitches)
 end
 
 struct PitchSurpriseEncoding <: StimEncoding
@@ -116,9 +118,13 @@ Base.string(::PitchSurpriseEncoding) = "pitchsur"
 
 function encode(stim::Stimulus,tofs,method::PitchSurpriseEncoding)::Array{Float64}
     pitches = load_pitch(stim.file)
-    clean_nan(p,c) = iszero(p) ? zero(c) : c
-    pitches.confidence = clean_nan.(pitches.frequency,pitches.confidence)
+    if isnothing(pitches)
+        Array{Float64}(undef,0,0)
+    else
+        clean_nan(p,c) = iszero(p) ? zero(c) : c
+        pitches.confidence = clean_nan.(pitches.frequency,pitches.confidence)
 
-    surprisal = [0;diff(pitches.frequency) .* @views(pitches.confidence[2:end])]
-    pitch_resample_helper(surprisal,tofs,pitches)
+        surprisal = [0;diff(pitches.frequency) .* @views(pitches.confidence[2:end])]
+        pitch_resample_helper(surprisal,tofs,pitches)
+    end
 end
