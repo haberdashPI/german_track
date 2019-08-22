@@ -249,7 +249,8 @@ function train_stimuli(method,stim_method,files,stim_info;
             train_bounds, train_indices = setup_indices(stim_events,cond)
 
             prefix = join([train_name,!skip_bad_trials ? "bad" : "",
-                label(method),label(stim_method),cond, sid_str],"_")
+                label(method),label(stim_method), string(encode_eeg),
+                cond, sid_str],"_")
             model = GermanTrack.train(method,
                 sources = train_sources,
                 prefix = prefix,

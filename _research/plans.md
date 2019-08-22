@@ -12,7 +12,7 @@
     + N-bank logarithmic filtering of the sound (N = 3-4)
     + pitch derivative
     - verify that the pitch outputs from CEDAR are reasonable
-    - test pitch in analysis
+    + test pitch in analysis (seems to work better, maybe step above not needed, worth looking at though)
 
   + TODO: reorganize analysis files into a local package
   - include these features of the EEG

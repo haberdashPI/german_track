@@ -7,6 +7,7 @@ Base.@kwdef struct EEGData
     fs::Int
     data::Vector{Matrix{Float64}}
 end
+Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
 SampledSignals.samplerate(x::EEGData) = x.fs
 function SampledSignals.samplerate(x::MxArray)
@@ -26,7 +27,6 @@ end
 
 resample!(eeg::EEGData,::Nothing) = eeg
 function resample!(eeg::EEGData,sr)
-    @info "Resample EEG to $sr Hz."
     ratio = sr / samplerate(eeg)
     for i in eachindex(eeg.data)
         old = eeg.data[i]
@@ -133,6 +133,7 @@ struct RawEncoding <: Encoding
 end
 Base.string(::RawEncoding) = "raw"
 function encode(x::EEGData,tofs,::RawEncoding)
+    @info "Resample EEG to $tofs Hz."
     resample!(x,tofs)
 end
 
@@ -145,26 +146,27 @@ struct FilteredPower{D} <: EEGEncoding
     to::Float64
     design::D
 end
-FilteredPower(name,from,to,order=5,filter=Butterworth(order)) =
-    FilteredPower(name,from,to,filter)
+FilteredPower(name,from,to;order=5,filter=Butterworth(order)) =
+    FilteredPower(string(name),Float64(from),Float64(to),filter)
 Base.string(x::FilteredPower) = x.name
 function encode(x::EEGData,tofs,filter::FilteredPower)
-    bandpass = digitalfilter(Bandpass(from,to,samplerate(x)),filter.design)
+    bp = Bandpass(filter.from,filter.to,fs=samplerate(x))
+    bandpass = digitalfilter(bp,filter.design)
     power = similar(x.data)
     for trial in 1:length(x.data)
         power[trial] = similar(x.data[trial])
-        for i in 1:size(x.data,1)
+        for i in 1:size(x.data[trial],1)
             power[trial][i,:] .=
-                abs.(DSP.Util.hilbert(filt(bandpass,view(x.data,i,:))))
+                abs.(DSP.Util.hilbert(filt(bandpass,view(x.data[trial],i,:))))
         end
     end
-    @info "Resample $(filter.name) power to $resample Hz."
+    @info "Resample $(filter.name) power to $tofs Hz."
     resample!(EEGData(string.(x.label,"_",filter.name),x.fs,power),tofs)
 end
 
 function encode(x::EEGData,tofs,joint::JointEncoding)
     encodings = map(joint.children) do method
-        encode(x,tofs,method)
+        encode(copy(x),tofs,method)
     end
     labels = mapreduce(x -> x.label,vcat,encodings)
     fs = first(encodings).fs
