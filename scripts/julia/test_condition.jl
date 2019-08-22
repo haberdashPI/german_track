@@ -26,6 +26,7 @@ alert()
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
+
 R"""
 
 library(dplyr)
@@ -44,7 +45,7 @@ ggplot(df,aes(x=source,y=corr,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"by_condition_with_binned_spect_pitchsur.pdf"),width=9,height=7)
+ggsave(file.path($dir,"by_condition_with_gamma_alpha.pdf"),width=9,height=7)
 
 """
 
