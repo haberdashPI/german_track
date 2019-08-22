@@ -10,7 +10,7 @@ abstract type StimMethod
 end
 
 Base.@kwdef struct SpeakerStimMethod <: StimMethod
-    encoding::EEGCoding.StimEncoding
+    encoding::EEGCoding.Encoding
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
 sources(::SpeakerStimMethod) =
@@ -181,8 +181,8 @@ function train_stimuli(method,stim_method,files,stim_info;
     train = "" => all_indices,
     test = train,
     resample = nothing,
-    progress = true,
-    encoding=:rms)
+    encode_eeg = RawEncoding(),
+    progress = true)
 
     train_name, train_fn = train
     test_name, test_fn = test
@@ -238,7 +238,7 @@ function train_stimuli(method,stim_method,files,stim_info;
         # TODO: this relies on experiment specific details how to generify
         # this (or should we just move this whole function back)?
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
-            resample=resample)
+            samplerate=resample,encoding=encode_eeg)
         lags = 0:round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
 

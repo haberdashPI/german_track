@@ -27,9 +27,8 @@ function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;
         end
 
         target_time = events.target_source[stim_i] ∈ [2,3] ?
-            events.target_time[stim_i] : missing
-        result = encode_stimulus(SampleBuf(mix,fs),nothing,tofs,target_time,
-            method=encoding)
+            events.target_time[stim_i] : nothing
+        result = encode(Stimulus(mix,fs,nothing,target_time),tofs,encoding)
         encodings[key] = result
         result
     end
@@ -47,17 +46,16 @@ function load_speaker_mix(events,tofs,stim_i;encoding=RMSEncoding())
             x = sum(x,dims=2)
         end
         target_time = events.target_time[stim_i]
-        result = encode_stimulus(SampleBuf(x,fs),nothing,tofs,target_time,
-            method=encoding)
+        result = encode(Stimulus(x,fs,nothing,target_time),tofs,encoding)
         encodings[key] = result
         result
     end
 end
 
-function load_speaker(events,tofs,stim_info,stim_i,source_i;encoding=RMSEncoding())
+function load_speaker(events,tofs,stim_i,source_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
     target_time = events.target_source[stim_i] == source_i ?
-        events.target_time[stim_i] : missing
+        events.target_time[stim_i] : nothing
     load_speaker_(tofs,stim_num,source_i,target_time,encoding)
 end
 
@@ -72,8 +70,7 @@ function load_speaker_(tofs,stim_num,source_i,target_time,encoding)
         if size(x,2) > 1
             x = sum(x,dims=2)
         end
-        result = encode_stimulus(SampleBuf(x,fs),file,tofs,
-            target_time,method=encoding)
+        result = encode(Stimulus(x,fs,file,target_time),tofs,encoding)
         encodings[key] = result
         result
     end
@@ -89,7 +86,7 @@ function load_other_speaker(events,tofs,info,stim_i,source_i;
         1:length(stimuli)))
 
     target_time = events.target_source[stim_i] == source_i ?
-        events.target_time[stim_i] : missing
+        events.target_time[stim_i] : nothing
     load_speaker_(tofs,selected,source_i,target_time,encoding)
 end
 
@@ -106,8 +103,7 @@ function load_channel_(tofs,stim_num,source_i,encoding)
     else
         x,fs = load(joinpath(stimulus_dir(),"mixtures","testing",
             @sprintf("trial_%02d.wav",stim_num)))
-        result = encode_stimulus(SampleBuf(x[:,source_i],fs),nothing,tofs,
-            method=encoding)
+        result = encode(Stimulus(x[:,source_i],fs,nothing),tofs,encoding)
         encodings[key] = result
         result
     end

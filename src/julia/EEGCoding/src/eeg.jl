@@ -1,4 +1,5 @@
-export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!
+export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
+    RawEncoding, FilteredPower
 using DSP
 
 Base.@kwdef struct EEGData
@@ -23,7 +24,9 @@ function eegtrial(x::EEGData,i)
     x.data[i]
 end
 
+resample!(eeg::EEGData,::Nothing) = eeg
 function resample!(eeg::EEGData,sr)
+    @info "Resample EEG to $sr Hz."
     ratio = sr / samplerate(eeg)
     for i in eachindex(eeg.data)
         old = eeg.data[i]
@@ -124,4 +127,52 @@ function select_bounds(x::MxArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
     end
 
     get_mvariable(:x)
+end
+
+struct RawEncoding <: Encoding
+end
+Base.string(::RawEncoding) = "raw"
+function encode(x::EEGData,tofs,::RawEncoding)
+    resample!(x,tofs)
+end
+
+abstract type EEGEncoding <: Encoding
+end
+
+struct FilteredPower{D} <: EEGEncoding
+    name::String
+    from::Float64
+    to::Float64
+    design::D
+end
+FilteredPower(name,from,to,order=5,filter=Butterworth(order)) =
+    FilteredPower(name,from,to,filter)
+Base.string(x::FilteredPower) = x.name
+function encode(x::EEGData,tofs,filter::FilteredPower)
+    bandpass = digitalfilter(Bandpass(from,to,samplerate(x)),filter.design)
+    power = similar(x.data)
+    for trial in 1:length(x.data)
+        power[trial] = similar(x.data[trial])
+        for i in 1:size(x.data,1)
+            power[trial][i,:] .=
+                abs.(DSP.Util.hilbert(filt(bandpass,view(x.data,i,:))))
+        end
+    end
+    @info "Resample $(filter.name) power to $resample Hz."
+    resample!(EEGData(string.(x.label,"_",filter.name),x.fs,power),tofs)
+end
+
+function encode(x::EEGData,tofs,joint::JointEncoding)
+    encodings = map(joint.children) do method
+        encode(x,tofs,method)
+    end
+    labels = mapreduce(x -> x.label,vcat,encodings)
+    fs = first(encodings).fs
+    data = similar(first(encodings).data)
+    for trial in 1:length(data)
+        data[trial] = mapreduce(vcat,encodings) do enc
+            enc.data[trial]
+        end
+    end
+    EEGData(labels,fs,data)
 end

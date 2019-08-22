@@ -1,4 +1,4 @@
-export cachefn, cache_dir
+export cachefn, cache_dir, JointEncoding, encode
 using BSON: @save, @load
 using ProgressMeter
 
@@ -32,4 +32,22 @@ function cachefn(prefix,fn,args...;__oncache__=() -> nothing,kwds...)
         @save file contents
         contents
     end
+end
+
+abstract type Encoding
+end
+
+struct JointEncoding <: Encoding
+    children::Vector{Encoding}
+end
+JointEncoding(xs...) = JointEncoding(collect(xs))
+Base.string(x::JointEncoding) = join(map(string,x.children),"_")
+
+"""
+    encode(x,samplerate,method)
+
+Encode data (stimlus or eeg) using the given method, outputing the results
+at the given sample rate.
+"""
+function encode
 end

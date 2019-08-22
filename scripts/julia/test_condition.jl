@@ -8,7 +8,7 @@ eeg_files = eeg_files[1:1]
 fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
     digits=-1))
 
-encoding = JointEncoding(TargetSurprisal(),ASBins(fbounds))
+encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
 
 df = train_stimuli(StaticMethod(), SpeakerStimMethod(encoding=encoding),
     resample = 64,

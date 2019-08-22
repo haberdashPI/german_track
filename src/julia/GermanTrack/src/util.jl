@@ -109,7 +109,7 @@ function read_mcca_proj(filename)
 end
 
 
-function load_subject(file,stim_info;resample=nothing)
+function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=nothing)
     if !isfile(file)
         error("File '$file' does not exist.")
     end
@@ -134,10 +134,7 @@ function load_subject(file,stim_info;resample=nothing)
         end
     end
 
-    if !isnothing(resample)
-        @info "Resample EEG to $resample Hz."
-        data = resample!(data,resample)
-    end
+    data = encode(data,samplerate,encoding)
 
     data, stim_events, sid
 end

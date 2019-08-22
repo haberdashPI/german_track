@@ -1,26 +1,37 @@
-export encode_stimulus, RMSEnvelope, ASEnvelope, ASBins, TargetSurprisal,
-    JointEncoding
+using SampledSignals, CSV
+export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
+    PitchSurpriseEncoding, Stimulus
 
-abstract type StimEncoding
+struct Stimulus
+    data::SampleBuf
+    file::Union{String,Nothing}
+    target_time::Union{Float64,Nothing}
+end
+function Stimulus(data::Array,fs::Number,file::Union{String,Nothing},
+    target_time::Union{Float64,Nothing}=nothing)
+
+    Stimulus(SampleBuf(data,fs),file,target_time)
 end
 
-encode_stimulus(stim,file,tofs,target_time;method=RMSEnvelope()) =
-    encode_stimulus(stim,file,tofs,target_time,method)
+abstract type StimEncoding <: Encoding
+end
+
+encode(x::Stimulus,tofs) = encode(x,tofs,RMSEnvelope())
 
 struct RMSEnvelope <: StimEncoding end
 Base.string(::RMSEnvelope) = "rms_envelope"
 
-function encode_stimulus(stim,file,tofs,_,::RMSEnvelope)
-    N = round(Int,size(stim,1)/samplerate(stim)*tofs)
+function encode(stim::Stimulus,tofs,::RMSEnvelope)
+    N = round(Int,size(stim.data,1)/samplerate(stim.data)*tofs)
     result = zeros(N)
     window_size = 1.5/tofs
-    toindex(t) = clamp(round(Int,t*samplerate(stim)),1,size(stim,1))
+    toindex(t) = clamp(round(Int,t*samplerate(stim.data)),1,size(stim.data,1))
 
     for i in 1:N
         t = i/tofs
         from = toindex(t-window_size)
         to = toindex(t+window_size)
-        result[i] = mean(x^2 for x in view(stim.data,from:to,:))
+        result[i] = mean(x^2 for x in view(stim.data.data,from:to,:))
     end
 
     result
@@ -29,11 +40,11 @@ end
 struct ASEnvelope <: StimEncoding end
 Base.string(::ASEnvelope) = "audiospect_envelope"
 
-function encode_stimulus(stim,file,tofs,_,::ASEnvelope)
-    @assert size(stim,2) == 1
+function encode(stim::Stimulus,tofs,::ASEnvelope)
+    @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim),spect_fs/samplerate(stim))
+    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
     spect = filt(audiospect,SampleBuf(resampled,spect_fs),false)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
@@ -44,11 +55,11 @@ struct ASBins <: StimEncoding
 end
 Base.string(bin::ASBins) = string("freqbins_",join(bin.bounds,"-"))
 
-function encode_stimulus(stim,file,tofs,_,method::ASBins)
-    @assert size(stim,2) == 1
+function encode(stim::Stimulus,tofs,method::ASBins)
+    @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim),spect_fs/samplerate(stim))
+    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
     spect = filt(audiospect,SampleBuf(resampled,spect_fs),false)
     f = frequencies(spect)
     bounds = zip([0.0Hz;method.bounds.*Hz],[method.bounds.*Hz;last(f)])
@@ -59,16 +70,8 @@ function encode_stimulus(stim,file,tofs,_,method::ASBins)
     hcat(bins)
 end
 
-struct JointEncoding <: StimEncoding
-    children::Vector{StimEncoding}
-end
-JointEncoding(xs...) = JointEncoding(collect(xs))
-Base.string(x::JointEncoding) = join(map(string,x.children),"_")
-
-function encode_stimulus(stim,file,tofs,target_time,method::JointEncoding)
-    encodings = map(method.children) do child
-        encode_stimulus(stim,file,tofs,target_time,child)
-    end
+function encode(stim::Stimulus,tofs,method::JointEncoding)
+    encodings = map(x -> encode(stim,tofs,x),method.children)
 
     # like reduce(hcat,x) but pad the values with zero
     len = maximum(x -> size(x,1),encodings)
@@ -92,26 +95,30 @@ function load_pitch(file)
     DataFrame(CSV.File(pitchfile))
 end
 
-function encode_stimulus(stim,file,tofs,target_time,method::PitchEncoding)::Array{Float64}
-    pitches = load_pitch(file)
-    pitches.pitch
+function pitch_resample_helper(x,tofs,pitches)
+    delta = pitches.time[2] - pitches.times[1]
+    @assert all(x -> isapprox(delta,x),diff(pitches.time))
+    if !isapprox(tofs*delta,1.0,atol=1e-4)
+        DSP.resample(x,tofs*delta)
+    else
+        x
+    end
+end
+
+function encode(stim::Stimulus,tofs,method::PitchEncoding)::Array{Float64}
+    pitches = load_pitch(stim.file)
+    pitch_resample_helper(pitches.frequency,tofs,pitches)
 end
 
 struct PitchSurpriseEncoding <: StimEncoding
 end
 Base.string(::PitchSurpriseEncoding) = "pitchsur"
 
-function encode_stimulus(stim,file,tofs,target_time,method::PitchEncoding)::Array{Float64}
-    pitches = load_pitch(file)
+function encode(stim::Stimulus,tofs,method::PitchSurpriseEncoding)::Array{Float64}
+    pitches = load_pitch(stim.file)
     clean_nan(p,c) = iszero(p) ? zero(c) : c
-    pitches.confidence = clean_nan.(pitches.pitch,pitches.confidence)
+    pitches.confidence = clean_nan.(pitches.frequency,pitches.confidence)
 
-    surprisal = [0;diff(pitches.frequency)] * pitches.confidence
-    delta = diff(pitches[1:2])
-    @assert all(==(delta),diff(pitches))
-    if !isapprox(tofs*delta,1.0,atol=1e-4)
-        DSP.resample(surprisal,tofs*delta)
-    else
-        surprisal
-    end
+    surprisal = [0;diff(pitches.frequency) .* @views(pitches.confidence[2:end])]
+    pitch_resample_helper(surprisal,tofs,pitches)
 end
