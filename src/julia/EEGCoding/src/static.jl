@@ -112,8 +112,8 @@ function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
     X = withlags(scale(response'),.-reverse(lags))
     Y = view(scale(stim),:,:)
 
-    solver = ProximalAlgorithms.ForwardBackward(fast=true,verbose=true,
-        maxit=1000,tol=1e-4)
+    solver = ProximalAlgorithms.ForwardBackward(fast=true,adaptive=true,
+        verbose=true, maxit=20000,tol=1e-3)
     _, A, Y, X = code_init(Val(false),Y,X)
     state = Objective(Y,X,A)
     update!(state,Y,X,0.0)
