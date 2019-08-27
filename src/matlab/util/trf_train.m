@@ -1,4 +1,4 @@
-function result = trf_train(prefix,eeg,stim_info,lags,indices,filter_fn,stim_fn)
+function result = decode(prefix,eeg,stim_info,lags,indices,filter_fn,stim_fn)
     sum_model = [];
 
     textprogressbar('training...');

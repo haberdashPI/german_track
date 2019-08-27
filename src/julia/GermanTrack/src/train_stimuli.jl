@@ -64,19 +64,25 @@ end
 abstract type TrainMethod
 end
 
-struct StaticMethod <: TrainMethod
+struct StaticMethod{R,T} <: TrainMethod
+    train::R
+    test::T
 end
+StaticMethod() = StaticMethod(EEGCoding.L2Matrix(0.2),cor)
 
-label(::StaticMethod) = "static"
+label(x::StaticMethod) = join(("static",label(x.train),label(x.test)),"_")
+label(x::EEGCoding.L2Matrix) = "l2-"*string(x.k)
+label(x::typeof(cor)) = "cor"
+
 function init_result(::StaticMethod)
     DataFrame(sid = Int[],condition = String[], speaker = String[],
         trial = Int[], corr = Float64[],test_correct = Bool[])
 end
-train(::StaticMethod;kwds...) = trf_train(;kwds...)
-function test(::StaticMethod;sid,condition,indices,sources,correct,
+train(m::StaticMethod;kwds...) = decoder(m.train;kwds...)
+function test(m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
-    speaker = trf_corr_cv(;sources=sources,indices=indices,kwds...)
+    speaker = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
     speaker[!,:sid] .= sid
     speaker[!,:condition] .= condition
     speaker[!,:trial] = indices[speaker.index]

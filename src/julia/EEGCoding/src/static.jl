@@ -1,4 +1,4 @@
-export withlags, trf_corr_cv, trf_train
+export withlags, decode_test_cv, decoder
 
 using MetaArrays
 using Printf
@@ -8,35 +8,40 @@ using Statistics
 using CorticalSpectralTemporalResponses
 using DSP
 
+# custom decoding method (others use StructuedOptimizations data types)
+struct L2Matrix
+    k::Float64
+end
+
 ################################################################################
 # testing and training
 
-function trf_train(;prefix,group_suffix="",indices,name="Training",
+function decoder(method;prefix,group_suffix="",indices,name="Training",
     sources,progress=Progress(length(indices)*length(sources),1,desc=name),
     kwds...)
 
     cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        trf_train_;prefix=prefix,indices=indices,name=name,progress=progress,
+        decoder,method;prefix=prefix,indices=indices,name=name,progress=progress,
         sources=sources,
         __oncache__ = () ->
             progress_update!(progress,length(indices)*length(sources)),
         kwds...)
 end
 
-function trf_train_(;prefix,eeg,lags,indices,stim_fn,name="Training",
+function decoder(method;prefix,eeg,lags,indices,stim_fn,name="Training",
         sources,bounds=all_indices,progress,kwds...)
 
     sum_models = [Array{Float64}(undef,0,0,0) for i in 1:length(sources)]
 
     for i in indices
-        # TODO: implement find_trf to handle multiple stimuli at once? (reduces
+        # TODO: implement trial_decoder to handle multiple stimuli at once? (reduces
         # slow repeated call to withlags) PROFILE first (I think most of the
         # time is spent computing the regression)
         for (source_index,source) in enumerate(sources)
             stim = stim_fn(i,source_index)
 
-            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,i),find_trf,
-                stim,eeg,i,-1,lags,"Shrinkage";bounds=bounds[i],kwds...)
+            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,i),
+                trial_decoder,method,stim,eeg,i,lags;bounds=bounds[i],kwds...)
 
             if isempty(sum_models[source_index])
                 sum_models[source_index] = model
@@ -52,9 +57,6 @@ end
 
 find_signals(found_signals,stim,eeg,i;kwds...) = found_signals
 function find_signals(::Nothing,stim,eeg,i;bounds=all_indices)
-    # @assert method == "Shrinkage"
-    # @assert dir == -1
-
     response = eegtrial(eeg,i)
     min_len = min(size(stim,1),trunc(Int,size(response,2)));
 
@@ -89,16 +91,15 @@ end
 scale(x) = mapslices(zscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
-function find_trf(stim,eeg::EEGData,i,dir,lags,method;found_signals=nothing,
-    k=0.2,kwds...)
+function trial_decoder(l2::L2Matrix,stim,eeg::EEGData,i,lags;
+    found_signals=nothing, kwds...)
 
-    @assert method == "Shrinkage"
-    @assert dir == -1
     stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
 
     X = withlags(scale(response'),.-reverse(lags))
     Y = scale(stim)
 
+    k = l2.k
     XX = X'X; XY = Y'X
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
@@ -106,20 +107,18 @@ function find_trf(stim,eeg::EEGData,i,dir,lags,method;found_signals=nothing,
     reshape(result,size(response,1),length(lags),size(Y,2))
 end
 
-function predict_trf(dir,response::Array,model,lags,method)
-    @assert method == "Shrinkage"
-    @assert dir == -1
 
+decode(response::Array,model,lags) =
     withlags(scale(response'),.-reverse(lags)) * reshape(model,:,size(model,3))
-end
 
-function trf_corr_cv(;prefix,indices,group_suffix="",name="Training",
-    sources,progress=Progress(length(indices)*length(sources),1,desc=name),
+function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
+    name="Training",sources,
+    progress=Progress(length(indices)*length(sources),1,desc=name),
     kwds...)
 
-    cachefn(@sprintf("%s_corr%s",prefix,group_suffix),
-        trf_corr_cv_;prefix=prefix,indices=indices,
-        progress=progress,sources=sources,
+    cachefn(@sprintf("%s_test%s",prefix,group_suffix),
+        decode_test_cv_,train_method,test_method;prefix=prefix,
+        indices=indices,progress=progress,sources=sources,
         __oncache__ = () ->
             progress_update!(progress,length(indices)*length(sources)),
         kwds...)
@@ -130,7 +129,7 @@ function single(x)
     first(x)
 end
 
-function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
+function decode_test_cv_(method,::typeof(cor);prefix,eeg,model,lags,indices,stim_fn,
     bounds=all_indices,sources,train_source_indices,progress)
 
     df = DataFrame()
@@ -147,8 +146,8 @@ function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
             subj_model_file =
                 joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,prefix,i))
             # subj_model = load(subj_model_file,"contents")
-            subj_model = cachefn(subj_model_file,find_trf,train_stim,eeg,i,-1,lags,
-                "Shrinkage",bounds = bounds[i],
+            subj_model = cachefn(subj_model_file,trial_decoder,
+                method,train_stim,eeg,i,lags, bounds = bounds[i],
                 found_signals = (train_stim,response))
 
             test_stim = stim_fn(i,source_index)
@@ -160,8 +159,8 @@ function trf_corr_cv_(;prefix,eeg,model,lags,indices,stim_fn,
             n = length(indices)
             r1, r2 = (n-1)/n, 1/n
 
-            pred = predict_trf(-1,response,(r1.*stim_model .- r2.*subj_model),
-                lags, "Shrinkage")
+            pred = decode(response,(r1.*stim_model .- r2.*subj_model),
+                lags)
 
             # @show size(pred)
             # @show size(test_stim)

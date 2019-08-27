@@ -24,15 +24,17 @@
 
 ## new analysis config
 - do we compare across conditions (with same stimulus and subject)
-    - in online decoding, does the increase look different?
     - does the target event get detected better across conditions?
+    - in online decoding, does the increase look different?
 - do we compare across times (e.g. decoding better near target)
 - static windows around locations of interest
-
-# new algorithms
-- try an L1 loss
-- try a 1-layer (should be similar to regression), and then multilayer DNN
 
 ## verifications
     - check out the feature weightings w.r.t the stimulus features
       and the eeg features, plot them
+
+# algorithm refinement
+- try an L1 loss
+- try L1 loss instead of cor
+- cross validate regularization parameter
+- try a 1-layer (should be similar to regression), and then multilayer DNN

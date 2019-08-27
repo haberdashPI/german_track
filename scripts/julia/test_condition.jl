@@ -8,19 +8,21 @@ eeg_files = eeg_files[1:1]
 fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
     digits=-1))
 
-encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
-eegencode = JointEncoding(
-    RawEncoding(),
-    FilteredPower("alpha",5,15),
-    FilteredPower("gamma",30,100)
-)
+encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
+# encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
+
+# eegencode = JointEncoding(
+#     RawEncoding(),
+#     FilteredPower("alpha",5,15),
+#     FilteredPower("gamma",30,100)
+# )
 
 df = train_stimuli(StaticMethod(), SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
     train = "all" => all_indices,
-    skip_bad_trials = true,
-    encode_eeg = eegencode
+    skip_bad_trials = true
+    # encode_eeg = eegencode
 )
 alert()
 
@@ -45,7 +47,7 @@ ggplot(df,aes(x=source,y=corr,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"by_condition_with_gamma_alpha.pdf"),width=9,height=7)
+ggsave(file.path($dir,"condition_envelope_and_pitch_.pdf"),width=9,height=7)
 
 """
 
