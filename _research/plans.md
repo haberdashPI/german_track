@@ -35,6 +35,7 @@
 
 # algorithm refinement
 - try an L1 loss
-- try L1 loss instead of cor
+  - run on cluster
++ try L1 loss instead of cor
 - cross validate regularization parameter
 - try a 1-layer (should be similar to regression), and then multilayer DNN

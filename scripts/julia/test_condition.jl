@@ -18,7 +18,7 @@ encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 # )
 
 df = train_stimuli(
-    StaticMethod(NormL2(0.2)),
+    StaticMethod(NormL1(1e-6),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
@@ -37,9 +37,9 @@ library(dplyr)
 library(ggplot2)
 
 df = $df %>% group_by(sid,condition,source) %>%
-    mutate(trial = 1:length(corr))
+    mutate(trial = 1:length(value))
 
-ggplot(df,aes(x=source,y=corr,color=source)) +
+ggplot(df,aes(x=source,y=value,color=source)) +
     geom_point(position=position_jitter(width=0.1),
         alpha=0.5,size=0.8) +
     stat_summary(geom="pointrange",fun.data="mean_cl_boot",size=0.2,

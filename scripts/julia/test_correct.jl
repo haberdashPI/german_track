@@ -14,7 +14,7 @@ fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
 encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
 
 df = train_stimuli(
-    StaticMethod(),
+    StaticMethod(NormL2(0.2),norm1),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
@@ -35,11 +35,11 @@ library(dplyr)
 library(ggplot2)
 
 df = $df %>% group_by(sid,condition,source) %>%
-    mutate(trial = 1:length(corr))
+    mutate(trial = 1:length(value))
 
 df %>% group_by(sid) %>% summarize(accuracy = mean(test_correct))
 
-ggplot(df,aes(x=source,y=corr,color=test_correct)) +
+ggplot(df,aes(x=source,y=value,color=test_correct)) +
     geom_point(position=position_jitter(width=0.1),
         alpha=0.5,size=0.8) +
     stat_summary(geom="pointrange",fun.data="mean_cl_boot",size=0.2,

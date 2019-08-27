@@ -10,11 +10,6 @@ using DSP
 using ProximalAlgorithms
 using ProximalOperators
 
-# custom decoding method (others use StructuedOptimizations data types)
-struct L2Matrix
-    k::Float64
-end
-
 ################################################################################
 # testing and training
 
@@ -93,7 +88,7 @@ end
 scale(x) = mapslices(zscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
-function trial_decoder(l2::L2Matrix,stim,eeg::EEGData,i,lags;
+function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
     found_signals=nothing, kwds...)
 
     stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
@@ -101,7 +96,7 @@ function trial_decoder(l2::L2Matrix,stim,eeg::EEGData,i,lags;
     X = withlags(scale(response'),.-reverse(lags))
     Y = scale(stim)
 
-    k = l2.k
+    k = l2.lambda
     XX = X'X; XY = Y'X
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
@@ -117,7 +112,8 @@ function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
     X = withlags(scale(response'),.-reverse(lags))
     Y = view(scale(stim),:,:)
 
-    solver = ProximalAlgorithms.ForwardBackward(fast=true,verbose=true)
+    solver = ProximalAlgorithms.ForwardBackward(fast=true,verbose=true,
+        maxit=1000,tol=1e-4)
     _, A, Y, X = code_init(Val(false),Y,X)
     state = Objective(Y,X,A)
     update!(state,Y,X,0.0)
@@ -142,13 +138,14 @@ function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
         kwds...)
 end
 
-function single(x)
+function single(x::Array)
     @assert(length(x) == 1)
     first(x)
 end
+single(x::Number) = x
 
-function decode_test_cv_(method,::typeof(cor);prefix,eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,progress)
+function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_fn,
+    bounds=all_indices,sources,train_source_indices,progress,train_prefix)
 
     df = DataFrame()
 
@@ -162,7 +159,8 @@ function decode_test_cv_(method,::typeof(cor);prefix,eeg,model,lags,indices,stim
             stim_model = model[train_source_indices[source_index]]
             train_source = sources[train_source_indices[source_index]]
             subj_model_file =
-                joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,prefix,i))
+                joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,
+                    train_prefix,i))
             # subj_model = load(subj_model_file,"contents")
             subj_model = cachefn(subj_model_file,trial_decoder,
                 method,train_stim,eeg,i,lags, bounds = bounds[i],
@@ -183,7 +181,7 @@ function decode_test_cv_(method,::typeof(cor);prefix,eeg,model,lags,indices,stim
             # @show size(pred)
             # @show size(test_stim)
             # @show source
-            push!(df,(corr = single(cor(vec(pred),vec(test_stim))),
+            push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
                 source = source, index = j))
             next!(progress)
         end
