@@ -1,4 +1,4 @@
-export withlags, decode_test_cv, decoder
+export withlags, decode_test_cv, decoder, RegNorm
 
 using MetaArrays
 using Printf
@@ -7,6 +7,8 @@ using StatsBase
 using Statistics
 using CorticalSpectralTemporalResponses
 using DSP
+using ProximalAlgorithms
+using ProximalOperators
 
 # custom decoding method (others use StructuedOptimizations data types)
 struct L2Matrix
@@ -104,7 +106,23 @@ function trial_decoder(l2::L2Matrix,stim,eeg::EEGData,i,lags;
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
     result = XX\XY' # TODO: in Julia 1.2, this can probably be replaced by rdiv!
-    reshape(result,size(response,1),length(lags),size(Y,2))
+    reshape(result,size(response,1),length(lags),:)
+end
+
+function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
+    found_signals=nothing,kwds...)
+
+    stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
+
+    X = withlags(scale(response'),.-reverse(lags))
+    Y = view(scale(stim),:,:)
+
+    solver = ProximalAlgorithms.ForwardBackward(fast=true,verbose=true)
+    _, A, Y, X = code_init(Val(false),Y,X)
+    state = Objective(Y,X,A)
+    update!(state,Y,X,0.0)
+    solver(state.θ,f=state,g=reg)
+    reshape(state.θ,size(response,1),length(lags),:)
 end
 
 

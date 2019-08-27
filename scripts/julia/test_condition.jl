@@ -17,7 +17,9 @@ encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 #     FilteredPower("gamma",30,100)
 # )
 
-df = train_stimuli(StaticMethod(), SpeakerStimMethod(encoding=encoding),
+df = train_stimuli(
+    StaticMethod(NormL2(0.2)),
+    SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
     train = "all" => all_indices,

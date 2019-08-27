@@ -1,5 +1,6 @@
 export StaticMethod, SpeakerStimMethod, ChannelStimMethod, OnlineMethod,
     train_stimuli
+using LinearAlgebra
 
 # TODO: we can have the speaker specific elements of the loop separated as part
 # of a "TrainMethod" (we're going to have to come up with a name other than
@@ -68,10 +69,18 @@ struct StaticMethod{R,T} <: TrainMethod
     train::R
     test::T
 end
-StaticMethod() = StaticMethod(EEGCoding.L2Matrix(0.2),cor)
+StaticMethod(reg=EEGCoding.L2Matrix(0.2)) = StaticMethod(reg,cor)
 
 label(x::StaticMethod) = join(("static",label(x.train),label(x.test)),"_")
 label(x::EEGCoding.L2Matrix) = "l2-"*string(x.k)
+
+label(x::NormL2) = "l2-$(x.lambda)"
+label(x::NormL1) = "l1-$(x.labmda)"
+
+norm1(x) = norm(x,1)
+norm2(x) = norm(x,2)
+label(x::typeof(norm1)) = "norm1"
+label(x::typeof(norm2)) = "norm2"
 label(x::typeof(cor)) = "cor"
 
 function init_result(::StaticMethod)

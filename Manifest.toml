@@ -6,11 +6,23 @@ git-tree-sha1 = "380e36c66edfa099cd90116b24c1ce8cafccac40"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.4.1"
 
+[[AbstractOperators]]
+deps = ["AbstractFFTs", "DSP", "FFTW", "LinearAlgebra", "RecursiveArrayTools"]
+git-tree-sha1 = "ea4e4ad8d7def7e6e83e2336454d67d4cc5c421f"
+uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
+version = "0.2.2"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra"]
 git-tree-sha1 = "07a2c077bdd4b6d23a40342a8a108e2ee5e58ab6"
 uuid = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 version = "0.3.1"
+
+[[ArrayInterface]]
+deps = ["LinearAlgebra", "Requires", "SparseArrays"]
+git-tree-sha1 = "981354dab938901c2b607a213e62d9defa50b698"
+uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+version = "1.2.1"
 
 [[AxisAlgorithms]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
@@ -194,7 +206,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "0.7.0"
 
 [[EEGCoding]]
-deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
+deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -234,7 +246,7 @@ deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
 [[GermanTrack]]
-deps = ["BSON", "CSV", "DSP", "DataFrames", "Dates", "DependentBootstrap", "Distributed", "Distributions", "DrWatson", "EEGCoding", "FileIO", "JSON", "LambdaFn", "MATLAB", "Printf", "ProgressMeter", "Query", "RCall", "Reexport", "SampledSignals", "Statistics", "Tables", "Unitful", "VegaLite", "WAV"]
+deps = ["BSON", "CSV", "DSP", "DataFrames", "Dates", "DependentBootstrap", "Distributed", "Distributions", "DrWatson", "EEGCoding", "FileIO", "JSON", "LambdaFn", "MATLAB", "Printf", "ProgressMeter", "ProximalOperators", "Query", "RCall", "Reexport", "SampledSignals", "Statistics", "Tables", "Unitful", "VegaLite", "WAV"]
 path = "src/julia/GermanTrack"
 uuid = "2bc61200-6a9c-4319-aa6b-e00ff93368c1"
 version = "0.1.0"
@@ -566,6 +578,12 @@ git-tree-sha1 = "7bdce29bc9b2f5660a6e5e64d64d91ec941f6aa2"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 version = "0.7.0"
 
+[[RecursiveArrayTools]]
+deps = ["ArrayInterface", "RecipesBase", "Requires", "StaticArrays", "Statistics"]
+git-tree-sha1 = "ca98c030a187586521fb72d396e14482365ef77f"
+uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
+version = "1.0.2"
+
 [[Reexport]]
 deps = ["Pkg"]
 git-tree-sha1 = "7b1d07f411bc8ddb7977ec7f377b97b158514fe0"
@@ -652,6 +670,12 @@ deps = ["Compat", "DataFrames", "StatsBase", "Test"]
 git-tree-sha1 = "b5a735dcd2be05f0af86709750d4d5f62ca4a25d"
 uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
 version = "0.5.0"
+
+[[StructuredOptimization]]
+deps = ["AbstractOperators", "DSP", "FFTW", "LinearAlgebra", "ProximalAlgorithms", "ProximalOperators", "RecursiveArrayTools"]
+git-tree-sha1 = "749918dc80bd614641a56ae1560a4e536bc02409"
+uuid = "46cd3e9d-64ff-517d-a929-236bc1a1fc9d"
+version = "0.2.2"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]

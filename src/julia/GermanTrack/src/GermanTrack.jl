@@ -4,7 +4,7 @@ using Reexport, SampledSignals, Statistics, Tables, DrWatson, JSON
 
 @reexport using DataFrames, Printf, ProgressMeter, FileIO,
     MATLAB, EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,
-    Distributions, LambdaFn, RCall, VegaLite, CSV
+    Distributions, LambdaFn, RCall, VegaLite, CSV, ProximalOperators
 using BSON: @save, @load
 export CSV, JSON, @save, @load
 

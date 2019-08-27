@@ -6,6 +6,12 @@ git-tree-sha1 = "380e36c66edfa099cd90116b24c1ce8cafccac40"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.4.1"
 
+[[AbstractOperators]]
+deps = ["AbstractFFTs", "DSP", "FFTW", "LinearAlgebra", "RecursiveArrayTools"]
+git-tree-sha1 = "ea4e4ad8d7def7e6e83e2336454d67d4cc5c421f"
+uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
+version = "0.2.2"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra"]
 git-tree-sha1 = "07a2c077bdd4b6d23a40342a8a108e2ee5e58ab6"
@@ -89,9 +95,9 @@ version = "0.8.0"
 
 [[ColorVectorSpace]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "StatsBase"]
-git-tree-sha1 = "d626b542f9c3aa22b4f82fe3d36a0ff56fc58601"
+git-tree-sha1 = "459894c2b9f1ffab7e31792b689aeb5e25786d5c"
 uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
-version = "0.7.0"
+version = "0.7.1"
 
 [[Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Printf", "Reexport"]
@@ -194,7 +200,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "0.7.0"
 
 [[EEGCoding]]
-deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "Unitful"]
+deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
 path = "../EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -219,9 +225,9 @@ version = "0.8.0"
 
 [[FilePathsBase]]
 deps = ["Dates", "LinearAlgebra", "Printf", "Test", "UUIDs"]
-git-tree-sha1 = "fe0fbbcf56af2000b5ba85f63245a3ed48854b29"
+git-tree-sha1 = "2ee1d999c462425e2f848524f732ed51bc1ab63a"
 uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
-version = "0.6.0"
+version = "0.6.2"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -386,9 +392,9 @@ version = "1.0.2"
 
 [[MathOptInterface]]
 deps = ["BenchmarkTools", "LinearAlgebra", "OrderedCollections", "SparseArrays", "Test", "Unicode"]
-git-tree-sha1 = "2c964a0bbbdd09a270b21c3ed293061a38898eee"
+git-tree-sha1 = "5e6e36e2f01efbc62b3f8bf68c8cf82035e2c6a6"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "0.9.0"
+version = "0.9.1"
 
 [[MathProgBase]]
 deps = ["Compat"]
@@ -430,10 +436,10 @@ uuid = "2bd173c7-0d6d-553b-b6af-13a54713934c"
 version = "0.6.0"
 
 [[OSQP]]
-deps = ["BinDeps", "Compat", "Libdl", "MathOptInterface", "MathProgBase", "Random"]
-git-tree-sha1 = "d81ac1bbdc9c1b545d26a09f10346694ce5050a9"
+deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "MathOptInterface", "MathProgBase", "SparseArrays"]
+git-tree-sha1 = "c5535f89b1e510ef03d4bfb4b46313d2e10cc9f6"
 uuid = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
-version = "0.5.1"
+version = "0.5.3"
 
 [[OffsetArrays]]
 git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"
@@ -658,6 +664,12 @@ deps = ["CategoricalArrays", "DataStructures", "LinearAlgebra", "Missings", "Shi
 git-tree-sha1 = "589c4f3914796a673ef63a8fdd4cf9fec09fe321"
 uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
 version = "0.6.3"
+
+[[StructuredOptimization]]
+deps = ["AbstractOperators", "DSP", "FFTW", "LinearAlgebra", "ProximalAlgorithms", "ProximalOperators", "RecursiveArrayTools"]
+git-tree-sha1 = "749918dc80bd614641a56ae1560a4e536bc02409"
+uuid = "46cd3e9d-64ff-517d-a929-236bc1a1fc9d"
+version = "0.2.2"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
