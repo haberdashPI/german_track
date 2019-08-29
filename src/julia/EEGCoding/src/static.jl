@@ -18,14 +18,14 @@ function decoder(method;prefix,group_suffix="",indices,name="Training",
     kwds...)
 
     cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        decoder,method;prefix=prefix,indices=indices,name=name,progress=progress,
+        decoder_,method;prefix=prefix,indices=indices,name=name,progress=progress,
         sources=sources,
         __oncache__ = () ->
             progress_update!(progress,length(indices)*length(sources)),
         kwds...)
 end
 
-function decoder(method;prefix,eeg,lags,indices,stim_fn,name="Training",
+function decoder_(method;prefix,eeg,lags,indices,stim_fn,name="Training",
         sources,bounds=all_indices,progress,kwds...)
 
     sum_models = [Array{Float64}(undef,0,0,0) for i in 1:length(sources)]
@@ -91,6 +91,7 @@ adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
 function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
     found_signals=nothing, kwds...)
 
+    stim_ = stim
     stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
 
     X = withlags(scale(response'),.-reverse(lags))
@@ -101,7 +102,27 @@ function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
     result = XX\XY' # TODO: in Julia 1.2, this can probably be replaced by rdiv!
-    reshape(result,size(response,1),length(lags),:)
+    result = reshape(result,size(response,1),length(lags),:)
+
+    if any(isnan,result)
+        @show size(eegtrial(eeg,i))
+        @show size(stim_)
+        @show size(stim)
+        @show size(response)
+        @show size(result)
+        @show result[1:5]
+        @show sum(isnan,result)
+        @show kwds
+        @show response[1:5]
+        @show stim[1:5]
+        @show any(isnan,stim)
+        @show any(isnan,response)
+        @show mean(abs,stim)
+        @show maximum(abs,stim)
+        error("Found nans!")
+    end
+
+    result
 end
 
 function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
@@ -112,13 +133,16 @@ function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
     X = withlags(scale(response'),.-reverse(lags))
     Y = view(scale(stim),:,:)
 
+
     solver = ProximalAlgorithms.ForwardBackward(fast=true,adaptive=true,
         verbose=true, maxit=20000,tol=1e-3)
     _, A, Y, X = code_init(Val(false),Y,X)
     state = Objective(Y,X,A)
     update!(state,Y,X,0.0)
     solver(state.θ,f=state,g=reg)
-    reshape(state.θ,size(response,1),length(lags),:)
+    result = reshape(state.θ,size(response,1),length(lags),:)
+
+    result
 end
 
 
@@ -170,17 +194,12 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
             test_stim,response = find_signals(nothing,test_stim,eeg,i,
                 bounds=bounds[i])
 
-            # @show subj_model_file
-
             n = length(indices)
             r1, r2 = (n-1)/n, 1/n
 
             pred = decode(response,(r1.*stim_model .- r2.*subj_model),
                 lags)
 
-            # @show size(pred)
-            # @show size(test_stim)
-            # @show source
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
                 source = source, index = j))
             next!(progress)

@@ -195,7 +195,7 @@ function train_stimuli(method,stim_method,files,stim_info;
     maxlag=0.25,
     train = "" => all_indices,
     test = train,
-    resample = nothing,
+    resample = missing,
     encode_eeg = RawEncoding(),
     progress = true)
 
@@ -275,7 +275,7 @@ function train_stimuli(method,stim_method,files,stim_info;
                 bounds = train_bounds,
                 progress = progress,
                 stim_fn = load_source_fn(stim_method,stim_events,
-                    samplerate(eeg),stim_info)
+                    coalesce(resample,samplerate(eeg)),stim_info)
             )
 
             test_prefix = join([test_name,!skip_bad_trials ? "bad" : "",
@@ -295,7 +295,7 @@ function train_stimuli(method,stim_method,files,stim_info;
                 bounds = test_bounds,
                 progress = progress,
                 stim_fn = load_source_fn(stim_method,stim_events,
-                    samplerate(eeg),stim_info,test=true)
+                    coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )
         end
     end

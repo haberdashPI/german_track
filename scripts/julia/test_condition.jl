@@ -18,7 +18,7 @@ encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 # )
 
 df = train_stimuli(
-    StaticMethod(NormL1(1e-6),cor),
+    StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
@@ -49,7 +49,7 @@ ggplot(df,aes(x=source,y=value,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"condition_envelope_and_pitch_.pdf"),width=9,height=7)
+ggsave(file.path($dir,"condition_envelope_and_pitch_l2-0.2.pdf"),width=9,height=7)
 
 """
 

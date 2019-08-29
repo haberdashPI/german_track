@@ -12,6 +12,12 @@ git-tree-sha1 = "ea4e4ad8d7def7e6e83e2336454d67d4cc5c421f"
 uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
 version = "0.2.2"
 
+[[Adapt]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "82dab828020b872fa9efd3abec1152b075bc7cbf"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "1.0.0"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra"]
 git-tree-sha1 = "07a2c077bdd4b6d23a40342a8a108e2ee5e58ab6"
@@ -676,10 +682,10 @@ deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
 [[TSVD]]
-deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "714329116fe2765856c018791470dcc1549f49e4"
+deps = ["Adapt", "LinearAlgebra"]
+git-tree-sha1 = "4c6caaa3d6658009a22c8c8f1e9de9e2bd7eef25"
 uuid = "9449cd9e-2762-5aa3-a617-5413e99d722e"
-version = "0.3.0"
+version = "0.4.0"
 
 [[TableShowUtils]]
 deps = ["DataValues", "Dates", "JSON", "Markdown", "Test"]

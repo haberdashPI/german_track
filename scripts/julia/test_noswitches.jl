@@ -11,7 +11,7 @@ maxlag = 0.25
 fs = convert(Float64,stim_info["fs"])
 switch_times = convert(Array{Array{Float64}},
     stim_info["test_block_cfg"]["switch_times"])
-switch_bounds = remove_switches.(map(x -> x./fs,switch_times),10)
+switch_bounds = not_near.(map(x -> x./fs,switch_times),10)
 
 df = decode_speakers("",eeg_files,stim_info,
     train = "mcca65_noswitches" => row -> switch_bounds[row.sound_index],

@@ -2,7 +2,7 @@ export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
     RawEncoding, FilteredPower
 using DSP
 
-Base.@kwdef struct EEGData
+Base.@kwdef mutable struct EEGData
     label::Vector{String}
     fs::Int
     data::Vector{Matrix{Float64}}
@@ -25,7 +25,7 @@ function eegtrial(x::EEGData,i)
     x.data[i]
 end
 
-resample!(eeg::EEGData,::Nothing) = eeg
+resample!(eeg::EEGData,::Missing) = eeg
 function resample!(eeg::EEGData,sr)
     ratio = sr / samplerate(eeg)
     for i in eachindex(eeg.data)
@@ -41,6 +41,8 @@ function resample!(eeg::EEGData,sr)
             eeg.data[i][chan,:] = DSP.resample(old[chan,:],ratio)
         end
     end
+    eeg.fs = sr
+
     eeg
 end
 ################################################################################

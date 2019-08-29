@@ -1,6 +1,6 @@
 import EEGCoding: AllIndices
-export clear_cache!, plottrial, events_for_eeg, alert, only_switches,
-    remove_switches
+export clear_cache!, plottrial, events_for_eeg, alert, only_near,
+    not_near
 
 function mat2bson(file)
     file
@@ -69,35 +69,27 @@ function read_mcca_proj(filename)
     open(filename) do file
         # number of channels
         nchan = read(file,Int32)
-        # @show nchan
         # channels names
         channels = Vector{String}(undef,nchan)
         for i in 1:nchan
             len = read(file,Int32)
-            # @show len
             channels[i] = String(read(file,len))
         end
-        # @show channels
         # number of components
         ncomp = read(file,Int32)
-        # @show ncomp
         # components
         comp = Array{Float64}(undef,ncomp,nchan)
         read!(file,comp)
-        # @show size(comp)
         # number of trials
         ntrials = read(file,Int32)
-        # @show ntrials
         # sample rate
         fs = read(file,Int32)
-        # @show fs
         # projected trials
         trials = Vector{Array{Float64}}(undef,ntrials)
         for i in 1:ntrials
             # trial size
             row = read(file,Int32)
             col = read(file,Int32)
-            # @show (row,col)
             # trial
             trial = Array{Float64}(undef,row,col)
             read!(file,trial)
@@ -109,7 +101,7 @@ function read_mcca_proj(filename)
 end
 
 
-function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=nothing)
+function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
     if !isfile(file)
         error("File '$file' does not exist.")
     end
@@ -424,16 +416,18 @@ function folds(k,indices)
     end
 end
 
-function only_switches(switches,max_time;window=(-0.250,0.250))
-    result = Array{Tuple{Float64,Float64}}(undef,length(switches))
+only_near(time::Number,max_time;kwds...) =
+    only_near((time,),max_time;kwds...)[1]
+function only_near(times,max_time;window=(-0.250,0.250))
+    result = Array{Tuple{Float64,Float64}}(undef,length(times))
 
     i = 0
     stop = 0
-    for switch in switches
-        new_stop = min(switch+window[2],max_time)
-        if stop < switch+window[1]
+    for time in times
+        new_stop = min(time+window[2],max_time)
+        if stop < time+window[1]
             i = i+1
-            result[i] = (switch+window[1],new_stop)
+            result[i] = (time+window[1],new_stop)
         elseif i > 0
             result[i] = (result[i][1], new_stop)
         else
@@ -446,18 +440,17 @@ function only_switches(switches,max_time;window=(-0.250,0.250))
     view(result,1:i)
 end
 
-
-function remove_switches(switches,max_time;wait_time=0.5)
-    result = Array{Tuple{Float64,Float64}}(undef,length(switches)+1)
+function not_near(times,max_time;window=(0,0.5))
+    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
 
     start = 0
     i = 0
-    for switch in switches
-        if start < switch
+    for time in times
+        if start < time
             i = i+1
-            result[i] = (start,switch)
+            result[i] = (start,time+window[0])
         end
-        start = switch+wait_time
+        start = time+window[1]
     end
     if start < max_time
         i = i+1
