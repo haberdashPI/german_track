@@ -176,6 +176,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
 
     df = DataFrame()
 
+    # TODO: index by stimulus code rather than trail
     for (j,i) in enumerate(indices)
         for (source_index, source) in enumerate(sources)
             train_index = train_source_indices[source_index]
