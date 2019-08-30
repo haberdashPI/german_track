@@ -7,7 +7,7 @@ function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;
     stim_num = events.sound_index[stim_i]
     key = (:mix_minus,tofs,stim_num,nosource_i,encoding)
     if key ∈ keys(encodings)
-        encodings[key]
+        encodings[key], stim_num
     else
         fs = 0.0
         sources = map(setdiff(1:3,nosource_i)) do source_i
@@ -30,7 +30,7 @@ function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;
             events.target_time[stim_i] : nothing
         result = encode(Stimulus(mix,fs,nothing,target_time),tofs,encoding)
         encodings[key] = result
-        result
+        result, stim_num
     end
 end
 
@@ -38,7 +38,7 @@ function load_speaker_mix(events,tofs,stim_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
     key = (:mix,tofs,stim_num,encoding)
     if key ∈ keys(encodings)
-        encodings[key]
+        encodings[key], stim_num
     else
         x,fs = load(joinpath(stimulus_dir(),"mixtures","testing",
             @sprintf("trial_%02d.wav",stim_num)))
@@ -48,7 +48,7 @@ function load_speaker_mix(events,tofs,stim_i;encoding=RMSEncoding())
         target_time = events.target_time[stim_i]
         result = encode(Stimulus(x,fs,nothing,target_time),tofs,encoding)
         encodings[key] = result
-        result
+        result, stim_num
     end
 end
 
@@ -62,7 +62,7 @@ end
 function load_speaker_(tofs,stim_num,source_i,target_time,encoding)
     key = (:speaker,tofs,stim_num,source_i,encoding)
     if key ∈ keys(encodings)
-        encodings[key]
+        encodings[key], stim_num
     else
         file = joinpath(stimulus_dir(),"mixtures","testing","mixture_components",
             @sprintf("trial_%02d_%1d.wav",stim_num,source_i))
@@ -72,7 +72,7 @@ function load_speaker_(tofs,stim_num,source_i,target_time,encoding)
         end
         result = encode(Stimulus(x,fs,file,target_time),tofs,encoding)
         encodings[key] = result
-        result
+        result, stim_num
     end
 end
 
@@ -87,7 +87,9 @@ function load_other_speaker(events,tofs,info,stim_i,source_i;
 
     target_time = events.target_source[stim_i] == source_i ?
         events.target_time[stim_i] : nothing
-    load_speaker_(tofs,selected,source_i,target_time,encoding)
+    result, real_stim_num =
+        load_speaker_(tofs,selected,source_i,target_time,encoding)
+    result, stim_num
 end
 
 function load_channel(events,tofs,stim_i,source_i;encoding=:rms)

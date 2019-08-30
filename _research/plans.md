@@ -24,6 +24,7 @@
 
 ## new analysis config
 - do we compare across conditions (with same stimulus and subject)
+    - compare decoders across conditions (same stimulus)
     - does the target event get detected better across conditions?
     - in online decoding, does the increase look different?
 - do we compare across times (e.g. decoding better near target)

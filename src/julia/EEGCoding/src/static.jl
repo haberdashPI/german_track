@@ -35,9 +35,10 @@ function decoder_(method;prefix,eeg,lags,indices,stim_fn,name="Training",
         # slow repeated call to withlags) PROFILE first (I think most of the
         # time is spent computing the regression)
         for (source_index,source) in enumerate(sources)
-            stim = stim_fn(i,source_index)
+            stim, stim_id = stim_fn(i,source_index)
+            @assert stim isa Array
 
-            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,i),
+            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,stim_id),
                 trial_decoder,method,stim,eeg,i,lags;bounds=bounds[i],kwds...)
 
             if isempty(sum_models[source_index])
@@ -101,26 +102,8 @@ function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
     XX = X'X; XY = Y'X
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
-    result = XX\XY' # TODO: in Julia 1.2, this can probably be replaced by rdiv!
+    result = XX\XY'
     result = reshape(result,size(response,1),length(lags),:)
-
-    if any(isnan,result)
-        @show size(eegtrial(eeg,i))
-        @show size(stim_)
-        @show size(stim)
-        @show size(response)
-        @show size(result)
-        @show result[1:5]
-        @show sum(isnan,result)
-        @show kwds
-        @show response[1:5]
-        @show stim[1:5]
-        @show any(isnan,stim)
-        @show any(isnan,response)
-        @show mean(abs,stim)
-        @show maximum(abs,stim)
-        error("Found nans!")
-    end
 
     result
 end
@@ -176,11 +159,11 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
 
     df = DataFrame()
 
-    # TODO: index by stimulus code rather than trail
     for (j,i) in enumerate(indices)
         for (source_index, source) in enumerate(sources)
             train_index = train_source_indices[source_index]
-            train_stim = stim_fn(i,train_index)
+            train_stim, stim_id = stim_fn(i,train_index)
+            @assert train_stim isa Array
             train_stim,response = find_signals(nothing,train_stim,eeg,i,
                 bounds=bounds[i])
 
@@ -188,13 +171,14 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
             train_source = sources[train_source_indices[source_index]]
             subj_model_file =
                 joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,
-                    train_prefix,i))
+                    train_prefix,stim_id))
             # subj_model = load(subj_model_file,"contents")
             subj_model = cachefn(subj_model_file,trial_decoder,
                 method,train_stim,eeg,i,lags, bounds = bounds[i],
                 found_signals = (train_stim,response))
 
-            test_stim = stim_fn(i,source_index)
+            test_stim, _ = stim_fn(i,source_index)
+            @assert test_stim isa Array
             test_stim,response = find_signals(nothing,test_stim,eeg,i,
                 bounds=bounds[i])
 
