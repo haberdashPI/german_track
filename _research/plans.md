@@ -27,9 +27,8 @@
     - does the target event get detected better across conditions?
     - in online decoding, does the increase look different?
 - do we compare across times (e.g. decoding better near target)
-  - does decoding differ by target locus
+  + does decoding differ by target locus
   - does decoding differ near switches
-- static windows around locations of interest
 
 ## verifications
     - check out the feature weightings w.r.t the stimulus features

@@ -152,10 +152,13 @@ decode(response::Array,model,lags) =
 function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
     name="Training",sources,
     progress=Progress(length(indices)*length(sources),1,desc=name),
-    kwds...)
+    train_prefix,kwds...)
 
-    cachefn(@sprintf("%s_test%s",prefix,group_suffix),
-        decode_test_cv_,train_method,test_method;prefix=prefix,
+    @show prefix
+
+    cachefn(@sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix),
+        decode_test_cv_,train_method,test_method;train_prefix=train_prefix,
+        prefix=prefix,
         indices=indices,progress=progress,sources=sources,
         __oncache__ = () ->
             progress_update!(progress,length(indices)*length(sources)),

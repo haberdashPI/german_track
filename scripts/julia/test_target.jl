@@ -117,9 +117,48 @@ df2 = train_stimuli(
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files, stim_info,
-    train = "during_target" => row -> during_target[row.sound_index],
+    train = "during_correct_target" => row -> during_target[row.sound_index],
     test = "before_target" => row -> before_target[row.sound_index],
     skip_bad_trials = true,
 )
 df2[!,:test] .= "before_target"
+
+dfcorrect = vcat(df1,df2)
+categorical!(df,:test)
+
+R"""
+
+df = $dfcorrect
+
+ggplot(df,aes(x=test,y=value,color=source)) +
+    geom_point(position=position_jitter(width=0.1),
+        alpha=0.5,size=0.8) +
+    stat_summary(geom="pointrange",fun.data="mean_cl_boot",size=0.2,
+        position=position_nudge(x=0.3)) +
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    scale_color_brewer(palette='Set1') +
+    coord_cartesian(xlim=c(0.5,5.5)) +
+    facet_grid(condition~sid+source)
+
+dfcor = df %>%
+    group_by(sid,condition,trial,test_correct) %>%
+    spread(test,value)
+
+ggplot(dfcor,aes(x=before_target,y=during_target,color=source)) +
+    geom_point(alpha=0.5) +
+    geom_abline(slope=1,intercept=0,linetype=2) +
+    scale_color_brewer(palette='Set1') +
+    facet_grid(condition~sid+source)
+
+ggsave(file.path($dir,"before_after_correct_target.pdf"),width=9,height=7)
+
+ggplot(dfcor,aes(x=before_target,y=during_target,color=test_correct)) +
+    geom_point(alpha=0.5) +
+    geom_abline(slope=1,intercept=0,linetype=2) +
+    scale_color_brewer(palette='Set1') +
+    facet_grid(condition~sid+source)
+
+ggsave(file.path($dir,"before_after_correct_target_by_correct.pdf"),width=9,height=7)
+
+"""
 
