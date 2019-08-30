@@ -280,6 +280,7 @@ function train_stimuli(method,stim_method,files,stim_info;
 
             test_prefix = join([test_name,!skip_bad_trials ? "bad" : "",
                 test_label(method),label(stim_method),cond,sid_str],"_")
+            @show test_prefix
             GermanTrack.test(method;
                 sid = sid,
                 condition = cond,

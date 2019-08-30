@@ -100,7 +100,7 @@ function pitch_resample_helper(x,tofs,pitches)
     delta = pitches.time[2] - pitches.time[1]
     @assert all(x -> isapprox(delta,x),diff(pitches.time))
     if !isapprox(tofs*delta,1.0,atol=1e-4)
-        DSP.resample(x,tofs*delta)
+        DSP.resample(x,rationalize(tofs*delta))
     else
         x
     end
