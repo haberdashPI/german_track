@@ -13,14 +13,23 @@ fbounds = trunc.(Int,round.(exp.(range(log(90),log(3700),length=5))[2:end-1],
 
 encoding = JointEncoding(PitchSurpriseEncoding(),ASBins(fbounds))
 
+correct = [
+    string("correct",cond) =>
+        @λ(_row.condition == cond && _row.correct ? all_indices : no_indices)
+    for cond in ["feature","object","test"]
+]
+alltrials = [
+    string("all",cond) => @λ(_.condition == cond ? all_indices : no_indices)
+    for cond in ["feature","object","test"]
+]
+
 df = train_stimuli(
-    StaticMethod(NormL2(0.2),norm1),
+    StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
-    train = "correct" =>
-        row -> row.correct ? all_indices : no_indices,
-    test = "testcorrect" => all_indices,
+    train = correct,
+    test = alltrials,
     skip_bad_trials = true,
 )
 alert()
@@ -28,6 +37,7 @@ alert()
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
+df.condition = replace.(df.condition,Ref(r"traincorrect([[:alnum:]]+)_.*" => s"\1"))
 
 R"""
 

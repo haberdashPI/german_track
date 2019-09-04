@@ -17,16 +17,22 @@ encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 #     FilteredPower("gamma",30,100)
 # )
 
+conditions = [
+    string("all",cond) => @λ(_.condition == cond ? all_indices : no_indices)
+    for cond in ["feature","object","test"]
+]
+
 df = train_stimuli(
     StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
     eeg_files,stim_info,
-    train = "all" => all_indices,
+    train = conditions,
     skip_bad_trials = true
     # encode_eeg = eegencode
 )
 alert()
+df.condition = replace.(df.condition,Ref(r"trainall([[:alnum:]]+)_.*" => s"\1"))
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)

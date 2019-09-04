@@ -9,6 +9,9 @@ using CorticalSpectralTemporalResponses
 using DSP
 using ProximalAlgorithms
 using ProximalOperators
+using LambdaFn
+
+using Infiltrator
 
 ################################################################################
 # testing and training
@@ -17,7 +20,7 @@ function decoder(method;prefix,group_suffix="",indices,name="Training",
     sources,progress=Progress(length(indices)*length(sources),1,desc=name),
     kwds...)
 
-    cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
+    result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
         decoder_,method;prefix=prefix,indices=indices,name=name,progress=progress,
         sources=sources,
         __oncache__ = () ->
@@ -38,7 +41,8 @@ function decoder_(method;prefix,eeg,lags,indices,stim_fn,name="Training",
             stim, stim_id = stim_fn(i,source_index)
             @assert stim isa Array
 
-            model = cachefn(@sprintf("%s_%s_%02d",source,prefix,stim_id),
+            filename = @sprintf("%s_%s_%02d",source,prefix,stim_id)
+            model = cachefn(filename,
                 trial_decoder,method,stim,eeg,i,lags;bounds=bounds[i],kwds...)
 
             if isempty(sum_models[source_index])
@@ -86,7 +90,8 @@ end
 # TODO: we could probably make things even faster if we created the memory XX
 # and XY once.
 
-scale(x) = mapslices(zscore,x,dims=1)
+safezscore(x) = std(x) != 0 ? zscore(x) : x
+scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
 function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
@@ -187,6 +192,17 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
 
             pred = decode(response,(r1.*stim_model .- r2.*subj_model),
                 lags)
+
+            if any(isnan,pred)
+                @show source_index
+                @show train_source_indices[source_index]
+                @show response[1:5]
+                @show r1, r2
+                @show stim_model[1:5]
+                @show subj_model[1:5]
+                @show pred[1:5]
+                error("Nan predictions!")
+            end
 
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
                 source = source, index = j))

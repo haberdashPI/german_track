@@ -12,6 +12,12 @@ git-tree-sha1 = "ea4e4ad8d7def7e6e83e2336454d67d4cc5c421f"
 uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
 version = "0.2.2"
 
+[[Adapt]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "82dab828020b872fa9efd3abec1152b075bc7cbf"
+uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+version = "1.0.0"
+
 [[Arpack]]
 deps = ["BinaryProvider", "Libdl", "LinearAlgebra"]
 git-tree-sha1 = "07a2c077bdd4b6d23a40342a8a108e2ee5e58ab6"
@@ -101,9 +107,9 @@ version = "0.8.0"
 
 [[ColorVectorSpace]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "StatsBase"]
-git-tree-sha1 = "d626b542f9c3aa22b4f82fe3d36a0ff56fc58601"
+git-tree-sha1 = "459894c2b9f1ffab7e31792b689aeb5e25786d5c"
 uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
-version = "0.7.0"
+version = "0.7.1"
 
 [[Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Printf", "Reexport"]
@@ -154,9 +160,9 @@ version = "1.0.1"
 
 [[DataFrames]]
 deps = ["CategoricalArrays", "Compat", "DataAPI", "InvertedIndices", "IteratorInterfaceExtensions", "Missings", "PooledArrays", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "48ef38bd7cf0e8fd598bda981409eb6ef4b96cbd"
+git-tree-sha1 = "934b75a90b6cb315f9ea0df961768a02c1da1612"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "0.19.2"
+version = "0.19.3"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
@@ -201,12 +207,12 @@ version = "0.21.1"
 
 [[DrWatson]]
 deps = ["FileIO", "LibGit2", "Pkg", "Random", "Requires"]
-git-tree-sha1 = "02c96e221c5c3bf8e581f401ac75ec52d43f75e8"
+git-tree-sha1 = "64d27c3946d8d11abf051dd74c7d94a455b00663"
 uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
-version = "0.7.0"
+version = "1.0.1"
 
 [[EEGCoding]]
-deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
+deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "Infiltrator", "LambdaFn", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -231,9 +237,9 @@ version = "0.8.0"
 
 [[FilePathsBase]]
 deps = ["Dates", "LinearAlgebra", "Printf", "Test", "UUIDs"]
-git-tree-sha1 = "fe0fbbcf56af2000b5ba85f63245a3ed48854b29"
+git-tree-sha1 = "2ee1d999c462425e2f848524f732ed51bc1ab63a"
 uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
-version = "0.6.0"
+version = "0.6.2"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -286,6 +292,12 @@ deps = ["AxisAlgorithms", "ColorTypes", "ColorVectorSpace", "Colors", "Coordinat
 git-tree-sha1 = "4cf03fc72d8877d5e58c1c72d176340ad4e28fda"
 uuid = "02fcd773-0e25-5acc-982a-7f6622650795"
 version = "0.8.0"
+
+[[Infiltrator]]
+deps = ["REPL"]
+git-tree-sha1 = "59240cfcc800a7f4090aa2b8989549e9a59dd0a2"
+uuid = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
+version = "0.1.0"
 
 [[IniFile]]
 deps = ["Test"]
@@ -357,9 +369,9 @@ version = "0.1.1"
 
 [[LambdaFn]]
 deps = ["MacroTools", "Printf"]
-git-tree-sha1 = "169e16c36f4c9962817f7799c5eb52cb6cbd9fed"
+git-tree-sha1 = "2a7d3e0970218915b42fc68a4976049cbfcc8438"
 uuid = "fcefd6c4-8de0-11e9-0d15-03bc7c8ec982"
-version = "0.2.0"
+version = "0.3.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -404,9 +416,9 @@ version = "1.0.2"
 
 [[MathOptInterface]]
 deps = ["BenchmarkTools", "LinearAlgebra", "OrderedCollections", "SparseArrays", "Test", "Unicode"]
-git-tree-sha1 = "2c964a0bbbdd09a270b21c3ed293061a38898eee"
+git-tree-sha1 = "5e6e36e2f01efbc62b3f8bf68c8cf82035e2c6a6"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "0.9.0"
+version = "0.9.1"
 
 [[MathProgBase]]
 deps = ["Compat"]
@@ -448,10 +460,10 @@ uuid = "2bd173c7-0d6d-553b-b6af-13a54713934c"
 version = "0.6.0"
 
 [[OSQP]]
-deps = ["BinDeps", "Compat", "Libdl", "MathOptInterface", "MathProgBase", "Random"]
-git-tree-sha1 = "d81ac1bbdc9c1b545d26a09f10346694ce5050a9"
+deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "MathOptInterface", "MathProgBase", "SparseArrays"]
+git-tree-sha1 = "b44022a2a3f97a26cdcbf4ce37aeb7dc49c3d972"
 uuid = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
-version = "0.5.1"
+version = "0.6.0"
 
 [[OffsetArrays]]
 git-tree-sha1 = "1af2f79c7eaac3e019a0de41ef63335ff26a0a57"
@@ -478,9 +490,9 @@ version = "0.4.2"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "db2b35dedab3c0e46dc15996d170af07a5ab91c9"
+git-tree-sha1 = "ef0af6c8601db18c282d092ccbd2f01f3f0cd70b"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "0.3.6"
+version = "0.3.7"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -690,10 +702,10 @@ uuid = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
 version = "0.4.0"
 
 [[TSVD]]
-deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "714329116fe2765856c018791470dcc1549f49e4"
+deps = ["Adapt", "LinearAlgebra"]
+git-tree-sha1 = "4c6caaa3d6658009a22c8c8f1e9de9e2bd7eef25"
 uuid = "9449cd9e-2762-5aa3-a617-5413e99d722e"
-version = "0.3.0"
+version = "0.4.0"
 
 [[TableShowUtils]]
 deps = ["DataValues", "Dates", "JSON", "Markdown", "Test"]

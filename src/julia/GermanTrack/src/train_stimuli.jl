@@ -190,41 +190,34 @@ end
     end
 end =#
 
+function setup_indices(train_fn,test_fn,events)
+    test_bounds = test_fn.(eachrow(events))
+    train_bounds = train_fn.(eachrow(events))
+
+    test_indices = findall(.!isempty.(test_bounds))
+    train_indices = findall(.!isempty.(train_bounds))
+
+    test_bounds, test_indices, train_bounds, train_indices
+end
+
 function train_stimuli(method,stim_method,files,stim_info;
     skip_bad_trials = false,
     maxlag=0.25,
-    train = "" => all_indices,
+    train = ["" => all_indices],
     test = train,
     resample = missing,
     encode_eeg = RawEncoding(),
     progress = true)
 
-    train_name, train_fn = train
-    test_name, test_fn = test
-
     result = init_result(method)
-
-    function setup_indices(events,cond)
-        test_bounds = test_fn.(eachrow(events))
-        train_bounds = train_fn.(eachrow(events))
-
-        test_indices = findall((events.condition .== cond) .&
-            (.!isempty.(test_bounds)) .&
-            (.!skip_bad_trials .| .!events.bad_trial))
-        train_indices = findall((events.condition .== cond) .&
-            (.!isempty.(train_bounds)) .&
-            (.!skip_bad_trials .| .!events.bad_trial))
-
-        test_bounds, test_indices, train_bounds, train_indices
-    end
-
     train_sources, test_sources = sources(stim_method)
     n = 0
     for file in files
         events = events_for_eeg(file,stim_info)[1]
-        for cond in unique(events.condition)
+        for (traini,testi) in zip(train,test)
             test_bounds, test_indices,
-                train_bounds, train_indices = setup_indices(events,cond)
+                train_bounds, train_indices =
+                    setup_indices(traini[2],testi[2],events)
             n += length(train_indices)*length(train_sources)
             n += length(test_indices)*length(test_sources)
         end
@@ -249,9 +242,6 @@ function train_stimuli(method,stim_method,files,stim_info;
 
     maybe_parallel(n,progress,files) do file,progress
         global data_dir
-        # mapreduce(vcat,files) do file
-        # TODO: this relies on experiment specific details how to generify
-        # this (or should we just move this whole function back)?
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             samplerate=resample,encoding=encode_eeg)
         lags = 0:round(Int,maxlag*samplerate(eeg))
@@ -259,13 +249,14 @@ function train_stimuli(method,stim_method,files,stim_info;
 
         target_len = convert(Float64,stim_info["target_len"])
 
-        mapreduce(vcat,unique(stim_events.condition)) do cond
-            test_bounds, test_indices,
-            train_bounds, train_indices = setup_indices(stim_events,cond)
+        mapreduce(vcat,zip(train,test)) do (traini,testi)
+            test_bounds, test_indices, train_bounds, train_indices =
+                setup_indices(traini[2],testi[2],stim_events)
+            train_name = traini[1]
+            test_name = testi[1]
 
-            prefix = join([train_name,!skip_bad_trials ? "bad" : "",
-                label(method),label(stim_method), string(encode_eeg),
-                cond, sid_str],"_")
+            prefix = join([train_name, label(method), label(stim_method),
+                string(encode_eeg), sid_str],"_")
             model = GermanTrack.train(method,
                 sources = train_sources,
                 prefix = prefix,
@@ -277,13 +268,14 @@ function train_stimuli(method,stim_method,files,stim_info;
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info)
             )
+            @show model[1][1:5]
 
-            test_prefix = join([test_name,!skip_bad_trials ? "bad" : "",
-                test_label(method),label(stim_method),cond,sid_str],"_")
+            test_prefix = join([test_name,test_label(method),
+                label(stim_method),sid_str],"_")
             @show test_prefix
             GermanTrack.test(method;
                 sid = sid,
-                condition = cond,
+                condition = string("train",train_name,"_","test",test_name),
                 sources = test_sources,
                 train_source_indices = train_source_indices(stim_method),
                 correct = stim_events.correct[test_indices],
