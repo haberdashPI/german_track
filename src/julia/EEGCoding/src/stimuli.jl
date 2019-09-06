@@ -1,6 +1,6 @@
 using SampledSignals, CSV
 export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
-    PitchSurpriseEncoding, Stimulus
+    PitchSurpriseEncoding, Stimulus, DiffEncoding
 
 struct Stimulus
     data::SampleBuf
@@ -84,6 +84,15 @@ function encode(stim::Stimulus,tofs,method::JointEncoding)
     end
 
     result
+end
+
+struct DiffEncoding{T}
+    child::T
+end
+Base.string(diff::DiffEncoding) = string("diff_",string(dff.child))
+function encode(stim::Stimulus,tofs,method::DiffEncoding)
+    enc = encode(stim,tofs,method.child)
+    diff(enc,dims=1)
 end
 
 struct PitchEncoding <: StimEncoding

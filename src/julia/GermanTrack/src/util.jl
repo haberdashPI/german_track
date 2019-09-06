@@ -448,9 +448,9 @@ function not_near(times,max_time;window=(0,0.5))
     for time in times
         if start < time
             i = i+1
-            result[i] = (start,time+window[0])
+            result[i] = (start,time+window[1])
         end
-        start = time+window[1]
+        start = time+window[2]
     end
     if start < max_time
         i = i+1

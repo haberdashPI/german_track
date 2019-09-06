@@ -26,10 +26,8 @@
 - do we compare across conditions (with same stimulus and subject)
     - compare decoders across conditions (same stimulus)
     - does the target event get detected better across conditions?
-    - distinguish between male and female targets
-      - is the decoding better near the male target in the "object" condition
-      - 
-      - is the detection of female targets 
+    - distinguish decoding between male and female targets across object and test conditions
+      - try out the additional encodings (alpha & theta)
     - in online decoding, does the increase look different?
 - do we compare across times (e.g. decoding better near target)
   + does decoding differ by target locus

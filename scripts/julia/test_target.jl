@@ -101,3 +101,5 @@ ggplot(filter(dfcor,train_correct & source != "all-male"),
     facet_grid(sid~condition+source)
 
 ggsave(file.path($dir,"before_after_target_correct.pdf"),width=9,height=7)
+
+"""
