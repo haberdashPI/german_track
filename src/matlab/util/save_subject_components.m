@@ -33,7 +33,7 @@ function save_subject_components(subj,filename)
             % size of trial
             proj = permute(subj.projected{i},[2 1]);
             trial_size = size(proj);
-            fprintf('Trial size: %d %d\n',trial_size)
+            % fprintf('Trial size: %d %d\n',trial_size)
             fwrite(fid,trial_size,'int32');
             fwrite(fid,proj,'float64');
         end

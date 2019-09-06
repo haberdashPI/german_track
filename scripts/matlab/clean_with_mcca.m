@@ -55,7 +55,6 @@ C = x'*x; % covariance matrix
 [A,score,AA] = nt_mcca(C,n_chans);
 
 bar(score(1:300));
-% nkeep = sum(score > 4);
 nkeep = 34;
 
 % Project out all but first "nkeep" components

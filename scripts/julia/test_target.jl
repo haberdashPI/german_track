@@ -7,7 +7,7 @@ using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-eeg_files = eeg_files[1:1]
+# eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 
@@ -77,24 +77,27 @@ dfcor = $df %>%
     spread(test,value) %>%
     ungroup()
 
-ggplot(filter(dfcor,!test_correct),aes(x=before,y=during,color=source)) +
+ggplot(filter(dfcor,!test_correct & source != "all-male"),
+    aes(x=before,y=during,color=source)) +
     geom_point(alpha=0.5) +
     geom_abline(slope=1,intercept=0,linetype=2) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(condition~sid+source)
+    facet_grid(sid~condition+source)
 
 ggsave(file.path($dir,"before_after_target.pdf"),width=9,height=7)
 
-ggplot(filter(dfcor,!train_correct),aes(x=before,y=during,color=test_correct)) +
+ggplot(filter(dfcor,!train_correct & source != "all-male"),
+    aes(x=before,y=during,color=test_correct)) +
     geom_point(alpha=0.5) +
     geom_abline(slope=1,intercept=0,linetype=2) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(condition~sid+source)
+    facet_grid(sid~condition+source)
 
-ggplot(filter(dfcor,train_correct),aes(x=before,y=during,color=test_correct)) +
+ggplot(filter(dfcor,train_correct & source != "all-male"),
+    aes(x=before,y=during,color=test_correct)) +
     geom_point(alpha=0.5) +
     geom_abline(slope=1,intercept=0,linetype=2) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(condition~sid+source)
+    facet_grid(sid~condition+source)
 
-ggsave(file.path($dir,"before_after_target_correct_untrained.pdf"),width=9,height=7)
+ggsave(file.path($dir,"before_after_target_correct.pdf"),width=9,height=7)
