@@ -31,12 +31,14 @@ conds_during_correct_target = [
 ]
 conds_during_target = [
     string("during_",cond,"_","target") =>
-        @λ(_row.condition == cond ? during_target[_row.sound_index] : no_indices)
+        @λ(_row.condition == cond ?
+            during_target[_row.sound_index] : no_indices)
     for cond in ["feature","object","test"]
 ]
 conds_before_target = [
     string("before_",cond,"_","target") =>
-        @λ(_row.condition == cond ? before_target[_row.sound_index] : no_indices)
+        @λ(_row.condition == cond ?
+            before_target[_row.sound_index] : no_indices)
     for cond in ["feature","object","test"]
 ]
 
