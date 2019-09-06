@@ -273,7 +273,7 @@ function train_stimuli(method,stim_method,files,stim_info;
                 label(stim_method),sid_str],"_")
             GermanTrack.test(method;
                 sid = sid,
-                condition = string("train-",train_name,"_","test-",test_name),
+                condition = string("train-",train_name,"__","test-",test_name),
                 sources = test_sources,
                 train_source_indices = train_source_indices(stim_method),
                 correct = stim_events.correct[test_indices],
