@@ -268,14 +268,12 @@ function train_stimuli(method,stim_method,files,stim_info;
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info)
             )
-            @show model[1][1:5]
 
             test_prefix = join([test_name,test_label(method),
                 label(stim_method),sid_str],"_")
-            @show test_prefix
             GermanTrack.test(method;
                 sid = sid,
-                condition = string("train",train_name,"_","test",test_name),
+                condition = string("train-",train_name,"_","test-",test_name),
                 sources = test_sources,
                 train_source_indices = train_source_indices(stim_method),
                 correct = stim_events.correct[test_indices],

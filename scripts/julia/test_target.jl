@@ -45,8 +45,8 @@ df = train_stimuli(
 )
 alert()
 
-df[!,:test] = replace.(df.condition,Ref(r"train.*_target_test([a-z]+)_.*_target" => s"\1"))
-df.condition = replace.(df.condition,Ref(r"trainduring_([a-z]+)_target_test.*" => s"\1"))
+df[!,:test] = replace.(df.condition,Ref(r"^.*test-([a-z]+)_.*$" => s"\1"))
+df.condition = replace.(df.condition,Ref(r"^.*train-during_([a-z]+)_.*$" => s"\1"))
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -73,7 +73,7 @@ dfcor = df %>%
     group_by(sid,condition,trial,test_correct) %>%
     spread(test,value)
 
-ggplot(dfcor,aes(x=before_target,y=during_target,color=source)) +
+ggplot(dfcor,aes(x=before,y=during,color=source)) +
     geom_point(alpha=0.5) +
     geom_abline(slope=1,intercept=0,linetype=2) +
     scale_color_brewer(palette='Set1') +
@@ -81,7 +81,7 @@ ggplot(dfcor,aes(x=before_target,y=during_target,color=source)) +
 
 ggsave(file.path($dir,"before_after_target.pdf"),width=9,height=7)
 
-ggplot(dfcor,aes(x=before_target,y=during_target,color=test_correct)) +
+ggplot(dfcor,aes(x=before,y=during,color=test_correct)) +
     geom_point(alpha=0.5) +
     geom_abline(slope=1,intercept=0,linetype=2) +
     scale_color_brewer(palette='Set1') +

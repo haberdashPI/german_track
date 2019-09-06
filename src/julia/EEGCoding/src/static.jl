@@ -142,8 +142,6 @@ function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
     progress=Progress(length(indices)*length(sources),1,desc=name),
     train_prefix,kwds...)
 
-    @show prefix
-
     cachefn(@sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix),
         decode_test_cv_,train_method,test_method;train_prefix=train_prefix,
         prefix=prefix,
@@ -192,17 +190,6 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
 
             pred = decode(response,(r1.*stim_model .- r2.*subj_model),
                 lags)
-
-            if any(isnan,pred)
-                @show source_index
-                @show train_source_indices[source_index]
-                @show response[1:5]
-                @show r1, r2
-                @show stim_model[1:5]
-                @show subj_model[1:5]
-                @show pred[1:5]
-                error("Nan predictions!")
-            end
 
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
                 source = source, index = j))
