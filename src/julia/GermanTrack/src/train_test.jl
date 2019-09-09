@@ -145,7 +145,6 @@ function setup_indices(train_fn,test_fn,events)
 end
 
 function train_test(method,stim_method,files,stim_info;
-    skip_bad_trials = false,
     maxlag=0.25,
     train = ["" => all_indices],
     test = train,
