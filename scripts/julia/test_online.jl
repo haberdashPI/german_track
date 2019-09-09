@@ -76,7 +76,7 @@ end
 method = OnlineMethod(window=250ms,lag=250ms,estimation_length=1.5s,γ=2e-3)
 speakers = SpeakerStimMethod(encoding=ASEnvelope)
 
-data = train_stimuli(method,speakers,eeg_files,stim_info,
+data = train_test(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
     # progress=progress,
     test = "all_object" => row -> row.condition == "object" ?
@@ -253,7 +253,7 @@ plot(dfat_mean,x=:test_correct,y=:mean,ymin=:lower,ymax=:upper,
 online = OnlineMethod(window=250ms,lag=250ms,estimation_length=10s,γ=2e-3)
 channels = ChannelStimMethod(encoding=:rms)
 
-data = train_stimuli(online,channels,eeg_files,stim_info,
+data = train_test(online,channels,eeg_files,stim_info,
     train = "none" => no_indices,
     test = "all_feature" => row -> row.condition == "feature" ?
         all_indices : no_indices,
@@ -323,7 +323,7 @@ end
 #   - audiospect envelope
 # THEN: run first switch for all participants
 
-data = train_stimuli(method,speakers,eeg_files,stim_info,
+data = train_test(method,speakers,eeg_files,stim_info,
     train = "none" => no_indices,
     test = "all_object" => row -> row.condition == "object" ?
         all_indices : no_indices,

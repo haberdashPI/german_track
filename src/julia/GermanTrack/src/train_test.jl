@@ -1,4 +1,4 @@
-export StaticMethod, OnlineMethod, train_stimuli, norm1, norm2
+export StaticMethod, OnlineMethod, train_test, norm1, norm2
 using LinearAlgebra
 
 # TODO: we can have the speaker specific elements of the loop separated as part
@@ -144,7 +144,7 @@ function setup_indices(train_fn,test_fn,events)
     test_bounds, test_indices, train_bounds, train_indices
 end
 
-function train_stimuli(method,stim_method,files,stim_info;
+function train_test(method,stim_method,files,stim_info;
     skip_bad_trials = false,
     maxlag=0.25,
     train = ["" => all_indices],

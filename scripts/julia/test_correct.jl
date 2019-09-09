@@ -23,7 +23,7 @@ alltrials = [
     for cond in ["feature","object","test"]
 ]
 
-df = train_stimuli(
+df = train_test(
     StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
