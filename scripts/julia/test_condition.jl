@@ -28,7 +28,6 @@ df = train_test(
     resample = 64,
     eeg_files,stim_info,
     train = conditions,
-    skip_bad_trials = true
     # encode_eeg = eegencode
 )
 alert()
@@ -57,7 +56,7 @@ ggplot(df,aes(x=source,y=value,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"condition_envelope_and_pitch_l2-0.2.pdf"),width=9,height=7)
+ggsave(file.path($dir,"condition_test.pdf"),width=9,height=7)
 
 """
 
