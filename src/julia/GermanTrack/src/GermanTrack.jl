@@ -11,7 +11,7 @@ export CSV, JSON, @save, @load
 
 include("util.jl")
 include("stimuli.jl")
-include("train_stimuli.jl")
+include("train_test.jl")
 
 export data_dir, raw_data_dir, stimulus_dir, raw_stim_dir
 
