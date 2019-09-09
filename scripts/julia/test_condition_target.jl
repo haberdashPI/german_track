@@ -1,5 +1,7 @@
 using DrWatson; quickactivate(@__DIR__,"german_track")
 using GermanTrack
+using AxisArrays
+using PlotAxes
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
@@ -107,15 +109,23 @@ df, decoders = train_test(
     ]
 )
 alert()
-df[!,:condition_str] = df.condition
 
 pattern = r"^.*test-([a-z]+)_([a-z]+)_([a-z]+).*$"
-df[!,:test] = replace.(df.condition_str,
-    Ref(pattern => s"\3"))
-df[!,:target_source] = replace.(df.condition_str,
-    Ref(pattern => s"\1"))
-df.condition = replace.(df.condition_str,
-    Ref(pattern => s"\2"))
+function addconds!(df)
+    if :condition_str ∉ names(df)
+        df[!,:condition_str] = df.condition
+    end
+    df[!,:test] = replace.(df.condition_str,
+        Ref(pattern => s"\3"))
+    df[!,:target_source] = replace.(df.condition_str,
+        Ref(pattern => s"\1"))
+    df.condition = replace.(df.condition_str,
+        Ref(pattern => s"\2"))
+    df
+end
+
+df = addconds!(df)
+decoders = addconds!(decoders)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -156,4 +166,57 @@ ggsave(file.path($dir,"fem_v_male_near_target_diff.pdf"),width=11,height=6)
 
 # TODO: plot the coefficients (just show the matrix of values for now)
 # worry about interpreting as points on the scalp later on
-# plotaxes()
+
+# TODO: generalize this code and make it par tof `train_test`
+quant = (100,100,10)
+# quant = (10,10,10)
+all_coefs = mapreduce(vcat,eachrow(decoders)) do row
+    if size(row.coefs,3) == 2
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([:envelop,:pitch])
+        ), quantize = quant)
+    elseif size(row.coefs,3) == 1
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([:envelop])
+        ), quantize = quant)
+    else
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([
+                Symbol(string(feature,source))
+                for feature = [:envelop,:pitch],
+                    source = [:male,:fem1,:fem2]
+            ])
+        ), quantize = quant)
+    end
+    for col in setdiff(names(row),[:coefs])
+        coefs[!,col] .= row[col]
+    end
+    coefs
+end
+
+R"""
+
+ggplot(filter($all_coefs,source != 'male-fem1-fem2'),
+    aes(y=component,x=lag,fill=value)) + geom_raster() +
+    facet_grid(test+feature~condition+source) +
+    scale_fill_distiller(palette='RdBu')
+
+ggsave(file.path($dir,"coefs_fem_v_male_near_target.pdf"),width=11,height=8)
+
+ggplot(filter($all_coefs,source == 'male-fem1-fem2'),
+    aes(y=component,x=lag,fill=value)) + geom_raster() +
+    facet_grid(feature~condition+test) +
+    scale_fill_distiller(palette='RdBu')
+
+ggsave(file.path($dir,"coefs_fem_v_male_near_target_join_sources.pdf"),width=11,height=8)
+
+"""
