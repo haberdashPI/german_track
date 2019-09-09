@@ -32,6 +32,8 @@ df = train_stimuli(
     # encode_eeg = eegencode
 )
 alert()
+
+df[!,:condition_str] =  df.condition
 df.condition = replace.(df.condition,Ref(r"trainall([[:alnum:]]+)_.*" => s"\1"))
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
