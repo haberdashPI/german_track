@@ -6,22 +6,6 @@
 
 + analyze behavioral data
 
-## new features
-- filter eeg data using 
-  - let's start with something simple: include these features of the sound
-    + N-bank logarithmic filtering of the sound (N = 3-4)
-    + pitch derivative
-    + verify that the pitch outputs from CEDAR are reasonable
-    + test pitch in analysis (seems to work better, maybe step above not needed, worth looking at though)
-
-  + TODO: reorganize analysis files into a local package
-  + include these features of the EEG
-    + eeg channels
-    + alpha band amplitudes and phases (5-15Hz) in log-frequency bands?
-    + gamma band amplitudes and phases (30-100Hz) in log-frequency bands?
-    + test alpha in analysis
-    + test gamma in analysis
-
 ## new analysis config
 - do we compare across conditions (with same stimulus and subject)
     - compare decoders across conditions (same stimulus)
@@ -32,6 +16,32 @@
 - do we compare across times (e.g. decoding better near target)
   + does decoding differ by target locus
   - does decoding differ near switches
+
+
+  questions:
+
+  what actual features are being used in the decoders?
+    - across 
+
+  measure: advantage of decoding at target vs. non-target
+  is this advantage greater for male vs. female in the object condition
+  is this advantage similar for male vs. female in the test condition
+
+  measure: decoding of target
+  is decoding of the male target target better for the object vs.
+  test condition?
+
+  do we see a shift across large time slices in the winning
+  trained decoder (male, fem1, fem2) that is more pronounced for
+  the test vs. object condition
+
+  wait... how does the correct response work into this?
+  look at the behavior data, and rethink this issue
+
+  it's important to note that the rate of true positives is quite
+  similar across the conditions: what differs is the number of 
+  *false* positives. This suggests that most of the differences in
+  the EEG response might be found during the catch trials.
 
 ## verifications
     - check out the feature weightings w.r.t the stimulus features
