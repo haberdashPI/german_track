@@ -145,8 +145,11 @@ ggplot(df,
     aes(x=condition,y=target-nontarget,color=target_source)) +
     geom_point(alpha=0.5,position=
         position_jitterdodge(dodge.width=0.2,jitter.width=0.1)) +
-    stat_summary(fun.data='mean_cl_boot',position=position_nudge(x=0.3)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(~source)
+
+ggsave(file.path($dir,"fem_v_male_near_target_diff.pdf"),width=11,height=6)
 
 """

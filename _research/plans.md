@@ -41,7 +41,11 @@
   it's important to note that the rate of true positives is quite
   similar across the conditions: what differs is the number of 
   *false* positives. This suggests that most of the differences in
-  the EEG response might be found during the catch trials.
+  the EEG response might be found during trials without a target
+  (maybe something about what a correct and incorrect trial looks like,
+    maybe some resembles between truely correct and falsely correct trials)
+
+  does accuracy differ for male and female targets?
 
 ## verifications
     - check out the feature weightings w.r.t the stimulus features
