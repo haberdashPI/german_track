@@ -166,8 +166,6 @@ function train_test(method,stim_method,files,stim_info;
         end
     end
 
-    # @info "HELLO!"
-
     function maybe_parallel(fn,n,progress,files)
         if nprocs() > 1
             @info "Running on multiple child processes"
@@ -184,7 +182,6 @@ function train_test(method,stim_method,files,stim_info;
     end
 
     maybe_parallel(n,progress,files) do file,progress
-        global data_dir
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             samplerate=resample,encoding=encode_eeg)
         lags = 0:round(Int,maxlag*samplerate(eeg))
@@ -214,7 +211,7 @@ function train_test(method,stim_method,files,stim_info;
 
             test_prefix = join([test_name,test_label(method),
                 label(stim_method),sid_str],"_")
-            GermanTrack.test(method;
+            results = GermanTrack.test(method;
                 sid = sid,
                 condition = string("train-",train_name,"__","test-",test_name),
                 sources = test_sources,
@@ -231,6 +228,8 @@ function train_test(method,stim_method,files,stim_info;
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )
+
+            results, model
         end
     end
 end

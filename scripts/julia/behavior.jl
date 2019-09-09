@@ -25,8 +25,8 @@ dfsum = df |>
           dp = dprime(_.target_present .& _.correct,
                       .!_.target_present .& .!_.correct),
           mean = mean(_.correct),
-          truepos = meanb(_.target_present .& _.correct),
-          falsepos = meanb(.!_.target_present .& .!_.correct)}) |>
+          truepos = mean(_.target_present .& _.correct),
+          falsepos = mean(.!_.target_present .& .!_.correct)}) |>
     DataFrame
 
 condition = dfsum |>
@@ -43,11 +43,13 @@ condition_byfalse = dfsum |>
     @vlplot(
         mark={:point,filled=true}, column=:condition,
         x=:falsepos, y=:truepos)
+save(joinpath(dir,"behavior_summary_byfalse.pdf"),condition_byfalse)
 
 condition_byfalse = dfsum |>
     @vlplot(
         mark={:point,filled=true}, column=:condition,
         x=:falsepos, y=:dp)
+
 
 dftiming = df |>
     @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>

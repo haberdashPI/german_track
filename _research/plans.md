@@ -43,7 +43,7 @@
   *false* positives. This suggests that most of the differences in
   the EEG response might be found during trials without a target
   (maybe something about what a correct and incorrect trial looks like,
-    maybe some resembles between truely correct and falsely correct trials)
+    maybe some resembles between truly correct and falsely correct trials)
 
   does accuracy differ for male and female targets?
 

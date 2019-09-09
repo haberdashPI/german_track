@@ -76,7 +76,7 @@ female_object_nontarget = "female_object_nontarget" =>
         non_target[_row.sound_index] : no_indices)
 
 
-df = train_test(
+df, decoders = train_test(
     StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
@@ -129,7 +129,7 @@ library(ggplot2)
 df = $df %>%
     select(-condition_str) %>%
     filter(source != "all-male") %>%
-    group_by(source,index,sid,condition,trial,target,test_correct) %>%
+    group_by(source,index,sid,condition,target,test_correct) %>%
     spread(test,value)
 
 ggplot(df,
