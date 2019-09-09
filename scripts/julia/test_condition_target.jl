@@ -153,3 +153,7 @@ ggplot(df,
 ggsave(file.path($dir,"fem_v_male_near_target_diff.pdf"),width=11,height=6)
 
 """
+
+# TODO: plot the coefficients (just show the matrix of values for now)
+# worry about interpreting as points on the scalp later on
+# plotaxes()

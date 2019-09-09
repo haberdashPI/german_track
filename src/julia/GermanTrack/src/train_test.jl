@@ -166,18 +166,19 @@ function train_test(method,stim_method,files,stim_info;
         end
     end
 
+    vcatdot(x,y) = vcat.(x,y)
     function maybe_parallel(fn,n,progress,files)
         if nprocs() > 1
             @info "Running on multiple child processes"
             parallel_progress(n,progress) do progress
-                @distributed (vcat) for file in files
+                @distributed (vcatdot) for file in files
                     fn(file,progress)
                 end
             end
         else
             @info "Running all file analyses in a single process."
             prog = (progress isa Bool && progress) ? Progress(n) : prog
-            mapreduce(file -> fn(file,prog),vcat,files)
+            mapreduce(file -> fn(file,prog),vcatdot,files)
         end
     end
 
@@ -189,7 +190,7 @@ function train_test(method,stim_method,files,stim_info;
 
         target_len = convert(Float64,stim_info["target_len"])
 
-        mapreduce(vcat,zip(train,test)) do (traini,testi)
+        mapreduce(vcatdot,zip(train,test)) do (traini,testi)
             test_bounds, test_indices, train_bounds, train_indices =
                 setup_indices(traini[2],testi[2],stim_events)
             train_name = traini[1]
@@ -211,9 +212,10 @@ function train_test(method,stim_method,files,stim_info;
 
             test_prefix = join([test_name,test_label(method),
                 label(stim_method),sid_str],"_")
+            cond = string("train-",train_name,"__","test-",test_name)
             results = GermanTrack.test(method;
                 sid = sid,
-                condition = string("train-",train_name,"__","test-",test_name),
+                condition = cond,
                 sources = test_sources,
                 train_source_indices = train_source_indices(stim_method),
                 correct = stim_events.correct[test_indices],
@@ -229,7 +231,11 @@ function train_test(method,stim_method,files,stim_info;
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )
 
-            results, model
+            results, vcat(
+                (DataFrame(coefs = [model[i]], sid = sid, condition = cond,
+                    source = train_sources[i])
+                    for i in eachindex(sources(stim_method)[1]))...
+            )
         end
     end
 end
