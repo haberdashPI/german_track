@@ -14,8 +14,8 @@ end
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-meanb(x,n=5) = (sum(x)+(n/2))/(length(x)+n)
-function dprime(hits,falarm,n=5)
+meanb(x,n=1) = (sum(x)+(n/2))/(length(x)+n)
+function dprime(hits,falarm,n=1)
     quantile(Normal(),meanb(hits,n)) - quantile(Normal(),meanb(falarm,n))
 end
 
@@ -26,7 +26,9 @@ dfsum = df |>
                       .!_.target_present .& .!_.correct),
           mean = mean(_.correct),
           truepos = mean(_.target_present .& _.correct),
-          falsepos = mean(.!_.target_present .& .!_.correct)}) |>
+          trueneg = mean(.!_.target_present .& _.correct),
+          falsepos = mean(.!_.target_present .& .!_.correct),
+          falseneg = mean(_.target_present .& .!_.correct)}) |>
     DataFrame
 
 condition = dfsum |>
@@ -44,12 +46,15 @@ condition_byfalse = dfsum |>
         mark={:point,filled=true}, column=:condition,
         x=:falsepos, y=:truepos)
 save(joinpath(dir,"behavior_summary_byfalse.pdf"),condition_byfalse)
+# NOTE: thats not really what I want:
+# the question is more, how often are we correct with
+# hits, and how often are we correct with negatives
 
-condition_byfalse = dfsum |>
+condition_bytrues = dfsum |>
     @vlplot(
         mark={:point,filled=true}, column=:condition,
-        x=:falsepos, y=:dp)
-
+        x=:truepos, y=:trueneg)
+save(joinpath(dir,"behavior_summary_splitcor.pdf"),condition_bytrues)
 
 dftiming = df |>
     @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>
