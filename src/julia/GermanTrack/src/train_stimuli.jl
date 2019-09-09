@@ -1,69 +1,10 @@
-export StaticMethod, SpeakerStimMethod, ChannelStimMethod, OnlineMethod,
-    train_stimuli, norm1, norm2
+export StaticMethod, OnlineMethod, train_stimuli, norm1, norm2
 using LinearAlgebra
 
 # TODO: we can have the speaker specific elements of the loop separated as part
 # of a "TrainMethod" (we're going to have to come up with a name other than
 # method, since this component is orthogonal to the static vs. online piece
 # maybe TrainStimulus?
-
-abstract type StimMethod
-end
-
-Base.@kwdef struct SpeakerStimMethod <: StimMethod
-    encoding::EEGCoding.Encoding
-end
-label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
-sources(::SpeakerStimMethod) =
-    ["male", "fem1", "fem2", "all-male", "male-fem1-fem2"],
-        ["male", "fem1", "fem2", "all-male", "male-fem1-fem2", "male_other"]
-train_source_indices(::SpeakerStimMethod) = (1,2,3,4,5,1)
-function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
-    test=false)
-
-    function(i,j)
-        if 0 < j <= 3
-            load_speaker(stim_events,fs,i,j,
-                encoding=method.encoding)
-        elseif j == 4
-            load_speaker_mix_minus(stim_events,fs,i,1,
-                encoding=method.encoding)
-        elseif j == 5
-            load_separated_speakers(stim_events,fs,i,
-                encoding=method.encoding)
-        elseif j == 6
-            if !test
-                load_speaker(stim_events,fs,i,1,
-                    encoding=method.encoding)
-            else
-                load_other_speaker(stim_events,fs,stim_info,i,1,
-                    encoding=method.encoding)
-            end
-        else
-            error("Did not expect j == $j.")
-        end
-    end
-end
-
-Base.@kwdef struct ChannelStimMethod <: StimMethod
-    encoding::Symbol
-end
-label(x::ChannelStimMethod) = "channels_"*string(x.encoding)
-sources(::ChannelStimMethod) =
-    ["left", "right"], ["left", "right", "left_other"]
-train_source_indices(::ChannelStimMethod) = (1,2,1)
-function load_source_fn(method::ChannelStimMethod,stim_events,fs,stim_info)
-    function(i,j)
-        if j <= 2
-            load_channel(stim_events,fs,i,j,
-                encoding=method.encoding)
-        else
-            load_other_channel(stim_events,fs,stim_info,i,1,
-                encoding=method.encoding)
-        end
-    end
-end
-
 
 abstract type TrainMethod
 end
