@@ -41,20 +41,22 @@ condition = dfsum |>
 
 save(joinpath(dir,"behavior_summary.pdf"),condition)
 
-condition_byfalse = dfsum |>
-    @vlplot(
-        mark={:point,filled=true}, column=:condition,
-        x=:falsepos, y=:truepos)
-save(joinpath(dir,"behavior_summary_byfalse.pdf"),condition_byfalse)
-# NOTE: thats not really what I want:
-# the question is more, how often are we correct with
-# hits, and how often are we correct with negatives
-
 condition_bytrues = dfsum |>
     @vlplot(
         mark={:point,filled=true}, column=:condition,
-        x=:truepos, y=:trueneg)
+        x=:falsepos, y=:truepos)
 save(joinpath(dir,"behavior_summary_splitcor.pdf"),condition_bytrues)
+
+condition_bytrues_sid = dfsum |>
+    @vlplot(
+        mark={:text}, column=:condition,
+        text=:sid,
+        x=:falsepos, y=:truepos)
+
+condition_byfalse = dfsum |>
+    @vlplot(
+        mark={:point,filled=true}, column=:condition,
+        x=:falsepos, y=:dp)
 
 dftiming = df |>
     @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>
