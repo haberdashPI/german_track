@@ -21,7 +21,6 @@
   questions:
 
   what actual features are being used in the decoders?
-    - across 
 
   measure: advantage of decoding at target vs. non-target
   is this advantage greater for male vs. female in the object condition
@@ -31,9 +30,10 @@
   is decoding of the male target target better for the object vs.
   test condition?
 
-  do we see a shift across large time slices in the winning
-  trained decoder (male, fem1, fem2) that is more pronounced for
-  the test vs. object condition
+  does the "test" condition vary in the focus of the source?
+    - to ask this: do we see a shift across large time slices in the winning
+    trained decoder (male, fem1, fem2) that is more pronounced for
+    the test vs. object condition
 
   wait... how does the correct response work into this?
   look at the behavior data, and rethink this issue
@@ -45,10 +45,10 @@
   (maybe something about what a correct and incorrect trial looks like,
     maybe some resembles between truly correct and falsely correct trials)
 
-  does accuracy differ for male and female targets?
+  - does accuracy differ for male and female targets?
 
 ## verifications
-    - check out the feature weightings w.r.t the stimulus features
+    + check out the feature weightings w.r.t the stimulus features
       and the eeg features, plot them
 
 # algorithm refinement

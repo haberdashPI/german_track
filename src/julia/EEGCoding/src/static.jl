@@ -180,7 +180,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
                 method,train_stim,eeg,i,lags, bounds = bounds[i],
                 found_signals = (train_stim,response))
 
-            test_stim, _ = stim_fn(i,source_index)
+            test_stim, stim_id = stim_fn(i,source_index)
             @assert test_stim isa Array
             test_stim,response = find_signals(nothing,test_stim,eeg,i,
                 bounds=bounds[i])
@@ -192,7 +192,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
                 lags)
 
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
-                source = source, index = j))
+                source = source, index = j, stim_id = stim_id))
             next!(progress)
         end
     end
