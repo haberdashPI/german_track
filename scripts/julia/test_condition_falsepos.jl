@@ -122,3 +122,58 @@ ggplot(df,
     scale_color_brewer(palette='Paired',name='resp, target source')
 
 ggsave(file.path($dir,"catch_trial_prediction.pdf"),width=6,height=9)
+
+"""
+
+# TODO: generalize this code and make it par tof `train_test`
+quant = (100,100,10)
+# quant = (10,10,10)
+all_coefs = mapreduce(vcat,eachrow(decoders)) do row
+    if size(row.coefs,3) == 2
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([:envelop,:pitch])
+        ), quantize = quant)
+    elseif size(row.coefs,3) == 1
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([:envelop])
+        ), quantize = quant)
+    else
+        coefs, = PlotAxes.asplotable(AxisArray(
+            row.coefs,
+            Axis{:component}(Base.axes(row.coefs,1)),
+            Axis{:lag}(Base.axes(row.coefs,2)),
+            Axis{:feature}([
+                Symbol(string(feature,source))
+                for feature = [:envelop,:pitch],
+                    source = [:male,:fem1,:fem2]
+            ])
+        ), quantize = quant)
+    end
+    for col in setdiff(names(row),[:coefs])
+        coefs[!,col] .= row[col]
+    end
+    coefs
+end
+
+R"""
+
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
+ggplot(filter($all_coefs,source == 'male-fem1-fem2'),
+    aes(y=component,x=lag,fill=value)) + geom_raster() +
+    facet_grid(feature~condition+source) +
+    scale_fill_distiller(palette='RdBu')
+
+ggsave(file.path($dir,"catch_trial_prediction_features.pdf"),width=5,height=9)
+
+"""
+
+ggsave(file.path($dir,"coefs_fem_v_male_near_target.pdf"),width=11,height=8)
