@@ -1,17 +1,4 @@
 
-# premise: can we find the false positives on the basis
-# of a decoder trained on the correctly identified targets
-
-# not quite...
-
-# how do we handle that there were looking for any differences across
-# conditions?? the problem is there will naturally be fewer cases to test in
-# the object condition, factoring out the differences
-
-# so: 1.) we should be able to predict the actual correct/incorrect
-# responses for the catch trials in both conditions
-# if so, there is something different in the response
-# this means we should look at the coefficients in this case
 
 using DrWatson; quickactivate(@__DIR__,"german_track")
 using GermanTrack
@@ -24,33 +11,20 @@ eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
 
-test_truepos = "test_truepos" =>
-    @λ(_row.condition == "test" && _row.correct && _row.target_present ?
+test_trueneg = "test_trueneg" =>
+    @λ(_row.condition == "test" && _row.correct && .!_row.target_present ?
         all_indices : no_indices)
 
-object_truepos = "object_truepos" =>
-    @λ(_row.condition == "object" && _row.correct && _row.target_present ?
+object_trueneg = "object_trueneg" =>
+    @λ(_row.condition == "object" && _row.correct && .!_row.target_present ?
         all_indices : no_indices)
 
-test_target_trials = "test_target_trials" =>
-    @λ(_row.condition == "test" && _row.target_present ?
+test_target_absent = "test_target_absent" =>
+    @λ(_row.condition == "test" && .!_row.target_present ?
         all_indices : no_indices)
 
-object_catch_trials = "object_catch_trials" =>
-    @λ(_row.condition == "object" && _row.target_present ?
-        all_indices : no_indices)
-
-
-test_catch_trials = "test_catch_trials" =>
-    @λ(_row.condition == "test" && !_row.target_present ?
-        all_indices : no_indices)
-
-object_target_trials = "object_target_trials" =>
-    @λ(_row.condition == "object" && _row.target_present ?
-        all_indices : no_indices)
-
-object_catch_trials = "object_catch_trials" =>
-    @λ(_row.condition == "object" && !_row.target_present ?
+object_target_absent = "object_target_absent" =>
+    @λ(_row.condition == "object" && .!_row.target_present ?
         all_indices : no_indices)
 
 
@@ -61,13 +35,13 @@ df, decoders = train_test(
     eeg_files, stim_info,
 
     train = [
-        test_truepos;test_truepos;
-        object_truepos;object_truepos
+        test_trueneg;test_trueneg;
+        object_trueneg;object_trueneg
     ],
 
     test = [
-        test_target_trials;test_catch_trials;
-        object_target_trials;object_catch_trials;
+        test_trueneg;test_target_absent;
+        object_trueneg;object_target_absent
     ]
 )
 alert()
@@ -97,8 +71,7 @@ df[!,:target_source] = map(speakers[df.stim_id]) do index
     end
 end
 
-df[!,:response] = ifelse.((df.target_source .== "none") .== df.test_correct,
-    "nontarget","target")
+df[!,:response] = ifelse.(df.test_correct,"nontarget","target")
 categorical!(df,:response)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -110,20 +83,23 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 
-df = $df %>% select(-condition_str)
+df = $df %>% select(-condition_str) %>% filter(test == 'target_absent')
 
 ggplot(df,
-    aes(y=value,x=test,color=interaction(response,target_source))) +
+    aes(y=value,x=response,color=response)) +
     geom_point(alpha=0.3,position=
         position_jitterdodge(dodge.width=0.2,jitter.width=0.1)) +
-    stat_summary(fun.data='mean_cl_boot',fun.args=list(conf.int=0.75),
+    stat_summary(fun.data='mean_cl_boot',
         position=position_nudge(x=0.3)) +
     facet_grid(source~condition) +
-    scale_color_brewer(palette='Paired',name='resp, target source')
+    guides(color=F) +
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    scale_color_brewer(palette='Set1',name='Response')
 
-ggsave(file.path($dir,"catch_trial_prediction.pdf"),width=6,height=9)
+ggsave(file.path($dir,"negative_trial_prediction.pdf"),width=5,height=9)
 
 """
+
 
 # TODO: generalize this code and make it par tof `train_test`
 quant = (100,100,10)
@@ -172,7 +148,7 @@ ggplot(filter($all_coefs,source == 'male-fem1-fem2'),
     facet_grid(feature~condition+source) +
     scale_fill_distiller(palette='RdBu')
 
-ggsave(file.path($dir,"catch_trial_prediction_features.pdf"),width=5,height=9)
+ggsave(file.path($dir,"negative_trial_prediction_features.pdf"),width=5,height=9)
 
 """
 
