@@ -10,23 +10,23 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
 sources(::SpeakerStimMethod) =
-    ["male", "male-fem1-fem2"],
-        ["male", "male-fem1-fem2", "male_other"]
-train_source_indices(::SpeakerStimMethod) = (1,2,1)
+    ["male", "female", "male-fem1-fem2"],
+        ["male", "female", "male-fem1-fem2", "male_other"]
+train_source_indices(::SpeakerStimMethod) = (1,2,3,1)
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
     test=false)
 
     function(i,j)
-        if j == 1
+        if j <= 2
             load_speaker(stim_events,fs,i,j,
                 encoding=method.encoding)
         # elseif j == 4
         #     load_speaker_mix_minus(stim_events,fs,i,1,
         #         encoding=method.encoding)
-        elseif j == 2
+        elseif j == 3
             load_separated_speakers(stim_events,fs,i,
                 encoding=method.encoding)
-        elseif j == 3
+        elseif j == 4
             if !test
                 load_speaker(stim_events,fs,i,1,
                     encoding=method.encoding)

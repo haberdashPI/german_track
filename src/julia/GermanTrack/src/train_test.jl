@@ -35,13 +35,14 @@ train(m::StaticMethod;kwds...) = decoder(m.train;kwds...)
 function test(m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
-    speaker = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
-    speaker[!,:sid] .= sid
-    speaker[!,:condition] .= condition
-    speaker[!,:trial] = indices[speaker.index]
-    speaker[!,:test_correct] = correct[speaker.index]
-
-    speaker
+    result = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
+    map(result) do df
+        df[!,:sid] .= sid
+        df[!,:condition] .= condition
+        df[!,:trial] = indices[df.index]
+        df[!,:test_correct] = correct[df.index]
+        df
+    end
 end
 
 struct OnlineMethod{S} <: TrainMethod
@@ -150,6 +151,7 @@ function train_test(method,stim_method,files,stim_info;
     test = train,
     resample = missing,
     encode_eeg = RawEncoding(),
+    return_encodings = false,
     progress = true)
 
     result = init_result(method)
@@ -227,11 +229,12 @@ function train_test(method,stim_method,files,stim_info;
                 indices = test_indices,
                 bounds = test_bounds,
                 progress = progress,
+                return_encodings = return_encodings,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )
 
-            results, vcat(
+            results..., vcat(
                 (DataFrame(coefs = [model[i]], sid = sid, condition = cond,
                     source = train_sources[i])
                     for i in eachindex(sources(stim_method)[1]))...

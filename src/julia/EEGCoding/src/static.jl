@@ -158,9 +158,11 @@ end
 single(x::Number) = x
 
 function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,progress,train_prefix)
+    bounds=all_indices,sources,train_source_indices,progress,train_prefix,
+    return_encodings=false)
 
     df = DataFrame()
+    encodings = return_encodings ? DataFrame() : nothing
 
     for (j,i) in enumerate(indices)
         for (source_index, source) in enumerate(sources)
@@ -193,10 +195,19 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
 
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
                 source = source, index = j, stim_id = stim_id))
+
+            if return_encodings
+                push!(encodings,(stim = test_stim, pred = pred,
+                    source = source, index = j, stim_id = stim_id))
+            end
             next!(progress)
         end
     end
 
     categorical!(df,:source)
-    df
+    if return_encodings
+        df, encodings
+    else
+        (df,)
+    end
 end
