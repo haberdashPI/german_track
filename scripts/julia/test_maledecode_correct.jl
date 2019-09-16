@@ -47,8 +47,14 @@ df, encodings, decoders = train_test(
     resample = 64,
     eeg_files, stim_info,
     return_encodings = true,
-    train = [ correct_male_target; correct_fem_target ],
-    test = [ male_target; fem_target ]
+    train = [
+        correct_male_target; correct_male_target;
+        correct_fem_target; correct_fem_target
+    ],
+    test = [
+        male_target; fem_target;
+        male_target; fem_target
+    ]
 )
 alert()
 
@@ -56,8 +62,10 @@ function addconds!(df)
     if :condition_str ∉ names(df)
         df[!,:condition_str] = df.condition
     end
-    df[!,:target_source] = replace.(df.condition_str,
-        Ref(r".*test-([a-z]+)_.*" => s"\1"))
+    df[!,:train] = replace.(df.condition_str,
+        Ref(r"train-(correct_[a-z]+)_.*" => s"before_\1"))
+    df[!,:test] = replace.(df.condition_str,
+        Ref(r".*test-([a-z]+)_.*" => s"before_\1"))
     df
 end
 
@@ -74,28 +82,34 @@ library(dplyr)
 library(ggplot2)
 
 df = $df %>% filter(source %in% c('male','female')) %>%
-    select(-condition_str)
+    select(-condition_str) %>%
+    rename(decoded_source = source)
 
-ggplot(df, aes(x=target_source,y=value,color=test_correct)) +
+ggplot(df, aes(x=test,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(source~sid)
+    facet_grid(train+decoded_source~sid,
+        labeller=label_both)
 
-ggsave(file.path($dir,"source_target_decode_test_correct.pdf"))
+ggsave(file.path($dir,"train_before_gendered_target_window.pdf"))
 
-df = df %>% filter((source == 'male' && target_source == 'male') ||
-                   (source == 'female' & target_source == 'fem'))
+dfmatch = df %>% filter((decoded_source == 'male' &
+                    train == 'before_correct_male' &
+                    test == 'before_male') |
+                   (decoded_source == 'female' &
+                    train == 'before_correct_fem' &
+                    test == 'before_fem'))
 
-ggplot(df, aes(x=target_source,y=value,color=test_correct)) +
+ggplot(dfmatch, aes(x=test,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(~sid)
 
-ggsave(file.path($dir,"source_target_decode_test_correct__compare_sources.pdf"))
+ggsave(file.path($dir,"train_before_gendered_target_window_matched.pdf"))
 
 """
 
