@@ -17,6 +17,8 @@
   + does decoding differ by target locus
   - does decoding differ near switches
 
+  Note: would be worth doing a 10-fold validation to verify the meqnignfulness of correct v incorrect (leave one out might be too forgiving)
+
 
   questions:
 
