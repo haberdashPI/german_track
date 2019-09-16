@@ -92,7 +92,7 @@ end
 Base.string(diff::DiffEncoding) = string("diff_",string(dff.child))
 function encode(stim::Stimulus,tofs,method::DiffEncoding)
     enc = encode(stim,tofs,method.child)
-    diff(enc,dims=1)
+    abs.(diff(enc,dims=1))
 end
 
 struct PitchEncoding <: StimEncoding
@@ -133,7 +133,8 @@ function encode(stim::Stimulus,tofs,method::PitchSurpriseEncoding)::Array{Float6
         clean_nan(p,c) = iszero(p) ? zero(c) : c
         pitches.confidence = clean_nan.(pitches.frequency,pitches.confidence)
 
-        surprisal = [0;diff(pitches.frequency) .* @views(pitches.confidence[2:end])]
+        surprisal = [0;abs.(diff(pitches.frequency)) .*
+            @views(pitches.confidence[2:end])]
         pitch_resample_helper(surprisal,tofs,pitches)
     end
 end

@@ -22,7 +22,7 @@ conditions = [
     for cond in ["feature","object","test"]
 ]
 
-df = train_test(
+df, = train_test(
     StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(encoding=encoding),
     resample = 64,
@@ -32,8 +32,10 @@ df = train_test(
 )
 alert()
 
-df[!,:condition_str] =  df.condition
-df.condition = replace.(df.condition,Ref(r"trainall([[:alnum:]]+)_.*" => s"\1"))
+if :condition_str ∉ names(df)
+    df[!,:condition_str] =  df.condition
+end
+df.condition = replace.(df.condition_str,Ref(r"train-all([[:alnum:]]+)_.*" => s"\1"))
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -56,7 +58,7 @@ ggplot(df,aes(x=source,y=value,color=source)) +
     coord_cartesian(xlim=c(0.5,5.5)) +
     facet_grid(condition~sid)
 
-ggsave(file.path($dir,"condition_test.pdf"),width=9,height=7)
+ggsave(file.path($dir,"condition_test_pitch.pdf"),width=9,height=7)
 
 """
 
