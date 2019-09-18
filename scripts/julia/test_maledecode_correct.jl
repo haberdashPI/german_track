@@ -70,6 +70,7 @@ function addconds!(df)
 end
 
 df = addconds!(df)
+encodings = addconds!(encodings)
 decoders = addconds!(decoders)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -109,7 +110,55 @@ ggplot(dfmatch, aes(x=test,y=value,color=test_correct)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(~sid)
 
-ggsave(file.path($dir,"train_before_gendered_target_window_matched.pdf"))
+ggsave(file.path($dir,"train_before_gendered_target_window_matched.pdf"),
+    width=11,height=5)
+
+"""
+
+enc12 = map(eachrow(encodings[encodings.sid .== 12,:])) do row
+    vcat(
+        DataFrame(stim = row.stim[:,1], pred = row.pred[:,1],
+            source = row.source,
+            correct = row.test_correct,
+            time = axes(row.stim,1) ./ 64,
+            trial = row.trial,
+            train = row.train, test = row.test, feature = "pitch"),
+        DataFrame(stim = row.stim[:,2], pred = row.pred[:,2],
+            source = row.source,
+            trial = row.trial,
+            correct = row.test_correct,
+            time = axes(row.stim,1) ./ 64,
+            train = row.train, test = row.test, feature = "envelope")
+    )
+end |> @λ(reduce(vcat,_))
+
+# TODO: use absolute pitch surprisal!!! (doesn't seem to work yet...??? why???!!!)
+
+R"""
+
+dfenc = $enc12 %>%
+    filter((source == 'male' &
+            train == 'before_correct_male' &
+            test == 'before_male') |
+            (source == 'female' &
+            train == 'before_correct_fem' &
+            test == 'before_fem')) %>%
+    group_by(source,trial,time,train,test,feature,correct) %>%
+    gather(stim,pred,key="kind",value="level")
+
+dfenc = dfenc %>%
+    group_by(kind,feature) %>%
+    mutate(slevel = level / mad(level))
+
+trial_ranges = split(sort(unique(dfenc$trial)),rep(1:4,each=10))
+i = 1
+ggplot(filter(dfenc,trial %in% trial_ranges[[i]]),
+    aes(x=time,y=slevel,color=kind)) +
+    geom_line() +
+    facet_grid(feature~trial+source,scales='free')
+
+ggsave(file.path($dir,"envelope_encodings.pdf"),
+    width=11,height=5)
 
 """
 
