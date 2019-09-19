@@ -5,6 +5,8 @@ includes three listening conditions: listening to all speakers--the *global*
 condition--listening to one speaker--the *object* condition--or listening to
 one ear--the *feature* condition.
 
+In some places throughout the code, due to unfortunate label usage in the original experiment, the `test` condition is used to indicate the `global` condition. (TODO: At some point I need to have the `test` label renmaed throughout most of the code)
+
 TODO: more details about the project should eventually go here.
 
 ## Installation
