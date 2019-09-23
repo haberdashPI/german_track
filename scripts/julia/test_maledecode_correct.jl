@@ -1,7 +1,6 @@
-# question: can we use the male decoder to predict correct responses for male
-# targets: we would expect this to be equivalent during the global (test)
-# condition for the framel decoder for female targets
-
+# question to adress: can we use the male decoder to predict correct responses
+# for male targets? We would expect this to be equivalent during the global
+# (test) condition for the framel decoder for female targets
 
 using DrWatson; quickactivate(@__DIR__,"german_track")
 using GermanTrack
@@ -82,7 +81,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 
-df = $df %>% filter(source %in% c('male','female')) %>%
+df = $df %>% filter(source %in% c('male','fem1','fem2')) %>%
     select(-condition_str) %>%
     rename(decoded_source = source)
 
@@ -95,6 +94,21 @@ ggplot(df, aes(x=test,y=value,color=test_correct)) +
         labeller=label_both)
 
 ggsave(file.path($dir,"train_before_gendered_target_window.pdf"))
+
+dfmatch_ish = df %>% filter((train == 'before_correct_male' &
+                    test == 'before_male') |
+                   (train == 'before_correct_fem' &
+                    test == 'before_fem'))
+
+ggplot(dfmatch_ish, aes(x=decoded_source,y=value,color=test_correct)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    facet_grid(test~sid)
+
+ggsave(file.path($dir,"compare_decode_source_with_matched_train_test.pdf"))
+
 
 dfmatch = df %>% filter((decoded_source == 'male' &
                     train == 'before_correct_male' &
