@@ -69,6 +69,7 @@ function encode_cache(body,key,stim_num)
         result, stim_num
     end
 end
+clear_stim_cache!() = empty!(encodings)
 
 function load_speaker_mix_minus(events,tofs,stim_i,nosource_i;
         encoding=RMSEncoding())

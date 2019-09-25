@@ -105,15 +105,16 @@ ggplot(dfmatch_ish, aes(x=decoded_source,y=value,color=test_correct)) +
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(test~sid)
+    facet_grid(sid~test)
 
-ggsave(file.path($dir,"compare_decode_source_with_matched_train_test.pdf"))
+ggsave(file.path($dir,"compare_decode_source_with_matched_train_test.pdf"),
+    width=6,height=15)
 
 
 dfmatch = df %>% filter((decoded_source == 'male' &
                     train == 'before_correct_male' &
                     test == 'before_male') |
-                   (decoded_source == 'female' &
+                   (decoded_source == 'fem1' &
                     train == 'before_correct_fem' &
                     test == 'before_fem'))
 
