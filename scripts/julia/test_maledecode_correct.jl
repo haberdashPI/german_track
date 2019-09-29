@@ -110,6 +110,19 @@ ggplot(dfmatch_ish, aes(x=decoded_source,y=value,color=test_correct)) +
 ggsave(file.path($dir,"compare_decode_source_with_matched_train_test.pdf"),
     width=6,height=15)
 
+dfmatchish_sum = dfmatch_ish %>%
+    group_by(test,decoded_source,test_correct,sid) %>%
+    summarize(value=mean(value))
+
+ggplot(dfmatchish_sum, aes(x=decoded_source,y=value,color=test_correct)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    facet_grid(~test)
+
+ggsave(file.path($dir,"mean_compare_decode_source_with_matched_train_test.pdf"),
+    width=6,height=4)
 
 dfmatch = df %>% filter((decoded_source == 'male' &
                     train == 'before_correct_male' &
@@ -155,7 +168,7 @@ dfenc = $enc12 %>%
     filter((source == 'male' &
             train == 'before_correct_male' &
             test == 'before_male') |
-            (source == 'female' &
+            (source == 'fem1' &
             train == 'before_correct_fem' &
             test == 'before_fem')) %>%
     group_by(source,trial,time,train,test,feature,correct) %>%
@@ -165,12 +178,14 @@ dfenc = dfenc %>%
     group_by(kind,feature) %>%
     mutate(slevel = level / mad(level))
 
-trial_ranges = split(sort(unique(dfenc$trial)),rep(1:4,each=10))
+male_trial_ranges = split(sort(unique(filter(dfenc,source == 'male')$trial)),rep(1:4,each=10))
+fem_trial_ranges = split(sort(unique(filter(dfenc,source == 'fem1')$trial)),rep(1:4,each=10))
 i = 1
-ggplot(filter(dfenc,trial %in% trial_ranges[[i]]),
+
+ggplot(filter(dfenc,trial %in% c(male_trial_ranges[[i]],fem_trial_ranges[[i]])),
     aes(x=time,y=slevel,color=kind)) +
     geom_line() +
-    facet_grid(feature~trial+source,scales='free')
+    facet_grid(feature~source+trial,scales='free')
 
 ggsave(file.path($dir,"envelope_encodings.pdf"),
     width=11,height=5)

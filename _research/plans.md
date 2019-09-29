@@ -19,6 +19,13 @@
   - is this something about differences in the features of the envelopes
     compute various statistics of those
 
+  - okay, (on sept 29th): these graphs convince me that the major culprit is not the source to decode, but rather, the window timing. The time when
+  the female voice is a target leads to better correlations. THat suggests
+  participants are more attentive to that window of time. (would be easy to test
+  for by inverting the conditions of the experiment: i.e. make the female speaker the target; this should change the results)
+
+  NOTE: to be absolutely double-double sure, check out some stats of the features
+
 - do the features encoded tell us anything
   - look at bootstraps
     - across time
