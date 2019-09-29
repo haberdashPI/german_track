@@ -25,7 +25,9 @@ alltrials = [
 
 df = train_test(
     StaticMethod(NormL2(0.2),cor),
-    SpeakerStimMethod(encoding=encoding),
+    SpeakerStimMethod(
+        encoding=encoding,
+        sources=["male","fem1","fem2","male_other"]),
     resample = 64,
     eeg_files,stim_info,
     train = correct,

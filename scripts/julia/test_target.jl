@@ -44,7 +44,9 @@ conds_before_target = [
 
 df = train_test(
     StaticMethod(NormL2(0.2),cor),
-    SpeakerStimMethod(encoding=encoding),
+    SpeakerStimMethod(
+        encoding=encoding,
+        sources=["all-male","male","fem1","fem2","male_other"]),
     resample = 64,
     eeg_files, stim_info,
     train = [conds_during_target;conds_during_target;

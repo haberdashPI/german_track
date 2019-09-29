@@ -42,7 +42,9 @@ fem_target = "fem_target" =>
 
 df, encodings, decoders = train_test(
     StaticMethod(NormL2(0.2),cor),
-    SpeakerStimMethod(encoding=encoding),
+    SpeakerStimMethod(
+        encoding=encoding,
+        sources=["male","fem1","fem2","male-fem1-fem2","male_other"]),
     resample = 64,
     eeg_files, stim_info,
     return_encodings = true,
@@ -160,8 +162,6 @@ enc12 = map(eachrow(encodings[encodings.sid .== 12,:])) do row
     )
 end |> @λ(reduce(vcat,_))
 
-# TODO: use absolute pitch surprisal!!! (doesn't seem to work yet...??? why???!!!)
-
 R"""
 
 dfenc = $enc12 %>%
@@ -190,6 +190,7 @@ ggplot(filter(dfenc,trial %in% c(male_trial_ranges[[i]],fem_trial_ranges[[i]])),
 ggsave(file.path($dir,"envelope_encodings.pdf"),
     width=11,height=5)
 
+# TODO: show some stats of these encodings
 """
 
 # TODO: plot envelopes, pitches
