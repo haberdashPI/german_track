@@ -24,7 +24,8 @@
   participants are more attentive to that window of time. (would be easy to test
   for by inverting the conditions of the experiment: i.e. make the female speaker the target; this should change the results)
 
-  NOTE: to be absolutely double-double sure, check out some stats of the features
+  NOTE: to be absolutely double-double sure, check out some stats of the features; if anything these would suggest that the male voice
+  should be easier to encode (since there is more variance)
 
 - do the features encoded tell us anything
   - look at bootstraps
