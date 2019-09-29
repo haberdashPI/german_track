@@ -191,6 +191,31 @@ ggsave(file.path($dir,"envelope_encodings.pdf"),
     width=11,height=5)
 
 # TODO: show some stats of these encodings
+
+dfenc = $enc12 %>%
+    group_by(source,trial,time,train,test,feature,correct) %>%
+    gather(stim,pred,key="kind",value="level")
+
+feature_summaries = dfenc %>%
+    group_by(kind,source,train,test,feature,correct) %>%
+    summarize(scale = sd(level), rscale = mad(level))
+
+ggplot(feature_summaries,aes(x=source,y=rscale)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.2)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
+    facet_grid(feature~kind,scales='free_all') +
+    scale_color_brewer(palette='Set1')
+
+ggplot(filter(feature_summaries,kind=='stim'),aes(x=source,y=rscale)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.2)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
+    facet_wrap(~feature,scales='free_y') +
+    scale_color_brewer(palette='Set1')
+
+ggsave(file.path($dir,"feature_encoding_variance.pdf"),width=8,height=4)
 """
 
-# TODO: plot envelopes, pitches
+
+
