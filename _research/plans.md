@@ -3,22 +3,7 @@
 
 ## new analysis config
 
-- why is fem1 higher?
-  - is it true of fem2?
-    something about male, or something about fem1 specifically
-    - in looking at this I see that:
-      1. the difference in fem and male is due to two things:
-        some advantage of before_fem training over before_male training
-        some advantage of decoded source fem over decoded source male
-      2. the advantage for decoded source fem2, if it is exists is
-        between that of fem1 and male for the before_male training
-        and above either fem1 or male 2 for the before_female training
-      3. all of these differences aren't significant on their own
-         but appear to accumulate, for the case where 1's conditions above
-         are all in the right direction to show the largest differnece
-  - is this something about differences in the features of the envelopes
-    compute various statistics of those
-
+  why is female higher:
   - okay, (on sept 29th): these graphs convince me that the major culprit is not the source to decode, but rather, the window timing. The time when
   the female voice is a target leads to better correlations. THat suggests
   participants are more attentive to that window of time. (would be easy to test
@@ -28,6 +13,9 @@
 
   NOTE: to be absolutely double-double sure, check out some stats of the features; if anything these would suggest that the male voice
   should be easier to encode (since there is more variance)
+  - that seems to indicate some encoding differences, but if anything these would imply that the male speaker should be easier to detect (it has more feature variance)
+  - this could also explain the lower response in the male target: 
+    a lower SNR can be detected
  
 - what about comparing across conditions: e.g. train on global test on 
   same stim-id for object (that should tell us if there is something different)
@@ -36,6 +24,9 @@
     and vice versa
   - this seems to indicate the features used across conditions cannot
     be generalized: next step should be to look at those features in detail
+  
+- what about mounya's point about the female "correct" responses counting
+  as incorrect
 
 - do the features encoded tell us anything
   - look at bootstraps
