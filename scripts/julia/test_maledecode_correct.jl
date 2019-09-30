@@ -196,6 +196,21 @@ dfenc = $enc12 %>%
     group_by(source,trial,time,train,test,feature,correct) %>%
     gather(stim,pred,key="kind",value="level")
 
+ggplot(filter(dfenc,kind=='stim'),aes(x=source,y=level)) +
+    geom_violin(width=0.5,position=position_nudge(x=0.5)) +
+    geom_point(alpha=0.02,position=position_jitter(width=0.1)) +
+    facet_wrap(~feature,scales='free_y') +
+    scale_color_brewer(palette='Set1')
+ggsave(file.path($dir,"feature_encoding_distribution.pdf"),width=8,height=4)
+
+ggplot(filter(dfenc,kind=='stim'),aes(x=source,y=level)) +
+    geom_violin(width=0.5,position=position_nudge(x=0.5)) +
+    geom_point(alpha=0.02,position=position_jitter(width=0.1)) +
+    facet_grid(feature+correct~train+test,scales='free_y') +
+    scale_color_brewer(palette='Set1')
+
+ggsave(file.path($dir,"feature_encoding_distribution_bycategory.pdf"),width=8,height=4)
+
 feature_summaries = dfenc %>%
     group_by(kind,source,train,test,feature,correct) %>%
     summarize(scale = sd(level), rscale = mad(level))
