@@ -24,17 +24,24 @@
   participants are more attentive to that window of time. (would be easy to test
   for by inverting the conditions of the experiment: i.e. make the female speaker the target; this should change the results)
 
+  also here's another point to contend with: there are fewer detected female speakers in the object condition: however the ones that do get detected are quite highly correlated: this makes sense; when the female speaker is well decoded just before the target event, a listener is more likely to notice this change, even if they are not committing the same resources to that speaker
+
   NOTE: to be absolutely double-double sure, check out some stats of the features; if anything these would suggest that the male voice
   should be easier to encode (since there is more variance)
+ 
+- what about comparing across conditions: e.g. train on global test on 
+  same stim-id for object (that should tell us if there is something different)
+  - in more detail: test generalization of decoder trained on global correct,
+    male targets (and female targets), does it work for the feature condition
+    and vice versa
+  - this seems to indicate the features used across conditions cannot
+    be generalized: next step should be to look at those features in detail
 
 - do the features encoded tell us anything
   - look at bootstraps
     - across time
-    - across features (ideally spatialized)
-  
-- what about comparing across conditions: e.g. train on global test on 
-  same stim-id for object (that should tell us if there is something different)
-
+    - across features (ideally spatialized, but first without spatialization)
+ 
 ### old
 
 - do we compare across conditions (with same stimulus and subject)
