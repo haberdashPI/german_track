@@ -5,8 +5,8 @@ export SpeakerStimMethod, ChannelStimMethod
 abstract type StimMethod
 end
 
-const all_sources = ["male","fem1","fem2","male-fem1-fem2","all","all-male","male_other"]
-const test_sources = Dict("male_other" => 1)
+const all_sources = ["male","fem1","fem2","male-fem1-fem2","all","all-male","male_other","male-fem1-fem2_other"]
+const test_sources = Dict("male_other" => 1,"male-fem1-fem2_other" => 4)
 
 Base.@kwdef struct SpeakerStimMethod <: StimMethod
     sources::Vector{String} = all_sources
@@ -28,21 +28,25 @@ end
 function sources(x::SpeakerStimMethod)
     indices = compute_source_indices(x)
     train_indices = filter(@λ(all_sources[_] ∉ keys(test_sources)),indices)
-    all_sources[indices], all_sources[train_indices]
+    all_sources[train_indices], all_sources[indices]
 end
 function train_source_indices(x::SpeakerStimMethod)
-    map(compute_source_indices(x)) do i
+    sources, = GermanTrack.sources(x)
+    global_index = map(compute_source_indices(x)) do i
         if all_sources[i] ∈ keys(test_sources)
             test_sources[all_sources[i]]
         else
             i
         end
     end
+    map(global_index) do gi
+        findfirst(isequal(all_sources[gi]),sources)
+    end
 end
 
 function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
     test=false)
-    sources = GermanTrack.sources(method)[1]
+    _,sources = GermanTrack.sources(method)
     function(i,j)
         if sources[j] ∈ ("male","fem1","fem2")
             load_speaker(stim_events,fs,i,j,encoding=method.encoding)
@@ -57,6 +61,13 @@ function load_source_fn(method::SpeakerStimMethod,stim_events,fs,stim_info;
                 load_speaker(stim_events,fs,i,1,encoding=method.encoding)
             else
                 load_other_speaker(stim_events,fs,stim_info,i,1,
+                    encoding=method.encoding)
+            end
+        elseif sources[j] == "male-fem1-fem2_other"
+            if !test
+                load_separated_speakers(stim_events,fs,i,encoding=method.encoding)
+            else
+                load_other_separated_speakers(stim_events,fs,i,
                     encoding=method.encoding)
             end
         else
@@ -139,6 +150,12 @@ end
 
 function load_separated_speakers(events,tofs,stim_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
+    target_time = events.target_time[stim_i]
+    load_separated_speakers_(events,tofs,stim_num,target_time;encoding=encoding)
+end
+function load_separated_speakers_(events,tofs,stim_num,target_time;
+        encoding=RMSEncoding())
+
     encode_cache((:separated,tofs,stim_num,encoding),stim_num) do
         fs = 0
         stimdir = joinpath(stimulus_dir(),"mixtures","testing",
@@ -150,11 +167,23 @@ function load_separated_speakers(events,tofs,stim_i;encoding=RMSEncoding())
             if size(x,2) > 1
                 x = sum(x,dims=2)
             end
-            target_time = events.target_time[stim_i]
             encode(Stimulus(x,fs,file,target_time),tofs,encoding)
         end
     end
 end
+
+function load_other_separated_speakers(events,tofs,stim_i,;
+    encoding=RMSEncoding())
+    stim_num = events.sound_index[stim_i]
+    selected = rand(filter(@λ(_ != stim_num),1:50))
+
+    target_time = events.target_time[stim_i]
+    result, real_stim_num =
+        load_separated_speakers_(events,tofs,selected,target_time,
+            encoding=encoding)
+    result, stim_num
+end
+
 
 function load_speaker(events,tofs,stim_i,source_i;encoding=RMSEncoding())
     stim_num = events.sound_index[stim_i]
