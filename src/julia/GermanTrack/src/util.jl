@@ -100,7 +100,7 @@ function read_mcca_proj(filename)
     end
 end
 
-
+const subject_cache = Dict()
 function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
     if !isfile(file)
         error("File '$file' does not exist.")
@@ -108,25 +108,27 @@ function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
 
     stim_events, sid = events_for_eeg(file,stim_info)
 
-    data = if endswith(file,".mat")
-        mf = MatFile(file)
-        get_mvariable(mf,:dat)
-    elseif endswith(file,".bson")
-        @load file data
-        data
-    elseif endswith(file,".mcca_proj")
-        read_mcca_proj(file)
-    else
-        pat = match(r"\.(.+)$",file)
-        if pat != nothing
-            ext = pat[1]
-            error("Unsupported data format '.$ext'.")
+    data = get!(subject_cache,(file,encoding,samplerate)) do
+        data = if endswith(file,".mat")
+            mf = MatFile(file)
+            get_mvariable(mf,:dat)
+        elseif endswith(file,".bson")
+            @load file data
+            data
+        elseif endswith(file,".mcca_proj")
+            read_mcca_proj(file)
         else
-            error("Unknown file format for $file")
+            pat = match(r"\.(.+)$",file)
+            if pat != nothing
+                ext = pat[1]
+                error("Unsupported data format '.$ext'.")
+            else
+                error("Unknown file format for $file")
+            end
         end
-    end
 
-    data = encode(data,samplerate,encoding)
+        encode(data,samplerate,encoding)
+    end
 
     data, stim_events, sid
 end
