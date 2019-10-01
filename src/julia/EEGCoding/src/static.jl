@@ -172,13 +172,13 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
             train_stim,response = find_signals(nothing,train_stim,eeg,i,
                 bounds=bounds[i])
 
-            stim_model = model[train_source_indices[source_index]]
+            full_model = model[train_source_indices[source_index]]
             train_source = sources[train_source_indices[source_index]]
-            subj_model_file =
+            stim_model_file =
                 joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,
                     train_prefix,stim_id))
-            # subj_model = load(subj_model_file,"contents")
-            subj_model = cachefn(subj_model_file,trial_decoder,
+            # stim_model = load(stim_model_file,"contents")
+            stim_model = cachefn(stim_model_file,trial_decoder,
                 method,train_stim,eeg,i,lags, bounds = bounds[i],
                 found_signals = (train_stim,response))
 
@@ -190,7 +190,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
             n = length(indices)
             r1, r2 = (n-1)/n, 1/n
 
-            pred = decode(response,(r1.*stim_model .- r2.*subj_model),
+            pred = decode(response,(r1.*full_model .- r2.*stim_model),
                 lags)
 
             push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
