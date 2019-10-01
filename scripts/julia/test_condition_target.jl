@@ -193,7 +193,7 @@ all_coefs = mapreduce(vcat,eachrow(decoders)) do row
             Axis{:component}(Base.axes(row.coefs,1)),
             Axis{:lag}(Base.axes(row.coefs,2)),
             Axis{:feature}([
-                Symbol(string(feature,source))
+                Symbol(string(feature,"_",source))
                 for feature = [:envelop,:pitch],
                     source = [:male,:fem1,:fem2]
             ])

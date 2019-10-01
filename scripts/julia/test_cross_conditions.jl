@@ -1,6 +1,8 @@
 
 using DrWatson; quickactivate(@__DIR__,"german_track")
 using GermanTrack
+using AxisArrays
+using PlotAxes
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
@@ -107,3 +109,62 @@ ggplot(df,aes(x=test_target,y=value,color=test_correct)) +
 ggsave(file.path($dir,"test_across_conditions.pdf"))
 """
 
+
+# TODO: generalize this code and make it par tof `train_test`
+quant = (100,100,10)
+# quant = (10,10,10)
+all_coefs = mapreduce(vcat,eachrow(decoders)) do row
+    coefs, = PlotAxes.asplotable(AxisArray(
+        row.coefs,
+        Axis{:component}(Base.axes(row.coefs,1)),
+        Axis{:lag}(Base.axes(row.coefs,2)),
+        Axis{:feature}([
+            Symbol(string(feature,"_",source))
+            for feature = [:envelop,:pitch],
+                source = [:male,:fem1,:fem2]
+        ])
+    ), quantize = quant)
+    for col in setdiff(names(row),[:coefs])
+        coefs[!,col] .= row[col]
+    end
+    coefs
+end
+all_coefs = addconds!(all_coefs)
+
+
+R"""
+
+df = filter($all_coefs,
+    test_condition == train_condition,
+    (train_target == 'before_correct_male') == (test_target == 'male'))
+
+for(sid_ in 8:14){
+
+    ggplot(filter(df,sid == sid_),aes(y=component,x=lag,fill=value)) +
+        geom_raster() +
+        facet_grid(feature~train_condition+test_target) +
+        scale_fill_distiller(palette='RdBu')
+    ggsave(file.path($dir,sprintf("global_v_object_coefs_sid_%02d.pdf",sid_)))
+
+    dflags = df %>%
+        group_by(feature,train_condition,test_target,sid,lag) %>%
+        summarize(value = mean(value))
+
+    ggplot(file.path($dir,filter(dflags,sid == sid_),aes(y=value,x=lag,color=train_condition))) +
+        geom_line() +
+        facet_grid(feature~test_target) +
+        scale_fill_distiller(palette='RdBu')
+        ggsave(sprintf("global_v_object_lags_sid_%02d.pdf",sid_))
+
+    dfcomps = df %>%
+        group_by(feature,train_condition,test_target,sid,component) %>%
+        summarize(value = mean(value))
+
+    ggplot(filter(dfcomps,sid == sid_),aes(y=value,x=component,color=train_condition)) +
+        geom_line() + coord_flip() +
+        facet_grid(feature~test_target) +
+        scale_fill_distiller(palette='RdBu')
+        ggsave(file.path($dir,sprintf("global_v_object_components_sid_%02d.pdf",sid_)))
+}
+
+"""

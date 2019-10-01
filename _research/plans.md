@@ -28,7 +28,8 @@
 - what about mounya's point about the female "correct" responses counting
   as incorrect
 
-- do the features encoded tell us anything
+- do the features encoded tell us anything?
+  - look at averages across time / feature
   - look at bootstraps
     - across time
     - across features (ideally spatialized, but first without spatialization)
