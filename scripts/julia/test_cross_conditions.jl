@@ -20,9 +20,11 @@ end
 const speakers = convert(Array{Int},
     stim_info["test_block_cfg"]["trial_target_speakers"])
 const tindex = Dict("male" => 1, "fem" => 2)
-const cond_label = Dict("object" => "object", "global" => "test")
+const cond_label = Dict("object" => "object", "global" => "test", "spatial" => "feature")
+const direction = convert(Array{String},
+    stim_info["test_block_cfg"]["trial_target_dir"])
 
-listen_conds = ["object","global"]
+listen_conds = ["object","global", "spatial"]
 targets = ["male","fem"]
 labels = ["correct","all"]
 
@@ -38,8 +40,17 @@ conditions = mapreduce(vcat,listen_conds) do condition
     end
 end |> Dict
 
+# TODO: identify the spaital location of the target
+
+function measures(pred,stim)
+    (joint_cor = cor(vec(pred),vec(stim)),
+     male_cor = cor(vec(pred[:,1:2]),vec(stim[:,1:2])),
+     fem1_cor = cor(vec(pred[:,3:4]),vec(stim[:,3:4])),
+     fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
+end
+
 df, encodings, decoders = train_test(
-    StaticMethod(NormL2(0.2),cor),
+    StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
         sources=["male-fem1-fem2","male-fem1-fem2_other"]),
@@ -80,6 +91,9 @@ function addconds!(df)
         Ref(r".*test-all_[a-z]+_([a-z]+)" => s"\1"))
     df[!,:source] = replace.(df.source,
         Ref(r"male-fem1-fem2" => "joint"))
+    if :stim_id ∈ names(df)
+        df[!,:location] = direction[df.stim_id]
+    end
     df
 end
 
@@ -95,18 +109,52 @@ R"""
 library(tidyr)
 library(dplyr)
 library(ggplot2)
+library(stringr)
 
 df = $df %>%
     select(-condition_str)
 
-ggplot(df,aes(x=test_target,y=value,color=test_correct)) +
+ggplot(df,aes(x=test_target,y=joint_cor,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(train_condition+test_condition~sid+source,labeller=label_context)
 
+dfmatch = df %>% filter(source == 'joint', train_condition == test_condition) %>%
+    select(-condition) %>%
+    rename(condition = test_condition, target = test_target,
+        target_detected = test_correct) %>%
+    group_by(sid,target_detected,target,condition,stim_id) %>%
+    gather(male_cor,fem1_cor,fem2_cor,key='featuresof',value='cor') %>%
+    mutate(featuresof = str_replace(featuresof,"(.*)_cor","\\1"))
+
+ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=target_detected),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    scale_fill_brewer(palette='Set1') +
+    theme_classic() +
+    facet_grid(condition~sid+target,labeller=label_context)
+
 ggsave(file.path($dir,"test_across_conditions.pdf"))
+
+
+ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Paired') +
+    scale_fill_brewer(palette='Paired') +
+    theme_classic() +
+    facet_grid(condition~sid+target,labeller=label_context)
+
+ggsave(file.path($dir,"test_across_conditions_spatial.pdf"))
 """
 
 

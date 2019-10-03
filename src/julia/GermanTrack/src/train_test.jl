@@ -23,9 +23,7 @@ label(x::NormL1) = "l1-$(x.lambda)"
 
 norm1(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),1)/length(x)
 norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
-label(x::typeof(norm1)) = "norm1"
-label(x::typeof(norm2)) = "norm2"
-label(x::typeof(cor)) = "cor"
+label(x::Function) = string(x)
 
 function init_result(::StaticMethod)
     DataFrame(sid = Int[],condition = String[], speaker = String[],

@@ -156,6 +156,8 @@ function single(x::Array)
     first(x)
 end
 single(x::Number) = x
+apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
+apply_method(fn,pred,stim) = fn(pred,stim)
 
 function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_fn,
     bounds=all_indices,sources,train_source_indices,progress,train_prefix,
@@ -193,7 +195,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
             pred = decode(response,(r1.*full_model .- r2.*stim_model),
                 lags)
 
-            push!(df,(value = single(test_method(vec(pred),vec(test_stim))),
+            push!(df,(apply_method(test_method,pred,test_stim)...,
                 source = source, index = j, stim_id = stim_id))
 
             if return_encodings
