@@ -23,7 +23,9 @@ stimulus_dir() = joinpath(datadir(),"exp_pro","stimuli",dates("stim_data_dir"))
 raw_stim_dir() = joinpath(datadir(),"exp_raw","stimuli")
 
 function __init__()
-    EEGCoding.set_cache_dir!(joinpath(projectdir(),"_research","cache"))
+    cache_dir = joinpath(projectdir(),"_research","cache")
+    EEGCoding.set_cache_dir!(cache_dir)
+    isdir(cache_dir) || mkdir(cache_dir)
 end
 
 end
