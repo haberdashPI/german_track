@@ -1,7 +1,16 @@
 
 # Plans
 
-## new analysis config
+## current steps:
+
+- use bootstrapping to estimate coefficient uncertainty in the decoding model
+- is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
+- add more lags to see if that changes anything
+- work through Mounya's proposed analysis
+
+## prior analysis config
+
+- older thinking... (might be wroth revisiting at some point)
 
   why is female higher:
   - okay, (on sept 29th): these graphs convince me that the major culprit is not the source to decode, but rather, the window timing. The time when
@@ -34,7 +43,7 @@
     - across time
     - across features (ideally spatialized, but first without spatialization)
  
-### old
+### even older
 
 - do we compare across conditions (with same stimulus and subject)
     - compare decoders across conditions (same stimulus)

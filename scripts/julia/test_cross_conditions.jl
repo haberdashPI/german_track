@@ -49,7 +49,7 @@ function measures(pred,stim)
      fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
 end
 
-df, encodings, decoders = train_test(
+df, encodings, models = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
@@ -57,6 +57,7 @@ df, encodings, decoders = train_test(
     resample = 64,
     eeg_files, stim_info,
     return_encodings = true,
+    return_models = true,
     train = repeat(outer=2,[
         join(("correct",cond,target),"_") =>
             conditions[join(("correct",cond,target),"_")]
@@ -142,7 +143,6 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
 
 ggsave(file.path($dir,"test_across_conditions.pdf"))
 
-
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
@@ -158,7 +158,7 @@ ggsave(file.path($dir,"test_across_conditions_spatial.pdf"))
 """
 
 
-# TODO: generalize this code and make it par tof `train_test`
+# TODO: generalize this code and make it part of `train_test`
 quant = (100,100,10)
 # quant = (10,10,10)
 all_coefs = mapreduce(vcat,eachrow(decoders)) do row

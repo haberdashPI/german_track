@@ -213,7 +213,7 @@ function train_test(method,stim_method,files,stim_info;
             test_prefix = join([test_name,test_label(method),
                 label(stim_method),sid_str],"_")
             cond = string("train-",train_name,"__","test-",test_name)
-            results = GermanTrack.test(method;
+            GermanTrack.test(method;
                 sid = sid,
                 condition = cond,
                 sources = test_sources,
@@ -230,12 +230,6 @@ function train_test(method,stim_method,files,stim_info;
                 return_encodings = return_encodings,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
-            )
-
-            results..., vcat(
-                (DataFrame(coefs = [model[i]], sid = sid, condition = cond,
-                    source = train_sources[i])
-                    for i in eachindex(sources(stim_method)[1]))...
             )
         end
     end
