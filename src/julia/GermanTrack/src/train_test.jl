@@ -150,6 +150,7 @@ function train_test(method,stim_method,files,stim_info;
     resample = missing,
     encode_eeg = RawEncoding(),
     return_encodings = false,
+    return_models = false,
     progress = true)
 
     result = init_result(method)
@@ -228,6 +229,7 @@ function train_test(method,stim_method,files,stim_info;
                 bounds = test_bounds,
                 progress = progress,
                 return_encodings = return_encodings,
+                return_models = return_models,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )

@@ -152,22 +152,23 @@ function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
         kwds...)
 
     if return_models
-        models = find_stim_models(train_method;train_prefix=train_prefix,kwds...)
+        models = find_stim_models(train_method;indices=indices,
+            train_prefix=train_prefix,sources=sources,kwds...)
         results..., models
     else
         results
     end
 end
 
-function find_stim_models(method;prefix,eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,progress,train_prefix,
+function find_stim_models(method;eeg,model,lags,indices,stim_fn,
+    bounds=all_indices,sources,train_source_indices,train_prefix,
     return_encodings=false)
 
-    mapreduce(vcat,indices) do i
+    mapreduce(vcat,enumerate(indices)) do (j,i)
         map(enumerate(sources)) do (source_index, source)
             model, stim_id = model_for_stimulus(method,eeg,i,lags,stim_fn,
                 bounds,sources,source_index,train_source_indices,train_prefix)
-            (coefs = model, source = source, stim_id = stim_id)
+            (coefs = model, source = source, stim_id = stim_id, index = j)
         end
     end |> DataFrame
 end
@@ -180,15 +181,14 @@ single(x::Number) = x
 apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
-function model_for_stimulus(method,egg,i,lags,stim_fn,bounds,
+function model_for_stimulus(method,eeg,i,lags,stim_fn,bounds,
     sources,source_index,train_source_indices,train_prefix)
 
+    train_index = train_source_indices[source_index]
+    train_stim, stim_id = stim_fn(i,train_index)
+    @assert train_stim isa Array
     train_stim,response = find_signals(nothing,train_stim,eeg,i,
         bounds=bounds[i])
-
-    train_stim, stim_id = stim_fn(i,train_index)
-    train_index = train_source_indices[source_index]
-    @assert train_stim isa Array
 
     train_source = sources[train_source_indices[source_index]]
     stim_model_file =

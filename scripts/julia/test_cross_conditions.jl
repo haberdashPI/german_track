@@ -3,6 +3,10 @@ using DrWatson; quickactivate(@__DIR__,"german_track")
 using GermanTrack
 using AxisArrays
 using PlotAxes
+using DataFramesMeta
+using DependentBootstrap
+using Random
+using Statistics
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
@@ -100,7 +104,7 @@ end
 
 df = addconds!(df)
 encodings = addconds!(encodings)
-decoders = addconds!(decoders)
+models = addconds!(models)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -156,6 +160,49 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected
 
 ggsave(file.path($dir,"test_across_conditions_spatial.pdf"))
 """
+
+matched = @where(models,
+    (:train_condition .== :test_condition) .&
+    (:source .== "joint"))
+
+function bootstrap(df,by,col;conf=0.95,N=10_000)
+    # bootstrap across the trials
+    med = similar(by(df[1,col]))
+    lower = similar(med)
+    upper = similar(med)
+
+    for _ in 1:N
+        M = size(df,1)
+        samples = map(sample(1:M,M)) do indices
+            sum(by(df[indices,col])) ./ size(df,1)
+        end
+        # TODO: quantile not working
+        med, lower, upper = quantile.(samples,Ref((0.5, 0.025, 0.975)))
+    end
+
+    med, lower, upper
+end
+
+feature_names = [
+    Symbol(string(feature,"_",source))
+    for feature = [:envelop,:pitch],
+        source = [:male,:fem1,:fem2]
+]
+
+by(matched,[:source,:sid,:test_target,:location]) do trials
+    result = bootstrap(trials,@λ(mean(_,dims=1)),:coefs)
+    function todf(coefs)
+        coefs = PlotAxes.asplotable(coefs,:col,:page)
+        rename!(coefs,:col => :lag, :page => :feature)
+        coefs[!,:feature] .= feature_names[coefs.feature]
+    end
+
+    med, lower, upper = todf.(result)
+    med[!,:lower] = lower.value
+    med[!,:upper] = upper.value
+
+    med
+end
 
 
 # TODO: generalize this code and make it part of `train_test`
