@@ -156,36 +156,40 @@ matched = @where(models,
     (:train_condition .== :test_condition) .&
     (:source .== "joint"))
 
-function bootstrap(df,by,col;conf=0.95,N=10_000)
+function bootstrap(df,fn,col;conf=0.95,N=10_000)
     # bootstrap across the trials
-    med = similar(by(df[1,col]))
+    med = similar(fn(df[1,col]))
     lower = similar(med)
     upper = similar(med)
 
-    for _ in 1:N
-        M = size(df,1)
-        samples = map(sample(1:M,M)) do indices
-            sum(by(df[indices,col])) ./ size(df,1)
+    M = size(df,1)
+    baserng = MersenneTwister()
+    alldata = fn.(df[:,col])
+    for i in eachindex(med)
+        rng = copy(baserng)
+        samples = map(1:N) do _
+            mean(alldata[j][i] for j in sample(1:M,M))
         end
-        # TODO: quantile not working
-        med, lower, upper = quantile.(samples,Ref((0.5, 0.025, 0.975)))
+        med[i], lower[i], upper[i] =
+            quantile(samples,[0.5,conf/2,1-(conf/2)])
     end
 
     med, lower, upper
 end
 
 feature_names = [
-    Symbol(string(feature,"_",source))
+    string(feature,"_",source)
     for feature = [:envelop,:pitch],
         source = [:male,:fem1,:fem2]
 ]
 
-bootlag = by(matched,[:source,:sid,:test_target,:location]) do trials
+bootlag = by(matched,[:source,:sid,:test_target,:train_condition]) do trials
     result = bootstrap(trials,@λ(mean(_,dims=1)),:coefs)
     function todf(coefs)
-        coefs = PlotAxes.asplotable(coefs,:col,:page)
+        coefs, = PlotAxes.asplotable(coefs,:col,:page)
         rename!(coefs,:col => :lag, :page => :feature)
-        coefs[!,:feature] .= feature_names[coefs.feature]
+        coefs[!,:feature] .= feature_names[convert.(Int,coefs.feature)]
+        coefs
     end
 
     med, lower, upper = todf.(result)
@@ -195,23 +199,16 @@ bootlag = by(matched,[:source,:sid,:test_target,:location]) do trials
     med
 end
 
-bootcomp = by(matched,[:source,:sid,:test_target,:location]) do trials
-    result = bootstrap(trials,@λ(mean(_,dims=2)),:coefs)
-    function todf(coefs)
-        coefs, = PlotAxes.asplotable(coefs,:row,:page)
-        rename!(coefs,:row => :component, :page => :feature)
-        coefs[!,:feature] .= feature_names[coefs.feature]
-    end
+R"""
 
-    med, lower, upper = todf.(result)
-    med[!,:lower] = lower.value
-    med[!,:upper] = upper.value
+ggplot(filter($bootlag,sid==8),aes(x=lag,y=value,group=train_condition)) +
+    facet_grid(feature~test_target) +
+    geom_errorbar(aes(ymin=lower,ymax=upper,color=train_condition),size=0.5,width=0.25) +
+    geom_point(aes(ymin=lower,ymax=upper,color=train_condition),size=0.05) +
+    geom_line(aes(color=train_condition))
 
-    for col in setdiff(names(row),[:coefs])
-        med[!,col] .= row[col]
-    end
-    med
-end
+ggsave(file.path($dir,"lags.pdf"))
+"""
 
 # TODO: handle bootstrapping
 # # TODO: generalize this code and make it part of `train_test`
