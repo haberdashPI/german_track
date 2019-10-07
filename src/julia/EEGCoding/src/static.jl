@@ -213,7 +213,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
     for (j,i) in enumerate(indices)
         for (source_index, source) in enumerate(sources)
             full_model = model[train_source_indices[source_index]]
-            stim_model, = model_for_stimulus(method,stim_id,eeg,i,lags,stim_fn,
+            stim_model, = model_for_stimulus(method,eeg,i,lags,stim_fn,
                 bounds,sources,source_index,train_source_indices,train_prefix)
 
             test_stim, stim_id = stim_fn(i,source_index)

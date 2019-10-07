@@ -44,8 +44,6 @@ conditions = mapreduce(vcat,listen_conds) do condition
     end
 end |> Dict
 
-# TODO: identify the spaital location of the target
-
 function measures(pred,stim)
     (joint_cor = cor(vec(pred),vec(stim)),
      male_cor = cor(vec(pred[:,1:2]),vec(stim[:,1:2])),
@@ -53,6 +51,7 @@ function measures(pred,stim)
      fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
 end
 
+cond_pairs = Iterators.product(listen_conds,listen_conds)
 df, encodings, models = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
@@ -62,24 +61,16 @@ df, encodings, models = train_test(
     eeg_files, stim_info,
     return_encodings = true,
     return_models = true,
-    train = repeat(outer=2,[
+    train = [
         join(("correct",cond,target),"_") =>
             conditions[join(("correct",cond,target),"_")]
-        for cond in listen_conds, target in targets
-    ]),
+        for (cond,_) in cond_pairs, target in targets
+    ],
     test = [
-        [
-            join(("all",cond,target),"_") =>
-                conditions[join(("all",cond,target),"_")]
-            for cond in listen_conds, target in targets
-        ];
-        [
-            join(("all",cond,target),"_") =>
-                conditions[join(("all",cond,target),"_")]
-            for cond in reverse(listen_conds), target in targets
-        ];
-    ]
-)
+        join(("all",cond,target),"_") =>
+            conditions[join(("all",cond,target),"_")]
+        for (_,cond) in cond_pairs, target in targets
+]);
 alert()
 
 function addconds!(df)
@@ -189,7 +180,7 @@ feature_names = [
         source = [:male,:fem1,:fem2]
 ]
 
-by(matched,[:source,:sid,:test_target,:location]) do trials
+bootlag = by(matched,[:source,:sid,:test_target,:location]) do trials
     result = bootstrap(trials,@λ(mean(_,dims=1)),:coefs)
     function todf(coefs)
         coefs = PlotAxes.asplotable(coefs,:col,:page)
@@ -204,62 +195,73 @@ by(matched,[:source,:sid,:test_target,:location]) do trials
     med
 end
 
-
-# TODO: generalize this code and make it part of `train_test`
-quant = (100,100,10)
-# quant = (10,10,10)
-all_coefs = mapreduce(vcat,eachrow(decoders)) do row
-    coefs, = PlotAxes.asplotable(AxisArray(
-        row.coefs,
-        Axis{:component}(Base.axes(row.coefs,1)),
-        Axis{:lag}(Base.axes(row.coefs,2)),
-        Axis{:feature}([
-            Symbol(string(feature,"_",source))
-            for feature = [:envelop,:pitch],
-                source = [:male,:fem1,:fem2]
-        ])
-    ), quantize = quant)
-    for col in setdiff(names(row),[:coefs])
-        coefs[!,col] .= row[col]
+bootcomp = by(matched,[:source,:sid,:test_target,:location]) do trials
+    result = bootstrap(trials,@λ(mean(_,dims=2)),:coefs)
+    function todf(coefs)
+        coefs, = PlotAxes.asplotable(coefs,:row,:page)
+        rename!(coefs,:row => :component, :page => :feature)
+        coefs[!,:feature] .= feature_names[coefs.feature]
     end
-    coefs
+
+    med, lower, upper = todf.(result)
+    med[!,:lower] = lower.value
+    med[!,:upper] = upper.value
+
+    for col in setdiff(names(row),[:coefs])
+        med[!,col] .= row[col]
+    end
+    med
 end
-all_coefs = addconds!(all_coefs)
+
+# TODO: handle bootstrapping
+# # TODO: generalize this code and make it part of `train_test`
+# # quant = (10,10,10)
+# all_coefs = mapreduce(vcat,eachrow(decoders)) do row
+#     coefs, = PlotAxes.asplotable(row.coefs, quantize = (100,100,10))
+#     rename!(coefs,:row => :component, :col => :lag, :page => :feature)
+#     coefs[!,:feature] .= feature_names[coefs.feature]
+
+#     for col in setdiff(names(row),[:coefs])
+#         coefs[!,col] .= row[col]
+#     end
+#     coefs
+# end
+# all_coefs = addconds!(all_coefs)
 
 
-R"""
+# R"""
 
-df = filter($all_coefs,
-    test_condition == train_condition,
-    (train_target == 'before_correct_male') == (test_target == 'male'))
+# df = filter($all_coefs,
+#     test_condition == train_condition,
+#     (train_target == 'before_correct_male') == (test_target == 'male'))
 
-for(sid_ in 8:14){
+# for(sid_ in 8:14){
 
-    ggplot(filter(df,sid == sid_),aes(y=component,x=lag,fill=value)) +
-        geom_raster() +
-        facet_grid(feature~train_condition+test_target) +
-        scale_fill_distiller(palette='RdBu')
-    ggsave(file.path($dir,sprintf("global_v_object_coefs_sid_%02d.pdf",sid_)))
+#     ggplot(filter(df,sid == sid_),aes(y=component,x=lag,fill=value)) +
+#         geom_raster() +
+#         facet_grid(feature~train_condition+test_target) +
+#         scale_fill_distiller(palette='RdBu')
+#     ggsave(file.path($dir,sprintf("global_v_object_coefs_sid_%02d.pdf",sid_)))
 
-    dflags = df %>%
-        group_by(feature,train_condition,test_target,sid,lag) %>%
-        summarize(value = mean(value))
+#     dflags = df %>%
+#         group_by(feature,train_condition,test_target,sid,lag) %>%
+#         summarize(value = mean(value))
 
-    ggplot(file.path($dir,filter(dflags,sid == sid_),aes(y=value,x=lag,color=train_condition))) +
-        geom_line() +
-        facet_grid(feature~test_target) +
-        scale_fill_distiller(palette='RdBu')
-        ggsave(sprintf("global_v_object_lags_sid_%02d.pdf",sid_))
+#     ggplot(file.path($dir,filter(dflags,sid == sid_),aes(y=value,x=lag,color=train_condition))) +
+#         geom_line() +
+#         facet_grid(feature~test_target) +
+#         scale_fill_distiller(palette='RdBu')
+#         ggsave(sprintf("global_v_object_lags_sid_%02d.pdf",sid_))
 
-    dfcomps = df %>%
-        group_by(feature,train_condition,test_target,sid,component) %>%
-        summarize(value = mean(value))
+#     dfcomps = df %>%
+#         group_by(feature,train_condition,test_target,sid,component) %>%
+#         summarize(value = mean(value))
 
-    ggplot(filter(dfcomps,sid == sid_),aes(y=value,x=component,color=train_condition)) +
-        geom_line() + coord_flip() +
-        facet_grid(feature~test_target) +
-        scale_fill_distiller(palette='RdBu')
-        ggsave(file.path($dir,sprintf("global_v_object_components_sid_%02d.pdf",sid_)))
-}
+#     ggplot(filter(dfcomps,sid == sid_),aes(y=value,x=component,color=train_condition)) +
+#         geom_line() + coord_flip() +
+#         facet_grid(feature~test_target) +
+#         scale_fill_distiller(palette='RdBu')
+#         ggsave(file.path($dir,sprintf("global_v_object_components_sid_%02d.pdf",sid_)))
+# }
 
-"""
+# """
