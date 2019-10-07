@@ -201,14 +201,43 @@ end
 
 R"""
 
-ggplot(filter($bootlag,sid==8),aes(x=lag,y=value,group=train_condition)) +
-    facet_grid(feature~test_target) +
+ggplot($bootlag,aes(x=lag,y=value,group=train_condition)) +
+    facet_grid(feature~sid+test_target) +
     geom_errorbar(aes(ymin=lower,ymax=upper,color=train_condition),size=0.5,width=0.25) +
-    geom_point(aes(ymin=lower,ymax=upper,color=train_condition),size=0.05) +
+    geom_point(aes(color=train_condition),size=0.05) +
     geom_line(aes(color=train_condition))
 
-ggsave(file.path($dir,"lags.pdf"))
+ggsave(file.path($dir,"lags.pdf"),width=11,height=8)
 """
+
+bootcomp = by(matched,[:source,:sid,:test_target,:train_condition]) do trials
+    result = bootstrap(trials,@λ(mean(_,dims=2)),:coefs)
+    function todf(coefs)
+        coefs, = PlotAxes.asplotable(coefs,:row,:page)
+        rename!(coefs,:row => :component, :page => :feature)
+        coefs[!,:feature] .= feature_names[convert.(Int,coefs.feature)]
+        coefs
+    end
+
+    med, lower, upper = todf.(result)
+    med[!,:lower] = lower.value
+    med[!,:upper] = upper.value
+
+    med
+end
+
+R"""
+
+ggplot($bootcomp,aes(x=component,y=value,group=train_condition)) +
+    facet_grid(feature~sid+test_target) +
+    geom_errorbar(aes(ymin=lower,ymax=upper,color=train_condition)) +
+    geom_point(aes(color=train_condition),size=0.25) + coord_flip() +
+    geom_line(aes(color=train_condition))
+
+ggsave(file.path($dir,"components.pdf"),width=8,height=11)
+
+"""
+
 
 # TODO: handle bootstrapping
 # # TODO: generalize this code and make it part of `train_test`

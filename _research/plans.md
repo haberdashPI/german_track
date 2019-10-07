@@ -4,9 +4,10 @@
 ## current steps:
 
 - use bootstrapping to estimate coefficient uncertainty in the decoding model
-- is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
 - add more lags to see if that changes anything
 - work through Mounya's proposed analysis
+- is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
+- can we train across subjects?
 
 ## prior analysis config
 
