@@ -4,6 +4,8 @@
 ## current steps:
 
 - regularize across all trials
+- look at alpha and gamma bands for the spatial task
+- consider using envelope surprisal
 - train across subjects (exclude 11?)
 - train across conditions: weight the data based on the condition
 - for plots: pick only the comparisons that we know make sense to look at 
@@ -18,6 +20,13 @@
 
 - is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
 - can we train across subjects?
+
+## lower priority current steps
+
+- is there anything in the online analysis rate of increase that 
+  seems connected to differences in the behavioral data that merve saw?
+    (i.e. compare online regression coefficinet magnitude as a function of condition)
+- 
 
 ## prior analysis config
 
