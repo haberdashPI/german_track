@@ -3,8 +3,19 @@
 
 ## current steps:
 
-- add more lags to see if that changes anything
-- work through Mounya's proposed analysis
+- regularize across all trials
+- train across subjects (exclude 11?)
+- train across conditions: weight the data based on the condition
+- for plots: pick only the comparisons that we know make sense to look at 
+
+- look at patterns of the features (pick what we want to compare here as well)
+  - plot by scalp position
+
+- can we see changes in what features mater:
+  hypothesis: if the dominant voice is more highly represented,
+  we should see a greatly increased representation of the given voice
+  in longer latency features
+
 - is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
 - can we train across subjects?
 
