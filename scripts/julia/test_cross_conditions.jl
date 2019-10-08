@@ -12,7 +12,10 @@ stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
 # eeg_files = eeg_files[1:1]
 
-encoding = JointEncoding(PitchSurpriseEncoding(),ASEnvelope())
+encoding = JointEncoding(
+    WeightedEncoding([2.0,1.0,1.0],PitchSurpriseEncoding()),
+    WeightedEncoding([2.0,1.0,1.0],ASEnvelope())
+)
 
 target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
@@ -60,6 +63,7 @@ df, encodings, models = train_test(
     resample = 64,
     eeg_files, stim_info,
     return_encodings = true,
+    maxlag=0.8,
     return_models = true,
     train = [
         join(("correct",cond,target),"_") =>
@@ -136,7 +140,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"test_across_conditions.pdf"))
+ggsave(file.path($dir,"test_across_conditions_weighted.pdf"))
 
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
@@ -149,7 +153,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"test_across_conditions_spatial.pdf"))
+ggsave(file.path($dir,"test_across_conditions_spatial_weighted.pdf"))
 """
 
 matched = @where(models,
