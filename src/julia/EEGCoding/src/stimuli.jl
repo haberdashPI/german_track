@@ -1,6 +1,6 @@
 using SampledSignals, CSV
 export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
-    PitchSurpriseEncoding, Stimulus, DiffEncoding
+    PitchSurpriseEncoding, Stimulus, DiffEncoding, WeightedEncoding
 
 struct Stimulus
     data::SampleBuf
@@ -86,10 +86,22 @@ function encode(stim::Stimulus,tofs,method::JointEncoding)
     result
 end
 
-struct DiffEncoding{T}
+struct WeightedEncoding{T} <: StimEncoding
+    weights::Vector{Float64}
     child::T
 end
-Base.string(diff::DiffEncoding) = string("diff_",string(dff.child))
+Base.string(weighted::WeightedEncoding) =
+    string("weight_",join(round.(weighted.weights,digits=1),"-"),
+        string(weighted.child))
+function encode(stim::Stimulus,tofs,method::WeightedEncoding)
+    enc = encode(stim,tofs,method.child)
+    enc .* method.weights'
+end
+
+struct DiffEncoding{T} <: StimEncoding
+    child::T
+end
+Base.string(diff::DiffEncoding) = string("diff_",string(diff.child))
 function encode(stim::Stimulus,tofs,method::DiffEncoding)
     enc = encode(stim,tofs,method.child)
     abs.(diff(enc,dims=1))
