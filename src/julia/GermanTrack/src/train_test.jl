@@ -33,14 +33,17 @@ train(m::StaticMethod;kwds...) = decoder(m.train;kwds...)
 function test(m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
-    result = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
-    map(result) do df
-        df[!,:sid] .= sid
-        df[!,:condition] .= condition
-        df[!,:trial] = indices[df.index]
-        df[!,:test_correct] = correct[df.index]
-        df
-    end
+    df, models = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
+
+    df[!,:sid] .= sid
+    df[!,:condition] .= condition
+    df[!,:trial] = df.index
+    df[!,:test_correct] = correct[df.index]
+
+    models[!,:sid] .= sid
+    models[!,:condition] .= condition
+
+    df, models
 end
 
 struct OnlineMethod{S} <: TrainMethod
@@ -145,6 +148,7 @@ end
 
 function train_test(method,stim_method,files,stim_info;
     maxlag=0.25,
+    K=10,
     train = ["" => all_indices],
     test = train,
     resample = missing,
@@ -162,8 +166,8 @@ function train_test(method,stim_method,files,stim_info;
             test_bounds, test_indices,
                 train_bounds, train_indices =
                     setup_indices(traini[2],testi[2],events)
-            n += length(train_indices)*length(train_sources)
-            n += length(test_indices)*length(test_sources)
+            n += K*length(train_sources)
+            n += K*length(test_sources)
         end
     end
 
@@ -200,6 +204,7 @@ function train_test(method,stim_method,files,stim_info;
             prefix = join([train_name, label(method), label(stim_method),
                 string(encode_eeg), sid_str],"_")
             model = GermanTrack.train(method,
+                K=K,
                 sources = train_sources,
                 prefix = prefix,
                 eeg = eeg,
@@ -214,12 +219,13 @@ function train_test(method,stim_method,files,stim_info;
             test_prefix = join([test_name,test_label(method),
                 label(stim_method),sid_str],"_")
             cond = string("train-",train_name,"__","test-",test_name)
-            GermanTrack.test(method;
+            GermanTrack.test(method,
+                K=K,
                 sid = sid,
                 condition = cond,
                 sources = test_sources,
                 train_source_indices = train_source_indices(stim_method),
-                correct = stim_events.correct[test_indices],
+                correct = stim_events.correct,
                 prefix=test_prefix,
                 train_prefix=prefix,
                 eeg=eeg,
@@ -228,8 +234,6 @@ function train_test(method,stim_method,files,stim_info;
                 indices = test_indices,
                 bounds = test_bounds,
                 progress = progress,
-                return_encodings = return_encodings,
-                return_models = return_models,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
             )

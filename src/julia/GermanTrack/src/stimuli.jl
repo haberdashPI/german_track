@@ -153,6 +153,7 @@ function load_separated_speakers(events,tofs,stim_i;encoding=RMSEncoding())
     target_time = events.target_time[stim_i]
     load_separated_speakers_(events,tofs,stim_num,target_time;encoding=encoding)
 end
+
 function load_separated_speakers_(events,tofs,stim_num,target_time;
         encoding=RMSEncoding())
 

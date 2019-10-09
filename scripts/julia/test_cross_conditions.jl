@@ -10,12 +10,9 @@ using Statistics
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-# eeg_files = eeg_files[1:1]
+eeg_files = eeg_files[1:1]
 
-encoding = JointEncoding(
-    WeightedEncoding([2.0,1.0,1.0],PitchSurpriseEncoding()),
-    WeightedEncoding([2.0,1.0,1.0],ASEnvelope())
-)
+encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
@@ -55,14 +52,14 @@ function measures(pred,stim)
 end
 
 cond_pairs = Iterators.product(listen_conds,listen_conds)
-df, encodings, models = train_test(
+df, models = train_test(
+    K = 20,
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
         sources=["male-fem1-fem2","male-fem1-fem2_other"]),
     resample = 64,
     eeg_files, stim_info,
-    return_encodings = true,
     maxlag=0.8,
     return_models = true,
     train = [
@@ -98,7 +95,6 @@ function addconds!(df)
 end
 
 df = addconds!(df)
-encodings = addconds!(encodings)
 models = addconds!(models)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))

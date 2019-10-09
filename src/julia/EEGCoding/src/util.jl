@@ -1,5 +1,6 @@
 export cachefn, cache_dir, JointEncoding, encode
 using BSON: @save, @load
+using BSON
 using ProgressMeter
 
 cache_dir_ = Ref("")
@@ -15,6 +16,23 @@ function progress_ammend!(prog::Progress,n)
     ProgressMeter.update!(prog,prog.counter)
 end
 progress_ammend!(prog::Bool,n) = @assert !prog
+
+function folds(k,indices)
+    len = length(indices)
+    fold_size = cld(len,k)
+    map(1:k) do fold
+        test = indices[((fold-1)fold_size+1) : (min(len,fold*fold_size))]
+        train = setdiff(indices,test)
+
+        (train,test)
+    end
+end
+
+function loadcache(prefix)
+    file = joinpath(cache_dir_[],prefix * ".bson")
+    @load file contents
+    contents
+end
 
 function cachefn(prefix,fn,args...;__oncache__=() -> nothing,kwds...)
     if cache_dir_[] == ""

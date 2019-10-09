@@ -407,16 +407,6 @@ function events_for_eeg(file,stim_info)
     stim_events, sid
 end
 
-function folds(k,indices)
-    len = length(indices)
-    fold_size = cld(len,k)
-    map(1:k) do fold
-        test = indices[((fold-1)fold_size+1) : (min(len,fold*fold_size))]
-        train = setdiff(indices,test)
-
-        (train,test)
-    end
-end
 
 only_near(time::Number,max_time;kwds...) =
     only_near((time,),max_time;kwds...)[1]

@@ -16,56 +16,39 @@ using Infiltrator
 ################################################################################
 # testing and training
 
-function decoder(method;prefix,group_suffix="",indices,name="Training",
-    sources,progress=Progress(length(indices)*length(sources),1,desc=name),
+function decoder(method;prefix,group_suffix="",name="Training",K,
+    sources,progress=Progress(K*length(sources),1,desc=name),
     kwds...)
 
     result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        decoder_,method;prefix=prefix,indices=indices,name=name,progress=progress,
-        sources=sources,
+        decoder_,method;prefix=prefix,name=name,progress=progress,
+        sources=sources,K=K,
         __oncache__ = () ->
-            progress_update!(progress,length(indices)*length(sources)),
+            progress_update!(progress,K*length(sources)),
         kwds...)
 end
 
-function decoder_(method;prefix,eeg,lags,indices,stim_fn,name="Training",
+function decoder_(method;K,prefix,eeg,lags,indices,stim_fn,name="Training",
         sources,bounds=all_indices,progress,kwds...)
 
-    sum_models = [Array{Float64}(undef,0,0,0) for i in 1:length(sources)]
+    models = [[Array{Float64}(undef,0,0,0) for k in 1:K]
+        for i in 1:length(sources)]
 
-    for i in indices
-        # TODO: implement trial_decoder to handle multiple stimuli at once? (reduces
-        # slow repeated call to withlags) PROFILE first (I think most of the
-        # time is spent computing the regression)
+    for (k,(train,_)) in enumerate(folds(K,indices))
         for (source_index,source) in enumerate(sources)
-            stim, stim_id = stim_fn(i,source_index)
-            @assert stim isa Array
 
-            filename = @sprintf("%s_%s_%02d",source,prefix,stim_id)
-            model = cachefn(filename,
-                trial_decoder,method,stim,eeg,i,lags;bounds=bounds[i],kwds...)
+            filename = @sprintf("%s_%s_fold%02d",source,prefix,k)
+            stim, response = setup_stim_response(stim_fn, source_index, eeg,
+                train, bounds)
+            model = cachefn(filename, decoder_helper, method, stim,
+                response, lags)
+            models[source_index][k] = model
 
-            if isempty(sum_models[source_index])
-                sum_models[source_index] = model
-            else
-                sum_models[source_index] .+= model
-            end
             progress_update!(progress)
         end
     end
 
-    sum_models
-end
-
-find_signals(found_signals,stim,eeg,i;kwds...) = found_signals
-function find_signals(::Nothing,stim,eeg,i;bounds=all_indices)
-    response = eegtrial(eeg,i)
-    min_len = min(size(stim,1),trunc(Int,size(response,2)));
-
-    stim = select_bounds(stim,bounds,min_len,samplerate(eeg),1)
-    response = select_bounds(response,bounds,min_len,samplerate(eeg),2)
-
-    stim,response
+    models
 end
 
 function withlags(x,lags)
@@ -86,6 +69,30 @@ function withlags(x,lags)
     end
     y
 end
+function min_length(stim,eeg,i)
+    response = eegtrial(eeg,i)
+    min(size(stim,1),trunc(Int,size(response,2)))
+end
+
+function setup_stim_response(stim_fn,source_i,eeg,indices,bounds)
+
+    # okay.. the reason this is a problem is because the joint_other source
+    # generates a random source, and *whicH* source it generates randomlly
+    # various from trial to trial, just need to fix that, and then it should
+    # work just fine
+
+    stim_result = mapreduce(vcat,indices) do i
+        stim, = stim_fn(i,source_i)
+        minlen = min_length(stim,eeg,i)
+        select_bounds(stim,bounds[i],minlen,samplerate(eeg),1)
+    end
+    response_result = mapreduce(hcat,indices) do i
+        stim, = stim_fn(i,source_i)
+        minlen = min_length(stim,eeg,i)
+        select_bounds(eegtrial(eeg,i),bounds[i],minlen,samplerate(eeg),2)
+    end
+    stim_result, response_result'
+end
 
 # TODO: we could probably make things even faster if we created the memory XX
 # and XY once.
@@ -94,13 +101,8 @@ safezscore(x) = std(x) != 0 ? zscore(x) : x
 scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
-function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
-    found_signals=nothing, kwds...)
-
-    stim_ = stim
-    stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
-
-    X = withlags(scale(response'),.-reverse(lags))
+function decoder_helper(l2::NormL2,stim,response,lags)
+    X = withlags(scale(response),.-reverse(lags))
     Y = scale(stim)
 
     k = l2.lambda
@@ -108,19 +110,15 @@ function trial_decoder(l2::NormL2,stim,eeg::EEGData,i,lags;
     λ̄ = tr(XX)/size(X,2)
     XX .*= (1-k); adddiag!(XX,k*λ̄)
     result = XX\XY'
-    result = reshape(result,size(response,1),length(lags),:)
+    result = reshape(result,size(response,2),length(lags),:)
 
     result
 end
 
-function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
-    found_signals=nothing,kwds...)
+function decoder_helper(reg::ProximableFunction,stim,response,lags)
 
-    stim,response = find_signals(found_signals,stim,eeg,i;kwds...)
-
-    X = withlags(scale(response'),.-reverse(lags))
+    X = withlags(scale(response),.-reverse(lags))
     Y = view(scale(stim),:,:)
-
 
     solver = ProximalAlgorithms.ForwardBackward(fast=true,adaptive=true,
         verbose=true, maxit=20000,tol=1e-3)
@@ -133,44 +131,24 @@ function trial_decoder(reg::ProximableFunction,stim,eeg::EEGData,i,lags;
     result
 end
 
-
-decode(response::Array,model,lags) =
-    withlags(scale(response'),.-reverse(lags)) * reshape(model,:,size(model,3))
+decode(response::AbstractArray,model,lags) =
+    withlags(scale(response),.-reverse(lags)) * reshape(model,:,size(model,3))
 
 function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
-    name="Training",sources,
+    name="Training",sources,K,
     return_models = false,
     progress=Progress(length(indices)*length(sources),1,desc=name),
     train_prefix,kwds...)
 
     results = cachefn(@sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix),
         decode_test_cv_,train_method,test_method;train_prefix=train_prefix,
-        prefix=prefix,
+        prefix=prefix,K=K,
         indices=indices,progress=progress,sources=sources,
         __oncache__ = () ->
-            progress_update!(progress,length(indices)*length(sources)),
+            progress_update!(progress,K*length(sources)),
         kwds...)
 
-    if return_models
-        models = find_stim_models(train_method;indices=indices,
-            train_prefix=train_prefix,sources=sources,kwds...)
-        results..., models
-    else
-        results
-    end
-end
-
-function find_stim_models(method;eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,train_prefix,
-    return_encodings=false)
-
-    mapreduce(vcat,enumerate(indices)) do (j,i)
-        map(enumerate(sources)) do (source_index, source)
-            model, stim_id = model_for_stimulus(method,eeg,i,lags,stim_fn,
-                bounds,sources,source_index,train_source_indices,train_prefix)
-            (coefs = model, source = source, stim_id = stim_id, index = j)
-        end
-    end |> DataFrame
+    results
 end
 
 function single(x::Array)
@@ -181,67 +159,37 @@ single(x::Number) = x
 apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
-function model_for_stimulus(method,eeg,i,lags,stim_fn,bounds,
-    sources,source_index,train_source_indices,train_prefix)
-
-    train_index = train_source_indices[source_index]
-    train_stim, stim_id = stim_fn(i,train_index)
-    @assert train_stim isa Array
-    train_stim,response = find_signals(nothing,train_stim,eeg,i,
-        bounds=bounds[i])
-
-    train_source = sources[train_source_indices[source_index]]
-    stim_model_file =
-        joinpath(cache_dir(),@sprintf("%s_%s_%02d",train_source,
-            train_prefix,stim_id))
-
-    # stim_model = load(stim_model_file,"contents")
-    stim_model = cachefn(stim_model_file,trial_decoder,
-        method,train_stim,eeg,i,lags, bounds = bounds[i],
-        found_signals = (train_stim,response))
-
-    stim_model, stim_id
-end
+using Infiltrator
 
 function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,progress,train_prefix,
-    return_encodings=false)
+    bounds=all_indices,sources,train_source_indices,progress,train_prefix, K)
 
     df = DataFrame()
-    encodings = return_encodings ? DataFrame() : nothing
+    models = DataFrame()
 
-    for (j,i) in enumerate(indices)
+    for (k,(train,test)) in enumerate(folds(K,indices))
         for (source_index, source) in enumerate(sources)
-            full_model = model[train_source_indices[source_index]]
-            stim_model, = model_for_stimulus(method,eeg,i,lags,stim_fn,
-                bounds,sources,source_index,train_source_indices,train_prefix)
+            train_source = sources[train_source_indices[source_index]]
+            model = loadcache(@sprintf("%s_%s_fold%02d",train_source,train_prefix,k))
 
-            test_stim, stim_id = stim_fn(i,source_index)
-            @assert test_stim isa Array
-            test_stim,response = find_signals(nothing,test_stim,eeg,i,
-                bounds=bounds[i])
+            for i in test
+                stim,response = setup_stim_response(stim_fn, source_index, eeg,
+                    [i], bounds)
+                _, stim_id = stim_fn(i,source_index)
 
-            n = length(indices)
-            r1, r2 = (n-1)/n, 1/n
+                pred = decode(response,model,lags)
 
-            pred = decode(response,(r1.*full_model .- r2.*stim_model),
-                lags)
-
-            push!(df,(apply_method(test_method,pred,test_stim)...,
-                source = source, index = j, stim_id = stim_id))
-
-            if return_encodings
-                push!(encodings,(stim = test_stim, pred = pred,
-                    source = source, index = j, stim_id = stim_id))
+                push!(df,(apply_method(test_method,pred,stim)...,
+                    stim = stim, pred = pred,
+                    source = source, index = i, stim_id = stim_id))
             end
+            push!(models,(model = model, source = source, k = k))
+
             next!(progress)
         end
     end
 
     categorical!(df,:source)
-    if return_encodings
-        df, encodings
-    else
-        (df,)
-    end
+    categorical!(models,:source)
+    df, models
 end
