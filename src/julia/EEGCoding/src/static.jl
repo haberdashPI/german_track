@@ -75,21 +75,15 @@ function min_length(stim,eeg,i)
 end
 
 function setup_stim_response(stim_fn,source_i,eeg,indices,bounds)
-
-    # okay.. the reason this is a problem is because the joint_other source
-    # generates a random source, and *whicH* source it generates randomlly
-    # various from trial to trial, just need to fix that, and then it should
-    # work just fine
-
+    minlens = Vector{Int}(undef,maximum(indices))
     stim_result = mapreduce(vcat,indices) do i
         stim, = stim_fn(i,source_i)
-        minlen = min_length(stim,eeg,i)
-        select_bounds(stim,bounds[i],minlen,samplerate(eeg),1)
+        minlens[i] = min_length(stim,eeg,i)
+        select_bounds(stim,bounds[i],minlens[i],samplerate(eeg),1)
     end
+
     response_result = mapreduce(hcat,indices) do i
-        stim, = stim_fn(i,source_i)
-        minlen = min_length(stim,eeg,i)
-        select_bounds(eegtrial(eeg,i),bounds[i],minlen,samplerate(eeg),2)
+        select_bounds(eegtrial(eeg,i),bounds[i],minlens[i],samplerate(eeg),2)
     end
     stim_result, response_result'
 end
@@ -178,6 +172,7 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
                 _, stim_id = stim_fn(i,source_index)
 
                 pred = decode(response,model,lags)
+                @infiltrate size(pred) != size(stim)
 
                 push!(df,(apply_method(test_method,pred,stim)...,
                     stim = stim, pred = pred,
