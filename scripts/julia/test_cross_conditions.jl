@@ -12,7 +12,7 @@ stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
 eeg_files = eeg_files[1:1]
 
-encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
+encoding = JointEncoding(PitchSurpriseEncoding(), DiffEncoding(ASEnvelope()))
 
 target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
@@ -97,7 +97,7 @@ end
 df = addconds!(df)
 models = addconds!(models)
 
-dir = joinpath(plotsdir(),string("results_",Date(now())))
+dir = joinpath(plotsdir(),string("results_diff_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""

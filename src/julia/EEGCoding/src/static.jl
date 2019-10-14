@@ -109,6 +109,7 @@ function decoder_helper(l2::NormL2,stim,response,lags)
     result
 end
 
+# a more general, but much slower regularized solver
 function decoder_helper(reg::ProximableFunction,stim,response,lags)
 
     X = withlags(scale(response),.-reverse(lags))

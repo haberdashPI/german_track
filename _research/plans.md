@@ -3,10 +3,9 @@
 
 ## current steps:
 
-- regularize across all trials
+- consider using envelope surprisal
 - for plots: pick only the comparisons that we know make sense to look at 
 - look at alpha and gamma bands for the spatial task
-- consider using envelope surprisal
 - train across subjects (exclude 11?)
 - train across conditions: weight the data based on the condition
 
