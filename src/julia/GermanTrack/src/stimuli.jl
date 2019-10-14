@@ -236,7 +236,7 @@ function load_channel_(tofs,stim_num,source_i,encoding)
 end
 
 function load_other_channel(events,tofs,info,stim_i,source_i;
-    encoding=:rms)
+    encoding=RMSEncoding())
 
     stim_num = events.sound_index[stim_i]
     n = length(info["test_block_cfg"]["trial_sentences"])
