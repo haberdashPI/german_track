@@ -60,7 +60,7 @@
   - look at averages across time / feature
   - look at bootstraps
     - across time
-    - across features (ideally spatialized, but first without spatialization)
+    - across features (ideally specialized, but first without specialization)
  
 ### even older
 
