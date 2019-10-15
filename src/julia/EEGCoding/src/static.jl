@@ -29,7 +29,7 @@ function decoder(method;prefix,group_suffix="",name="Training",K,
 end
 
 function decoder_(method;K,prefix,eeg,lags,indices,stim_fn,name="Training",
-        sources,bounds=all_indices,progress,kwds...)
+        sources,weights,bounds=all_indices,progress,kwds...)
 
     models = [[Array{Float64}(undef,0,0,0) for k in 1:K]
         for i in 1:length(sources)]
@@ -39,7 +39,7 @@ function decoder_(method;K,prefix,eeg,lags,indices,stim_fn,name="Training",
 
             filename = @sprintf("%s_%s_fold%02d",source,prefix,k)
             stim, response = setup_stim_response(stim_fn, source_index, eeg,
-                train, bounds)
+                train, bounds, weights)
             model = cachefn(filename, decoder_helper, method, stim,
                 response, lags)
             models[source_index][k] = model
@@ -74,12 +74,12 @@ function min_length(stim,eeg,i)
     min(size(stim,1),trunc(Int,size(response,2)))
 end
 
-function setup_stim_response(stim_fn,source_i,eeg,indices,bounds)
+function setup_stim_response(stim_fn,source_i,eeg,indices,bounds,weights)
     minlens = Vector{Int}(undef,maximum(indices))
     stim_result = mapreduce(vcat,indices) do i
         stim, = stim_fn(i,source_i)
         minlens[i] = min_length(stim,eeg,i)
-        select_bounds(stim,bounds[i],minlens[i],samplerate(eeg),1)
+        select_bounds(stim.*weights[i],bounds[i],minlens[i],samplerate(eeg),1)
     end
 
     response_result = mapreduce(hcat,indices) do i
@@ -156,8 +156,9 @@ apply_method(fn,pred,stim) = fn(pred,stim)
 
 using Infiltrator
 
-function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_fn,
-    bounds=all_indices,sources,train_source_indices,progress,train_prefix, K)
+function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,
+    stim_fn,weights,bounds=all_indices,sources,train_source_indices,progress,
+    train_prefix,K)
 
     df = DataFrame()
     models = DataFrame()
@@ -165,11 +166,12 @@ function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,stim_f
     for (k,(train,test)) in enumerate(folds(K,indices))
         for (source_index, source) in enumerate(sources)
             train_source = sources[train_source_indices[source_index]]
-            model = loadcache(@sprintf("%s_%s_fold%02d",train_source,train_prefix,k))
+            model = loadcache(@sprintf("%s_%s_fold%02d",train_source,
+                train_prefix,k))
 
             for i in test
                 stim,response = setup_stim_response(stim_fn, source_index, eeg,
-                    [i], bounds)
+                    [i], bounds, weights)
                 _, stim_id = stim_fn(i,source_index)
 
                 pred = decode(response,model,lags)

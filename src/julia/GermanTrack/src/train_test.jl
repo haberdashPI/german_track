@@ -121,6 +121,7 @@ function train_test(method,stim_method,files,stim_info;
     K=10,
     train = ["" => all_indices],
     test = train,
+    weightfn = events -> 1,
     resample = missing,
     encode_eeg = RawEncoding(),
     return_encodings = false,
@@ -164,6 +165,7 @@ function train_test(method,stim_method,files,stim_info;
         sid_str = @sprintf("%03d",sid)
 
         target_len = convert(Float64,stim_info["target_len"])
+        weights = weightfn.(eachrow(stim_events))
 
         mapreduce(vcatdot,zip(train,test)) do (traini,testi)
             test_bounds, test_indices, train_bounds, train_indices =
@@ -181,6 +183,7 @@ function train_test(method,stim_method,files,stim_info;
                 lags=lags,
                 indices = train_indices,
                 bounds = train_bounds,
+                weights = weights,
                 progress = progress,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info)
@@ -203,6 +206,7 @@ function train_test(method,stim_method,files,stim_info;
                 lags=lags,
                 indices = test_indices,
                 bounds = test_bounds,
+                weights = weights,
                 progress = progress,
                 stim_fn = load_source_fn(stim_method,stim_events,
                     coalesce(resample,samplerate(eeg)),stim_info,test=true)
