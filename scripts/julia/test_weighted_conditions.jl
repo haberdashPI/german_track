@@ -93,3 +93,59 @@ df, models = train_test(
     test = test_conditions
 );
 alert()
+
+function addconds!(df)
+    if :condition_str ∉ names(df)
+        df[!,:condition_str] = df.condition
+    end
+    df[!,:test_condition] = replace.(df.condition_str,
+        Ref(r"test-([a-z]+)_.*" => s"\1"))
+    df[!,:train_target] = replace.(df.condition_str,
+        Ref(r"train-([a-z]+)_.*" => s"before_correct_\1"))
+    df[!,:test_target] = replace.(df.condition_str,
+        Ref(r".*test-[a-z]+_([a-z]+)" => s"\1"))
+    df[!,:source] = replace.(df.source,
+        Ref(r"male-fem1-fem2" => "joint"))
+    if :stim_id ∈ names(df)
+        df[!,:location] = direction[df.stim_id]
+    end
+    df
+end
+
+df = addconds!(df)
+models = addconds!(models)
+
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
+
+R"""
+
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+df = $df %>%
+    select(-condition_str)
+
+dfmatch = df %>% filter(source == 'joint') %>%
+    select(-condition) %>%
+    rename(condition = test_condition, target = test_target,
+        target_detected = test_correct) %>%
+    group_by(sid,target_detected,target,condition,stim_id) %>%
+    gather(male_cor,fem1_cor,fem2_cor,key='featuresof',value='cor') %>%
+    mutate(featuresof = str_replace(featuresof,"(.*)_cor","\\1"))
+
+ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=target_detected),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    scale_fill_brewer(palette='Set1') +
+    theme_classic() +
+    facet_grid(condition~sid+target,labeller=label_context)
+
+
+"""
