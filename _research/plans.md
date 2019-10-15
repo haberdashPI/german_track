@@ -6,7 +6,7 @@
 + look at alpha and gamma bands for the spatial task (didn't seem to help)
 + compare distinct timings (early and late)
 + train across conditions: weight the data based on the condition
-  - how does this work without the weights
+  + how does this work without the weights (about the same)
 
 - train across subjects (exclude 11?)
 - look at features again
