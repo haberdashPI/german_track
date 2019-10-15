@@ -138,6 +138,24 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
 
 ggsave(file.path($dir,"test_across_conditions_weighted.pdf"))
 
+dfmatch_means = dfmatch %>%
+    group_by(sid,target_detected,target,condition,featuresof) %>%
+    summarize(cor = mean(cor))
+
+ggplot(dfmatch_means,aes(x=featuresof,y=cor,color=target_detected))     +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=target_detected),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    scale_fill_brewer(palette='Set1') +
+    theme_classic() +
+    facet_grid(condition~target,labeller=label_context)
+
+ggsave(file.path($dir,"mean_test_across_conditions_weighted.pdf"))
+
+
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
@@ -151,6 +169,25 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected
 
 ggsave(file.path($dir,"test_across_conditions_weighted_spatial.pdf"),
     width=14,height=8)
+
+dfmatch_spatial_means = dfmatch %>%
+    group_by(sid,target_detected,target,condition,location,featuresof) %>%
+    summarize(cor = mean(cor))
+
+ggplot(dfmatch_spatial_means,aes(x=featuresof,y=cor,
+    color=interaction(location,target_detected))) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Paired') +
+    scale_fill_brewer(palette='Paired') +
+    theme_classic() +
+    facet_grid(condition~target,labeller=label_context)
+
+
+ggsave(file.path($dir,"mean_test_across_conditions_weighted_spatial.pdf"))
 
 dfspatial = dfmatch %>%
     filter(featuresof %in% c('male','fem1'), condition == 'spatial') %>%
@@ -169,6 +206,21 @@ ggplot(dfspatial,aes(x=target_source,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(~sid)
 
-ggsave(file.path($dir,"spatial_targets.pdf"))
+dfspatial_means = dfspatial %>%
+    group_by(sid,target_source,target_detected,target,featuresof) %>%
+    summarize(cor = mean(cor))
+
+ggplot(dfspatial_means,aes(x=target_source,y=cor,color=target_detected)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=target_detected),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    scale_fill_brewer(palette='Set1') +
+    theme_classic()
+
+
+ggsave(file.path($dir,"mean_spatial_targets.pdf"))
 
 """
