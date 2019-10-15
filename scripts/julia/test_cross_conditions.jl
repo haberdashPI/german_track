@@ -136,7 +136,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"test_across_conditions_weighted.pdf"))
+ggsave(file.path($dir,"test_across_conditions.pdf"))
 
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
@@ -149,7 +149,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"test_across_conditions_spatial_weighted.pdf"))
+ggsave(file.path($dir,"test_across_conditions_spatial.pdf"))
 """
 
 matched = @where(models,

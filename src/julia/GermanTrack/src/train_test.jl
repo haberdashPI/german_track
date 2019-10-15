@@ -25,10 +25,7 @@ norm1(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),1)/length(x)
 norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
 label(x::Function) = string(x)
 
-function init_result(::StaticMethod)
-    DataFrame(sid = Int[],condition = String[], speaker = String[],
-        trial = Int[], corr = Float64[],test_correct = Bool[])
-end
+init_result(::StaticMethod) = DataFrame()
 train(m::StaticMethod;kwds...) = decoder(m.train;kwds...)
 function test(m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
@@ -36,12 +33,13 @@ function test(m::StaticMethod;sid,condition,indices,sources,correct,
     df, models = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
 
     df[!,:sid] .= sid
-    df[!,:condition] .= condition
+    for key in keys(condition)
+        df[!,key] .= condition[key]
+    end
     df[!,:trial] = df.index
     df[!,:test_correct] = correct[df.index]
 
     models[!,:sid] .= sid
-    models[!,:condition] .= condition
 
     df, models
 end
@@ -170,11 +168,11 @@ function train_test(method,stim_method,files,stim_info;
         mapreduce(vcatdot,zip(train,test)) do (traini,testi)
             test_bounds, test_indices, train_bounds, train_indices =
                 setup_indices(traini[2],testi[2],stim_events)
-            train_name = traini[1]
-            test_name = testi[1]
+            train_cond = traini[1]
+            test_cond = testi[1]
 
-            prefix = join([train_name, label(method), label(stim_method),
-                string(encode_eeg), sid_str],"_")
+            prefix = join([values(train_cond);
+                [label(method),label(stim_method),string(encode_eeg), sid_str]],"_")
             model = GermanTrack.train(method,
                 K=K,
                 sources = train_sources,
@@ -189,9 +187,14 @@ function train_test(method,stim_method,files,stim_info;
                     coalesce(resample,samplerate(eeg)),stim_info)
             )
 
-            test_prefix = join([test_name,test_label(method),
-                label(stim_method),sid_str],"_")
-            cond = string("train-",train_name,"__","test-",test_name)
+            test_prefix = join([values(test_cond);
+                [test_label(method),label(stim_method),sid_str]],"_")
+            cond = NamedTuple{(
+                Symbol.("train_",keys(train_cond))...,
+                Symbol.("test_",keys(test_cond))...)}(
+                (values(train_cond)...,
+                 values(test_cond)...)
+            )
             GermanTrack.test(method,
                 K=K,
                 sid = sid,

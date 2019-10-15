@@ -8,7 +8,7 @@ using Statistics
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-eeg_files = eeg_files[1:1]
+# eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
@@ -31,7 +31,7 @@ targets = ["male","fem"]
 labels = ["correct","all"]
 
 train_conditions = map(targets) do target
-    target =>
+    (target=target,) =>
         @λ(_row.correct &&
             speakers[_row.sound_index] == tindex[target] ?
                 before_target[_row.sound_index] : no_indices)
@@ -39,7 +39,7 @@ end
 
 test_conditions = mapreduce(vcat,listen_conds) do condition
     mapreduce(vcat,targets) do target
-        [join((condition,target),"_") =>
+        [(condition=condition,target=target) =>
             @λ(_row.condition == cond_label[condition] &&
                 speakers[_row.sound_index] == tindex[target] ?
                     before_target[_row.sound_index] : no_indices)]
@@ -96,16 +96,7 @@ alert()
 
 # TODO: this conditions aren't being properly named
 # (fix renaming scheme)
-function addconds!(df)
-    if :condition_str ∉ names(df)
-        df[!,:condition_str] = df.condition
-    end
-    df[!,:test_condition] = replace.(df.condition_str,
-        Ref(r"test-([a-z]+)_.*" => s"\1"))
-    df[!,:train_target] = replace.(df.condition_str,
-        Ref(r"train-([a-z]+)_.*" => s"before_correct_\1"))
-    df[!,:test_target] = replace.(df.condition_str,
-        Ref(r".*test-[a-z]+_([a-z]+)" => s"\1"))
+function adjust_columns!(df)
     df[!,:source] = replace.(df.source,
         Ref(r"male-fem1-fem2" => "joint"))
     if :stim_id ∈ names(df)
@@ -114,8 +105,8 @@ function addconds!(df)
     df
 end
 
-df = addconds!(df)
-models = addconds!(models)
+df = adjust_columns!(df)
+models = adjust_columns!(models)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -127,11 +118,7 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-df = $df %>%
-    select(-condition_str)
-
-dfmatch = df %>% filter(source == 'joint') %>%
-    select(-condition) %>%
+dfmatch = $df %>% filter(source == 'joint') %>%
     rename(condition = test_condition, target = test_target,
         target_detected = test_correct) %>%
     group_by(sid,target_detected,target,condition,stim_id) %>%
@@ -149,5 +136,20 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
+ggsave(file.path($dir,"test_across_conditions_weighted.pdf"))
+
+ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Paired') +
+    scale_fill_brewer(palette='Paired') +
+    theme_classic() +
+    facet_grid(condition~sid+target,labeller=label_context)
+
+ggsave(file.path($dir,"test_across_conditions_weighted_spatial.pdf"),
+    width=14,height=8)
 
 """
