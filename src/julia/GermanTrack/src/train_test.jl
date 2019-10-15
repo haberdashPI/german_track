@@ -106,36 +106,6 @@ function test(method::OnlineMethod;sid,condition,
     result
 end
 
-#= function train_stimulus_steps(method,stim_method,files,stim_info;
-    skip_bad_trials = false)
-
-    train_sources, test_sources = sources(stim_method)
-    n = 0
-    for file in files
-        events = events_for_eeg(file,stim_info)[1]
-        for cond in unique(events.condition)
-            test_bounds, test_indices,
-                train_bounds, train_indices = setup_indices(events,cond)
-            n += length(train_indices)*length(train_sources)
-            n += length(test_indices)*length(test_sources)
-        end
-    end
-
-    function setup_indices(events,cond)
-        test_bounds = test_fn.(eachrow(events))
-        train_bounds = train_fn.(eachrow(events))
-
-        test_indices = findall((events.condition .== cond) .&
-            (.!isempty.(test_bounds)) .&
-            (.!skip_bad_trials .| .!events.bad_trial))
-        train_indices = findall((events.condition .== cond) .&
-            (.!isempty.(train_bounds)) .&
-            (.!skip_bad_trials .| .!events.bad_trial))
-
-        test_bounds, test_indices, train_bounds, train_indices
-    end
-end =#
-
 function setup_indices(train_fn,test_fn,events)
     test_bounds = test_fn.(eachrow(events))
     train_bounds = train_fn.(eachrow(events))
