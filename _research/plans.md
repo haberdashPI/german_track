@@ -3,11 +3,11 @@
 
 ## current steps:
 
-- consider using envelope surprisal
 - for plots: pick only the comparisons that we know make sense to look at 
 - look at alpha and gamma bands for the spatial task
 - train across subjects (exclude 11?)
 - train across conditions: weight the data based on the condition
+- compare distinct timings (early and late)
 
 - look at patterns of the features (pick what we want to compare here as well)
   - plot by scalp position
@@ -19,6 +19,10 @@
 
 - is it possible to train something across the conditions? (if not that makes a strong case that the features really are different)
 - can we train across subjects?
+
+
+- NOTE: envelope surprisal doesn't seem to change things much
+  (maybe not *too* surprising given that we have estimate of uncertainty)
 
 ## lower priority current steps
 
