@@ -116,6 +116,7 @@ end
 
 function train_test(method,stim_method,files,stim_info;
     maxlag=0.25,
+    minlag=0,
     K=10,
     train = ["" => all_indices],
     test = train,
@@ -159,10 +160,9 @@ function train_test(method,stim_method,files,stim_info;
     maybe_parallel(n,progress,files) do file,progress
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             samplerate=resample,encoding=encode_eeg)
-        lags = 0:round(Int,maxlag*samplerate(eeg))
+        lags = round(Int,minlag*samplerate(eeg)):round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
 
-        target_len = convert(Float64,stim_info["target_len"])
         weights = weightfn.(eachrow(stim_events))
 
         mapreduce(vcatdot,zip(train,test)) do (traini,testi)

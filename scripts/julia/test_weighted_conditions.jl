@@ -152,4 +152,23 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected
 ggsave(file.path($dir,"test_across_conditions_weighted_spatial.pdf"),
     width=14,height=8)
 
+dfspatial = dfmatch %>%
+    filter(featuresof %in% c('male','fem1'), condition == 'spatial') %>%
+    mutate(target_source =
+        (featuresof == 'fem1' && target == 'fem' && location == 'right') ||
+        (featuresof == 'male' && target == 'male' && location == 'right'))
+
+ggplot(dfspatial,aes(x=target_source,y=cor,color=target_detected)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        aes(fill=target_detected),pch=21,size=0.5,
+        color='black',
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    scale_color_brewer(palette='Set1') +
+    scale_fill_brewer(palette='Set1') +
+    theme_classic() +
+    facet_grid(~sid)
+
+ggsave(file.path($dir,"spatial_targets.pdf"))
+
 """
