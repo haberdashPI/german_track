@@ -172,7 +172,8 @@ function train_test(method,stim_method,files,stim_info;
             test_cond = testi[1]
 
             prefix = join([values(train_cond);
-                [label(method),label(stim_method),string(encode_eeg), sid_str]],"_")
+                [string(maxlag),string(minlag),label(method),label(stim_method),
+                 string(encode_eeg), sid_str]],"_")
             model = GermanTrack.train(method,
                 K=K,
                 sources = train_sources,

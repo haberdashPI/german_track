@@ -3,14 +3,11 @@
 
 ## current steps:
 
-- for plots: 
-  - pick only the comparisons that we know make sense to look at 
-  - show mean plots
-
 - look at alpha and gamma bands for the spatial task
 - compare distinct timings (early and late)
 - train across subjects (exclude 11?)
 + train across conditions: weight the data based on the condition
+  - how does this work without the weights
 
 - look at features again
 

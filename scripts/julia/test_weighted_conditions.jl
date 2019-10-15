@@ -11,6 +11,10 @@ eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
 # eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
+eeg_encoding = JointEncoding(RawEncoding(),
+    FilteredPower("alpha",5,15),
+    FilteredPower("gamma",30,100)
+)
 
 target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
@@ -84,8 +88,9 @@ df, models = train_test(
     SpeakerStimMethod(
         encoding=encoding,
         sources=["male-fem1-fem2","male-fem1-fem2_other"]),
+    encode_eeg = eeg_encoding,
     weightfn = weightfn,
-    resample = 64,
+    resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
     maxlag=0.8,
     return_models = true,
@@ -108,7 +113,7 @@ end
 df = adjust_columns!(df)
 models = adjust_columns!(models)
 
-dir = joinpath(plotsdir(),string("results_",Date(now())))
+dir = joinpath(plotsdir(),string("results_alphagamma_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""
@@ -206,6 +211,8 @@ ggplot(dfspatial,aes(x=target_source,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(~sid)
 
+ggsave(file.path($dir,"spatial_targets.pdf"))
+
 dfspatial_means = dfspatial %>%
     group_by(sid,target_source,target_detected,target,featuresof) %>%
     summarize(cor = mean(cor))
@@ -221,6 +228,6 @@ ggplot(dfspatial_means,aes(x=target_source,y=cor,color=target_detected)) +
     theme_classic()
 
 
-ggsave(file.path($dir,"mean_spatial_targets.pdf"))
+ggsave(file.path($dir,"mean_spatial_targets.pdf"),width=4,height=6)
 
 """
