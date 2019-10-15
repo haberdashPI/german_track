@@ -3,7 +3,7 @@
 
 ## current steps:
 
-- look at alpha and gamma bands for the spatial task
++ look at alpha and gamma bands for the spatial task (didn't seem to help)
 - compare distinct timings (early and late)
 - train across subjects (exclude 11?)
 + train across conditions: weight the data based on the condition
