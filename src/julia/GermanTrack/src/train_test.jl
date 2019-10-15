@@ -141,22 +141,6 @@ function train_test(method,stim_method,files,stim_info;
         end
     end
 
-    vcatdot(x,y) = vcat.(x,y)
-    function maybe_parallel(fn,n,progress,files)
-        if nprocs() > 1
-            @info "Running on multiple child processes"
-            parallel_progress(n,progress) do progress
-                @distributed (vcatdot) for file in files
-                    fn(file,progress)
-                end
-            end
-        else
-            @info "Running all file analyses in a single process."
-            prog = (progress isa Bool && progress) ? Progress(n) : prog
-            mapreduce(file -> fn(file,prog),vcatdot,files)
-        end
-    end
-
     maybe_parallel(n,progress,files) do file,progress
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             samplerate=resample,encoding=encode_eeg)

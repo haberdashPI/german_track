@@ -134,8 +134,7 @@ ggplot(dfmatch_means,aes(x=featuresof,y=cor,color=target_detected))     +
     theme_classic() +
     facet_grid(condition~target,labeller=label_context)
 
-ggsave(file.path($dir,"mean_test_across_conditions_weighted.pdf"))
-
+ggsave(file.path($dir,"mean_test_across_conditions.pdf"),width=8,height=6)
 
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
@@ -202,7 +201,6 @@ ggplot(dfspatial_means,aes(x=target_source,y=cor,color=target_detected)) +
     scale_color_brewer(palette='Set1') +
     scale_fill_brewer(palette='Set1') +
     theme_classic()
-
 
 ggsave(file.path($dir,"mean_spatial_targets.pdf"),width=4,height=6)
 
