@@ -94,6 +94,8 @@ df, models = train_test(
 );
 alert()
 
+# TODO: this conditions aren't being properly named
+# (fix renaming scheme)
 function addconds!(df)
     if :condition_str ∉ names(df)
         df[!,:condition_str] = df.condition
