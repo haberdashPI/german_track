@@ -95,8 +95,8 @@ df1, models1 = train_test(
     weightfn = weightfn,
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
-    minlag=0.4,
-    maxlag=0.8,
+    minlag=0.9,
+    maxlag=1.5,
     return_models = true,
     train = repeat(train_conditions_fn("late"),inner=3),
     test = test_conditions
@@ -112,7 +112,7 @@ df2, models2 = train_test(
     weightfn = weightfn,
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
-    maxlag=0.4,
+    maxlag=0.7,
     return_models = true,
     train = repeat(train_conditions_fn("early"),inner=3),
     test = test_conditions
@@ -136,7 +136,7 @@ end
 df = adjust_columns!(df)
 models = adjust_columns!(models)
 
-dir = joinpath(plotsdir(),string("results_alphagamma_",Date(now())))
+dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""
@@ -164,7 +164,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(condition+lag~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"test_across_conditions_weighted_bylag.pdf"))
+ggsave(file.path($dir,"test_across_conditions_weighted_bylag_0.9_1.5.pdf"))
 
 dfmatch_means = dfmatch %>%
     group_by(sid,target_detected,target,condition,featuresof) %>%

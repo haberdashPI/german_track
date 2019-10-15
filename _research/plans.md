@@ -4,11 +4,11 @@
 ## current steps:
 
 + look at alpha and gamma bands for the spatial task (didn't seem to help)
-- compare distinct timings (early and late)
-- train across subjects (exclude 11?)
++ compare distinct timings (early and late)
 + train across conditions: weight the data based on the condition
   - how does this work without the weights
 
+- train across subjects (exclude 11?)
 - look at features again
 
 - look at patterns of the features (pick what we want to compare here as well)
