@@ -10,20 +10,7 @@ end
 Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
 SampledSignals.samplerate(x::EEGData) = x.fs
-function SampledSignals.samplerate(x::MxArray)
-    fs = mat"$x.fsample"
-    fs
-end
-
-function eegtrial(x::MxArray,i)
-    mat"response = $x.trial{$i};"
-    response = get_mvariable(:response)
-    response
-end
-
-function eegtrial(x::EEGData,i)
-    x.data[i]
-end
+Base.getindex(x::EEGData,i) = x.data[i]
 
 resample!(eeg::EEGData,::Missing) = eeg
 function resample!(eeg::EEGData,sr)
@@ -70,15 +57,6 @@ function select_bounds(x::AbstractArray,::AllIndices,min_len,fs,dim)
     end
 end
 
-function select_bounds(x::MxArray,::AllIndices,min_len,fs,dim)
-    if dim == 1
-        mat"x = $x(1:min(end,$min_len),:);"
-    elseif dim == 2
-        mat"x = $x(:,1:min(end,$min_len));"
-    end
-    get_mvariable(:x)
-end
-
 function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim)
     start,stop = toindex.((start,stop),min,fs)
     if dim == 1
@@ -90,20 +68,6 @@ function select_bounds(x::AbstractArray,(start,stop)::Tuple,min,fs,dim)
     end
 end
 
-function select_bounds(x::MxArray,(start,stop)::Tuple,min,fs,dim)
-    start,stop = toindex.((start,stop),min,fs)
-    if dim == 1
-        mat"x = $x($start:$stop,:);"
-    elseif dim == 2
-        mat"x = $x(:,$start:$stop);"
-    else
-        error("Unspported dimension $dim.")
-    end
-
-    get_mvariable(:x)
-end
-
-
 function select_bounds(x::AbstractArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
     if dim == 1
         vcat(select_bounds.(Ref(x),bounds,min,fs,dim)...)
@@ -112,23 +76,6 @@ function select_bounds(x::AbstractArray,bounds::AbstractArray{<:Tuple},min,fs,di
     else
         error("Unspported dimension $dim.")
     end
-end
-
-function select_bounds(x::MxArray,bounds::AbstractArray{<:Tuple},min,fs,dim)
-    mat"indices = [];"
-    for (start,stop) in bounds
-        start,stop = toindex.((start,stop),min,fs)
-        mat"indices = [indices $start:$stop];"
-    end
-    if dim == 1
-        mat"x = $x(indices,:);"
-    elseif dim == 2
-        mat"x = $x(:,indices);"
-    else
-        error("Unspported dimension $dim.")
-    end
-
-    get_mvariable(:x)
 end
 
 struct RawEncoding <: Encoding

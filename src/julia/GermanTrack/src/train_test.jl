@@ -155,50 +155,85 @@ function train_test(method,stim_method,files,stim_info;
             train_cond = traini[1]
             test_cond = testi[1]
 
-            prefix = join([values(train_cond);
-                [string(maxlag),string(minlag),label(method),label(stim_method),
-                 string(encode_eeg), sid_str]],"_")
-            model = GermanTrack.train(method,
-                K=K,
-                sources = train_sources,
-                prefix = prefix,
-                eeg = eeg,
-                lags=lags,
-                indices = train_indices,
-                bounds = train_bounds,
-                weights = weights,
-                progress = progress,
-                stim_fn = load_source_fn(stim_method,stim_events,
-                    coalesce(resample,samplerate(eeg)),stim_info)
-            )
+            # TODO: more cleanup, I don't think I need the train
+            # and test methods above
 
-            test_prefix = join([values(test_cond);
-                [test_label(method),label(stim_method),sid_str]],"_")
-            cond = NamedTuple{(
-                Symbol.("train_",keys(train_cond))...,
-                Symbol.("test_",keys(test_cond))...)}(
-                (values(train_cond)...,
-                 values(test_cond)...)
-            )
-            GermanTrack.test(method,
-                K=K,
-                sid = sid,
-                condition = cond,
-                sources = test_sources,
-                train_source_indices = train_source_indices(stim_method),
-                correct = stim_events.correct,
-                prefix=test_prefix,
-                train_prefix=prefix,
-                eeg=eeg,
-                model=model,
-                lags=lags,
-                indices = test_indices,
-                bounds = test_bounds,
-                weights = weights,
-                progress = progress,
-                stim_fn = load_source_fn(stim_method,stim_events,
-                    coalesce(resample,samplerate(eeg)),stim_info,test=true)
-            )
+            for source in train_sources
+                prefix = join([values(train_cond);
+                    [string(maxlag),
+                     string(minlag),
+                     string(source),
+                     label(method),
+                     label(stim_method),
+                     string(encode_eeg),
+                     sid_str]
+                ],"_")
+
+                model = GermanTrack.train(method,
+                    K=K,
+                    prefix = prefix,
+                    lags=lags,
+                    indices = train_indices,
+                    progress = progress
+                ) do indices, source
+
+                    minlens = Vector{Int}(undef,maximum(indices))
+                    stim_result = mapreduce(vcat,indices) do i
+                        stim, = load_stimulus(source,i,stim_method,stim_events,
+                            coalesce(resample,samplerate(eeg)),stim_info)
+                        min(size(stim,1),size(eeg[i],2))
+                        minlens[i] = min(size(stim,1),size(eeg[i],2))
+                        select_bounds(stim.*weights[i],test_bounds[i],minlens[i],
+                            samplerate(eeg),1)
+                    end
+
+                    response_result = mapreduce(hcat,indices) do i
+                        select_bounds(eeg[i],test_bounds[i],minlens[i],
+                            samplerate(eeg),2)
+                    end
+                    stim_result, response_result'
+                end
+            end
+
+            for source in train_sources
+                test_prefix = join([values(test_cond);
+                    [test_label(method),
+                    string(source),
+                    label(stim_method),sid_str]
+                ],"_")
+                cond = NamedTuple{(
+                    Symbol.("train_",keys(train_cond))...,
+                    Symbol.("test_",keys(test_cond))...)}(
+                    (values(train_cond)...,
+                    values(test_cond)...)
+                )
+                GermanTrack.test(method,
+                    K=K,
+                    sid = sid,
+                    condition = cond,
+                    correct = stim_events.correct,
+                    prefix=test_prefix,
+                    train_prefix=prefix,
+                    lags=lags,
+                    indices = test_indices,
+                    progress = progress
+                ) do i
+                    stim, stim_id = load_stimulus(source,i,stim_method,stim_events,
+                        coalesce(resample,samplerate(eeg)),stim_info)
+
+                    min(size(stim,1),size(eeg[i],2))
+                    minlen = min(size(stim,1),size(eeg[i],2))
+                    select_bounds(stim.*weights[i],test_bounds[i],minlen,
+                        samplerate(eeg),1)
+
+                    response = mapreduce(hcat,indices) do i
+                        select_bounds(eeg[i],test_bounds[i],minlen,
+                            samplerate(eeg),2)
+                    end
+
+                    stim, response', stim_id
+                end
+            end
         end
     end
 end

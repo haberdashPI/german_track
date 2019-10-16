@@ -3,6 +3,10 @@
 
 ## current steps:
 
+- to start: refactor the code so it's easier to train across subjects
+- while I'm at it, there's a bunch of stuff I can start generifying and
+  cleaning up
+
 - look at a decoder trained across conditions but within each voice
 - double-check all labels of the spatial condition
 + look at alpha and gamma bands for the spatial task (didn't seem to help)

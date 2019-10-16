@@ -11,41 +11,33 @@ using ProximalAlgorithms
 using ProximalOperators
 using LambdaFn
 
-using Infiltrator
-
 ################################################################################
 # testing and training
 
-function decoder(method;prefix,group_suffix="",name="Training",K,
-    sources,progress=Progress(K*length(sources),1,desc=name),
+function decoder(stim_response_for,method;prefix,group_suffix="",K,
+    progress=Progress(K,1,desc="Training"),
     kwds...)
 
     result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        decoder_,method;prefix=prefix,name=name,progress=progress,
-        sources=sources,K=K,
+        decoder_,stim_response_for,method;prefix=prefix,
+        progress=progress,K=K,
         __oncache__ = () ->
-            progress_update!(progress,K*length(sources)),
+            progress_update!(progress,K),
         kwds...)
 end
 
-function decoder_(method;K,prefix,eeg,lags,indices,stim_fn,name="Training",
-        sources,weights,bounds=all_indices,progress,kwds...)
+function decoder_(stim_response_for,method;K,prefix,lags,indices,
+    progress,kwds...)
 
-    models = [[Array{Float64}(undef,0,0,0) for k in 1:K]
-        for i in 1:length(sources)]
+    models = Vector{Array{Float64,3}}(undef,0)
 
     for (k,(train,_)) in enumerate(folds(K,indices))
-        for (source_index,source) in enumerate(sources)
+        filename = @sprintf("%s_%s_fold%02d",source,prefix,k)
+        stim, response = stim_response_for(train)
+        models[k] = cachefn(filename, decoder_helper, method, stim,
+            response, lags)
 
-            filename = @sprintf("%s_%s_fold%02d",source,prefix,k)
-            stim, response = setup_stim_response(stim_fn, source_index, eeg,
-                train, bounds, weights)
-            model = cachefn(filename, decoder_helper, method, stim,
-                response, lags)
-            models[source_index][k] = model
-
-            progress_update!(progress)
-        end
+        progress_update!(progress)
     end
 
     models
@@ -129,18 +121,20 @@ end
 decode(response::AbstractArray,model,lags) =
     withlags(scale(response),.-reverse(lags)) * reshape(model,:,size(model,3))
 
-function decode_test_cv(train_method,test_method;prefix,indices,group_suffix="",
-    name="Training",sources,K,
+function decode_test_cv(stim_response_for,train_method,test_method;prefix,
+    indices,group_suffix="",
+    name="Training",K,
     return_models = false,
-    progress=Progress(length(indices)*length(sources),1,desc=name),
+    progress=Progress(length(indices),1,desc=name),
     train_prefix,kwds...)
 
     results = cachefn(@sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix),
-        decode_test_cv_,train_method,test_method;train_prefix=train_prefix,
+        decode_test_cv_,stim_response_for,train_method,test_method;
+        train_prefix=train_prefix,
         prefix=prefix,K=K,
-        indices=indices,progress=progress,sources=sources,
+        indices=indices,progress=progress,
         __oncache__ = () ->
-            progress_update!(progress,K*length(sources)),
+            progress_update!(progress,K*length(indices)),
         kwds...)
 
     results
@@ -154,28 +148,19 @@ single(x::Number) = x
 apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
-using Infiltrator
-
-function decode_test_cv_(method,test_method;prefix,eeg,model,lags,indices,
-    stim_fn,weights,bounds=all_indices,sources,train_source_indices,progress,
-    train_prefix,K)
+function decode_test_cv_(stim_response_for,method,test_method;prefix,eeg,
+    lags,indices,sources,train_source_indices,progress,train_prefix,K)
 
     df = DataFrame()
     models = DataFrame()
 
     for (k,(train,test)) in enumerate(folds(K,indices))
         for (source_index, source) in enumerate(sources)
-            train_source = sources[train_source_indices[source_index]]
-            model = loadcache(@sprintf("%s_%s_fold%02d",train_source,
-                train_prefix,k))
+            model = loadcache(@sprintf("%s_fold%02d",train_prefix,k))
 
             for i in test
-                stim,response = setup_stim_response(stim_fn, source_index, eeg,
-                    [i], bounds, weights)
-                _, stim_id = stim_fn(i,source_index)
-
+                stim,response,stim_ids = stim_response_for(i)
                 pred = decode(response,model,lags)
-                @infiltrate size(pred) != size(stim)
 
                 push!(df,(apply_method(test_method,pred,stim)...,
                     stim = stim, pred = pred,
