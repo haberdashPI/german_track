@@ -1,16 +1,16 @@
-using SampledSignals, CSV
+using SignalOperators, CSV
 export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
     PitchSurpriseEncoding, Stimulus, DiffEncoding, WeightedEncoding
 
-struct Stimulus
-    data::SampleBuf
+struct Stimulus{A}
+    data::A
     file::Union{String,Nothing}
     target_time::Union{Float64,Nothing}
 end
 function Stimulus(data::Array,fs::Number,file::Union{String,Nothing},
     target_time::Union{Float64,Nothing}=nothing)
 
-    Stimulus(SampleBuf(data,fs),file,target_time)
+    Stimulus(signal(data,fs),file,target_time)
 end
 
 abstract type StimEncoding <: Encoding
@@ -44,8 +44,7 @@ function encode(stim::Stimulus,tofs,::ASEnvelope)
     @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
-    spect = filt(audiospect,SampleBuf(resampled,spect_fs),false)
+    spect = filt(audiospect,tosamplerate(stim.data,spect_fs),false)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
@@ -59,8 +58,7 @@ function encode(stim::Stimulus,tofs,method::ASBins)
     @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
-    spect = filt(audiospect,SampleBuf(resampled,spect_fs),false)
+    spect = filt(audiospect,tosamplerate(stim.data,spect_fs),false)
     f = frequencies(spect)
     bounds = zip([0.0Hz;method.bounds.*Hz],[method.bounds.*Hz;last(f)])
     bins = map(bounds) do (from,to)

@@ -1,7 +1,6 @@
 using ProximalOperators
 using ProximalAlgorithms
 using Unitful
-using SampledSignals
 using LinearAlgebra
 using ProgressMeter
 using Distributions

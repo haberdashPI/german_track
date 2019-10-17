@@ -26,7 +26,6 @@ norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
 label(x::Function) = string(x)
 
 init_result(::StaticMethod) = DataFrame()
-train(m::StaticMethod;kwds...) = decoder(m.train;kwds...)
 function test(m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
@@ -141,13 +140,19 @@ function train_test(method,stim_method,files,stim_info;
         end
     end
 
-    maybe_parallel(n,progress,files) do file,progress
+    vcatdot(x,y) = vcat.(x,y)
+
+    for file in files
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
             samplerate=resample,encoding=encode_eeg)
         lags = round(Int,minlag*samplerate(eeg)):round(Int,maxlag*samplerate(eeg))
         sid_str = @sprintf("%03d",sid)
 
         weights = weightfn.(eachrow(stim_events))
+        function bound_indices(bounds,min)
+            from,to = round.(Int,samplerate(eeg).*bounds)
+            bound(from:to,min=1,max=min)
+        end
 
         mapreduce(vcatdot,zip(train,test)) do (traini,testi)
             test_bounds, test_indices, train_bounds, train_indices =
@@ -169,27 +174,27 @@ function train_test(method,stim_method,files,stim_info;
                      sid_str]
                 ],"_")
 
-                model = GermanTrack.train(method,
+                decoder(method,
                     K=K,
                     prefix = prefix,
                     lags=lags,
                     indices = train_indices,
                     progress = progress
-                ) do indices, source
+                ) do indices
 
-                    minlens = Vector{Int}(undef,maximum(indices))
-                    stim_result = mapreduce(vcat,indices) do i
+                    minlens = Vector{Int}(undef,length(indices))
+                    stim_result = mapreduce(vcat,enumerate(indices)) do (j,i)
                         stim, = load_stimulus(source,i,stim_method,stim_events,
                             coalesce(resample,samplerate(eeg)),stim_info)
-                        min(size(stim,1),size(eeg[i],2))
-                        minlens[i] = min(size(stim,1),size(eeg[i],2))
-                        select_bounds(stim.*weights[i],test_bounds[i],minlens[i],
-                            samplerate(eeg),1)
+                        minlens[j] = min(size(stim,1),size(eeg[i],2))
+                        indices = bound_indices(train_bounds[i],minlens[j])
+
+                        view(stim,indices,:) .* weights[i]
                     end
 
-                    response_result = mapreduce(hcat,indices) do i
-                        select_bounds(eeg[i],test_bounds[i],minlens[i],
-                            samplerate(eeg),2)
+                    response_result = mapreduce(hcat,enumerate(indices)) do (j,i)
+                        indices = bound_indices(train_bounds[i],minlens[j])
+                        view(eeg[i],:,indices)
                     end
                     stim_result, response_result'
                 end
@@ -218,18 +223,14 @@ function train_test(method,stim_method,files,stim_info;
                     indices = test_indices,
                     progress = progress
                 ) do i
-                    stim, stim_id = load_stimulus(source,i,stim_method,stim_events,
-                        coalesce(resample,samplerate(eeg)),stim_info)
+                    stim, stim_id = load_stimulus(source,i,stim_method,
+                        stim_events,coalesce(resample,samplerate(eeg)),
+                        stim_info)
 
-                    min(size(stim,1),size(eeg[i],2))
                     minlen = min(size(stim,1),size(eeg[i],2))
-                    select_bounds(stim.*weights[i],test_bounds[i],minlen,
-                        samplerate(eeg),1)
-
-                    response = mapreduce(hcat,indices) do i
-                        select_bounds(eeg[i],test_bounds[i],minlen,
-                            samplerate(eeg),2)
-                    end
+                    indices = bound_indices(test_bounds,minlen)
+                    stim = view(stim,indices,:) .* weights[i]
+                    response = view(eeg[i],:,indices)
 
                     stim, response', stim_id
                 end

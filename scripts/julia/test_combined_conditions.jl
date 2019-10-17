@@ -1,15 +1,8 @@
-
-using DrWatson; quickactivate(@__DIR__,"german_track")
-using GermanTrack
-using AxisArrays
-using PlotAxes
-using DataFramesMeta
-using Random
-using Statistics
+using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-# eeg_files = eeg_files[1:1]
+eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 # eeg_encoding = JointEncoding(RawEncoding(),
@@ -64,7 +57,7 @@ df,models = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
-        sources=["male-fem1-fem2","male-fem1-fem2_other"]),
+        sources=[joint_source, other(joint_source)]),
     # encode_eeg = eeg_encoding,
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,

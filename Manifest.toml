@@ -76,15 +76,15 @@ version = "0.6.2"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "Mmap", "Parsers", "PooledArrays", "Profile", "Tables", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "de1b0b47e8860ebda59594fa424709ed3e40fcd3"
+git-tree-sha1 = "5e7c67bc2873b347cd20ee742c93d243f3df9e93"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.5.12"
+version = "0.5.13"
 
 [[CategoricalArrays]]
 deps = ["Compat", "DataAPI", "Future", "JSON", "Missings", "Printf", "Reexport", "Unicode"]
-git-tree-sha1 = "5f4400b24adb1fbed17a9dcc1e8ab8aaf5b03d1f"
+git-tree-sha1 = "45101c4d0df3946acb6e9bfcfd3a8c32abbd421b"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "0.6.0"
+version = "0.7.1"
 
 [[ClusterManagers]]
 deps = ["Distributed", "Sockets"]
@@ -118,9 +118,9 @@ version = "0.9.6"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
+git-tree-sha1 = "ed2c4abadf84c53d9e58510b5fc48912c2336fbb"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "2.1.0"
+version = "2.2.0"
 
 [[Conda]]
 deps = ["JSON", "VersionParsing"]
@@ -171,9 +171,9 @@ version = "0.5.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "517ce30aa57cdfae1ab444a7c0aef8bb86345bc2"
+git-tree-sha1 = "f94423c68f2e47db0d6f626a26d4872266e0ec3d"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.1"
+version = "0.17.2"
 
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -212,18 +212,18 @@ version = "0.21.3"
 
 [[DoubleFloats]]
 deps = ["GenericSVD", "GenericSchur", "LinearAlgebra", "Polynomials", "Printf", "Quadmath", "Random", "Requires"]
-git-tree-sha1 = "16ff9dc8d84feb67faeaba42c21ad261578bcbbf"
+git-tree-sha1 = "e4d8b2947fb7d855ba84d6ce8481c8351563fec9"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
-version = "0.9.11"
+version = "0.9.13"
 
 [[DrWatson]]
 deps = ["FileIO", "LibGit2", "Pkg", "Random", "Requires"]
-git-tree-sha1 = "a2bb19eec40552d1fd3ea402a2e904be2e6f2671"
+git-tree-sha1 = "59f06989cd52636fd0f2ab73bfafa9b94e97e8fc"
 uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
-version = "1.2.0"
+version = "1.4.2"
 
 [[EEGCoding]]
-deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "Infiltrator", "LambdaFn", "LinearAlgebra", "MATLAB", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
+deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "Infiltrator", "LambdaFn", "LinearAlgebra", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -252,6 +252,12 @@ git-tree-sha1 = "2ee1d999c462425e2f848524f732ed51bc1ab63a"
 uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
 version = "0.6.2"
 
+[[FillArrays]]
+deps = ["LinearAlgebra", "Random", "SparseArrays"]
+git-tree-sha1 = "a2e22cd210dfa3ad1e1e6291fb733741dfabcc9f"
+uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
+version = "0.7.3"
+
 [[FixedPointNumbers]]
 deps = ["Test"]
 git-tree-sha1 = "b8045033701c3b10bf2324d7203404be7aef88ba"
@@ -275,7 +281,7 @@ uuid = "c145ed77-6b09-5dd9-b285-bf645a82121e"
 version = "0.3.0"
 
 [[GermanTrack]]
-deps = ["BSON", "CSV", "DSP", "DataFrames", "Dates", "DependentBootstrap", "Distributed", "Distributions", "DrWatson", "EEGCoding", "FileIO", "JSON", "LambdaFn", "LinearAlgebra", "MATLAB", "Printf", "ProgressMeter", "ProximalOperators", "Query", "RCall", "Reexport", "SampledSignals", "Statistics", "Tables", "Unitful", "VegaLite", "WAV"]
+deps = ["AxisArrays", "BSON", "CSV", "DSP", "DataFrames", "DataFramesMeta", "Dates", "DependentBootstrap", "Distributed", "Distributions", "DrWatson", "EEGCoding", "FileIO", "JSON", "LambdaFn", "LinearAlgebra", "MATLAB", "PlotAxes", "Printf", "ProgressMeter", "ProximalOperators", "Query", "RCall", "Random", "Reexport", "SampledSignals", "SignalOperators", "Statistics", "Tables", "Unitful", "VegaLite", "WAV"]
 path = "src/julia/GermanTrack"
 uuid = "2bc61200-6a9c-4319-aa6b-e00ff93368c1"
 version = "0.1.0"
@@ -318,9 +324,9 @@ version = "0.8.0"
 
 [[Infiltrator]]
 deps = ["REPL"]
-git-tree-sha1 = "59240cfcc800a7f4090aa2b8989549e9a59dd0a2"
+git-tree-sha1 = "e809e11237ffe050c7699ca734c7c3ccd86345a1"
 uuid = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
-version = "0.1.0"
+version = "0.2.0"
 
 [[IniFile]]
 deps = ["Test"]
@@ -438,9 +444,9 @@ version = "1.0.2"
 
 [[MathOptInterface]]
 deps = ["BenchmarkTools", "LinearAlgebra", "OrderedCollections", "SparseArrays", "Test", "Unicode"]
-git-tree-sha1 = "e94145d7746c13732a1ad1d1d334f8e9afab8e7c"
+git-tree-sha1 = "7088ff9a77e8ecd773cc788787ad027cfb627170"
 uuid = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
-version = "0.9.4"
+version = "0.9.5"
 
 [[MathProgBase]]
 deps = ["Compat"]
@@ -533,15 +539,21 @@ uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
 version = "0.2.4"
 
 [[Polynomials]]
-deps = ["LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "62142bd65d3f8aeb2226ec64dd8493349147df94"
+deps = ["LinearAlgebra", "RecipesBase"]
+git-tree-sha1 = "f7c0c07e82798aef542d60a6e6e85e39f4590750"
 uuid = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
-version = "0.5.2"
+version = "0.5.3"
 
 [[PooledArrays]]
 git-tree-sha1 = "6e8c38927cb6e9ae144f7277c753714861b27d14"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
 version = "0.5.2"
+
+[[PrettyPrinting]]
+deps = ["Markdown", "Pkg"]
+git-tree-sha1 = "d81528303e2715c32706d4519b2ddf0550805533"
+uuid = "54e16d92-306c-5ea0-a30b-337be88ac337"
+version = "0.1.0"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -595,9 +607,9 @@ version = "0.9.1"
 
 [[RCall]]
 deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Missings", "REPL", "Random", "Requires", "StatsModels", "WinReg"]
-git-tree-sha1 = "828332205a09377da6a8ebd1e615b11a22f8def6"
+git-tree-sha1 = "21f8375424fa7050595080bf53b4b4f854449eb9"
 uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
-version = "0.13.3"
+version = "0.13.4"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
@@ -670,6 +682,18 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 
+[[ShiftedArrays]]
+deps = ["OffsetArrays", "RecursiveArrayTools"]
+git-tree-sha1 = "72712360fa890177aca2ff9b0d86f7c0db3d5834"
+uuid = "1277b4bf-5013-50f5-be3d-901d8477a67a"
+version = "0.5.1"
+
+[[SignalOperators]]
+deps = ["AxisArrays", "Compat", "DSP", "FileIO", "FillArrays", "LambdaFn", "MetaArrays", "PrettyPrinting", "Random", "Requires", "Statistics", "Unitful"]
+git-tree-sha1 = "5f4488c04792438df96b53dfd765a677498a9217"
+uuid = "4d633899-0529-4c96-b1ed-a77d049c39ef"
+version = "0.1.2"
+
 [[Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
@@ -691,9 +715,9 @@ version = "0.7.2"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "db23bbf50064c582b6f2b9b043c8e7e98ea8c0c6"
+git-tree-sha1 = "1085ffbf5fd48fdba64ef8e902ca429c4e1212d3"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.11.0"
+version = "0.11.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -712,10 +736,10 @@ uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.8.0"
 
 [[StatsModels]]
-deps = ["Compat", "DataFrames", "StatsBase", "Test"]
-git-tree-sha1 = "b5a735dcd2be05f0af86709750d4d5f62ca4a25d"
+deps = ["CategoricalArrays", "DataStructures", "LinearAlgebra", "ShiftedArrays", "SparseArrays", "StatsBase", "Tables"]
+git-tree-sha1 = "0d0e21a1c3e8043cbc1c4dd4b4e4189b0449e8cf"
 uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
-version = "0.5.0"
+version = "0.6.6"
 
 [[StructuredOptimization]]
 deps = ["AbstractOperators", "DSP", "FFTW", "LinearAlgebra", "ProximalAlgorithms", "ProximalOperators", "RecursiveArrayTools"]

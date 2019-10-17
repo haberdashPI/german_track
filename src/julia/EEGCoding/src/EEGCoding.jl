@@ -1,5 +1,5 @@
 module EEGCoding
-using MATLAB, SampledSignals, Requires
+using SignalOperators, Requires
 
 include("parallel.jl")
 include("util.jl")

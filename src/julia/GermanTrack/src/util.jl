@@ -1,9 +1,30 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
-    not_near
+    not_near, bound
 
 function mat2bson(file)
     file
+end
+
+function bound(x::AbstractRange;min=nothing,max=nothing)
+    from = first(x)
+    to = last(x)
+
+    if !isnothing(min)
+        from = Base.max(min,from)
+        to = Base.max(min,to)
+    end
+
+    if !isnothing(max)
+        from = Base.min(max,from)
+        to = Base.min(max,to)
+    end
+
+    if x isa UnitRange
+        from:to
+    else
+        from:step(x):to
+    end
 end
 
 function clear_cache!()

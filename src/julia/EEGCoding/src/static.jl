@@ -32,7 +32,7 @@ function decoder_(stim_response_for,method;K,prefix,lags,indices,
     models = Vector{Array{Float64,3}}(undef,0)
 
     for (k,(train,_)) in enumerate(folds(K,indices))
-        filename = @sprintf("%s_%s_fold%02d",source,prefix,k)
+        filename = @sprintf("%s_fold%02d",prefix,k)
         stim, response = stim_response_for(train)
         models[k] = cachefn(filename, decoder_helper, method, stim,
             response, lags)
@@ -65,23 +65,6 @@ function min_length(stim,eeg,i)
     response = eegtrial(eeg,i)
     min(size(stim,1),trunc(Int,size(response,2)))
 end
-
-function setup_stim_response(stim_fn,source_i,eeg,indices,bounds,weights)
-    minlens = Vector{Int}(undef,maximum(indices))
-    stim_result = mapreduce(vcat,indices) do i
-        stim, = stim_fn(i,source_i)
-        minlens[i] = min_length(stim,eeg,i)
-        select_bounds(stim.*weights[i],bounds[i],minlens[i],samplerate(eeg),1)
-    end
-
-    response_result = mapreduce(hcat,indices) do i
-        select_bounds(eegtrial(eeg,i),bounds[i],minlens[i],samplerate(eeg),2)
-    end
-    stim_result, response_result'
-end
-
-# TODO: we could probably make things even faster if we created the memory XX
-# and XY once.
 
 safezscore(x) = std(x) != 0 ? zscore(x) : x
 scale(x) = mapslices(safezscore,x,dims=1)

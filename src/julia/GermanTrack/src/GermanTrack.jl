@@ -1,10 +1,11 @@
 module GermanTrack
 
-using Reexport, SampledSignals, Statistics, Tables, DrWatson, JSON
+using Reexport, Tables, DrWatson, JSON, SignalOperators, WAV
 
 @reexport using DataFrames, Printf, ProgressMeter, FileIO,
-    MATLAB, EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,
-    Distributions, LambdaFn, RCall, VegaLite, CSV, ProximalOperators
+    EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,
+    Distributions, LambdaFn, RCall, VegaLite, CSV, ProximalOperators,
+    PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics
 using BSON: @save, @load
 export CSV, JSON, @save, @load
 

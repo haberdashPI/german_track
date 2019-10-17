@@ -9,7 +9,7 @@ Base.@kwdef mutable struct EEGData
 end
 Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
-SampledSignals.samplerate(x::EEGData) = x.fs
+SignalOperators.samplerate(x::EEGData) = x.fs
 Base.getindex(x::EEGData,i) = x.data[i]
 
 resample!(eeg::EEGData,::Missing) = eeg
