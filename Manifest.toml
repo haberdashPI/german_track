@@ -136,7 +136,7 @@ version = "0.5.0"
 
 [[CorticalSpectralTemporalResponses]]
 deps = ["AxisArrays", "Colors", "Compat", "DSP", "DataFrames", "FFTW", "FileIO", "ImageInTerminal", "JLD2", "MetaArrays", "PlotAxes", "ProgressMeter", "Requires", "SampledSignals", "Statistics", "Test", "Unitful"]
-git-tree-sha1 = "7f638aee96ffab4d4e883da6e9cac12ceb4e8e07"
+path = "/Users/davidlittle/Documents/juliadev/CorticalSpectralTemporalResponses"
 uuid = "82ec0db2-aa68-11e9-08e4-e3d69fc08b96"
 version = "0.4.0"
 
@@ -218,9 +218,9 @@ version = "0.9.13"
 
 [[DrWatson]]
 deps = ["FileIO", "LibGit2", "Pkg", "Random", "Requires"]
-git-tree-sha1 = "59f06989cd52636fd0f2ab73bfafa9b94e97e8fc"
+git-tree-sha1 = "6ce4f3b648f1d92f4789f7f900ea62e9f7aba806"
 uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
-version = "1.4.2"
+version = "1.4.3"
 
 [[EEGCoding]]
 deps = ["BSON", "CSV", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "Distributed", "Distributions", "Infiltrator", "LambdaFn", "LinearAlgebra", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
@@ -398,9 +398,9 @@ version = "0.1.1"
 
 [[LambdaFn]]
 deps = ["MacroTools", "Printf"]
-git-tree-sha1 = "2a7d3e0970218915b42fc68a4976049cbfcc8438"
+git-tree-sha1 = "20140392eb6db1696f0909957add897441ed8d7f"
 uuid = "fcefd6c4-8de0-11e9-0d15-03bc7c8ec982"
-version = "0.3.0"
+version = "0.2.1"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -690,9 +690,9 @@ version = "0.5.1"
 
 [[SignalOperators]]
 deps = ["AxisArrays", "Compat", "DSP", "FileIO", "FillArrays", "LambdaFn", "MetaArrays", "PrettyPrinting", "Random", "Requires", "Statistics", "Unitful"]
-git-tree-sha1 = "5f4488c04792438df96b53dfd765a677498a9217"
+git-tree-sha1 = "0ac58d46755ca324b62f20f1b6ca981a7edc85fe"
 uuid = "4d633899-0529-4c96-b1ed-a77d049c39ef"
-version = "0.1.2"
+version = "0.1.3"
 
 [[Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
@@ -831,9 +831,9 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 [[Unitful]]
 deps = ["LinearAlgebra", "Random"]
-git-tree-sha1 = "92bdf0ccfa9612b167d0adaadef832a09971ceb0"
+git-tree-sha1 = "75efb362655883381d03004ca53a3a95facb9a54"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "0.17.0"
+version = "0.16.0"
 
 [[VegaDatasets]]
 deps = ["DataStructures", "DataValues", "FilePaths", "IterableTables", "IteratorInterfaceExtensions", "JSON", "TableShowUtils", "TableTraits", "TableTraitsUtils", "TextParse"]

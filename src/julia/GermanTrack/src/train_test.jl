@@ -153,6 +153,7 @@ function train_test(method,stim_method,files,stim_info;
             from,to = round.(Int,samplerate(eeg).*bounds)
             bound(from:to,min=1,max=min)
         end
+        prog = (progress isa Bool && progress) ? Progress(n) : prog
 
         mapreduce(vcatdot,zip(train,test)) do (traini,testi)
             test_bounds, test_indices, train_bounds, train_indices =
@@ -163,44 +164,45 @@ function train_test(method,stim_method,files,stim_info;
             # TODO: more cleanup, I don't think I need the train
             # and test methods above
 
-            for source in train_sources
-                prefix = join([values(train_cond);
-                    [string(maxlag),
-                     string(minlag),
-                     string(source),
-                     label(method),
-                     label(stim_method),
-                     string(encode_eeg),
+            function train_prefix(source)
+                join([values(train_cond);
+                    [string(maxlag), string(minlag), string(source),
+                     label(method), label(stim_method), string(encode_eeg),
                      sid_str]
                 ],"_")
+            end
 
-                decoder(method,
+            for source in train_sources
+                prefix = train_prefix(source)
+                decoder(method.train,
                     K=K,
                     prefix = prefix,
                     lags=lags,
                     indices = train_indices,
-                    progress = progress
+                    progress = prog
                 ) do indices
-
                     minlens = Vector{Int}(undef,length(indices))
                     stim_result = mapreduce(vcat,enumerate(indices)) do (j,i)
                         stim, = load_stimulus(source,i,stim_method,stim_events,
                             coalesce(resample,samplerate(eeg)),stim_info)
                         minlens[j] = min(size(stim,1),size(eeg[i],2))
-                        indices = bound_indices(train_bounds[i],minlens[j])
+                        times = bound_indices(train_bounds[i],minlens[j])
 
-                        view(stim,indices,:) .* weights[i]
+                        view(stim,times,:) .* weights[i]
                     end
 
                     response_result = mapreduce(hcat,enumerate(indices)) do (j,i)
-                        indices = bound_indices(train_bounds[i],minlens[j])
-                        view(eeg[i],:,indices)
+                        times = bound_indices(train_bounds[i],minlens[j])
+                        view(eeg[i],:,times)
                     end
+
                     stim_result, response_result'
                 end
             end
 
-            for source in train_sources
+            for source in test_sources
+                # TODO: figure what to do to find the right source
+                prefix = train_prefix(fortraining(source))
                 test_prefix = join([values(test_cond);
                     [test_label(method),
                     string(source),
@@ -221,7 +223,7 @@ function train_test(method,stim_method,files,stim_info;
                     train_prefix=prefix,
                     lags=lags,
                     indices = test_indices,
-                    progress = progress
+                    progress = prog
                 ) do i
                     stim, stim_id = load_stimulus(source,i,stim_method,
                         stim_events,coalesce(resample,samplerate(eeg)),

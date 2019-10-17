@@ -44,7 +44,8 @@ function encode(stim::Stimulus,tofs,::ASEnvelope)
     @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    spect = filt(audiospect,tosamplerate(stim.data,spect_fs),false)
+    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
+    spect = filt(audiospect,signal(resampled,spect_fs),false)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
@@ -58,7 +59,8 @@ function encode(stim::Stimulus,tofs,method::ASBins)
     @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    spect = filt(audiospect,tosamplerate(stim.data,spect_fs),false)
+    resampled = Filters.resample(vec(stim.data),spect_fs/samplerate(stim.data))
+    spect = filt(audiospect,signal(resampled,spect_fs),false)
     f = frequencies(spect)
     bounds = zip([0.0Hz;method.bounds.*Hz],[method.bounds.*Hz;last(f)])
     bins = map(bounds) do (from,to)

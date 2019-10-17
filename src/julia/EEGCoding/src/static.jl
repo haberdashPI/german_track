@@ -29,7 +29,7 @@ end
 function decoder_(stim_response_for,method;K,prefix,lags,indices,
     progress,kwds...)
 
-    models = Vector{Array{Float64,3}}(undef,0)
+    models = Vector{Array{Float64,3}}(undef,K)
 
     for (k,(train,_)) in enumerate(folds(K,indices))
         filename = @sprintf("%s_fold%02d",prefix,k)
