@@ -26,10 +26,10 @@ norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
 label(x::Function) = string(x)
 
 init_result(::StaticMethod) = DataFrame()
-function test(m::StaticMethod;sid,condition,indices,sources,correct,
+function test(fn,m::StaticMethod;sid,condition,indices,sources,correct,
     kwds...)
 
-    df, models = decode_test_cv(m.train,m.test;sources=sources,indices=indices,kwds...)
+    df, models = decode_test_cv(fn,m.train,m.test;sources=sources,indices=indices,kwds...)
 
     df[!,:sid] .= sid
     for key in keys(condition)
@@ -201,7 +201,12 @@ function train_test(method,stim_method,files,stim_info;
             end
 
             for source in test_sources
-                # TODO: figure what to do to find the right source
+                # to fix the below problem: "other" sources
+                # are for testing only, not training only
+                # so my logic in the source refactoring is reversed
+                # I should train a subset of sources and test over all_indices
+                # sources, using the `fortraining` mehtod (now misnamed
+                # `fortesting`)
                 prefix = train_prefix(fortraining(source))
                 test_prefix = join([values(test_cond);
                     [test_label(method),
