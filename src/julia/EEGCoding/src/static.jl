@@ -32,6 +32,11 @@ function decoder_(stim_response_for,method;K,prefix,lags,indices,
     models = Vector{Array{Float64,3}}(undef,K)
 
     for (k,(train,_)) in enumerate(folds(K,indices))
+        if isempty(train)
+            progress_update!(progress)
+            models[k] = Array{Float64,3}(undef,0,0,0)
+            continue
+        end
         filename = @sprintf("%s_fold%02d",prefix,k)
         stim, response = stim_response_for(train)
         models[k] = cachefn(filename, decoder_helper, method, stim,
@@ -60,10 +65,6 @@ function withlags(x,lags)
         end
     end
     y
-end
-function min_length(stim,eeg,i)
-    response = eegtrial(eeg,i)
-    min(size(stim,1),trunc(Int,size(response,2)))
 end
 
 safezscore(x) = std(x) != 0 ? zscore(x) : x
@@ -131,31 +132,48 @@ single(x::Number) = x
 apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
-function decode_test_cv_(stim_response_for,method,test_method;prefix,eeg,
-    lags,indices,sources,train_source_indices,progress,train_prefix,K)
+function decode_test_cv_(stim_response_for,method,test_method;prefix,
+    lags,indices,train_indices,progress,train_prefix,K)
 
     df = DataFrame()
     models = DataFrame()
 
-    for (k,(train,test)) in enumerate(folds(K,indices))
-        for (source_index, source) in enumerate(sources)
-            model = loadcache(@sprintf("%s_fold%02d",train_prefix,k))
+    # the train a test indices have some overlapping indices and some
+    # non-overlapping indices: test the overlapping indices within the
+    # appropriate k-fold and distribute the non-overlapping indices evenly
+    # across the folds
 
-            for i in test
-                stim,response,stim_ids = stim_response_for(i)
-                pred = decode(response,model,lags)
-
-                push!(df,(apply_method(test_method,pred,stim)...,
-                    stim = stim, pred = pred,
-                    source = source, index = i, stim_id = stim_id))
-            end
-            push!(models,(model = model, source = source, k = k))
-
+    unshared_indices = setdiff(indices,train_indices)
+    k_step = length(unshared_indices) / K
+    last = 0
+    for (k,(trained,untrained)) in enumerate(folds(K,train_indices))
+        if isempty(trained)
             next!(progress)
+            continue
         end
+
+        model = loadcache(@sprintf("%s_fold%02d",train_prefix,k))
+
+        from = last+1
+        to = floor(Int,min(length(unshared_indices),k*k_step))
+        last = max(last,to)
+        test = (untrained ∩ indices) ∪ unshared_indices[from:to]
+
+        @assert k < K || to == length(unshared_indices)
+
+        isempty(test) && continue
+
+        for i in test
+            stim,response,stim_id = stim_response_for(i)
+            pred = decode(response,model,lags)
+
+            push!(df,(apply_method(test_method,pred,stim)...,
+                stim = stim, pred = pred,
+                index = i, stim_id = stim_id))
+        end
+        push!(models,(model = model, k = k))
+        next!(progress)
     end
 
-    categorical!(df,:source)
-    categorical!(models,:source)
     df, models
 end

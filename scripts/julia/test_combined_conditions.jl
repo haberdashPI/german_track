@@ -71,8 +71,6 @@ alert()
 # TODO: this conditions aren't being properly named
 # (fix renaming scheme)
 function adjust_columns!(df)
-    df[!,:source] = replace.(df.source,
-        Ref(r"male-fem1-fem2" => "joint"))
     if :stim_id ∈ names(df)
         df[!,:location] = direction[df.stim_id]
     end
@@ -82,7 +80,7 @@ end
 df = adjust_columns!(df)
 models = adjust_columns!(models)
 
-dir = joinpath(plotsdir(),string("results_cross_unweighted_",Date(now())))
+dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""

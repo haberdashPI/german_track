@@ -18,16 +18,19 @@ end
 progress_ammend!(prog::Bool,n) = @assert !prog
 
 function folds(k,indices)
-    @assert k ≤ length(indices)
     len = length(indices)
     fold_size = len / k
+    @assert length(indices) > 1
     map(1:k) do fold
         start = floor(Int,(fold-1)fold_size)+1
         stop = (min(len,floor(Int,fold*fold_size)))
         test = indices[start:stop]
-        train = setdiff(indices,test)
-
-        (train,test)
+        if !isempty(test)
+            train = setdiff(indices,test)
+            (train,test)
+        else
+            eltype(indices)[], test
+        end
     end
 end
 

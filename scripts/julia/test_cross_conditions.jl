@@ -1,12 +1,4 @@
-
-using DrWatson; quickactivate(@__DIR__,"german_track")
-using GermanTrack
-using AxisArrays
-using PlotAxes
-using DataFramesMeta
-using DependentBootstrap
-using Random
-using Statistics
+using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
@@ -35,7 +27,7 @@ labels = ["correct","all"]
 conditions = mapreduce(vcat,listen_conds) do condition
     mapreduce(vcat,targets) do target
         mapreduce(vcat,labels) do label
-            [join((label,condition,target),"_") =>
+            [(label=label,condition=condition,target=target) =>
                 @λ(_row.condition == cond_label[condition] &&
                     (label == "all" || _row.correct) &&
                     speakers[_row.sound_index] == tindex[target] ?
@@ -51,43 +43,35 @@ function measures(pred,stim)
      fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
 end
 
+function subdict(dict,keys)
+    (k => dict[k] for k in keys)
+end
+
+# TODO: suspicious result, I'm not sure no_indices
+# for train and test are being computed properly
 cond_pairs = Iterators.product(listen_conds,listen_conds)
 df, models = train_test(
     K = 20,
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
-        sources=["male-fem1-fem2","male-fem1-fem2_other"]),
+        sources=[joint_source, other(joint_source)]),
     resample = 64,
     eeg_files, stim_info,
     maxlag=0.8,
     return_models = true,
-    train = [
-        join(("correct",cond,target),"_") =>
-            conditions[join(("correct",cond,target),"_")]
+    train = subdict(conditions,
+        (label="correct",condition = cond, target=target)
         for (cond,_) in cond_pairs, target in targets
-    ],
-    test = [
-        join(("all",cond,target),"_") =>
-            conditions[join(("all",cond,target),"_")]
-        for (_,cond) in cond_pairs, target in targets
-]);
+    ),
+    test = subdict(conditions,
+        (label="all",condition = cond, target=target)
+        for (cond,_) in cond_pairs, target in targets
+    )
+);
 alert()
 
-function addconds!(df)
-    if :condition_str ∉ names(df)
-        df[!,:condition_str] = df.condition
-    end
-    df[!,:train_condition] = replace.(df.condition_str,
-        Ref(r"train-correct_([a-z]+)_.*" => s"\1"))
-    df[!,:train_target] = replace.(df.condition_str,
-        Ref(r"train-correct_[a-z]+_([a-z]+)_.*" => s"before_correct_\1"))
-    df[!,:test_condition] = replace.(df.condition_str,
-        Ref(r".*test-all_([a-z]+)_.*" => s"\1"))
-    df[!,:test_target] = replace.(df.condition_str,
-        Ref(r".*test-all_[a-z]+_([a-z]+)" => s"\1"))
-    df[!,:source] = replace.(df.source,
-        Ref(r"male-fem1-fem2" => "joint"))
+function adjust_columns!(df)
     if :stim_id ∈ names(df)
         df[!,:location] = direction[df.stim_id]
     end

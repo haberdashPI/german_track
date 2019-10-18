@@ -9,7 +9,7 @@ end
 
 abstract type AbstractSource
 end
-fortesting(x::AbstractSource) = x
+fortraining(x::AbstractSource) = x
 
 function encode_cache(body,key,stim_num)
     if key ∈ keys(encodings)
@@ -86,7 +86,7 @@ struct OtherSource{S} <: AbstractSource
 end
 other(x::AbstractSource) = OtherSource(x)
 other(x::OtherSource) = error("Already 'othered'")
-fortesting(x::OtherSource) = x.source
+fortraining(x::OtherSource) = x.source
 Base.string(x::OtherSource) = string("other_",string(x.source))
 
 function load_stimulus(::OtherSource{JointSource},stim_i,stim_method,events,
@@ -152,4 +152,4 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
     encoding::EEGCoding.Encoding
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
-sources(x::SpeakerStimMethod) = x.sources, unique!(fortesting.(x.sources))
+sources(x::SpeakerStimMethod) = unique!(fortraining.(x.sources)), x.sources
