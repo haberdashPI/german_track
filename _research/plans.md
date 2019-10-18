@@ -3,6 +3,8 @@
 
 ## current steps:
 
+ - look at the comments in test_cross_conditions.jl
+
 - to start: refactor the code so it's easier to train across subjects
 - while I'm at it, there's a bunch of stuff I can start generifying and
   cleaning up

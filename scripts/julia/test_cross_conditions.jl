@@ -49,6 +49,9 @@ end
 
 # TODO: suspicious result, I'm not sure no_indices
 # for train and test are being computed properly
+
+# the plan is to first look at the indices that are actually
+# being trained and tested vs. the folds
 cond_pairs = Iterators.product(listen_conds,listen_conds)
 df, models = train_test(
     K = 20,
