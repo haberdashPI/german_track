@@ -1,6 +1,6 @@
 module GermanTrack
 
-using Reexport, Tables, DrWatson, JSON, SignalOperators, WAV
+using Reexport, Tables, DrWatson, JSON, SignalOperators, WAV, Infiltrator
 
 @reexport using DataFrames, Printf, ProgressMeter, FileIO,
     EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,

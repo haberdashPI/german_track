@@ -1,5 +1,5 @@
 module EEGCoding
-using SignalOperators, Requires
+using SignalOperators, Requires, Infiltrator
 
 include("parallel.jl")
 include("util.jl")
