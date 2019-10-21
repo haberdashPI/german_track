@@ -2,7 +2,7 @@ using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-eeg_files = eeg_files[1:1]
+# eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
@@ -69,7 +69,7 @@ df, models = train_test(
     ),
     test = subdict(conditions,
         (label="all",condition = cond, target=target)
-        for (cond,_) in cond_pairs, target in targets
+        for (_,cond) in cond_pairs, target in targets
     )
 );
 alert()
@@ -81,10 +81,10 @@ function adjust_columns!(df)
     df
 end
 
-df = addconds!(df)
-models = addconds!(models)
+df = adjust_columns!(df)
+models = adjust_columns!(models)
 
-dir = joinpath(plotsdir(),string("results_diff_",Date(now())))
+dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""
@@ -94,36 +94,34 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-df = $df %>%
-    select(-condition_str)
-
-ggplot(df,aes(x=test_target,y=joint_cor,color=test_correct)) +
+ggplot($df,aes(x=test_target,y=joint_cor,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(train_condition+test_condition~sid+source,labeller=label_context)
 
-dfmatch = df %>% filter(source == 'joint', train_condition == test_condition) %>%
-    select(-condition) %>%
+dfmatch = $df %>% filter(source == 'joint', train_condition == test_condition) %>%
     rename(condition = test_condition, target = test_target,
         target_detected = test_correct) %>%
     group_by(sid,target_detected,target,condition,stim_id) %>%
     gather(male_cor,fem1_cor,fem2_cor,key='featuresof',value='cor') %>%
     mutate(featuresof = str_replace(featuresof,"(.*)_cor","\\1"))
 
+pos = position_jitterdodge(jitter.width=0.1,dodge.width=0.3)
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         aes(fill=target_detected),pch=21,size=0.5,
         color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+        position=position_dodge(width=0.75)) +
+    geom_point(alpha=0.5,position= pos) +
     scale_color_brewer(palette='Set1') +
     scale_fill_brewer(palette='Set1') +
     theme_classic() +
-    facet_grid(condition~sid+target,labeller=label_context)
+    facet_grid(condition~sid+target,labeller=label_context) +
+    geom_abline(intercept=0,slope=0,linetype=2)
 
-ggsave(file.path($dir,"test_across_conditions.pdf"))
+ggsave(file.path($dir,"within_condition.pdf"),width=11,height=8)
 
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),

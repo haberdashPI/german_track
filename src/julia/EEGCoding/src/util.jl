@@ -17,19 +17,32 @@ function progress_ammend!(prog::Progress,n)
 end
 progress_ammend!(prog::Bool,n) = @assert !prog
 
-function folds(k,indices)
+function folds(K,indices,test_indices=indices)
     len = length(indices)
-    fold_size = len / k
+    fold_size = len / K
+
+    unshared_indices = setdiff(test_indices,indices)
+    k_step = length(unshared_indices) / K
+    last_unshared = 0
+
     @assert length(indices) > 1
-    map(1:k) do fold
-        start = floor(Int,(fold-1)fold_size)+1
-        stop = (min(len,floor(Int,fold*fold_size)))
-        test = indices[start:stop]
-        if !isempty(test)
-            train = setdiff(indices,test)
+    map(1:K) do k
+        start = floor(Int,(k-1)fold_size)+1
+        stop = (min(len,floor(Int,k*fold_size)))
+        shared_test = indices[start:stop]
+        if !isempty(shared_test)
+            train = setdiff(indices,shared_test)
+
+            from = last_unshared+1
+            to = floor(Int,min(length(unshared_indices),k*k_step))
+            last_unshared = max(last_unshared,to)
+            test = (shared_test ∩ test_indices) ∪ unshared_indices[from:to]
+
+            @assert k < K || to == length(unshared_indices)
+
             (train,test)
         else
-            eltype(indices)[], test
+            shared_test, shared_test
         end
     end
 end

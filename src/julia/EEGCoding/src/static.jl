@@ -31,7 +31,7 @@ function decoder_(stim_response_for,method;K,prefix,lags,indices,
 
     models = Vector{Array{Float64,3}}(undef,K)
 
-    for (k,(train,_)) in enumerate(folds(K,indices))
+    for (k,(train,test)) in enumerate(folds(K,indices))
         if isempty(train)
             progress_update!(progress)
             models[k] = Array{Float64,3}(undef,0,0,0)
@@ -118,7 +118,7 @@ function decode_test_cv(stim_response_for,train_method,test_method;prefix,
         prefix=prefix,K=K,
         indices=indices,progress=progress,
         __oncache__ = () ->
-            progress_update!(progress,K*length(indices)),
+            progress_update!(progress,K),
         kwds...)
 
     results
@@ -138,30 +138,12 @@ function decode_test_cv_(stim_response_for,method,test_method;prefix,
     df = DataFrame()
     models = DataFrame()
 
-    # the train a test indices have some overlapping indices and some
-    # non-overlapping indices: test the overlapping indices within the
-    # appropriate k-fold and distribute the non-overlapping indices evenly
-    # across the folds
-
-    unshared_indices = setdiff(indices,train_indices)
-    k_step = length(unshared_indices) / K
-    last = 0
-    for (k,(trained,untrained)) in enumerate(folds(K,train_indices))
-        if isempty(trained)
-            next!(progress)
+    for (k,(_,test)) in enumerate(folds(K,train_indices,indices))
+        if isempty(test)
+            progress_update!(progress)
             continue
         end
-
         model = loadcache(@sprintf("%s_fold%02d",train_prefix,k))
-
-        from = last+1
-        to = floor(Int,min(length(unshared_indices),k*k_step))
-        last = max(last,to)
-        test = (untrained ∩ indices) ∪ unshared_indices[from:to]
-
-        @assert k < K || to == length(unshared_indices)
-
-        isempty(test) && continue
 
         for i in test
             stim,response,stim_id = stim_response_for(i)
@@ -172,7 +154,7 @@ function decode_test_cv_(stim_response_for,method,test_method;prefix,
                 index = i, stim_id = stim_id))
         end
         push!(models,(model = model, k = k))
-        next!(progress)
+        progress_update!(progress)
     end
 
     df, models

@@ -35,8 +35,6 @@ function setup_indices(train_fn,test_fn,events)
     test_bounds, test_indices, train_bounds, train_indices
 end
 
-using Infiltrator
-
 function train_test(method,stim_method,files,stim_info;
     maxlag=0.25,
     minlag=0,
