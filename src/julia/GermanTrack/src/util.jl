@@ -151,7 +151,7 @@ function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
         encode(data,samplerate,encoding)
     end
 
-    data, stim_events, sid
+    (eeg=data, events=stim_events, sid=sid)
 end
 
 function single(x,message="Expected a single element.")
