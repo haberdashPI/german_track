@@ -3,6 +3,8 @@
 
 ## current steps:
 
+- see comments in train_test.jl (that's the file I'm working)
+
 - to start: refactor the code so it's easier to train across subjects
 - this refactoring revealed a bug in my cross-validation:
   somehow the testing data was mixed in with the training data before,
