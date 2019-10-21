@@ -62,6 +62,7 @@ function train_test(method,stim_method,files,stim_info;
     end
 
     df, models = DataFrame(), DataFrame()
+    prog = (progress isa Bool && progress) ? Progress(n) : prog
 
     for file in files
         eeg, stim_events, sid = load_subject(joinpath(data_dir(),file),stim_info,
@@ -74,7 +75,6 @@ function train_test(method,stim_method,files,stim_info;
             from,to = round.(Int,samplerate(eeg).*bounds)
             bound(from:to,min=1,max=min)
         end
-        prog = (progress isa Bool && progress) ? Progress(n) : prog
 
         for (traini,testi) in zip(train,test)
             test_bounds, test_indices, train_bounds, train_indices =
