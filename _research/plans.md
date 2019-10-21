@@ -3,9 +3,15 @@
 
 ## current steps:
 
- - look at the comments in test_cross_conditions.jl
-
 - to start: refactor the code so it's easier to train across subjects
+- this refactoring revealed a bug in my cross-validation:
+  somehow the testing data was mixed in with the training data before,
+  the new code doesn't doe this: I can reproduce the old results
+  by including the tested data in the training.
+- what to do next?
+  - another possibility is that I may need to include more regularization
+  - the issue is that features don't generalize, so maybe I can still gain something by training across subjects: perhaps I'll see something then, so carry on with the current plan to see how that goes?
+
 - while I'm at it, there's a bunch of stuff I can start generifying and
   cleaning up
 
