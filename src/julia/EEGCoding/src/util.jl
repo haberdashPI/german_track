@@ -37,8 +37,10 @@ function folds(K,indices,test_indices=indices)
             to = floor(Int,min(length(unshared_indices),k*k_step))
             last_unshared = max(last_unshared,to)
             test = (shared_test ∩ test_indices) ∪ unshared_indices[from:to]
-
-            @assert k < K || to == length(unshared_indices)
+            if k == K && to < length(unshared_indices)
+                @assert to == length(unshared_indices)-1
+                to = length(unshared_indices)
+            end
 
             (train,test)
         else

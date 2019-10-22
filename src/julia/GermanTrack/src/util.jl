@@ -1,6 +1,6 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
-    not_near, bound, sidfor
+    not_near, bound, sidfor, subdict
 
 function mat2bson(file)
     file
@@ -83,6 +83,10 @@ function neartimes(from,to,times)
         end
     end
     rows -> map(row2switch,rows.sid,rows.trial,rows.norms)
+end
+
+function subdict(dict,keys)
+    (k => dict[k] for k in keys)
 end
 
 function read_mcca_proj(filename)

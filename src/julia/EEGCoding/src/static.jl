@@ -38,6 +38,8 @@ function decoder_(stim_response_for,method;K,prefix,lags,indices,
             continue
         end
         filename = @sprintf("%s_fold%02d",prefix,k)
+        # @warn "Change this code back!!" maxlog=1
+        # stim, response = stim_response_for(train ∪ test)
         stim, response = stim_response_for(train)
         models[k] = cachefn(filename, decoder_helper, method, stim,
             response, lags)
@@ -77,8 +79,8 @@ function decoder_helper(l2::NormL2,stim,response,lags)
 
     k = l2.lambda
     XX = X'X; XY = Y'X
-    λ̄ = tr(XX)/size(X,2)
-    XX .*= (1-k); adddiag!(XX,k*λ̄)
+    λ_bar = tr(XX)/size(X,2)
+    XX .*= (1-k); adddiag!(XX,k*λ_bar)
     result = XX\XY'
     result = reshape(result,size(response,2),length(lags),:)
 

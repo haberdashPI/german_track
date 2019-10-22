@@ -44,10 +44,6 @@ function measures(pred,stim)
      fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
 end
 
-function subdict(dict,keys)
-    (k => dict[k] for k in keys)
-end
-
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
 cond_pairs = Iterators.product(listen_conds,listen_conds)
