@@ -25,22 +25,7 @@ norm1(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),1)/length(x)
 norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
 label(x::Function) = string(x)
 
-function setup_indices(subject,files,train_fn,test_fn)
-    for file in files
-        eeg, events, sid = subject(file)
-    test_bounds, test_indices, train_bounds, train_indices
-end
-
-emptybounds((file,bounds)) = isempty(bounds)
-
-function collect_bounds(subject,files,fn)
-    mapreduce(vcat,files) do file
-        events = subject(file)[2]
-        allbounds = fn.(eachrow(events))
-
-        tuple.(file,allbounds)
-    end
-end
+apply_bounds(bounds,subject) = bounds.(eachrow(subject.events))
 
 function train_test(method,stim_method,files,stim_info;
     maxlag=0.25,
@@ -68,33 +53,27 @@ function train_test(method,stim_method,files,stim_info;
     train_sources, test_sources = sources(stim_method)
 
     # count total number of K-fold tests across all conditions
-    n = sum(zip(train,test)) do (traini,testi)
-        trainbounds = collect_bounds(subjects,traini[2])
-        testbounds = collect_bounds(subjects,testi[2])
-
-        K*sum(!emptybounds,trainbounds) + K*sum(!emptybounds,testbounds)
-    end
-
-    df, models = DataFrame(), DataFrame()
+    n = K*(length(train)*length(train_sources) +
+        length(test)*length(test_sources))
     prog = (progress isa Bool && progress) ? Progress(n) : prog
 
-    fs = samplerate(subjects[1].eeg)
+    df, models = DataFrame(), DataFrame()
+
+    fs = samplerate(first(values(subjects)).eeg)
     lags = round(Int,minlag*fs):round(Int,maxlag*fs)
 
-    weights = Dict(file => weightfn.(eachrow(events))
-        for (file,(_,events,_)) in subjects)
+    weights = Dict((file,i) => w
+        for (file,subject) in subjects
+        for (i,w) in enumerate(weightfn.(eachrow(subject.events))))
 
     function bound_indices(bounds,min)
-        from,to = round.(Int,samplerate(eeg).*bounds)
+        from,to = round.(Int,fs.*bounds)
         bound(from:to,min=1,max=min)
     end
 
     for (traini,testi) in zip(train,test)
         train_condition = traini[1]
         test_condition = testi[1]
-
-        # TODO: more cleanup, I don't think I need the train
-        # and test methods above
 
         function train_prefix(source)
             join([values(train_condition);
@@ -103,10 +82,18 @@ function train_test(method,stim_method,files,stim_info;
             ],"_")
         end
 
-        train_bounds = collect_bounds(subjects,traini[2])
-        train_indices = findall(emptybounds,train_bounds)
-        test_bounds = collect_bounds(subjects,testi[2])
-        test_indices = findall(emptybounds,test_bounds)
+        train_bounds = Dict((file,i) => bounds
+            for file in files
+            for (i,bounds) in enumerate(apply_bounds(traini[2],subjects[file])))
+        train_indices =
+            filter(@λ(!isempty(train_bounds[_])),keys(train_bounds)) |>
+            collect |> sort!
+        test_bounds = Dict((file,i) => bounds
+            for file in files
+            for (i,bounds) in enumerate(apply_bounds(testi[2],subjects[file])))
+        test_indices =
+            filter(@λ(!isempty(test_bounds[_])),keys(test_bounds)) |>
+            collect |> sort!
 
         for source in train_sources
             prefix = train_prefix(source)
@@ -117,24 +104,26 @@ function train_test(method,stim_method,files,stim_info;
                 indices = train_indices,
                 progress = prog
             ) do indices
-                # TODO: this is where I stopped modifying the code
-                # working on cross-subject defintion of training
                 minlens = Vector{Int}(undef,length(indices))
-                stim_result = mapreduce(vcat,enumerate(indices)) do (j,i)
-                    stim, = load_stimulus(source,i,stim_method,stim_events,
+
+                stims = mapreduce(vcat,enumerate(indices)) do (j,(file,i))
+                    eeg,events = subjects[file]
+                    stim, = load_stimulus(source,i,stim_method,events,
                         coalesce(resample,samplerate(eeg)),stim_info)
                     minlens[j] = min(size(stim,1),size(eeg[i],2))
-                    times = bound_indices(train_bounds[i],minlens[j])
+                    times = bound_indices(train_bounds[(file,i)],minlens[j])
 
-                    view(stim,times,:) .* weights[i]
+                    view(stim,times,:) .* weights[(file,i)]
                 end
 
-                response_result = mapreduce(hcat,enumerate(indices)) do (j,i)
-                    times = bound_indices(train_bounds[i],minlens[j])
+                responses = mapreduce(hcat,enumerate(indices)) do (j,(file,i))
+                    eeg,events = subjects[file]
+
+                    times = bound_indices(train_bounds[(file,i)],minlens[j])
                     view(eeg[i],:,times)
                 end
 
-                stim_result, response_result'
+                stims, responses'
             end
         end
 
@@ -149,7 +138,7 @@ function train_test(method,stim_method,files,stim_info;
             test_prefix = join([values(test_condition);
                 [test_label(method),
                 string(source),
-                label(stim_method),sid_str]
+                label(stim_method)]
             ],"_")
             cond = NamedTuple{(
                 Symbol.("train_",keys(train_condition))...,
@@ -165,14 +154,15 @@ function train_test(method,stim_method,files,stim_info;
                 indices = test_indices,
                 train_indices = train_indices,
                 progress = prog
-            ) do i
+            ) do (file,i)
+                eeg, events = subjects[file]
                 stim, stim_id = load_stimulus(source,i,stim_method,
-                    stim_events,coalesce(resample,samplerate(eeg)),
+                    events,coalesce(resample,samplerate(eeg)),
                     stim_info)
 
                 minlen = min(size(stim,1),size(eeg[i],2))
-                indices = bound_indices(test_bounds[i],minlen)
-                stim = view(stim,indices,:) .* weights[i]
+                indices = bound_indices(test_bounds[(file,i)],minlen)
+                stim = view(stim,indices,:) .* weights[(file,i)]
                 response = view(eeg[i],:,indices)
 
                 stim, response', stim_id
@@ -180,14 +170,18 @@ function train_test(method,stim_method,files,stim_info;
 
             for key in keys(cond)
                 df_[!,key] .= cond[key]
+                models_[!,key] .= cond[key]
             end
 
-            df_[!,:trial] = df_.index
-            df_[!,:test_correct] = stim_events.correct[df_.index]
-
-            df_[!,:sid] .= sid
+            df_[!,:sid] .= sidfor.(getindex.(df_.index,1))
+            df_[!,:trial] = getindex.(df_.index,2)
+            names(df_)
+            df_[!,:test_correct] = map(df_.index) do (file,i)
+                subjects[file].events.correct[i]
+            end
+            select!(df_,Not(:index))
             df_[!,:source] .= string(source)
-            models_[!,:sid] .= sid
+
             models_[!,:source] .= string(source)
 
             df = vcat(df,df_)

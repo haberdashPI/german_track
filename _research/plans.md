@@ -13,6 +13,8 @@
 - what to do next?
   - another possibility is that I may need to include more regularization
   - the issue is that features don't generalize, so maybe I can still gain something by training across subjects: perhaps I'll see something then, so carry on with the current plan to see how that goes?
+  - it's possible it would be worth re-introducing the weights (but
+    first, get the basic result, within conditions, to work)
 
 - while I'm at it, there's a bunch of stuff I can start generifying and
   cleaning up

@@ -2,7 +2,7 @@ using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-# eeg_files = eeg_files[1:1]
+eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
@@ -24,17 +24,18 @@ listen_conds = ["object","global", "spatial"]
 targets = ["male","fem"]
 labels = ["correct","all"]
 
-conditions = mapreduce(vcat,listen_conds) do condition
-    mapreduce(vcat,targets) do target
-        mapreduce(vcat,labels) do label
-            [(label=label,condition=condition,target=target) =>
-                @λ(_row.condition == cond_label[condition] &&
-                    (label == "all" || _row.correct) &&
-                    speakers[_row.sound_index] == tindex[target] ?
-                        before_target[_row.sound_index] : no_indices)]
-        end
-    end
-end |> Dict
+conditions = Dict(
+    (sid=sid,label=label,condition=condition,target=target) =>
+        @λ(_row.condition == cond_label[condition] &&
+           (_row.sid == sid) &&
+           (label == "all" || _row.correct) &&
+           speakers[_row.sound_index] == tindex[target] ?
+                before_target[_row.sound_index] : no_indices)
+    for sid in sidfor.(eeg_files)
+    for condition in listen_conds
+    for target in targets
+    for label in labels
+)
 
 function measures(pred,stim)
     (joint_cor = cor(vec(pred),vec(stim)),
@@ -46,9 +47,6 @@ end
 function subdict(dict,keys)
     (k => dict[k] for k in keys)
 end
-
-# TODO: suspicious result, I'm not sure no_indices
-# for train and test are being computed properly
 
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
@@ -64,12 +62,12 @@ df, models = train_test(
     maxlag=0.8,
     return_models = true,
     train = subdict(conditions,
-        (label="correct",condition = cond, target=target)
-        for (cond,_) in cond_pairs, target in targets
+        (sid = sid, label = "correct", condition = cond, target = target)
+        for (cond,_) in cond_pairs, target in targets, sid in sidfor.(eeg_files)
     ),
     test = subdict(conditions,
-        (label="all",condition = cond, target=target)
-        for (_,cond) in cond_pairs, target in targets
+        (sid = sid, label = "all", condition = cond, target = target)
+        for (_,cond) in cond_pairs, target in targets, sid in sidfor.(eeg_files)
     )
 );
 alert()

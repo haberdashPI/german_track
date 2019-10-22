@@ -1,6 +1,6 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
-    not_near, bound
+    not_near, bound, sidfor
 
 function mat2bson(file)
     file
@@ -130,10 +130,10 @@ function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
     stim_events, sid = events_for_eeg(file,stim_info)
 
     data = get!(subject_cache,(file,encoding,samplerate)) do
-        data = if endswith(file,".mat")
-            mf = MatFile(file)
-            get_mvariable(mf,:dat)
-        elseif endswith(file,".bson")
+        # data = if endswith(file,".mat")
+        #     mf = MatFile(file)
+        #     get_mvariable(mf,:dat)
+        data = if endswith(file,".bson")
             @load file data
             data
         elseif endswith(file,".mcca_proj")
@@ -398,13 +398,17 @@ function timeline(target_time,target_present,correct;step=0.05,len=8)
     DataFrame(value=values, time=times)
 end
 
-function events_for_eeg(file,stim_info)
-    matched = match(r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$",file)
+function sidfor(file)
+    pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$"
+    matched = match(pattern,file)
     if isnothing(matched)
         error("Could not find subject id in filename '$file'.")
     end
-    sid = parse(Int,matched[1])
+    parse(Int,matched[1])
+end
 
+function events_for_eeg(file,stim_info)
+    sid = sidfor(file)
     event_file = joinpath(data_dir(),@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(CSV.File(event_file))
 
@@ -424,6 +428,7 @@ function events_for_eeg(file,stim_info)
         @warn "Could not find `bad_trial` column in file '$event_file'."
         stim_events[!,:bad_trial] .= false
     end
+    stim_events[!,:sid] .= sid
 
     stim_events, sid
 end
