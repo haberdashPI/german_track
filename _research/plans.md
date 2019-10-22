@@ -3,6 +3,8 @@
 
 ## current steps:
 
+- NOTE: current branch is feature-loo-cv, switch to that
+
 - see comments in train_test.jl (that's the file I'm working)
 
 - to start: refactor the code so it's easier to train across subjects
