@@ -47,8 +47,7 @@ end
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
 cond_pairs = Iterators.product(listen_conds,listen_conds)
-df, models = train_test(
-    K = 20,
+df = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
@@ -56,7 +55,6 @@ df, models = train_test(
     resample = 64,
     eeg_files, stim_info,
     maxlag=0.8,
-    return_models = true,
     train = subdict(conditions,
         (sid = sid, label = "correct", condition = cond, target = target)
         for (cond,_) in cond_pairs, target in targets, sid in sidfor.(eeg_files)
@@ -68,15 +66,7 @@ df, models = train_test(
 );
 alert()
 
-function adjust_columns!(df)
-    if :stim_id ∈ names(df)
-        df[!,:location] = direction[df.stim_id]
-    end
-    df
-end
-
-df = adjust_columns!(df)
-models = adjust_columns!(models)
+df[!,:location] = direction[df.stim_id]
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)

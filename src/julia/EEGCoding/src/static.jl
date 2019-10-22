@@ -14,34 +14,30 @@ using LambdaFn
 ################################################################################
 # testing and training
 
-function decoder(stim_response_for,method;prefix,group_suffix="",K,
-    progress=Progress(K,1,desc="Training"),
+function decoder(stim_response_for,method;prefix,group_suffix="",
+    indices, progress=Progress(length(indices),1,desc="Training"),
     kwds...)
 
     result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
         decoder_,stim_response_for,method;prefix=prefix,
-        progress=progress,K=K,
+        progress=progress,indices=indices,
         __oncache__ = () ->
-            progress_update!(progress,K),
+            progress_update!(progress,length(indices)),
         kwds...)
 end
 
-function decoder_(stim_response_for,method;K,prefix,lags,indices,
+cleanstring(i::Int) = @sprintf("%03d",i)
+function decoder_(stim_response_for,method;prefix,lags,indices,
     progress,kwds...)
 
-    models = Vector{Array{Float64,3}}(undef,K)
+    models = Vector{Array{Float64,3}}(undef,length(indices))
 
-    for (k,(train,test)) in enumerate(folds(K,indices))
-        if isempty(train)
-            progress_update!(progress)
-            models[k] = Array{Float64,3}(undef,0,0,0)
-            continue
-        end
-        filename = @sprintf("%s_fold%02d",prefix,k)
+    for (j,i) in enumerate(indices)
+        filename = string(prefix,"_",cleanstring(i))
         # @warn "Change this code back!!" maxlog=1
         # stim, response = stim_response_for(train ∪ test)
-        stim, response = stim_response_for(train)
-        models[k] = cachefn(filename, decoder_helper, method, stim,
+        stim, response = stim_response_for(i)
+        models[j] = cachefn(filename, decoder_helper, method, stim,
             response, lags)
 
         progress_update!(progress)
@@ -109,18 +105,18 @@ decode(response::AbstractArray,model,lags) =
 
 function decode_test_cv(stim_response_for,train_method,test_method;prefix,
     indices,group_suffix="",
-    name="Training",K,
-    return_models = false,
+    name="Training",
     progress=Progress(length(indices),1,desc=name),
     train_prefix,kwds...)
 
-    results = cachefn(@sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix),
+    str = @sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix)
+    results = cachefn(str,
         decode_test_cv_,stim_response_for,train_method,test_method;
         train_prefix=train_prefix,
-        prefix=prefix,K=K,
+        prefix=prefix,
         indices=indices,progress=progress,
         __oncache__ = () ->
-            progress_update!(progress,K),
+            progress_update!(progress,length(indices)),
         kwds...)
 
     results
@@ -135,29 +131,29 @@ apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))
 apply_method(fn,pred,stim) = fn(pred,stim)
 
 function decode_test_cv_(stim_response_for,method,test_method;prefix,
-    lags,indices,train_indices,progress,train_prefix,K)
+    lags,indices,train_indices,progress,train_prefix)
 
     df = DataFrame()
-    models = DataFrame()
+    models = map(train_indices) do i
+        loadcache(string(train_prefix,"_",cleanstring(i)))
+    end
 
-    for (k,(_,test)) in enumerate(folds(K,train_indices,indices))
-        if isempty(test)
-            progress_update!(progress)
-            continue
-        end
-        model = loadcache(@sprintf("%s_fold%02d",train_prefix,k))
+    for i in indices
+        # construct a model from everything but the model for the trial to be
+        # tested
+        # @infiltrate
+        model = mean(view(models,map(!=(i),train_indices)))
 
-        for i in test
-            stim,response,stim_id = stim_response_for(i)
-            pred = decode(response,model,lags)
+        stim,response,stim_id = stim_response_for(i)
+        pred = decode(response,model,lags)
 
-            push!(df,(apply_method(test_method,pred,stim)...,
-                stim = stim, pred = pred,
-                index = i, stim_id = stim_id))
-        end
-        push!(models,(model = model, k = k))
+        push!(df,(apply_method(test_method,pred,stim)...,
+            model = model,
+            stim = stim, pred = pred,
+            index = i, stim_id = stim_id))
+
         progress_update!(progress)
     end
 
-    df, models
+    df
 end

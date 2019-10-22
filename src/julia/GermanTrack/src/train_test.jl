@@ -27,17 +27,19 @@ label(x::Function) = string(x)
 
 apply_bounds(bounds,subject) = bounds.(eachrow(subject.events))
 
+function EEGCoding.cleanstring((file,i)::Tuple{String,Int})
+    @sprintf("%02d_%03d",sidfor(file),i)
+end
+
 function train_test(method,stim_method,files,stim_info;
     maxlag=0.25,
     minlag=0,
-    K=10,
     train = ["" => all_indices],
     test = train,
     weightfn = events -> 1,
     resample = missing,
     encode_eeg = RawEncoding(),
     return_encodings = false,
-    return_models = false,
     progress = true)
 
     # setup subjects
@@ -53,11 +55,15 @@ function train_test(method,stim_method,files,stim_info;
     train_sources, test_sources = sources(stim_method)
 
     # count total number of K-fold tests across all conditions
-    n = K*(length(train)*length(train_sources) +
-        length(test)*length(test_sources))
+    n = sum(zip(train,test)) do (traini,testi)
+        sum(values(subjects)) do subject
+            sum(!isempty,apply_bounds(traini[2],subject)) +
+            sum(!isempty,apply_bounds(testi[2],subject))
+        end
+    end
     prog = (progress isa Bool && progress) ? Progress(n) : prog
 
-    df, models = DataFrame(), DataFrame()
+    df = DataFrame()
 
     fs = samplerate(first(values(subjects)).eeg)
     lags = round(Int,minlag*fs):round(Int,maxlag*fs)
@@ -76,9 +82,10 @@ function train_test(method,stim_method,files,stim_info;
         test_condition = testi[1]
 
         function train_prefix(source)
-            join([values(train_condition);
-                [string(maxlag), string(minlag), string(source),
-                    label(method), label(stim_method), string(encode_eeg)]
+            join([
+                values(train_condition)...,
+                string(maxlag), string(minlag), string(source),
+                label(method), label(stim_method), string(encode_eeg)
             ],"_")
         end
 
@@ -98,32 +105,21 @@ function train_test(method,stim_method,files,stim_info;
         for source in train_sources
             prefix = train_prefix(source)
             decoder(method.train,
-                K=K,
                 prefix = prefix,
                 lags=lags,
                 indices = train_indices,
                 progress = prog
-            ) do indices
-                minlens = Vector{Int}(undef,length(indices))
+            ) do (file,i)
 
-                stims = mapreduce(vcat,enumerate(indices)) do (j,(file,i))
-                    eeg,events = subjects[file]
-                    stim, = load_stimulus(source,i,stim_method,events,
-                        coalesce(resample,samplerate(eeg)),stim_info)
-                    minlens[j] = min(size(stim,1),size(eeg[i],2))
-                    times = bound_indices(train_bounds[(file,i)],minlens[j])
+                eeg,events = subjects[file]
+                full_stim, = load_stimulus(source,i,stim_method,events,
+                    coalesce(resample,samplerate(eeg)),stim_info)
+                minlen = min(size(full_stim,1),size(eeg[i],2))
+                times = bound_indices(train_bounds[(file,i)],minlen)
+                stim = view(full_stim,times,:) .* weights[(file,i)]
+                response = view(eeg[i],:,times)
 
-                    view(stim,times,:) .* weights[(file,i)]
-                end
-
-                responses = mapreduce(hcat,enumerate(indices)) do (j,(file,i))
-                    eeg,events = subjects[file]
-
-                    times = bound_indices(train_bounds[(file,i)],minlens[j])
-                    view(eeg[i],:,times)
-                end
-
-                stims, responses'
+                stim, response'
             end
         end
 
@@ -135,10 +131,11 @@ function train_test(method,stim_method,files,stim_info;
             # sources, using the `fortraining` mehtod (now misnamed
             # `fortesting`)
             prefix = train_prefix(fortraining(source))
-            test_prefix = join([values(test_condition);
-                [test_label(method),
+            test_prefix = join([
+                values(test_condition)...,
+                test_label(method),
                 string(source),
-                label(stim_method)]
+                label(stim_method)
             ],"_")
             cond = NamedTuple{(
                 Symbol.("train_",keys(train_condition))...,
@@ -146,8 +143,7 @@ function train_test(method,stim_method,files,stim_info;
                 (values(train_condition)...,
                 values(test_condition)...)
             )
-            df_,models_ = decode_test_cv(method.train,method.test,
-                K=K,
+            df_ = decode_test_cv(method.train,method.test,
                 prefix=test_prefix,
                 train_prefix=prefix,
                 lags=lags,
@@ -170,7 +166,6 @@ function train_test(method,stim_method,files,stim_info;
 
             for key in keys(cond)
                 df_[!,key] .= cond[key]
-                models_[!,key] .= cond[key]
             end
 
             df_[!,:sid] .= sidfor.(getindex.(df_.index,1))
@@ -181,13 +176,9 @@ function train_test(method,stim_method,files,stim_info;
             end
             select!(df_,Not(:index))
             df_[!,:source] .= string(source)
-
-            models_[!,:source] .= string(source)
-
             df = vcat(df,df_)
-            models = vcat(models,models_)
         end
     end
 
-    df,models
+    df
 end
