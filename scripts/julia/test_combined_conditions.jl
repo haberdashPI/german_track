@@ -2,7 +2,7 @@ using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-eeg_files = eeg_files[1:1]
+# eeg_files = eeg_files[1:1]
 
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 # eeg_encoding = JointEncoding(RawEncoding(),
@@ -52,8 +52,7 @@ function measures(pred,stim)
      fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
 end
 
-df,models = train_test(
-    K = 20,
+df = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
@@ -62,7 +61,6 @@ df,models = train_test(
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
     maxlag=0.8,
-    return_models = true,
     train = repeat(train_conditions,inner=3),
     test = test_conditions
 );
@@ -78,7 +76,6 @@ function adjust_columns!(df)
 end
 
 df = adjust_columns!(df)
-models = adjust_columns!(models)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -108,7 +105,7 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
     theme_classic() +
     facet_grid(condition~sid+target,labeller=label_context)
 
-ggsave(file.path($dir,"train_across_conditions.pdf"))
+ggsave(file.path($dir,"train_across_conditions_test_in_train.pdf"))
 
 dfmatch_means = dfmatch %>%
     group_by(sid,target_detected,target,condition,featuresof) %>%
@@ -118,14 +115,14 @@ ggplot(dfmatch_means,aes(x=featuresof,y=cor,color=target_detected))     +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         aes(fill=target_detected),pch=21,size=0.5,
         color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+        position=position_dodge(width=0.65)) +
+    geom_point(alpha=0.5,position=position_jitterdodge(dodge.width=0.3,jitter.width=0.1)) +
     scale_color_brewer(palette='Set1') +
     scale_fill_brewer(palette='Set1') +
     theme_classic() +
     facet_grid(condition~target,labeller=label_context)
 
-ggsave(file.path($dir,"mean_test_across_conditions.pdf"),width=8,height=6)
+ggsave(file.path($dir,"mean_test_across_conditions_test_in_train.pdf"),width=8,height=6)
 
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),

@@ -45,8 +45,7 @@ end
 
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
-df, models = train_test(
-    K = 50,
+df = train_test(
     StaticMethod(NormL2(0.2),measures),
     SpeakerStimMethod(
         encoding=encoding,
@@ -54,7 +53,6 @@ df, models = train_test(
     resample = 64,
     eeg_files, stim_info,
     maxlag=0.8,
-    return_models = true,
     train = subdict(conditions,
         (label = "correct", condition = cond, target = target)
         for cond in listen_conds, target in targets
@@ -83,26 +81,6 @@ ggplot($df,aes(x=test_target,y=joint_cor,color=test_correct)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(train_condition+test_condition~sid+source,labeller=label_context) +
     geom_abline(slope=0,intercept=0,linetype=2)
-
-dfmatch = $df %>% filter(source == 'joint', train_condition == test_condition) %>%
-    rename(condition = test_condition, target = test_target,
-        target_detected = test_correct) %>%
-    group_by(sid,target_detected,target,condition,stim_id) %>%
-    gather(male_cor,fem1_cor,fem2_cor,key='featuresof',value='cor') %>%
-    mutate(featuresof = str_replace(featuresof,"(.*)_cor","\\1"))
-
-pos = position_jitterdodge(jitter.width=0.1,dodge.width=0.3)
-ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=target_detected),pch=21,size=0.5,
-        color='black',
-        position=position_dodge(width=0.75)) +
-    geom_point(alpha=0.5,position= pos) +
-    scale_color_brewer(palette='Set1') +
-    scale_fill_brewer(palette='Set1') +
-    theme_classic() +
-    facet_grid(condition~sid+target,labeller=label_context) +
-    geom_abline(intercept=0,slope=0,linetype=2)
 
 ggsave(file.path($dir,"cross_subjects.pdf"),width=11,height=8)
 

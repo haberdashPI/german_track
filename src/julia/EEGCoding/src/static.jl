@@ -137,12 +137,21 @@ function decode_test_cv_(stim_response_for,method,test_method;prefix,
     models = map(train_indices) do i
         loadcache(string(train_prefix,"_",cleanstring(i)))
     end
+    mean_model = mean(models)
+    n = length(models)
 
     for i in indices
         # construct a model from everything but the model for the trial to be
         # tested
-        # @infiltrate
-        model = mean(view(models,map(!=(i),train_indices)))
+
+        # j = nothing
+        # @warn "Invalid code!!" maxlog=1
+        j = findfirst(==(i),train_indices)
+        model = if !isnothing(j)
+            mean_model*n/(n-1) - models[j]/(n-1)
+        else
+            mean_model
+        end
 
         stim,response,stim_id = stim_response_for(i)
         pred = decode(response,model,lags)
