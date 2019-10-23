@@ -3,23 +3,20 @@
 
 ## current steps:
 
-- NOTE: current branch is feature-loo-cv, switch to that
+- thorough tests reveal that the index bug was indeed the source of our "success" in decoding. You have to include the tested trial to get accurate decodering in the learning: the implication is that this component is "memorized", and there is not a clear general trend across  signals.
+(see the feature-loo-cv branch)
 
-- see comments in train_test.jl (that's the file I'm working)
-
-- to start: refactor the code so it's easier to train across subjects
 - this refactoring revealed a bug in my cross-validation:
   somehow the testing data was mixed in with the training data before,
   the new code doesn't doe this: I can reproduce the old results
   by including the tested data in the training.
 - what to do next?
-  - another possibility is that I may need to include more regularization
-  - the issue is that features don't generalize, so maybe I can still gain something by training across subjects: perhaps I'll see something then, so carry on with the current plan to see how that goes?
-  - it's possible it would be worth re-introducing the weights (but
-    first, get the basic result, within conditions, to work)
+  + another possibility is that I may need to include more regularization (nope)
+  + the issue is that features don't generalize, so maybe I can still gain something by training across subjects: perhaps I'll see something then, so carry on with the current plan to see how that goes? (nope)
+  + it's possible it would be worth re-introducing the weights (but
+    first, get the basic result, within conditions, to work: nope, basic condition doesn't work, hard to argue for these weights)
 
-- while I'm at it, there's a bunch of stuff I can start generifying and
-  cleaning up
+- THOUGHT: I have a sense of what a 'grammar of learning' akin to a grammar of graphics, would look like.
 
 - look at a decoder trained across conditions but within each voice
 - double-check all labels of the spatial condition
