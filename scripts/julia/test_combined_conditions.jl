@@ -14,7 +14,7 @@ target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
 
 before_target = map(target_times) do time
-    iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0))
+    iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0.5))
 end
 
 const speakers = convert(Array{Int},
@@ -45,18 +45,11 @@ test_conditions = mapreduce(vcat,listen_conds) do condition
     end
 end
 
-function measures(pred,stim)
-    (joint_cor = cor(vec(pred),vec(stim)),
-     male_cor = cor(vec(pred[:,1:2]),vec(stim[:,1:2])),
-     fem1_cor = cor(vec(pred[:,3:4]),vec(stim[:,3:4])),
-     fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
-end
-
 df = train_test(
-    StaticMethod(NormL2(0.2),measures),
+    StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(
         encoding=encoding,
-        sources=[joint_source, other(joint_source)]),
+        sources=[male_source, fem1_source, fem2_source, other(male_source)]),
     # encode_eeg = eeg_encoding,
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
@@ -65,17 +58,6 @@ df = train_test(
     test = test_conditions
 );
 alert()
-
-# TODO: this conditions aren't being properly named
-# (fix renaming scheme)
-function adjust_columns!(df)
-    if :stim_id ∈ names(df)
-        df[!,:location] = direction[df.stim_id]
-    end
-    df
-end
-
-df = adjust_columns!(df)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -87,109 +69,14 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-dfmatch = $df %>% filter(source == 'joint') %>%
-    rename(condition = test_condition, target = test_target,
-        target_detected = test_correct) %>%
-    group_by(sid,target_detected,target,condition,stim_id) %>%
-    gather(male_cor,fem1_cor,fem2_cor,key='featuresof',value='cor') %>%
-    mutate(featuresof = str_replace(featuresof,"(.*)_cor","\\1"))
-
-ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
+ggplot($df,aes(x=source,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=target_detected),pch=21,size=0.5,
-        color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+        position=position_dodge(width=0.85)) +
+    geom_point(alpha=0.5,position=position_jitterdodge(dodge.width=0.3,
+        jitter.width=0.1)) +
     scale_color_brewer(palette='Set1') +
-    scale_fill_brewer(palette='Set1') +
-    theme_classic() +
-    facet_grid(condition~sid+target,labeller=label_context)
+    facet_grid(sid~test_condition,labeller=label_context) +
+    geom_abline(slope=0,intercept=0,linetype=2)
 
-ggsave(file.path($dir,"train_across_conditions_test_in_train.pdf"))
-
-dfmatch_means = dfmatch %>%
-    group_by(sid,target_detected,target,condition,featuresof) %>%
-    summarize(cor = mean(cor))
-
-ggplot(dfmatch_means,aes(x=featuresof,y=cor,color=target_detected))     +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=target_detected),pch=21,size=0.5,
-        color='black',
-        position=position_dodge(width=0.65)) +
-    geom_point(alpha=0.5,position=position_jitterdodge(dodge.width=0.3,jitter.width=0.1)) +
-    scale_color_brewer(palette='Set1') +
-    scale_fill_brewer(palette='Set1') +
-    theme_classic() +
-    facet_grid(condition~target,labeller=label_context)
-
-ggsave(file.path($dir,"mean_test_across_conditions_test_in_train.pdf"),width=8,height=6)
-
-ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
-        color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-    scale_color_brewer(palette='Paired') +
-    scale_fill_brewer(palette='Paired') +
-    theme_classic() +
-    facet_grid(condition~sid+target,labeller=label_context)
-
-ggsave(file.path($dir,"test_across_conditions_weighted_spatial.pdf"),
-    width=14,height=8)
-
-dfmatch_spatial_means = dfmatch %>%
-    group_by(sid,target_detected,target,condition,location,featuresof) %>%
-    summarize(cor = mean(cor))
-
-ggplot(dfmatch_spatial_means,aes(x=featuresof,y=cor,
-    color=interaction(location,target_detected))) +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=interaction(location,target_detected)),pch=21,size=0.5,
-        color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-    scale_color_brewer(palette='Paired') +
-    scale_fill_brewer(palette='Paired') +
-    theme_classic() +
-    facet_grid(condition~target,labeller=label_context)
-
-
-ggsave(file.path($dir,"mean_test_across_conditions_weighted_spatial.pdf"))
-
-dfspatial = dfmatch %>%
-    filter(featuresof %in% c('male','fem1'), condition == 'spatial') %>%
-    mutate(target_source =
-        (featuresof == 'fem1' && target == 'fem' && location == 'right') ||
-        (featuresof == 'male' && target == 'male' && location == 'right'))
-
-ggplot(dfspatial,aes(x=target_source,y=cor,color=target_detected)) +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=target_detected),pch=21,size=0.5,
-        color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-    scale_color_brewer(palette='Set1') +
-    scale_fill_brewer(palette='Set1') +
-    theme_classic() +
-    facet_grid(~sid)
-
-ggsave(file.path($dir,"spatial_targets.pdf"))
-
-dfspatial_means = dfspatial %>%
-    group_by(sid,target_source,target_detected,target,featuresof) %>%
-    summarize(cor = mean(cor))
-
-ggplot(dfspatial_means,aes(x=target_source,y=cor,color=target_detected)) +
-    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        aes(fill=target_detected),pch=21,size=0.5,
-        color='black',
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-    scale_color_brewer(palette='Set1') +
-    scale_fill_brewer(palette='Set1') +
-    theme_classic()
-
-ggsave(file.path($dir,"mean_spatial_targets.pdf"),width=4,height=6)
-
+ggsave(file.path($dir,"cross_conditions.pdf"),width=11,height=8)
 """

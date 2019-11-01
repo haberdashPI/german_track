@@ -11,7 +11,7 @@ target_times =
     convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
 
 before_target = map(target_times) do time
-    iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0))
+    iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0.5))
 end
 
 const speakers = convert(Array{Int},
@@ -36,20 +36,13 @@ conditions = Dict(
     for label in labels
 )
 
-function measures(pred,stim)
-    (joint_cor = cor(vec(pred),vec(stim)),
-     male_cor = cor(vec(pred[:,1:2]),vec(stim[:,1:2])),
-     fem1_cor = cor(vec(pred[:,3:4]),vec(stim[:,3:4])),
-     fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
-end
-
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
 df = train_test(
-    StaticMethod(NormL2(0.2),measures),
+    StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(
         encoding=encoding,
-        sources=[joint_source, other(joint_source)]),
+        sources=[male_source, fem1_source, fem2_source, other(male_source)]),
     resample = 64,
     eeg_files, stim_info,
     maxlag=0.8,
@@ -74,12 +67,13 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-ggplot($df,aes(x=test_target,y=joint_cor,color=test_correct)) +
+ggplot($df,aes(x=source,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-        position=position_nudge(x=0.3)) +
-    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+        position=position_dodge(width=0.85)) +
+    geom_point(alpha=0.5,position=position_jitterdodge(dodge.width=0.3,
+        jitter.width=0.1)) +
     scale_color_brewer(palette='Set1') +
-    facet_grid(train_condition+test_condition~sid+source,labeller=label_context) +
+    facet_grid(sid~train_condition,labeller=label_context) +
     geom_abline(slope=0,intercept=0,linetype=2)
 
 ggsave(file.path($dir,"cross_subjects.pdf"),width=11,height=8)
