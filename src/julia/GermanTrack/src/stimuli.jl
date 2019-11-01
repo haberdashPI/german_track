@@ -34,7 +34,8 @@ function load_stimulus(source::SingleSource,stim_i,stim_method,events,tofs,stim_
     stim_num = events.sound_index[stim_i]
     target_time = events.target_source[stim_i] == source.index ?
         events.target_time[stim_i] : nothing
-    load_single_speaker(tofs,stim_num,target_time,stim_method.encoding)
+    load_single_speaker(tofs,stim_num,source.index,target_time,
+        stim_method.encoding)
 end
 
 function load_single_speaker(tofs,stim_num,source_i,target_time,encoding)
@@ -107,14 +108,14 @@ function load_stimulus(other::OtherSource{SingleSource},stim_i,stim_method,
 
     stim_num = events.sound_index[stim_i]
     stimuli = info["test_block_cfg"]["trial_sentences"]
-    sentence_num = stimuli[stim_num][other.of.index]
-    selected = rand(filter(i -> stimuli[i][other.of.index] != sentence_num,
+    sentence_num = stimuli[stim_num][other.source.index]
+    selected = rand(filter(i -> stimuli[i][other.source.index] != sentence_num,
         1:length(stimuli)))
 
-    target_time = events.target_source[stim_i] == other.of.index ?
+    target_time = events.target_source[stim_i] == other.source.index ?
         events.target_time[stim_i] : nothing
     result, real_stim_num =
-        load_single_speaker(tofs,selected,other.of.index,target_time,
+        load_single_speaker(tofs,selected,other.source.index,target_time,
             stim_method.encoding)
     result, stim_num
 end
