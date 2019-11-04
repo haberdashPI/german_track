@@ -5,7 +5,9 @@ using Reexport, Tables, DrWatson, JSON, SignalOperators, WAV, Infiltrator
 @reexport using DataFrames, Printf, ProgressMeter, FileIO,
     EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,
     Distributions, LambdaFn, RCall, VegaLite, CSV, ProximalOperators,
-    PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics
+    PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
+    DSP.Periodograms
+
 using BSON: @save, @load
 export CSV, JSON, @save, @load
 

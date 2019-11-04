@@ -1,4 +1,5 @@
-export StaticMethod, train_test, norm1, norm2
+export StaticMethod, train_test, norm1, norm2, apply_bounds, bound_indices,
+    load_subject
 using LinearAlgebra
 
 # TODO: we can have the speaker specific elements of the loop separated as part
@@ -26,6 +27,10 @@ norm2(x,y) = norm((xi - yi for (xi,yi) in zip(x,y)),2)/length(x)
 label(x::Function) = string(x)
 
 apply_bounds(bounds,subject) = bounds.(eachrow(subject.events))
+function bound_indices(bounds,fs,min)
+    from,to = round.(Int,fs.*bounds)
+    bound(from:to,min=1,max=min)
+end
 
 function EEGCoding.cleanstring((file,i)::Tuple{String,Int})
     @sprintf("%02d_%03d",sidfor(file),i)
@@ -72,10 +77,6 @@ function train_test(method,stim_method,files,stim_info;
         for (file,subject) in subjects
         for (i,w) in enumerate(weightfn.(eachrow(subject.events))))
 
-    function bound_indices(bounds,min)
-        from,to = round.(Int,fs.*bounds)
-        bound(from:to,min=1,max=min)
-    end
 
     for (traini,testi) in zip(train,test)
         train_condition = traini[1]
@@ -115,7 +116,8 @@ function train_test(method,stim_method,files,stim_info;
                 full_stim, = load_stimulus(source,i,stim_method,events,
                     coalesce(resample,samplerate(eeg)),stim_info)
                 minlen = min(size(full_stim,1),size(eeg[i],2))
-                times = bound_indices(train_bounds[(file,i)],minlen)
+                times = bound_indices(train_bounds[(file,i)],samplerate(eeg),
+                    minlen)
                 stim = view(full_stim,times,:) .* weights[(file,i)]
                 response = view(eeg[i],:,times)
 
@@ -157,7 +159,8 @@ function train_test(method,stim_method,files,stim_info;
                     stim_info)
 
                 minlen = min(size(stim,1),size(eeg[i],2))
-                indices = bound_indices(test_bounds[(file,i)],minlen)
+                indices = bound_indices(test_bounds[(file,i)],samplerate(eeg),
+                    minlen)
                 stim = view(stim,indices,:) .* weights[(file,i)]
                 response = view(eeg[i],:,indices)
 
