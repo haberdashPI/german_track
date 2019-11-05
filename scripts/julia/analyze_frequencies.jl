@@ -26,7 +26,7 @@ const direction = convert(Array{String},
 
 target_times =
     convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
-target_window_range = (-1.5, 2)
+target_window_range = (-1, 1)
 target_window = map(target_times) do time
     iszero(time) ? no_indices :
         only_near(time, 10, window = target_window_range)
@@ -36,6 +36,7 @@ conditions = Dict(
     (sid = sid, label = label, condition = condition, target = target) =>
         @λ(_row.condition == cond_label[condition] &&
            ((label == "correct") == _row.correct) &&
+           sid == _row.sid &&
            speakers[_row.sound_index] == tindex[target] ?
                 target_window[_row.sound_index] : no_indices)
     for condition in keys(cond_label)
@@ -43,10 +44,6 @@ conditions = Dict(
     for label in ["correct", "incorrect"]
     for sid in sidfor.(eeg_files)
 )
-
-# a few options
-# - show alpha power for each individual feature
-# - show mean power spectrogram of all features
 
 df = DataFrame()
 freqs = nothing
@@ -93,16 +90,18 @@ end
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
 freqmeans = by(df, [:sid,:label,:condition,:target]) do rows
-    row1 = rows[1,:]
-    curtimes = range(0, length = size(row1.alphapower, 2), step = 1 / fs)
-    alpha = PlotAxes.asplotable(AxisArray(mean(rows.alphapower),
-        Axis{:channel}(Base.axes(row1.alphapower, 1)),
+    μ = padmeanpower(rows.alphapower)
+    curtimes = range(target_window_range[1], length = size(μ, 2), step = 1 / fs)
+    alpha = PlotAxes.asplotable(AxisArray(μ,
+        Axis{:channel}(Base.axes(μ, 1)),
         Axis{:time}(curtimes),
     ), quantize = (1000, 1000))[1]
     rename!(alpha, :value => :alphapower)
 
-    gamma = PlotAxes.asplotable(AxisArray(mean(rows.alphapower),
-        Axis{:channel}(Base.axes(row1.gammapower, 1)),
+    μ = padmeanpower(rows.gammapower)
+    curtimes = range(target_window_range[1], length = size(μ, 2), step = 1 / fs)
+    gamma = PlotAxes.asplotable(AxisArray(μ,
+        Axis{:channel}(Base.axes(μ, 1)),
         Axis{:time}(curtimes),
     ), quantize = (1000, 1000))[1]
     rename!(gamma,:value => :gammapower)
@@ -134,53 +133,79 @@ spectmeans = by(df, [:sid,:label,:condition,:target]) do rows
 
     PlotAxes.asplotable(AxisArray(μ,
         Axis{:freq}(freqs),
-        Axis{:time}(times),
+        Axis{:time}(curtimes),
     ), quantize = (1000, 1000))[1]
 end
+
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
 
 R"""
 library(ggplot2)
 library(dplyr)
 
-df = $(means) %>% filter(label == 'correct',sid == 8)
-
-ggplot($means,aes(x=time,y=channel,color=value)) + geom_raster() +
+ggplot($freqmeans,aes(x=time,y=channel,color=value)) + geom_raster() +
     facet_grid(sid+target~condition+label)
 
-df = $(freqmeans) %>% filter(label == 'correct',sid == 8)
+df = $(freqmeans) %>% filter(label == 'correct')
+df = df %>%
+    mutate(case = ifelse(target == 'male',
+        label,ifelse(label == 'correct','false_alarm (female)','ignore'))) %>%
+    filter(case != 'ignore')
 
 ggplot(df,aes(x=time,y=channel,fill=alphaz)) + geom_raster() +
-    facet_grid(target~condition) +
+    facet_grid(case~sid+condition) +
     scale_fill_distiller(palette='RdBu')
 
-ggplot(df,aes(x=time,y=channel,fill=gammaz)) + geom_raster() +
-    facet_grid(target~condition) +
+ggsave(file.path($dir,'alpha_ind.pdf'),width=11,height=8)
+
+p = ggplot(df,aes(x=time,y=channel,fill=alphaz)) + geom_raster() +
+    facet_grid(case~condition) +
     scale_fill_distiller(palette='RdBu')
 
-ggplot(df,aes(x=time,y=zscore)) + stat_summary(geom='line') +
-    facet_grid(target~condition)
+ggsave(file.path($dir,'alpha_mean.pdf'),plot=p,width=11,height=8)
 
-ggplot(df,aes(x=channel,y=zscore)) + stat_summary(geom='line') +
-    coord_flip() +
-    facet_grid(target~condition)
+p = ggplot(df,aes(x=time,y=channel,fill=gammaz)) + geom_raster() +
+    facet_grid(case~sid+condition) +
+    scale_fill_distiller(palette='RdBu')
 
-df = $(spectmeans) %>% filter(label == 'correct',sid == 8,freq > 14)
+ggsave(file.path($dir,'gamma_ind.pdf'),plot=p,width=11,height=8)
 
-ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-    facet_grid(target~condition) +
-    scale_fill_distiller(palette='Spectral')
+p = ggplot(df,aes(x=time,y=channel,fill=gammaz)) + geom_raster() +
+    facet_grid(case~condition) +
+    scale_fill_distiller(palette='RdBu')
 
-df = $(spectmeans) %>% filter(sid == 8,freq > 14)
+ggsave(file.path($dir,'gamma_mean.pdf'),plot=p,width=11,height=8)
 
-ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-    facet_grid(target+label~condition) +
-    scale_fill_distiller(palette='Spectral')
+p = ggplot(df,aes(x=time,y=alphaz,color=condition)) + stat_summary(geom='line') +
+    facet_grid(case~.)
+ggsave(file.path($dir,'alpha_time.pdf'),plot=p,width=11,height=8)
 
-df = $(spectmeans) %>% filter(freq > 14)
+p = ggplot(df,aes(x=time,y=gammaz,color=condition)) + stat_summary(geom='line') +
+    facet_grid(case~.)
+ggsave(file.path($dir,'gamma_time.pdf'),plot=p,width=11,height=8)
 
-ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-    facet_grid(target+label~condition+sid) +
-    scale_fill_distiller(palette='Spectral')
+# ggplot(df,aes(x=channel,y=gammaz,color=condition)) + stat_summary(geom='line') +
+#     coord_flip() +
+#     facet_grid(target~.)
+
+# df = $(spectmeans) %>% filter(label == 'correct',sid == 8,freq > 14)
+
+# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
+#     facet_grid(target~condition) +
+#     scale_fill_distiller(palette='Spectral')
+
+# df = $(spectmeans) %>% filter(sid == 8,freq > 14)
+
+# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
+#     facet_grid(target+label~condition) +
+#     scale_fill_distiller(palette='Spectral')
+
+# df = $(spectmeans) %>% filter(freq > 14)
+
+# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
+#     facet_grid(target+label~sid+condition) +
+#     scale_fill_distiller(palette='Spectral')
 
 """
 

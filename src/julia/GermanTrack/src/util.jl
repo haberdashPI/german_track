@@ -1,9 +1,25 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
-    not_near, bound, sidfor, subdict
+    not_near, bound, sidfor, subdict, padmeanpower
+
+using PaddedViews
 
 function mat2bson(file)
     file
+end
+
+function padmeanpower(xs)
+    rows = maximum(@λ(size(_,1)), xs)
+    cols = maximum(@λ(size(_,2)), xs)
+    # power is always postive so we treat -1 as a missing value
+    # and compute the mean over non-missing values; `PaddedView`
+    # does not support `missing` values.
+    padded = map(@λ(PaddedView(-1, _x, (rows, cols))), xs)
+    μ = zeros(rows, cols)
+    for pad in padded
+        μ .= ifelse.(pad .>= 0,μ .+ pad,μ)
+    end
+    μ
 end
 
 function bound(x::AbstractRange;min=nothing,max=nothing)
