@@ -501,9 +501,10 @@ end
 function alert(message="Done!")
     if Sys.isapple()
         run(`osascript -e 'display notification "'$message'" with title "Julia"'`)
-    elseif Sys.iswindows()
-        run(`cmd sg "%username%" $message`)
+    elseif Sys.islinux()
+        run(`notify-send $message`)
     else
+        # TODO: use Toast Notifications on windows
         @info message
     end
 end
