@@ -34,6 +34,9 @@
 
 ## older questions that might become relevant again:
 
+- would it be worth computing an STRF: optimize response with convolved
+spectrogram
+
 - is there anything in the online analysis rate of increase that
   seems connected to differences in the behavioral data that merve saw?
     (i.e. compare online regression coefficinet magnitude as a function of condition)
