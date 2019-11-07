@@ -28,6 +28,14 @@ for i = 1:length(files)
     all_eeg{i}.sid = sid;
 end
 
+% save files to easily read binary files
+global data_dir
+for i = 1:length(files)
+    name = files(i).name;
+    name = regexprep(name,'.mat$','.eeg')
+    save_subject_binary(all_eeg{i},fullfile(data_dir,name))
+end
+
 n_times = 7*64;
 n_trials = 150;
 n_chans = size(all_eeg{1}.trial{1},1);

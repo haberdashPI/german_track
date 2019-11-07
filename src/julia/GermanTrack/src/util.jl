@@ -105,6 +105,36 @@ function subdict(dict,keys)
     (k => dict[k] for k in keys)
 end
 
+function read_eeg_binary(filename)
+    open(filename) do file
+        # number of channels
+        nchan = read(file,Int32)
+        # channels names
+        channels = Vector{String}(undef,nchan)
+        for i in 1:nchan
+            len = read(file,Int32)
+            channels[i] = String(read(file,len))
+        end
+        # number of trials
+        ntrials = read(file,Int32)
+        # sample rate
+        fs = read(file,Int32)
+        # trials
+        trials = Vector{Array{Float64}}(undef,ntrials)
+        for i in 1:ntrials
+            # trial size
+            row = read(file,Int32)
+            col = read(file,Int32)
+            # trial
+            trial = Array{Float64}(undef,row,col)
+            read!(file,trial)
+            trials[i] = trial
+        end
+
+       EEGData(data=trials,label=channels,fs=fs)
+    end
+end
+
 function read_mcca_proj(filename)
     # @info "Reading projected components"
     open(filename) do file
@@ -158,6 +188,8 @@ function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
             data
         elseif endswith(file,".mcca_proj")
             read_mcca_proj(file)
+        elseif endswith(file,".eeg")
+            read_eeg_binary(file)
         else
             pat = match(r"\.(.+)$",file)
             if pat != nothing

@@ -5,7 +5,8 @@
 
 - let's try looking at just the EEG data, see if there is anything
   in the frequencies worth identifying
-    - try using FFT of concatenated windows to get overall frequency
+    + get rid of mcca, seems to be making things worse
+    + try using FFT of concatenated windows to get overall frequency
       estimate across all trials, and then average that across conditions
       & subjects
     - compare windows before and after onset of target, see if

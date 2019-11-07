@@ -16,7 +16,8 @@ To setup these analysis scripts on a new computer:
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
 3. Install [Julia](https://julialang.org)
-4. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
+4. Install [fieldtrip](http://www.fieldtriptoolbox.org/download/) in Matlab
+5. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
 
 Run `scripts/julia/install.jl` in julia.
 
@@ -63,7 +64,7 @@ output directory so you can also use this pipeline to add preprocessed data
 for a new participant, by including their raw BDF file in the same location
 as all other participant's raw data.
 
-1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers. 
+1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers.
 2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
 2. If you skipped step 2, update the dated directory in `dateconfig.json`.
 3. Call `scripts/matlab/read_sound_events.R` to filter the events based on the

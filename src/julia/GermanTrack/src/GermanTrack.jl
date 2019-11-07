@@ -1,16 +1,12 @@
 module GermanTrack
 
-using Reexport, Tables, DrWatson, JSON, SignalOperators, WAV, Infiltrator
-
-@reexport using DataFrames, Printf, ProgressMeter, FileIO,
-    EEGCoding, Query, Dates, Distributed, Unitful, DependentBootstrap,
-    Distributions, LambdaFn, RCall, VegaLite, CSV, ProximalOperators,
-    PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    DSP.Periodograms
+using Tables, DrWatson, JSON, SignalOperators, WAV, Infiltrator, DataFrames,
+    Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
+    Unitful, DependentBootstrap, Distributions, LambdaFn, RCall, VegaLite, CSV,
+    ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics
 
 using BSON: @save, @load
 export CSV, JSON, @save, @load
-
 
 include("util.jl")
 include("stimuli.jl")

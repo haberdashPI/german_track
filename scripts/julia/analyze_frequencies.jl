@@ -1,13 +1,10 @@
-using DrWatson; quickactivate(@__DIR__, "german_track"); using GermanTrack
-using DSP
-using StatsBase
-using PaddedViews
+using DrWatson; quickactivate(@__DIR__, "german_track")
+include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
-eeg_encoding = JointEncoding(RawEncoding(),
-    FilteredPower("alpha", 5, 15),
-    FilteredPower("gamma", 30, 100))
+# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
+eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
     load_subject(joinpath(data_dir(), file),
@@ -26,22 +23,37 @@ const direction = convert(Array{String},
 
 target_times =
     convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
-target_window_range = (-1, 1)
-target_window = map(target_times) do time
-    iszero(time) ? no_indices :
-        only_near(time, 10, window = target_window_range)
-end
 
-conditions = Dict(
-    (sid = sid, label = label, condition = condition, target = target) =>
-        @λ(_row.condition == cond_label[condition] &&
-           ((label == "correct") == _row.correct) &&
-           sid == _row.sid &&
-           speakers[_row.sound_index] == tindex[target] ?
-                target_window[_row.sound_index] : no_indices)
+before_window(time,start,len) =
+    iszero(time) ? no_indices : only_near(time,10, window=(-start-len,-start))
+after_window(time,start,len) =
+    iszero(time) ? no_indices : only_near(time,10, window=(start,start+len))
+
+windows = Dict(
+    "before" => before_window,
+    "after" => after_window
+)
+
+conditions = Dict((
+    sid = sid,
+    label = label,
+    timing = timing,
+    condition = condition,
+    winstart = start,
+    winlen = len,
+    target = target
+) => @λ(_row.condition == cond_label[condition] &&
+        ((label == "detected") == _row.correct) &&
+        sid == _row.sid &&
+        speakers[_row.sound_index] == tindex[target] ?
+            windows[timing](target_times[_row.sound_index],start,len) :
+                no_indices)
     for condition in keys(cond_label)
     for target in keys(tindex)
-    for label in ["correct", "incorrect"]
+    for label in ["detected", "not_detected"]
+    for timing = keys(windows)
+    for start in (0,0.25,0.5)
+    for len in (0.5,1,1.5)
     for sid in sidfor.(eeg_files)
 )
 
@@ -61,80 +73,47 @@ for (condition, bounds) in conditions
     end
     for (file, i) in indices
         eeg, events = subjects[file]
+        start = bounds[(file,i)][1]
         ixs = bound_indices(bounds[(file, i)], 256, size(eeg[i], 2))
 
         # power in relevant frequency bins across all channels and times
-        alphapower = @views(eeg[i][35:68,ixs])
-        gammapower = @views(eeg[i][69:end,ixs])
-
-        # power over all frequencies and times (averaged across channels)
-        mspect = mean(1:34) do ch
-            data = @views(eeg[i][ch,ixs])
-            spect = spectrogram(data, 128, 112, # 500ms window with 87.5% overlap
-                fs = 256,
-                window = DSP.Windows.hanning)
-            global freqs = freq(spect)
-            global times = time(spect)
-            power(spect)
-        end
-
-        df = push!(df, (sid = sidfor(file),
+        df = push!(df, (
+            sid = sidfor(file),
             trial = i,
             condition...,
-            spectrum = mspect,
-            alphapower = alphapower,
-            gammapower = gammapower,
+            window = view(eeg[i],:,ixs)
         ))
     end
 end
 
+freqbins = OrderedDict(
+    "delta" => (1,3),
+    "theta" => (3,7),
+    "alpha" => (7,15),
+    "beta" => (15,30),
+    "gamma" => (30,100),
+)
+
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
-freqmeans = by(df, [:sid,:label,:condition,:target]) do rows
-    μ = padmeanpower(rows.alphapower)
-    curtimes = range(target_window_range[1], length = size(μ, 2), step = 1 / fs)
-    alpha = PlotAxes.asplotable(AxisArray(μ,
-        Axis{:channel}(Base.axes(μ, 1)),
-        Axis{:time}(curtimes),
-    ), quantize = (1000, 1000))[1]
-    rename!(alpha, :value => :alphapower)
-
-    μ = padmeanpower(rows.gammapower)
-    curtimes = range(target_window_range[1], length = size(μ, 2), step = 1 / fs)
-    gamma = PlotAxes.asplotable(AxisArray(μ,
-        Axis{:channel}(Base.axes(μ, 1)),
-        Axis{:time}(curtimes),
-    ), quantize = (1000, 1000))[1]
-    rename!(gamma,:value => :gammapower)
-
-    result = join(alpha,gamma,on=[:channel,:time])
-    result[!,:alphaz] .= zscore(result.alphapower)
-    result[!,:gammaz] .= zscore(result.gammapower)
-    result
+channels = first(values(subjects)).eeg.label
+# channels = 1:34
+function freqrange(spect,(from,to))
+    freqs = range(0,fs/2,length=size(spect,2))
+    view(spect,:,findall(from .≤ freqs .≤ to))
 end
 
-spectmeans = by(df, [:sid,:label,:condition,:target]) do rows
-    maxtime = maximum(@λ(size(_,2)), rows.spectrum)
-    nf = size(rows.spectrum[1],1)
+freqmeans = by(df, [:sid,:label,:timing,:condition,:target,:winstart,:winlen]) do rows
+    signal = reduce(hcat,row.window for row in eachrow(rows))
+    spect = abs.(fft(signal, 2))
+    totalpower = mean(spect,dims = 2)
 
-    curtimes = range(
-        target_window_range[1]+step(times),
-        step=step(times),
-        length=maxtime
-    )
-
-    # power is always postive so we treat -1 as a missing value
-    # and compute the mean over non-missing values; `PaddedView`
-    # does not support `missing` values.
-    padded = map(@λ(PaddedView(-1,_spect,(nf,maxtime))),rows.spectrum)
-    μ = zeros(nf,maxtime)
-    for pad in padded
-        μ .= ifelse.(pad .>= 0,μ .+ pad,μ)
+    result = mapreduce(hcat,keys(freqbins)) do bin
+        result = DataFrame()
+        mfreq = mean(freqrange(spect, freqbins[bin]), dims = 2) #./ totalpower
+        DataFrame(Symbol(bin) => vec(mfreq))
     end
-
-    PlotAxes.asplotable(AxisArray(μ,
-        Axis{:freq}(freqs),
-        Axis{:time}(curtimes),
-    ), quantize = (1000, 1000))[1]
+    result[!,:channel] .= channels
+    result
 end
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -143,71 +122,63 @@ isdir(dir) || mkdir(dir)
 R"""
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 
-ggplot($freqmeans,aes(x=time,y=channel,color=value)) + geom_raster() +
-    facet_grid(sid+target~condition+label)
+bins = $(collect(keys(freqbins)))
 
-df = $(freqmeans) %>% filter(label == 'correct')
-df = df %>%
-    mutate(case = ifelse(target == 'male',
-        label,ifelse(label == 'correct','false_alarm (female)','ignore'))) %>%
-    filter(case != 'ignore')
+df = $(freqmeans) %>%
+    group_by(sid,winstart,winlen,label,timing,condition,target) %>%
+    gather(key="freqbin", value="meanpower", delta:gamma) %>%
+    filter(sid != 11) %>%
+    ungroup() %>%
+    mutate(timing = factor(timing,levels=c('before','after')),
+           freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(timing,freqbin)
 
-ggplot(df,aes(x=time,y=channel,fill=alphaz)) + geom_raster() +
-    facet_grid(case~sid+condition) +
-    scale_fill_distiller(palette='RdBu')
+group_means = df %>%
+    group_by(sid,winstart,winlen,label,timing,condition,target,freqbin) %>%
+    summarize(meanpower = median(meanpower))
 
-ggsave(file.path($dir,'alpha_ind.pdf'),width=11,height=8)
+for(start in unique(df$winstart)){
+    for(len in unique(df$winlen)){
+        plotdf = filter(group_means,winstart == start,winlen == len)
+        pos = position_jitterdodge(dodge.width=0.5,jitter.width=0.1)
+        p = ggplot(plotdf,aes(x=label,y=meanpower,shape=timing)) +
+            stat_summary(geom='bar',position=position_dodge(width=1),
+                aes(fill=label),size=4) +
+            stat_summary(geom='linerange',position=position_dodge(width=1)) +
+            geom_point(alpha=0.5,color='black', position=pos) +
+            scale_fill_brewer(palette='Set1',direction=-1) +
+            scale_color_brewer(palette='Set1',direction=-1) +
+            facet_grid(freqbin~condition+target,scales='free_y') +
+            ylab("Power of median channel")
 
-p = ggplot(df,aes(x=time,y=channel,fill=alphaz)) + geom_raster() +
-    facet_grid(case~condition) +
-    scale_fill_distiller(palette='RdBu')
+        name = sprintf('freq_summary_no_mcca_%03.1f_%03.1f.pdf',start,len)
+        ggsave(file.path($dir,name),plot=p,width=11,height=8)
+    }
+}
 
-ggsave(file.path($dir,'alpha_mean.pdf'),plot=p,width=11,height=8)
+for(start in unique(df$winstart)){
+    for(len in unique(df$winlen)){
+        plotdf = filter(group_means,winstart == start,winlen == len) %>%
+            group_by(sid,label,condition,target) %>%
+            spread(timing,meanpower) %>%
+            mutate(diff = after - before)
 
-p = ggplot(df,aes(x=time,y=channel,fill=gammaz)) + geom_raster() +
-    facet_grid(case~sid+condition) +
-    scale_fill_distiller(palette='RdBu')
+        pos = position_jitter(width=0.1)
+        p = ggplot(plotdf,aes(x=label,y=diff)) +
+            stat_summary(geom='bar',position=position_dodge(width=1),
+                aes(fill=label),size=4) +
+            stat_summary(geom='linerange',position=position_dodge(width=1)) +
+            geom_point(alpha=0.5,color='black', position=pos) +
+            scale_fill_brewer(palette='Set1',direction=-1) +
+            scale_color_brewer(palette='Set1',direction=-1) +
+            facet_grid(freqbin~condition+target,scales='free_y') +
+            ylab("Median power difference across channels (after - before)")
+        name = sprintf('freq_diff_summary_no_mcca_%03.1f_%03.1f.pdf',start,len)
+        ggsave(file.path($dir,name),plot=p,width=11,height=8)
+    }
+}
 
-ggsave(file.path($dir,'gamma_ind.pdf'),plot=p,width=11,height=8)
-
-p = ggplot(df,aes(x=time,y=channel,fill=gammaz)) + geom_raster() +
-    facet_grid(case~condition) +
-    scale_fill_distiller(palette='RdBu')
-
-ggsave(file.path($dir,'gamma_mean.pdf'),plot=p,width=11,height=8)
-
-p = ggplot(df,aes(x=time,y=alphaz,color=condition)) + stat_summary(geom='line') +
-    facet_grid(case~.)
-ggsave(file.path($dir,'alpha_time.pdf'),plot=p,width=11,height=8)
-
-p = ggplot(df,aes(x=time,y=gammaz,color=condition)) + stat_summary(geom='line') +
-    facet_grid(case~.)
-ggsave(file.path($dir,'gamma_time.pdf'),plot=p,width=11,height=8)
-
-# ggplot(df,aes(x=channel,y=gammaz,color=condition)) + stat_summary(geom='line') +
-#     coord_flip() +
-#     facet_grid(target~.)
-
-# df = $(spectmeans) %>% filter(label == 'correct',sid == 8,freq > 14)
-
-# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-#     facet_grid(target~condition) +
-#     scale_fill_distiller(palette='Spectral')
-
-# df = $(spectmeans) %>% filter(sid == 8,freq > 14)
-
-# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-#     facet_grid(target+label~condition) +
-#     scale_fill_distiller(palette='Spectral')
-
-# df = $(spectmeans) %>% filter(freq > 14)
-
-# ggplot(df,aes(x=time,y=freq,fill=log(value))) + geom_raster() +
-#     facet_grid(target+label~sid+condition) +
-#     scale_fill_distiller(palette='Spectral')
 
 """
-
-# TODO: organize by 'correct', 'incorrect' for male target and
-# by distractor 'female'
