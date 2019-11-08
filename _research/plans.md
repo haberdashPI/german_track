@@ -9,10 +9,11 @@
     + try using FFT of concatenated windows to get overall frequency
       estimate across all trials, and then average that across conditions
       & subjects
-    - compare windows before and after onset of target, see if
+    + compare windows before and after onset of target, see if
       any particular window generates meaningful differences for different
       frequency bands
 
+NEXT:
 - with the decoder we have, is there an overall difference across all
   conditions/subjections for correct vs. incorrect?
 
