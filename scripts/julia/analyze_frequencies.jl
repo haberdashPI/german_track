@@ -116,8 +116,6 @@ freqmeans = by(df, [:sid,:label,:timing,:condition,:target,:winstart,:winlen]) d
     result
 end
 
-df = filter(df,sid != 11)
-
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
@@ -136,6 +134,8 @@ df = $(freqmeans) %>%
     mutate(timing = factor(timing,levels=c('before','after')),
            freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
     arrange(timing,freqbin)
+
+df = filter(df,sid != 11)
 
 group_means = df %>%
     group_by(sid,winstart,winlen,label,timing,condition,target,freqbin) %>%
@@ -158,7 +158,7 @@ for(start in unique(df$winstart)){
             scale_color_brewer(palette='Set1',direction=-1) +
             facet_grid(freqbin~condition+target,scales='free_y') +
             ylab("Median power difference across channels (after - before)")
-        name = sprintf('freq_diff_summary_mcca_%03.1f_%03.1f.pdf',start,len)
+        name = sprintf('freq_diff_summary_mcca_no_11_%03.1f_%03.1f.pdf',start,len)
         ggsave(file.path($dir,name),plot=p,width=11,height=8)
     }
 }
