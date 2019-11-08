@@ -2,8 +2,8 @@ using DrWatson; quickactivate(@__DIR__, "german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
-eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
@@ -95,8 +95,8 @@ freqbins = OrderedDict(
 )
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
-channels = first(values(subjects)).eeg.label
-# channels = 1:34
+# channels = first(values(subjects)).eeg.label
+channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
@@ -115,6 +115,8 @@ freqmeans = by(df, [:sid,:label,:timing,:condition,:target,:winstart,:winlen]) d
     result[!,:channel] .= channels
     result
 end
+
+df = filter(df,sid != 11)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -141,25 +143,6 @@ group_means = df %>%
 
 for(start in unique(df$winstart)){
     for(len in unique(df$winlen)){
-        plotdf = filter(group_means,winstart == start,winlen == len)
-        pos = position_jitterdodge(dodge.width=0.5,jitter.width=0.1)
-        p = ggplot(plotdf,aes(x=label,y=meanpower,shape=timing)) +
-            stat_summary(geom='bar',position=position_dodge(width=1),
-                aes(fill=label),size=4) +
-            stat_summary(geom='linerange',position=position_dodge(width=1)) +
-            geom_point(alpha=0.5,color='black', position=pos) +
-            scale_fill_brewer(palette='Set1',direction=-1) +
-            scale_color_brewer(palette='Set1',direction=-1) +
-            facet_grid(freqbin~condition+target,scales='free_y') +
-            ylab("Power of median channel")
-
-        name = sprintf('freq_summary_no_mcca_%03.1f_%03.1f.pdf',start,len)
-        ggsave(file.path($dir,name),plot=p,width=11,height=8)
-    }
-}
-
-for(start in unique(df$winstart)){
-    for(len in unique(df$winlen)){
         plotdf = filter(group_means,winstart == start,winlen == len) %>%
             group_by(sid,label,condition,target) %>%
             spread(timing,meanpower) %>%
@@ -175,10 +158,9 @@ for(start in unique(df$winstart)){
             scale_color_brewer(palette='Set1',direction=-1) +
             facet_grid(freqbin~condition+target,scales='free_y') +
             ylab("Median power difference across channels (after - before)")
-        name = sprintf('freq_diff_summary_no_mcca_%03.1f_%03.1f.pdf',start,len)
+        name = sprintf('freq_diff_summary_mcca_%03.1f_%03.1f.pdf',start,len)
         ggsave(file.path($dir,name),plot=p,width=11,height=8)
     }
 }
-
 
 """
