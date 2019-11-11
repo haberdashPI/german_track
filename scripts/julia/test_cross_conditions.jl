@@ -1,4 +1,5 @@
-using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
+using DrWatson; quickactivate(@__DIR__, "german_track")
+include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
