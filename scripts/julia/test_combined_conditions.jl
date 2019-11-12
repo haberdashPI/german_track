@@ -1,4 +1,5 @@
-using DrWatson; quickactivate(@__DIR__,"german_track"); using GermanTrack
+using DrWatson; quickactivate(@__DIR__, "german_track")
+include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
 eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
@@ -28,22 +29,27 @@ listen_conds = ["object","global", "spatial"]
 targets = ["male","fem"]
 labels = ["correct","all"]
 
-train_conditions = map(targets) do target
-    (target=target,) =>
+train_conditions = Dict(
+    (target=target, sid=sid) =>
         @λ(_row.correct &&
+           (_row.sid == sid) &&
             speakers[_row.sound_index] == tindex[target] ?
                 before_target[_row.sound_index] : no_indices)
-end
+    for target in targets
+    for sid in sidfor.(eeg_files)
+)
 
 
-test_conditions = mapreduce(vcat,listen_conds) do condition
-    mapreduce(vcat,targets) do target
-        [(condition=condition,target=target) =>
-            @λ(_row.condition == cond_label[condition] &&
-                speakers[_row.sound_index] == tindex[target] ?
-                    before_target[_row.sound_index] : no_indices)]
-    end
-end
+test_conditions = Dict(
+    (condition=condition,target=target,sid=sid) =>
+        @λ(_row.condition == cond_label[condition] &&
+           (_row.sid == sid) &&
+            speakers[_row.sound_index] == tindex[target] ?
+                before_target[_row.sound_index] : no_indices)
+    for condition in listen_conds
+    for sid in sidfor.(eeg_files)
+    for target in targets
+)
 
 df = train_test(
     StaticMethod(NormL2(0.2),cor),
@@ -54,8 +60,12 @@ df = train_test(
     resample = 64, # NOTE: resampling occurs after alpha and gamma are encoded
     eeg_files, stim_info,
     maxlag=0.8,
-    train = repeat(train_conditions,inner=3),
-    test = test_conditions
+    train = subdict(train_conditions,
+        (target=target,sid=sid)
+        for cond in listen_conds, target in targets, sid in sidfor.(eeg_files)),
+    test = subdict(test_conditions,
+        (condition=cond,target=target,sid=sid)
+        for cond in listen_conds, target in targets, sid in sidfor.(eeg_files))
 );
 alert()
 
@@ -68,6 +78,13 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(stringr)
+
+df = filter($df,source != 'other_male')
+
+ggplot(df,aes(x=test_correct,y=value,color=test_correct)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_dodge(width=0.85)) +
+    scale_color_brewer(palette='Set1')
 
 ggplot($df,aes(x=source,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),

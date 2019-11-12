@@ -79,4 +79,9 @@ ggplot($df,aes(x=source,y=value,color=test_correct)) +
 
 ggsave(file.path($dir,"cross_subjects.pdf"),width=11,height=8)
 
+ggplot($df,aes(x=test_correct,y=value)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_dodge(width=0.85)) +
+    scale_color_brewer(palette='Set1')
+
 """

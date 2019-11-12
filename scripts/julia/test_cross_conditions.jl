@@ -108,6 +108,11 @@ ggplot(dfmatch,aes(x=featuresof,y=cor,color=target_detected)) +
 
 ggsave(file.path($dir,"within_condition.pdf"),width=11,height=8)
 
+ggplot(dfmatch,aes(x=target_detected,y=cor,color=target_detected)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_dodge(width=0.85)) +
+    scale_color_brewer(palette='Set1')
+
 ggplot(dfmatch,aes(x=featuresof,y=cor,color=interaction(location,target_detected))) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         aes(fill=interaction(location,target_detected)),pch=21,size=0.5,

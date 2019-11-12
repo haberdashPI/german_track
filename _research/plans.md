@@ -14,8 +14,9 @@
       frequency bands
 
 NEXT:
-- with the decoder we have, is there an overall difference across all
++ with the decoder we have, is there an overall difference across all
   conditions/subjections for correct vs. incorrect?
+  nope: not that I can see
 
 - semi-supervised training, with this approach mounya suggested
   that the loss could be the maximum loss of the three speakers
