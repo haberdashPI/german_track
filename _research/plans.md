@@ -21,7 +21,6 @@
 - sample combinations of features (many, say 10k) and see if there
   are any combinations that work well. e.g. feature selection
   with a locality constraint
--
 
 - thorough tests reveal that the index bug was indeed the source of our "success" in decoding. You have to include the tested trial to get accurate decodering in the learning: the implication is that this component is "memorized", and there is not a clear general trend across  signals.
 (see the feature-loo-cv branch)

@@ -32,7 +32,7 @@ end
 global data_dir
 for i = 1:length(files)
     name = files(i).name;
-    name = regexprep(name,'.mat$','.eeg')
+    name = regexprep(name,'.mat$','.eeg');
     save_subject_binary(all_eeg{i},fullfile(data_dir,name))
 end
 

@@ -1,5 +1,4 @@
 run(fullfile('..','..','src','matlab','util','setup.m'));
-addpath('../../src/matlab/util/'); setup;
 
 % setup a new, dated folder for a new pass at reading in the eeg data
 data_dir = redatedir(data_dir);

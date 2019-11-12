@@ -325,3 +325,35 @@ ft_databrowser(plot_detrend_cfg,eeg);
 % add to data set
 % trial_order{7} = sort_trial_times(eeg,stim_events);
 save_subject(eeg,'eeg_response_014_cleaned.mat');
+
+% subj 16 ----------------------------------------
+
+[eeg,stim_events,sid] = load_subject('eeg_response_016.mat');
+
+ft_rejectvisual(reject_cfg,eeg);
+
+bad_trials = [
+    69,
+    82,
+    84,
+    85,
+    86,
+    117
+]
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
+
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A4','B3','A28'}
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+% detrend the data
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+save_subject(eeg,'eeg_response_016_cleaned.mat');

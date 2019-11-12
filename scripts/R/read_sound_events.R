@@ -2,7 +2,11 @@ source("src/R/setup.R")
 library(magrittr)
 library(cowplot)
 
-for(sid in 8:14){
+# NOTE: sid 15 has missing trials in the eeg and there is not an obvious
+# way to infer which events are missing (it appears some triggers did not
+# record at it isn't clear which ones from looking at the data)
+
+for(sid in c(8:14,16)){
 
 cat(paste0('Sid: ',sid,'\n'))
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
@@ -20,6 +24,7 @@ ef = ef %>% arrange(sample) %>%
 p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
     xlab("minutes")
 
+
 presfiles = list.files(file.path(raw_data_dir),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
     msg = sprintf("Multiple files matching pattern for sid = %d:",sid)
@@ -27,7 +32,8 @@ if(length(presfiles) > 1){
 }
 presfile = file.path(raw_data_dir,presfiles)
 
-raw_pf = read.table(presfile,header=T,skip=3,sep="\t",blank.lines.skip=T,fill=T)
+raw_pf = read.table(presfile,header=TRUE,skip=3,sep="\t",
+    blank.lines.skip=TRUE,fill=TRUE)
 
 pf = raw_pf %>% rename(subtrial=Trial) %>%
     mutate(trial = cumsum(Event.Type=="Sound")) %>%
@@ -63,8 +69,6 @@ if(sid == 9){
     if(nrow(sound_events) != 154)
         stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
 }
-#
-
 
 pf = pf %>%
     rename(pres_time = time) %>%
@@ -75,11 +79,11 @@ pf = pf %>%
 pf %>%
     select(trial,sample,time,condition,response,sound_index) %>%
     write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)),
-        row.names=F)
+        row.names=FALSE)
 
 pf %>%
     mutate(index = as.numeric(condition)) %>%
     select(trial,time,index,sound_index) %>%
     write.table(file.path(data_dir,sprintf("sound_events_%03d.txt",sid)),
-                quote=F,sep="\t",row.names=F)
+                quote=FALSE,sep="\t",row.names=FALSE)
 }

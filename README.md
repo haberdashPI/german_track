@@ -67,7 +67,8 @@ as all other participant's raw data.
 1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers.
 2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
 2. If you skipped step 2, update the dated directory in `dateconfig.json`.
-3. Call `scripts/matlab/read_sound_events.R` to filter the events based on the
+   It should be equal to the directory specified by `data_dir` after running `read_eeg_events.m`.
+3. Call `scripts/R/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
    to the start of the 50 trials for each of the three conditions. This
    script must be run incrementally: i.e. copy each section of code to R
@@ -94,7 +95,7 @@ data must also be loaded in a slightly different way, which can be found by
 checking out older versions of the repository.
 
 Subjects 8-10: ex1,3,5 swapped (on right instead of left side)
-Subjects 8-11: A28 seems to be a bad electrode.
+Subjects 8-16: A28 is a bad electrode.
 
 Subject 9 used an older version of the trigger codes, and the first test
 trial (of 150) was lost (the scripts loading 9's data account for this).
