@@ -30,6 +30,12 @@ git-tree-sha1 = "981354dab938901c2b607a213e62d9defa50b698"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 version = "1.2.1"
 
+[[ArrayLayouts]]
+deps = ["FillArrays", "LinearAlgebra"]
+git-tree-sha1 = "1ddfbcefdcb1d5417cf10a29e4ce3284a7ebb379"
+uuid = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
+version = "0.1.1"
+
 [[AxisAlgorithms]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "WoodburyMatrices"]
 git-tree-sha1 = "a4d07a1c313392a77042855df46c5f534076fab9"
@@ -76,9 +82,9 @@ version = "1.0.0"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "FilePathsBase", "LazyArrays", "Mmap", "Parsers", "PooledArrays", "Profile", "Tables", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "0c3201d16c65a1453be158189d48df7c357eb7fb"
+git-tree-sha1 = "4194bc05efd054cdbf2765ce4a0d1497bf8eec65"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.5.14"
+version = "0.5.16"
 
 [[CategoricalArrays]]
 deps = ["Compat", "DataAPI", "Future", "JSON", "Missings", "Printf", "Reexport", "Unicode"]
@@ -254,9 +260,9 @@ version = "0.6.2"
 
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "de38b0253ade98340fabaf220f368f6144541938"
+git-tree-sha1 = "6827a8f73ff12707f209c920d204238a16892b55"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
-version = "0.7.4"
+version = "0.8.0"
 
 [[FixedPointNumbers]]
 deps = ["Test"]
@@ -312,9 +318,9 @@ version = "0.8.4"
 
 [[ImageInTerminal]]
 deps = ["ColorTypes", "Crayons", "ImageCore", "ImageTransformations"]
-git-tree-sha1 = "f35c6a782e532394609099d54fe8ec64ef21fb6d"
+git-tree-sha1 = "686a58a0e09367206b8e40d1c9431f603ab70b0c"
 uuid = "d8c32880-2388-543b-8c61-d9f865259254"
-version = "0.4.0"
+version = "0.4.1"
 
 [[ImageTransformations]]
 deps = ["AxisAlgorithms", "ColorTypes", "ColorVectorSpace", "Colors", "CoordinateTransformations", "FixedPointNumbers", "IdentityRanges", "ImageCore", "Interpolations", "OffsetArrays", "StaticArrays"]
@@ -403,10 +409,10 @@ uuid = "fcefd6c4-8de0-11e9-0d15-03bc7c8ec982"
 version = "0.3.0"
 
 [[LazyArrays]]
-deps = ["FillArrays", "LinearAlgebra", "MacroTools", "StaticArrays"]
-git-tree-sha1 = "01ec151cd0418fb05294b0230471765e0a65adb1"
+deps = ["ArrayLayouts", "FillArrays", "LinearAlgebra", "MacroTools", "StaticArrays"]
+git-tree-sha1 = "4178993cd1c9570bca6dce62c84e73d85747fc85"
 uuid = "5078a376-72f3-5289-bfd5-ec5146d43c02"
-version = "0.12.3"
+version = "0.14.3"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -719,9 +725,9 @@ version = "0.8.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "1085ffbf5fd48fdba64ef8e902ca429c4e1212d3"
+git-tree-sha1 = "5a3bcb6233adabde68ebc97be66e95dcb787424c"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.11.1"
+version = "0.12.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -740,10 +746,10 @@ uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.9.0"
 
 [[StatsModels]]
-deps = ["CategoricalArrays", "DataStructures", "LinearAlgebra", "ShiftedArrays", "SparseArrays", "StatsBase", "Tables"]
-git-tree-sha1 = "0d0e21a1c3e8043cbc1c4dd4b4e4189b0449e8cf"
+deps = ["DataAPI", "DataStructures", "LinearAlgebra", "ShiftedArrays", "SparseArrays", "StatsBase", "Tables"]
+git-tree-sha1 = "f4a967704cae9426654cf4649561f263a6dc8419"
 uuid = "3eaba693-59b7-5ba5-a881-562e759f1c8d"
-version = "0.6.6"
+version = "0.6.7"
 
 [[StructuredOptimization]]
 deps = ["AbstractOperators", "DSP", "FFTW", "LinearAlgebra", "ProximalAlgorithms", "ProximalOperators", "RecursiveArrayTools"]

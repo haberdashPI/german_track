@@ -4,6 +4,7 @@ authors = ["David Little <david.frank.little@gmail.com>"]
 version = "0.1.1"
 
 [deps]
+AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CorticalSpectralTemporalResponses = "82ec0db2-aa68-11e9-08e4-e3d69fc08b96"
@@ -31,6 +32,7 @@ StructuredOptimization = "46cd3e9d-64ff-517d-a929-236bc1a1fc9d"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+AbstractFFTs = "0.4"
 BSON = "≥0.2"
 CorticalSpectralTemporalResponses = "≥0.4"
 DataFrames = "≥0.19"
