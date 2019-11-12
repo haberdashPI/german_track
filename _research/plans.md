@@ -3,20 +3,12 @@
 
 ## current steps:
 
-- let's try looking at just the EEG data, see if there is anything
-  in the frequencies worth identifying
-    + get rid of mcca, seems to be making things worse
-    + try using FFT of concatenated windows to get overall frequency
-      estimate across all trials, and then average that across conditions
-      & subjects
-    + compare windows before and after onset of target, see if
-      any particular window generates meaningful differences for different
-      frequency bands
+- contact merve about high v low salience
+- break-down freq-bin results by
+  - early v late timing
+  - high v low salience
 
-NEXT:
-+ with the decoder we have, is there an overall difference across all
-  conditions/subjections for correct vs. incorrect?
-  nope: not that I can see
+  - maybe look at false alarms?
 
 - semi-supervised training, with this approach mounya suggested
   that the loss could be the maximum loss of the three speakers
