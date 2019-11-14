@@ -2,8 +2,8 @@ using DrWatson; quickactivate(@__DIR__, "german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
-# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
@@ -95,8 +95,8 @@ freqbins = OrderedDict(
 )
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
-# channels = first(values(subjects)).eeg.label
-channels = 1:34
+channels = first(values(subjects)).eeg.label
+# channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
@@ -105,7 +105,7 @@ end
 freqmeans = by(df, [:sid,:label,:timing,:condition,:target,:winstart,:winlen]) do rows
     signal = reduce(hcat,row.window for row in eachrow(rows))
     spect = abs.(fft(signal, 2))
-    totalpower = mean(spect,dims = 2)
+    # totalpower = mean(spect,dims = 2)
 
     result = mapreduce(hcat,keys(freqbins)) do bin
         result = DataFrame()
@@ -158,7 +158,7 @@ for(start in unique(df$winstart)){
             scale_color_brewer(palette='Set1',direction=-1) +
             facet_grid(freqbin~condition+target,scales='free_y') +
             ylab("Median power difference across channels (after - before)")
-        name = sprintf('freq_diff_summary_mcca_no_11_%03.1f_%03.1f.pdf',start,len)
+        name = sprintf('freq_diff_summary_%03.1f_%03.1f.pdf',start,len)
         ggsave(file.path($dir,name),plot=p,width=11,height=8)
     }
 }
