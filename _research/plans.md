@@ -3,7 +3,7 @@
 
 ## current steps:
 
-- contact merve about high v low salience
++ contact merve about high v low salience
 - break-down freq-bin results by
   - early v late timing
   - high v low salience
