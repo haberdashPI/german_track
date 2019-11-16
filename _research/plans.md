@@ -5,7 +5,7 @@
 
 + contact merve about high v low salience
 - break-down freq-bin results by
-  - early v late timing
+  + early v late timing
   - high v low salience
 
   - maybe look at false alarms?
