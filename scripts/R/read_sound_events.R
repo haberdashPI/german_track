@@ -6,7 +6,7 @@ library(cowplot)
 # way to infer which events are missing (it appears some triggers did not
 # record at it isn't clear which ones from looking at the data)
 
-for(sid in c(8:14,16)){
+for(sid in c(8:14,16:19)){
 
 cat(paste0('Sid: ',sid,'\n'))
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))

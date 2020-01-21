@@ -68,12 +68,17 @@ as all other participant's raw data.
 2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
 2. If you skipped step 2, update the dated directory in `dateconfig.json`.
    It should be equal to the directory specified by `data_dir` after running `read_eeg_events.m`.
+
 3. Call `scripts/R/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
-   to the start of the 50 trials for each of the three conditions. This
-   script must be run incrementally: i.e. copy each section of code to R
-   and verify the output, as you run it. (e.g. there is a graph that gets
-   generated of all events in the EEG file).
+   to the start of the 50 trials for each of the three conditions. This script
+   should probably be run incrementally if you add any subjects: i.e. copy the
+   body of the for loop, setting sid manually. On each run
+   verify the output, as you run it. (e.g. there is a graph that gets generated
+   of all events in the EEG file). It should show three clear breaks
+   in timing corresponding to the three conditions run. There should be a
+   total of 50 relevant events after each of the breaks (before the first break,
+   the training trials are presented, and those are ignored).
 4. Call `scripts/matlab/read_eeg_response.m` to generate the `*.mat` files
    with the preprocessed event streams.
 5. Call `scripts/matlab/clean_data.m` and run through the steps manually to eliminated any egregious artificats.

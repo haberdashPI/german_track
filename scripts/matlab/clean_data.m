@@ -357,3 +357,8 @@ alert()
 ft_databrowser(plot_detrend_cfg,eeg);
 
 save_subject(eeg,'eeg_response_016_cleaned.mat');
+
+% subj 17 ----------------------------------------
+[eeg,stim_events,sid] = load_subject('eeg_response_017.mat');
+
+ft_rejectvisual(reject_cfg,eeg);
