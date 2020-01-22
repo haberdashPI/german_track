@@ -339,7 +339,7 @@ bad_trials = [
     85,
     86,
     117
-]
+];
 stim_events.bad_trial = zeros(size(stim_events,1),1);
 stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
 writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))

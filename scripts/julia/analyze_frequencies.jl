@@ -68,7 +68,7 @@ conditions = Dict((
     for label in ["detected", "not_detected"]
     for timing in keys(windows)
     for target_timing in ["early", "late"]
-    for start in (0,0.25,0.5)
+    for start in (0.0,0.25,0.5)
     for len in (0.5,1,1.5)
     for sid in sidfor.(eeg_files)
 )

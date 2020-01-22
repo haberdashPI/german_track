@@ -16,8 +16,8 @@ To setup these analysis scripts on a new computer:
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
 3. Install [Julia](https://julialang.org)
-4. Install [fieldtrip](http://www.fieldtriptoolbox.org/download/) in Matlab
-5. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
+5. Install [fieldtrip](http://www.fieldtriptoolbox.org/download/) in Matlab
+6. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
 
 Run `scripts/julia/install.jl` in julia.
 
