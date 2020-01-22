@@ -1,4 +1,7 @@
-using DrWatson, Pkg
+using Pkg
+pkg"add DrWatson"
+
+using DrWatson
 quickactivate(@__DIR__,"german_track")
 Pkg.instantiate()
 
