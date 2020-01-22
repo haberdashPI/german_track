@@ -362,3 +362,87 @@ save_subject(eeg,'eeg_response_016_cleaned.mat');
 [eeg,stim_events,sid] = load_subject('eeg_response_017.mat');
 
 ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+bad_trials = [
+    17,
+    67,
+    84
+];
+
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
+
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A28'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+save_subject(eeg,'eeg_response_017_cleaned.mat');
+
+% subj 18 ----------------------------------------
+[eeg,stim_events,sid] = load_subject('eeg_response_018.mat');
+
+ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+bad_trials = [
+    103
+];
+
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
+
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'A24','B3'}
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+save_subject(eeg,'eeg_response_018_cleaned.mat');
+
+% subj 19 ----------------------------------------
+[eeg,stim_events,sid] = load_subject('eeg_response_019.mat');
+
+ft_rejectvisual(reject_cfg,eeg);
+ft_databrowser(plot_cfg,eeg);
+
+bad_trials = [
+    106
+];
+
+stim_events.bad_trial = zeros(size(stim_events,1),1);
+stim_events(bad_trials,'bad_trial') = num2cell(ones(length(bad_trials),1));
+writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
+
+eeg = zero_trials(eeg,bad_trials);
+channel_repair_cfg.badchannel = {'B25','A8','A28'};
+channel_repair_cfg.trials = 'all';
+eeg = my_channelrepair(channel_repair_cfg,eeg);
+
+% double check rejections
+ft_rejectvisual(reject_cfg,eeg);
+
+eeg = my_detrend(eeg,bad_trials);
+alert()
+
+% verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% NOTE: this participant is pretty noisy... lots of what look to be muscle
+% artifacts
+
+save_subject(eeg,'eeg_response_019_cleaned.mat');
