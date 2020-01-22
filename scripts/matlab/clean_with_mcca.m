@@ -29,6 +29,7 @@ for i = 1:length(files)
 end
 
 % save files to easily read binary files
+% these can be easily loaded in other languages
 global data_dir
 for i = 1:length(files)
     name = files(i).name;
