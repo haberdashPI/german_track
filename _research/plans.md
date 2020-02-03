@@ -3,7 +3,7 @@
 
 ## current steps:
 
-+ contact merve about high v low salience
+- improve visualization of current frequency analysis (analyze_frequencies.jl)
 - break-down freq-bin results by
   + early v late timing
   - high v low salience

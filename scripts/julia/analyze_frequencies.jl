@@ -1,9 +1,9 @@
-using DrWatson; quickactivate(@__DIR__, "german_track")
+using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
-eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
@@ -43,8 +43,7 @@ conditions = Dict((
     condition = condition,
     winstart = start,
     winlen = len,
-    target = target,
-    target_timing = target_timing) =>
+    target = target) =>
 
     function(row)
         if (row.condition == cond_label[condition] &&
@@ -53,11 +52,11 @@ conditions = Dict((
             speakers[row.sound_index] == tindex[target])
 
             target_time = target_times[row.sound_index]
-            if (target_timing == "early") == (target_time < halfway)
+            # if (target_timing == "early") == (target_time < halfway)
                 windows[timing](target_time,start,len)
-            else
-                no_indices
-            end
+            # else
+            #     no_indices
+            # end
         else
             no_indices
         end
@@ -67,7 +66,7 @@ conditions = Dict((
     for target in keys(tindex)
     for label in ["detected", "not_detected"]
     for timing in keys(windows)
-    for target_timing in ["early", "late"]
+    # for target_timing in ["early", "late"]
     for start in (0.0,0.25,0.5)
     for len in (0.5,1,1.5)
     for sid in sidfor.(eeg_files)
@@ -110,15 +109,15 @@ freqbins = OrderedDict(
 )
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
-channels = first(values(subjects)).eeg.label
-# channels = 1:34
+# channels = first(values(subjects)).eeg.label
+channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
 end
 
-freqmeans = by(df, [:sid,:label,:timing,:condition,:target_timing,:target,
-    :winstart,:winlen]) do rows
+freqmeans = by(df, [:sid,:label,:timing,:condition,##:target_timing,
+    :target,:winstart,:winlen]) do rows
 
     signal = reduce(hcat,row.window for row in eachrow(rows))
     spect = abs.(fft(signal, 2))
@@ -143,8 +142,15 @@ library(tidyr)
 
 bins = $(collect(keys(freqbins)))
 
+# TODO: show the varying window parameters within a single graph
+# so I can understand how things change,
+# also, think about the comparisons I care about
+# and other ways to collapse across more of the figures (e.g. colors
+# for the different frequency bands, or something)
+
 df = $(freqmeans) %>%
-    group_by(sid,winstart,winlen,label,target_timing,timing,condition,target) %>%
+    group_by(sid,winstart,winlen,label,#target_timing,
+    timing,condition,target) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
     filter(sid != 11) %>%
     ungroup() %>%
@@ -155,8 +161,8 @@ df = $(freqmeans) %>%
 df = filter(df,sid != 11)
 
 group_means = df %>%
-    group_by(sid,winstart,winlen,label,target_timing,timing,condition,target,
-        freqbin) %>%
+    group_by(sid,winstart,winlen,label,#target_timing,
+    timing,condition,target,freqbin) %>%
     summarize(meanpower = median(meanpower))
 
 for(start in unique(df$winstart)){
@@ -166,9 +172,8 @@ for(start in unique(df$winstart)){
             spread(timing,meanpower) %>%
             mutate(diff = after - before)
 
-        pos = position_jitterdodge(dodge.width=0.6,jitter.width=0.1)
-        p = ggplot(plotdf,aes(x=label,y=diff,shape=target_timing,
-                group=target_timing)) +
+        pos = position_jitter(width=0.1)
+        p = ggplot(plotdf,aes(x=label,y=diff)) +
             stat_summary(geom='bar',position=position_dodge(width=1),
                 aes(fill=label),size=4) +
             stat_summary(geom='linerange',position=position_dodge(width=1)) +
@@ -177,7 +182,8 @@ for(start in unique(df$winstart)){
             scale_color_brewer(palette='Set1',direction=-1) +
             facet_grid(freqbin~condition+target,scales='free_y') +
             ylab("Median power difference across channels (after - before)")
-        name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
+        # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
+        name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
         ggsave(file.path($dir,name),plot=p,width=11,height=8)
     }
 }
