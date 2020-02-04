@@ -2,8 +2,8 @@ using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
-eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
@@ -109,8 +109,8 @@ freqbins = OrderedDict(
 )
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
-channels = first(values(subjects)).eeg.label
-# channels = 1:34
+# channels = first(values(subjects)).eeg.label
+channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
@@ -186,18 +186,19 @@ group_means = df %>%
             scale_fill_brewer(palette='Paired',direction=-1) +
             scale_color_brewer(palette='Paired',direction=-1) +
             facet_grid(freqbin~condition+target,scales='free_y') +
-            ylab("Median power difference across channels (after - before)")
+            ylab("Median power difference across channels (after - before)") +
+            coord_cartesian(ylim=c(-0.002,0.002))
         p
 
         # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
         # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-        name = 'freq_diff_summary_all_windows.pdf'
+        name = 'mcca_freq_diff_summary_all_windows.pdf'
         ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
 
-plotdf = filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
-    filter(winstart == 0,winlen == 1.5) %>%
+plotdf = filter(group_means,freqbin %in% c('delta','theta')) %>%
+    filter(winstart == 0,winlen == 0.5) %>%
     group_by(sid,label,condition,target) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
@@ -214,10 +215,11 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     scale_color_brewer(palette='Set1',direction=-1) +
     facet_grid(condition~target,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
-    geom_abline(slope=0,intercept=0,linetype=2)
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    coord_cartesian(ylim=c(-0.002,0.002))
 p
 
-name = 'freq_diff_summary.pdf'
+name = 'mcca_freq_diff_summary.pdf'
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """
