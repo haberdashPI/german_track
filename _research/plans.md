@@ -3,27 +3,37 @@
 
 ## current steps:
 
-- improve visualization of current frequency analysis (analyze_frequencies.jl)
-- break-down freq-bin results by
-  + early v late timing
-  - high v low salience
+- hits vs misses (focus on that, as defined by task)
+- baseline - find something away from target or switch
+   - misses should match baseline
+- pair data - lines between the two conditions (or some such)
+- check on the outlier points, maybe there is an issue with the number of data points
+- revisit window timings (start & length)
 
-  - maybe look at false alarms?
+later on:
+- early vs. late?
+- high v low salience?
+- select features (contralatera?, central/frontal?)
+- error bars for individuals?
+- maybe look at false alarms?
+
+analysis:
+
+if we get something with the above analysis it might be worht consider a semi-supervised approach
 
 - semi-supervised training, with this approach mounya suggested
   that the loss could be the maximum loss of the three speakers
   at each time point (could also have some sort of continuity cost:
   i.e. transitions in attention are assumed to be more gradual)
 
-- let's try a few more things to see if they help the decoder:
-  - train across conditions, with weighting this time
-  - try with one feature
-- sample combinations of features (many, say 10k) and see if there
-  are any combinations that work well. e.g. feature selection
-  with a locality constraint
+employ a nuisance variable W: the current target weightings, and apply a loss
+on its basis
 
-- thorough tests reveal that the index bug was indeed the source of our "success" in decoding. You have to include the tested trial to get accurate decodering in the learning: the implication is that this component is "memorized", and there is not a clear general trend across  signals.
-(see the feature-loo-cv branch)
+ Σᵢ || Ab - Wᵢy ||² + γ||b||₁ + ξ||Wᵢ - Wᵢ₋₁||²
+
+ we thus optimize over the mixing parameters of W: might need some sort of regularizer for W that has a single source bias (ala a Dirchlet distribution)
+
+ I can work on this model by starting with an optimizer for the least squares model using an ANN, and then expanding from there.
 
 
 ## older questions that might become relevant again:
