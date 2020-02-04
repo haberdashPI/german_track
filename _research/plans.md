@@ -8,7 +8,7 @@
    - misses should match baseline
 - pair data - lines between the two conditions (or some such)
 - check on the outlier points, maybe there is an issue with the number of data points
-- revisit window timings (start & length)
+- revisit window timings (start & length) / frequency bands
 
 later on:
 - early vs. late?
