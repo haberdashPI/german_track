@@ -3,9 +3,12 @@
 
 ## current steps:
 
-- hits vs misses (focus on that, as defined by task)
-- baseline - find something away from target or switch
++ hits vs misses (focus on that, as defined by task)
++ baseline - find something away from target or switch
    - misses should match baseline
+    - doesn't seem to be the case, exactly; looks pretty noisy
+      worth investigating individual data points, at the moment
+      I would feel pretty unconvinced that there's any effect
 - pair data - lines between the two conditions (or some such)
 - check on the outlier points, maybe there is an issue with the number of data points
 - revisit window timings (start & length) / frequency bands

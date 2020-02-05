@@ -23,6 +23,10 @@ const direction = convert(Array{String},
 
 target_times =
     convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
+switch_times =
+    convert(Array{Array{Float64}},stim_info["test_block_cfg"]["switch_times"])
+fs = convert(Float64,stim_info["fs"])
+switch_times = map(times -> times ./ fs,switch_times)
 
 halfway = filter(@λ(_ > 0),target_times) |> median
 
@@ -36,6 +40,7 @@ windows = Dict(
     "after" => after_window
 )
 
+baseline_len = 0.4
 conditions = Dict((
     sid = sid,
     label = label,
@@ -51,21 +56,28 @@ conditions = Dict((
             ((label == "detected") == row.correct) &&
             sid == row.sid &&
             direction[row.sound_index] == dir &&
-            speakers[row.sound_index] == tindex[target])
+            (target == "baseline" ||
+             speakers[row.sound_index] == tindex[target]))
 
-            target_time = target_times[row.sound_index]
-            # if (target_timing == "early") == (target_time < halfway)
-                windows[timing](target_time,start,len)
-            # else
-            #     no_indices
-            # end
+            if target == "baseline"
+                times = vcat(switch_times[row.sound_index],
+                    target_times[row.sound_index]) |> sort!
+                ranges = far_from(times,10, mindist=0.5,minlength=baseline_len)
+                if isempty(ranges)
+                    error("Could not find any valid region for baseline ",
+                          "'target'. Times: $(times)")
+                end
+                windows[timing](sample_from_ranges(ranges), 0, baseline_len)
+            else
+                windows[timing](target_times[row.sound_index], start, len)
+            end
         else
             no_indices
         end
     end
 
     for condition in keys(cond_label)
-    for target in keys(tindex)
+    for target in vcat(collect(keys(tindex)),"baseline")
     for label in ["detected", "not_detected"]
     for dir in unique(direction)
     for timing in keys(windows)
@@ -74,21 +86,6 @@ conditions = Dict((
     for len in (0.5,1,1.5)
     for sid in sidfor.(eeg_files)
 )
-
-function ishit(row)
-    if row.condition == "global"
-        row.label == "detected" ? "hit" : "miss"
-    elseif row.condition == "object"
-        row.target == "male" ?
-            (row.label == "detected" ? "hit" : "miss") :
-            (row.label == "detected" ? "falsep" : "reject")
-    else
-        @assert row.condition == "spatial"
-        row.direction == "right" ?
-            (row.label == "detected" ? "hit" : "miss") :
-            (row.label == "detected" ? "falsep" : "reject")
-    end
-end
 
 df = DataFrame()
 freqs = nothing
@@ -118,8 +115,26 @@ for (condition, bounds) in conditions
     end
 end
 
+function ishit(row)
+    if row.condition == "global"
+        row.target == "baseline" ? "baseline" :
+            row.label == "detected" ? "hit" : "miss"
+    elseif row.condition == "object"
+        row.target == "baseline" ? "baseline" :
+            row.target == "male" ?
+                (row.label == "detected" ? "hit" : "miss") :
+                (row.label == "detected" ? "falsep" : "reject")
+    else
+        @assert row.condition == "spatial"
+        row.target == "baseline" ? "baseline" :
+            row.direction == "right" ?
+                (row.label == "detected" ? "hit" : "miss") :
+                (row.label == "detected" ? "falsep" : "reject")
+    end
+end
+
 df.hit = ishit.(eachrow(df))
-dfhit = df[in.(df.hit,Ref(("hit","miss"))),:]
+dfhit = df[in.(df.hit,Ref(("hit","miss","baseline"))),:]
 
 
 freqbins = OrderedDict(
@@ -192,6 +207,7 @@ group_means = df %>%
         plotdf = filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
             # filter(condition %in% c('global','object')) %>%
             #filter(group_means,winstart == start,winlen == len) %>%
+            filter(hit %in% c('hit','miss')) %>%
             group_by(sid,hit,condition) %>%
             spread(timing,meanpower) %>%
             mutate(diff = after - before)
@@ -238,8 +254,8 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     scale_color_brewer(palette='Set1',direction=-1) +
     facet_grid(.~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
-    geom_abline(slope=0,intercept=0,linetype=2)
-    # coord_cartesian(ylim=c(-0.002,0.002))
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    coord_cartesian(ylim=c(-0.002,0.002))
 p
 
 name = sprintf('mcca_hits_%03.1f_%03.1f.pdf',0.25,1)

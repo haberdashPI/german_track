@@ -1,8 +1,11 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
-    not_near, bound, sidfor, subdict, padmeanpower
+    not_near, bound, sidfor, subdict, padmeanpower, far_from,
+    sample_from_ranges
 
 using PaddedViews
+using StatsBase
+using Random
 
 function mat2bson(file)
     file
@@ -528,6 +531,32 @@ function not_near(times,max_time;window=(0,0.5))
     end
 
     view(result,1:i)
+end
+
+function far_from(times,max_time;mindist=0.5,minlength=0.5)
+    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
+    start = 0
+    i = 0
+    for time in times
+        if start < time
+            if time-mindist-minlength > start
+                i = i+1
+                result[i] = (start,time-mindist)
+            end
+            start = time + mindist
+        end
+    end
+    if start < max_time
+        i = i+1
+        result[i] = (start,max_time)
+    end
+    view(result,1:i)
+end
+
+function sample_from_ranges(ranges)
+    weights = Weights(map(x -> x[2]-x[1],ranges))
+    range = sample(ranges,weights)
+    rand(Uniform(range...))
 end
 
 function alert(message="Done!")
