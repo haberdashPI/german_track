@@ -2,7 +2,8 @@ using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
@@ -40,7 +41,7 @@ windows = Dict(
     "after" => after_window
 )
 
-baseline_len = 0.4
+baseline_len = 0.5
 conditions = Dict((
     sid = sid,
     label = label,
@@ -62,7 +63,7 @@ conditions = Dict((
             if target == "baseline"
                 times = vcat(switch_times[row.sound_index],
                     target_times[row.sound_index]) |> sort!
-                ranges = far_from(times,10, mindist=0.5,minlength=baseline_len)
+                ranges = far_from(times,10, mindist=0.2,minlength=baseline_len)
                 if isempty(ranges)
                     error("Could not find any valid region for baseline ",
                           "'target'. Times: $(times)")
@@ -147,7 +148,7 @@ freqbins = OrderedDict(
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
-channels = 1:34
+channels = 1:3
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
@@ -204,40 +205,40 @@ group_means = df %>%
 
 # for(start in unique(df$winstart)){
 #     for(len in unique(df$winlen)){
-        plotdf = filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
-            # filter(condition %in% c('global','object')) %>%
-            #filter(group_means,winstart == start,winlen == len) %>%
-            filter(hit %in% c('hit','miss')) %>%
-            group_by(sid,hit,condition) %>%
-            spread(timing,meanpower) %>%
-            mutate(diff = after - before)
+plotdf = filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
+    # filter(condition %in% c('global','object')) %>%
+    #filter(group_means,winstart == start,winlen == len) %>%
+    filter(hit %in% c('hit','miss')) %>%
+    group_by(sid,hit,condition) %>%
+    spread(timing,meanpower) %>%
+    mutate(diff = after - before)
 
-        pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
+pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
 
-        p = ggplot(plotdf,aes(x=winstart,y=diff,
-            fill=interaction(hit,factor(winlen)),
-            color=interaction(hit,factor(winlen)))) +
-            stat_summary(geom='line',position=position_dodge(width=0.1),
-                size=1) +
-            stat_summary(geom='linerange',position=position_dodge(width=0.1)) +
-            geom_point(alpha=0.1, position=pos) +
-            scale_fill_brewer(palette='Paired',direction=-1) +
-            scale_color_brewer(palette='Paired',direction=-1) +
-            facet_grid(freqbin~condition,scales='free_y') +
-            ylab("Median power difference across channels (after - before)") +
-            # coord_cartesian(ylim=c(-0.006,0.006))
-            geom_abline(slope=0,intercept=0,linetype=2)
-        p
+p = ggplot(plotdf,aes(x=winstart,y=diff,
+    fill=interaction(hit,factor(winlen)),
+    color=interaction(hit,factor(winlen)))) +
+    stat_summary(geom='line',position=position_dodge(width=0.1),
+        size=1) +
+    stat_summary(geom='linerange',position=position_dodge(width=0.1)) +
+    geom_point(alpha=0.1, position=pos) +
+    scale_fill_brewer(palette='Paired',direction=-1) +
+    scale_color_brewer(palette='Paired',direction=-1) +
+    facet_grid(freqbin~condition,scales='free_y') +
+    ylab("Median power difference across channels (after - before)") +
+    # coord_cartesian(ylim=c(-0.006,0.006))
+    geom_abline(slope=0,intercept=0,linetype=2)
+p
 
-        # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-        # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-        name = 'mcca_hits_all_windows.pdf'
-        ggsave(file.path($dir,name),plot=p,width=11,height=8)
+# name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
+# name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
+name = 'mcca_hits_all_windows.pdf'
+ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.25,winlen == 1) %>%
+    filter(winstart == 0.0,winlen == 0.5) %>%
     group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
@@ -246,10 +247,13 @@ pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
 
 p = ggplot(plotdf,aes(x=freqbin,y=diff,
         fill=hit,color=hit)) +
-    stat_summary(geom='point',position=position_dodge(width=0.1),
+    stat_summary(fun.data = "mean_cl_boot", geom='point',
+        position=position_dodge(width=0.1),
         size=1) +
-    stat_summary(geom='errorbar',position=position_dodge(width=0.1), width=0.5) +
+    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
+        position=position_dodge(width=0.1), width=0.5) +
     geom_point(alpha=0.4, position=pos, size=1) +
+    # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
     facet_grid(.~condition,scales='free_y') +
@@ -258,7 +262,7 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     coord_cartesian(ylim=c(-0.002,0.002))
 p
 
-name = sprintf('mcca_hits_%03.1f_%03.1f.pdf',0.25,1)
+name = sprintf('mcca03_hits_%03.1f_%03.1f.pdf',0.25,1)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """

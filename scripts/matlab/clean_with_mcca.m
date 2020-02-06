@@ -64,7 +64,7 @@ C = x'*x; % covariance matrix
 [A,score,AA] = nt_mcca(C,n_chans);
 
 bar(score(1:300));
-nkeep = 34;
+nkeep = 3;
 
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
