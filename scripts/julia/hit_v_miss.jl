@@ -2,8 +2,8 @@ using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
-# eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
@@ -148,7 +148,7 @@ freqbins = OrderedDict(
 
 fs = GermanTrack.samplerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
-channels = 1:3
+channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from .≤ freqs .≤ to))
@@ -187,6 +187,7 @@ bins = $(collect(keys(freqbins)))
 # for the different frequency bands, or something)
 
 df = $(freqmeans) %>%
+    filter(channel %in% 1:3) %>%
     group_by(sid,winstart,winlen,hit,#target_timing,
     timing,condition) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
@@ -238,7 +239,7 @@ ggsave(file.path($dir,name),plot=p,width=11,height=8)
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.0,winlen == 0.5) %>%
+    filter(winstart == 0.0,winlen %in% c(0.5,1.5)) %>%
     group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
@@ -249,14 +250,14 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
         fill=hit,color=hit)) +
     stat_summary(fun.data = "mean_cl_boot", geom='point',
         position=position_dodge(width=0.1),
-        size=1) +
+        size=1,fun.args = list(conf.int=0.68)) +
     stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
         position=position_dodge(width=0.1), width=0.5) +
     geom_point(alpha=0.4, position=pos, size=1) +
     # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
-    facet_grid(.~condition,scales='free_y') +
+    facet_grid(winlen~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2) +
     coord_cartesian(ylim=c(-0.002,0.002))

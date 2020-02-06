@@ -13,6 +13,10 @@ plot_cfg.mychan = ft_channelselection('EX*',eeg);
 plot_cfg.mychanscale = 1;
 plot_cfg.ylim = [-1 1];
 
+databrowse_cfg          = [];
+databrowse_cfg.method   = 'summary';
+databrowse_cfg.alim     = 1e-12;
+
 % ======================================================================
 % STEP 1: load cleaned data
 files = dir(fullfile(data_dir,'*.mat'));
@@ -64,13 +68,15 @@ C = x'*x; % covariance matrix
 [A,score,AA] = nt_mcca(C,n_chans);
 
 bar(score(1:300));
-nkeep = 3;
+nkeep = 9;
 
 % Project out all but first "nkeep" components
 for i = 1:length(all_eeg)
     mu = chan_mean((i-1)*n_chans + (1:n_chans));
     all_eeg{i} = project_mcca(all_eeg{i},nkeep,AA{i},mu);
 end
+
+ft_databrowser(databrowse_cfg,all_eeg{9});
 
 % ft_databrowser(plot_cfg,all_eeg{3});
 % ft_databrowser(plot_cfg,cleaned_eeg{3});
