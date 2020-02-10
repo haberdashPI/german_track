@@ -78,7 +78,7 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from .≤ freqs .≤ to))
 end
 
-freqmeans = by(df, :time) do rows
+freqmeans = by(df, :trial) do rows
     signal = reduce(hcat,row.window for row in eachrow(rows))
     spect = abs.(fft(signal, 2))
     # totalpower = mean(spect,dims = 2)
@@ -110,20 +110,20 @@ bins = $(collect(keys(freqbins)))
 # for the different frequency bands, or something)
 
 df = $(freqmeans) %>%
-    group_by(sid,time) %>%
+    group_by(trial) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
     # filter(sid != 11) %>%
     ungroup() %>%
     mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
-    arrange(timing,freqbin)
+    arrange(trial,freqbin)
 
 group_means = df %>%
-    group_by(time,freqbin) %>%
+    group_by(trial,freqbin) %>%
     summarize(meanpower = median(meanpower))
 
-p = ggplot(group_means,aes(x=time,y=meanpower,color=freqbin)) + geom_line()
+p = ggplot(group_means,aes(x=trial,y=meanpower,color=freqbin)) + geom_line()
 
-name = 'mean_power_by_time.pdf'
+name = 'mean_power_by_trial.pdf'
 ggsave(file.path($dir,name),plot=p,width=7,height=5)
 
 
