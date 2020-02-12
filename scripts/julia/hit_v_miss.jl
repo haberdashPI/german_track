@@ -107,9 +107,16 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from .≤ freqs .≤ to))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen]) do rows
+freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition,:winstart,:winlen]) do rows
 
     signal = reduce(hcat,row.window for row in eachrow(rows))
+    if size(signal,2) < 100
+        empty = mapreduce(hcat,keys(freqbins)) do bin
+            DataFrame(Symbol(bin) => Float64[])
+        end
+        empty[!,:channel] = Int[]
+        return empty
+    end
     spect = abs.(fft(signal, 2))
     # totalpower = mean(spect,dims = 2)
 
@@ -149,8 +156,6 @@ df = $(freqmeans) %>%
            condition = factor(condition,levels=c('global','object','spatial'))) %>%
     arrange(timing,freqbin)
 
-df = filter(df,sid != 11)
-
 group_means = df %>%
     group_by(sid,winstart,winlen,hit,#target_timing,
     timing,condition,freqbin) %>%
@@ -173,7 +178,8 @@ p = ggplot(plotdf,aes(x=winstart,y=diff,
     color=interaction(hit,factor(winlen)))) +
     stat_summary(geom='line',position=position_dodge(width=0.1),
         size=1) +
-    stat_summary(geom='linerange',position=position_dodge(width=0.1)) +
+    stat_summary(geom='linerange',position=position_dodge(width=0.1),
+                 fun.args = list(conf.int=0.68)) +
     geom_point(alpha=0.1, position=pos) +
     scale_fill_brewer(palette='Paired',direction=-1) +
     scale_color_brewer(palette='Paired',direction=-1) +
@@ -191,29 +197,28 @@ ggsave(file.path($dir,name),plot=p,width=11,height=8)
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.25,winlen == 1.0) %>%
+    filter(winstart == 0.5,winlen == 1.0) %>%
     group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
 
-pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
+pos = position_jitterdodge(dodge.width=0.2,jitter.width=0.1)
 
 p = ggplot(plotdf,aes(x=freqbin,y=diff,
         fill=hit,color=hit)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='point',
-        position=position_dodge(width=0.1),
-        size=1,fun.args = list(conf.int=0.68)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-        position=position_dodge(width=0.1), width=0.5,
-        fun.args = list(conf.int=0.68)) +
     geom_point(alpha=0.4, position=pos, size=1) +
+    stat_summary(fun.data = "mean_cl_boot", geom='point',
+        position=position_dodge(width=0.4),
+        size=2,fun.args = list(conf.int=0.68)) +
+    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
+        position=position_dodge(width=0.4), width=0.5,
+        fun.args = list(conf.int=0.68)) +
     # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
     facet_grid(winlen~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
-    geom_abline(slope=0,intercept=0,linetype=2) +
-    coord_cartesian(ylim=c(-0.002,0.002))
+    geom_abline(slope=0,intercept=0,linetype=2)
 p
 
 p = ggplot(filter(plotdf, hit != 'baseline'),aes(x=freqbin,y=diff,
@@ -235,7 +240,7 @@ p = ggplot(filter(plotdf, hit != 'baseline'),aes(x=freqbin,y=diff,
 p
 
 
-name = sprintf('mcca34_hits_%03.1f_%03.1f.pdf',0.25,1)
+name = sprintf('mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """

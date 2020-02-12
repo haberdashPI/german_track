@@ -3,7 +3,7 @@
 
 ## frequency analyses
 
-- try a trial-by-trial FFT
++ try a trial-by-trial FFT
 - try a time-frequency analysis
 - try an FIR filter based on decoding approach from paper from mounya
 
