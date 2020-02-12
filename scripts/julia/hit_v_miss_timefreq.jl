@@ -111,4 +111,9 @@ freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition]) do rows
         freqbin = vec(getindex.(CartesianIndices(spects),3)))
 end
 
+using Feather
+Feather.write("timefreq_windows.feather",freqmeans)
+
 # TODO: plot median time-freq diff across conditions
+# use below to load old data, rather than re-running above analysis
+freqmeans = Feather.read("timefreq_windows.feather")
