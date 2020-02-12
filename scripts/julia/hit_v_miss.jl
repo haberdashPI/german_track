@@ -7,10 +7,9 @@ eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
-subjects = Dict(file =>
-    load_subject(joinpath(data_dir(), file),
-        stim_info,
-        encoding = eeg_encoding)
+subjects =
+    Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                              encoding = eeg_encoding)
     for file in eeg_files)
 
 const speakers = convert(Array{Int},

@@ -3,40 +3,68 @@
 
 ## current steps:
 
-+ hits vs misses (focus on that, as defined by task)
-+ baseline - find something away from target or switch
-   - misses should match baseline
-    - doesn't seem to be the case, exactly; looks pretty noisy
-      worth investigating individual data points, at the moment
-      I would feel pretty unconvinced that there's any effect
+1.) consider decoding on the delta band alone, for sum(A,B,C), A, B, C, sum(B,C) (where A is the target), cat(A,B,C)
+
+2.) revist how I compute delta power: maybe use shorter FFT (trial-by-trial) so we can look at a time-frequency map
+
+## frequency analyses
+
+- try a trial-by-trial FFT
+- try a time-frequency analysis
+- try an FIR filter based on decoding approach from paper from mounya
+
+### minor points
 - pair data - lines between the two conditions (or some such)
 - check on the outlier points, maybe there is an issue with the number of data points
-- revisit window timings (start & length) / frequency bands
 
-later on:
-- early vs. late?
-- high v low salience?
-- select features (contralatera?, central/frontal?)
-- error bars for individuals?
-- maybe look at false alarms?
+## revisit decoding
 
-analysis:
+try old approach, but using just the delta band
 
-if we get something with the above analysis it might be worht consider a semi-supervised approach
+## semi-supervised decoding
 
-- semi-supervised training, with this approach mounya suggested
-  that the loss could be the maximum loss of the three speakers
-  at each time point (could also have some sort of continuity cost:
-  i.e. transitions in attention are assumed to be more gradual)
+as a first pass:
 
-employ a nuisance variable W: the current target weightings, and apply a loss
-on its basis
+using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so easy to train
+
+### more advanced semi-supervised
+
+employ continuous nuisance variables W of current target weightings, and apply a loss on its basis
 
  Σᵢ || Ab - Wᵢy ||² + γ||b||₁ + ξ||Wᵢ - Wᵢ₋₁||²
 
  we thus optimize over the mixing parameters of W: might need some sort of regularizer for W that has a single source bias (ala a Dirchlet distribution)
 
  I can work on this model by starting with an optimizer for the least squares model using an ANN, and then expanding from there.
+
+## early vs. late targets
+
+- analyze my current behavioral data (have done this before, just re-run)
+- analyze frequency bins
+- analyze decoding approach
+
+## high vs. low salience
+
+- get model from sandeep
+- analyze old behavioral data (if I can find it)
+- analyze my current behavioral data
+- analyze frequency bins
+- analyze decoding approach
+
+## follow-up analyses
+
+
+### baseline issues
+- revisit baseline later on: baseline didn't look all that great;
+  - but there is only a little but of an issue with the overall within
+    trial trend (a bump near the end)
+  - and a little issue across trials (some trials are quite noisy)
+  - no obvious trends shown
+
+### odds and ends
+- select features (contralatera?, central/frontal?)
+- error bars for individuals?
+- maybe look at false alarms?
 
 
 ## older questions that might become relevant again:
