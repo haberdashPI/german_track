@@ -5,12 +5,13 @@
 
 + try a trial-by-trial FFT
 - try a time-frequency analysis
-- try an FIR filter based on decoding approach from paper from mounya
 
 ### minor points
-- pair data - lines between the two conditions (or some such)
++ pair data - lines between the two conditions (or some such)
 - check on the outlier points, maybe there is an issue with the number of data points
 - try DSS instead of MCCA
+- try an FIR filter instead of FFT (should avoid lobes, consistent with
+  paper mounya sent)
 
 ## revisit decoding
 

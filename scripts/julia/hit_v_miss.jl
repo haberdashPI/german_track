@@ -220,27 +220,28 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     ylab("Median power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
+name = sprintf('mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
+ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
-p = ggplot(filter(plotdf, hit != 'baseline'),aes(x=freqbin,y=diff,
-        fill=hit,color=hit)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='point',
-        position=position_dodge(width=0.1),
-        size=1,fun.args = list(conf.int=0.68)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-        position=position_dodge(width=0.1), width=0.5,
-        fun.args = list(conf.int=0.68)) +
+p = ggplot(filter(plotdf,freqbin=='delta'),
+        aes(x=hit,y=diff,fill=hit,color=hit)) +
+    geom_line(alpha=0.2,color='black',aes(group=sid)) +
     geom_point(alpha=0.4, position=pos, size=1) +
+    stat_summary(fun.data = "mean_cl_boot", geom='point',
+        position=position_dodge(width=0.4),
+        size=2,fun.args = list(conf.int=0.68)) +
+    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
+        position=position_dodge(width=0.4), width=0.5,
+        fun.args = list(conf.int=0.68)) +
     # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
     facet_grid(winlen~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
-    # coord_cartesian(ylim=c(-0.002,0.002))
 p
 
-
-name = sprintf('mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
+name = sprintf('delta_lines_mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """
