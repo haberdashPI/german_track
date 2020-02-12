@@ -47,7 +47,7 @@ plot_detrend_cfg.mychanscale = 50;
 % subj 8 ----------------------------------------
 [eeg,stim_events,sid] = load_subject('eeg_response_008.mat');
 
-ft_rejectvisual(reject_cfg,eeg);
+% ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
     19
@@ -82,7 +82,7 @@ save_subject(eeg,'eeg_response_008_cleaned.mat');
 % NOTE: I may need to remove this participant
 % it's quite noisey data
 [eeg,stim_events,sid] = load_subject('eeg_response_009.mat');
-ft_rejectvisual(reject_cfg,eeg);
+% ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
     18
@@ -126,7 +126,7 @@ save_subject(eeg,'eeg_response_009_cleaned.mat')
 
 % subj 10 ----------------------------------------
 [eeg,stim_events,sid] = load_subject('eeg_response_010.mat');
-ft_rejectvisual(reject_cfg,eeg);
+% ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
     34
@@ -157,8 +157,8 @@ save_subject(eeg,'eeg_response_010_cleaned.mat')
 
 % subj 11 ----------------------------------------
 [eeg,stim_events,sid] = load_subject('eeg_response_011.mat');
-ft_databrowser(plot_cfg,eeg);
-ft_rejectvisual(reject_cfg,eeg);
+% ft_databrowser(plot_cfg,eeg);
+% ft_rejectvisual(reject_cfg,eeg);
 
 bad_trials = [
     34

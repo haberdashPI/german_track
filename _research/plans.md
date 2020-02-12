@@ -10,6 +10,7 @@
 ### minor points
 - pair data - lines between the two conditions (or some such)
 - check on the outlier points, maybe there is an issue with the number of data points
+- try DSS instead of MCCA
 
 ## revisit decoding
 

@@ -1,6 +1,7 @@
 source("src/R/setup.R")
 library(magrittr)
 library(cowplot)
+library(forcats)
 
 # NOTE: sid 15 has missing trials in the eeg and there is not an obvious
 # way to infer which events are missing (it appears some triggers did not
@@ -51,6 +52,12 @@ pf = raw_pf %>% rename(subtrial=Trial) %>%
                        !is.na(response)) %>%
     arrange(time) %>%
     mutate(trial = trial - first(trial)+1)
+
+pf$condition = fct_recode(pf$condition,
+    "global" = "test",
+    "spatial" = "feature",
+    "object" = "object"
+)
 
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
