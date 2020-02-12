@@ -1,12 +1,6 @@
 
 # Plans
 
-## current steps:
-
-1.) consider decoding on the delta band alone, for sum(A,B,C), A, B, C, sum(B,C) (where A is the target), cat(A,B,C)
-
-2.) revist how I compute delta power: maybe use shorter FFT (trial-by-trial) so we can look at a time-frequency map
-
 ## frequency analyses
 
 - try a trial-by-trial FFT
@@ -19,7 +13,7 @@
 
 ## revisit decoding
 
-try old approach, but using just the delta band
+try old approach, but using just the delta band instead of all bands (probably via FIR filter)
 
 ## semi-supervised decoding
 
@@ -27,7 +21,7 @@ as a first pass:
 
 using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so easy to train
 
-### more advanced semi-supervised
+### more advanced semi-supervised (low priority)
 
 employ continuous nuisance variables W of current target weightings, and apply a loss on its basis
 
