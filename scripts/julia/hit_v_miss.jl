@@ -163,7 +163,8 @@ group_means = df %>%
 
 # for(start in unique(df$winstart)){
 #     for(len in unique(df$winlen)){
-plotdf = filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
+plotdf = group_means %>%
+    # filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
     # filter(condition %in% c('global','object')) %>%
     #filter(group_means,winstart == start,winlen == len) %>%
     filter(hit %in% c('hit','miss')) %>%
@@ -185,7 +186,7 @@ p = ggplot(plotdf,aes(x=winstart,y=diff,
     scale_color_brewer(palette='Paired',direction=-1) +
     facet_grid(freqbin~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
-    # coord_cartesian(ylim=c(-0.006,0.006))
+    coord_cartesian(ylim=c(-0.0003,0.0003))
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
@@ -197,7 +198,7 @@ ggsave(file.path($dir,name),plot=p,width=11,height=8)
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.5,winlen == 1.0) %>%
+    filter(winstart == 0.0,winlen == 0.5) %>%
     group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
