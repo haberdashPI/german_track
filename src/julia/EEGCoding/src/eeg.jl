@@ -110,8 +110,8 @@ function FFTFiltered(bands::OrderedDict,seconds,fs,nch)
     FFTFiltered(bands,plan,buffer)
 end
 function encode(x::EEGData,tofs,filter::FFTFiltered)
+    x = resample!(x,tofs)
     map(x.data) do trial
-        trial = resample(trial,tofs / samplerate(x))
         if size(trial,2) > size(filter.buffer,2)
             clip = size(trial,2) -  size(filter.buffer,2)
             @warn "Clipping $(clip/tofs) seconds from eeg."
