@@ -1,5 +1,5 @@
 module EEGCoding
-using SignalOperators, Requires, Infiltrator
+using SignalOperators, Requires, Infiltrator, LambdaFn, FFTW
 
 include("parallel.jl")
 include("util.jl")

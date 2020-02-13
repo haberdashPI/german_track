@@ -1,5 +1,5 @@
 export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
-    RawEncoding, FilteredPower
+    RawEncoding, FilteredPower, FFTFiltered
 using DSP
 using DataStructures
 
@@ -90,34 +90,44 @@ end
 abstract type EEGEncoding <: Encoding
 end
 
-struct FFTFiltered{R,P} <: EEGEncoding
+struct FFTFiltered{P} <: EEGEncoding
     bands::OrderedDict{String,Tuple{Float64,Float64}}
     plan::P
     buffer::Array{Float64,2}
 end
 Base.string(x::FFTFiltered) = join((keys(x.bands)...,"filtering"),"_")
-function FFTFiltered(bands,seconds,fs,nch)
+FFTFiltered(pairs::Pair...;seconds,fs,nchannels) =
+    FFTFiltered(OrderedDict(pairs...),seconds,fs,nchannels)
+function FFTFiltered(bands::OrderedDict,seconds,fs,nch)
     n = floor(Int,seconds*fs)
     buffer = Array{Float64}(undef,nch,n)
     plan = plan_rfft(buffer,2,flags=FFTW.PATIENT,timelimit=4)
 
+    if any(fs .<= (2 .* Iterators.flatten(values(bands))))
+        error("Frequency bands exceede Nyquist frequency.")
+    end
+
     FFTFiltered(bands,plan,buffer)
 end
-Base.string(x::FFTFiltered) = x.name
 function encode(x::EEGData,tofs,filter::FFTFiltered)
-    if size(x,2) > size(filter.buffer,2)
-        error("Segment longer than filter buffer")
-    end
-    filter.buffer[Base.axes(x)...] .= x
-    filter.buffer[:,(Base.size(x,2)+1):end] .= 0
-    result = filter.plan * filter.buffer
+    map(x.data) do trial
+        trial = resample(trial,tofs / samplerate(x))
+        if size(trial,2) > size(filter.buffer,2)
+            clip = size(trial,2) -  size(filter.buffer,2)
+            @warn "Clipping $(clip/tofs) seconds from eeg."
+            trial = view(:,Base.axes(filter.buffer,2))
+        end
+        filter.buffer[:,Base.axes(trial,2)] .= trial
+        filter.buffer[:,(Base.size(trial,2)+1):end] .= 0
+        result = filter.plan * filter.buffer
 
-    freqs = range(0,tofs/2,length=size(result,2))
-    mapreduce(vcat,values(filter.bands)) do (from,to)
-        filtered = copy(result)
-        filtered[:,findall((freqs .< from) .| (to .< freqs))] .= 0
-        filter.plan \ filtered
-    end
+        freqs = range(0,tofs/2,length=size(result,2))
+        mapreduce(vcat,values(filter.bands)) do (from,to)
+            filtered = copy(result)
+            filtered[:,findall((freqs .< from) .| (to .< freqs))] .= 0
+            filter.plan \ filtered
+        end
+    end |> @λ(EEGData(x.label+"_"+string(filter),tofs,_))
 end
 
 struct FilteredPower{D} <: EEGEncoding

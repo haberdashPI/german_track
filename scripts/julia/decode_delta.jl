@@ -5,7 +5,7 @@ include(joinpath(srcdir(), "julia", "setup.jl"))
 eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 
-eeg_encoding = JointEncoding(FFTFiltered())
+eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=10,fs=10,nchannels=34)
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
@@ -18,6 +18,9 @@ before_target = map(target_times) do time
     iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0))
 end
 
+listen_conds = ["object","global"]
+sids = getproperty.(values(subjects),:sid)
+
 conditions = Dict(
     (sid=sid,label=label,condition=condition,target=target) =>
         @λ(_row.condition == cond_label[condition] &&
@@ -25,16 +28,14 @@ conditions = Dict(
            (label == "all" || _row.correct) &&
            speakers[_row.sound_index] == tindex[target] ?
                 before_target[_row.sound_index] : no_indices)
-    for sid in sidfor.(eeg_files)
+    for sid in sids
     for condition in listen_conds
-    for target in targets
-    for label in labels
+    for target in keys(tindex)
+    for label in ["correct", "all"]
 )
 
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
-listen_conds = first(subjects)[2].events.condition |> unique
-cond_pairs = Iterators.product(listen_conds,listen_conds)
 df = train_test(
     StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(
@@ -42,21 +43,21 @@ df = train_test(
         sources=[male_source,fem1_source,fem2_source,mixed_sources,
                  fem_mix_sources,joint_sources,other(male)]),
     encode_eeg = eeg_encoding,
-    resample = 64,
+    resample = 10,
     eeg_files, stim_info,
     maxlag=0.8,
     train = subdict(conditions,
         (sid = sid, label = "correct", condition = cond, target = target)
-        for (cond,_) in cond_pairs, target in targets, sid in sidfor.(eeg_files)
+        for cond in listen_conds, target in keys(tindex), sid in sids
     ),
     test = subdict(conditions,
         (sid = sid, label = "all", condition = cond, target = target)
-        for (_,cond) in cond_pairs, target in targets, sid in sidfor.(eeg_files)
+        for cond in listen_conds, target in keys(tindex), sid in sids
     )
 );
 alert()
 
-df[!,:location] = direction[df.stim_id]
+df[!,:location] = directions[df.stim_id]
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
