@@ -2,7 +2,7 @@ using EEGCoding
 using SignalOperators
 const encodings = Dict{Any,Array{Float64}}()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
-    other, mixed_sources
+    other, mixed_sources, fem_mix_sources
 
 abstract type StimMethod
 end
@@ -125,6 +125,7 @@ struct MixedSources <: AbstractSource
     name::String
 end
 mixed_sources = MixedSources(1:3,"all")
+fem_mix_sources = MixedSources(2:3,"fem1+fem2")
 
 function load_stimulus(mixed::MixedSources,stim_i,stim_method,events,tofs,info)
     stim_num = events.sound_index[stim_i]

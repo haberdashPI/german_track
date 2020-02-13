@@ -1,29 +1,22 @@
-using DrWatson; quickactivate(@__DIR__, "german_track")
+using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
-eeg_files = eeg_files[1:1]
+# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 
+eeg_encoding = RawEncoding()
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
-target_times =
-    convert(Array{Float64},stim_info["test_block_cfg"]["target_times"])
+import GermanTrack: stim_info, speakers, directions, target_times, switch_times
+subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                     encoding = eeg_encoding)
+    for file in eeg_files)
+const tindex = Dict("male" => 1, "fem" => 2)
 
 before_target = map(target_times) do time
     iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0))
 end
-
-const speakers = convert(Array{Int},
-    stim_info["test_block_cfg"]["trial_target_speakers"])
-const tindex = Dict("male" => 1, "fem" => 2)
-const cond_label = Dict("object" => "object", "global" => "test", "spatial" => "feature")
-const direction = convert(Array{String},
-    stim_info["test_block_cfg"]["trial_target_dir"])
-
-listen_conds = ["object","global", "spatial"]
-targets = ["male","fem"]
-labels = ["correct","all"]
 
 conditions = Dict(
     (sid=sid,label=label,condition=condition,target=target) =>
@@ -38,21 +31,17 @@ conditions = Dict(
     for label in labels
 )
 
-function measures(pred,stim)
-    (joint_cor = cor(vec(pred),vec(stim)),
-     male_cor = cor(vec(pred[:,1:2]),vec(stim[:,1:2])),
-     fem1_cor = cor(vec(pred[:,3:4]),vec(stim[:,3:4])),
-     fem2_cor = cor(vec(pred[:,5:6]),vec(stim[:,5:6])))
-end
-
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
+listen_conds = first(subjects)[2].events.condition |> unique
 cond_pairs = Iterators.product(listen_conds,listen_conds)
 df = train_test(
-    StaticMethod(NormL2(0.2),measures),
+    StaticMethod(NormL2(0.2),cor),
     SpeakerStimMethod(
         encoding=encoding,
-        sources=[joint_source, other(joint_source)]),
+        sources=[male_source,fem1_source,fem2_source,mixed_sources,
+                 fem_mix_sources,joint_sources,other(male)]),
+    encode_eeg = eeg_encoding,
     resample = 64,
     eeg_files, stim_info,
     maxlag=0.8,

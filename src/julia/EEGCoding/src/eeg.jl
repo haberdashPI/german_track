@@ -89,6 +89,30 @@ end
 abstract type EEGEncoding <: Encoding
 end
 
+struct FFTFiltered{R,P,I} <: EEGEncoding
+    name::String
+    indices::R
+    plan::P
+    iplan::I
+    buffer::Array{Float64,2}
+end
+function FFTFiltered(name,from,to,seconds,eeg_data)
+    n = floor(Int,seconds*samplerate(eeg_data))
+    m = size(eeg_data[1],1)
+    buffer = Array{Float64}(undef,m,n)
+    plan = plan_rfft(buffer,2,flags=FFTW.PATIENT,timelimit=4)
+    iplan = plan_irfft(buffer,2,flags=FFTW.PATIENT,timelimit=4)
+
+    freqs = range(0,fs/2,length=n)
+    range = findall(from .≤ freqs .≤ to)
+
+    FFTFiltered(name,range,plan,buffer)
+end
+Base.string(x::FFTFiltered) = x.name
+function encode(x::EEGData,tofs,filter::FFTFiltered)
+
+end
+
 struct FilteredPower{D} <: EEGEncoding
     name::String
     from::Float64

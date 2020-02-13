@@ -117,7 +117,7 @@ freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition,:winstart,:winlen]) d
         empty[!,:channel] = Int[]
         return empty
     end
-    spect = abs.(fft(signal, 2))
+    spect = abs.(rfft(signal, 2))
     # totalpower = mean(spect,dims = 2)
 
     result = mapreduce(hcat,keys(freqbins)) do bin
