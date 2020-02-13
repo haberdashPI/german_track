@@ -9,9 +9,13 @@ eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=10,fs=10,nchannels=34)
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
-                                     encoding = eeg_encoding)
+subjects = Dict(file =>
+    load_subject(joinpath(data_dir(), file),
+        stim_info,
+        encoding = eeg_encoding,
+        samplerate=10)
     for file in eeg_files)
+
 const tindex = Dict("male" => 1, "fem" => 2)
 
 before_target = map(target_times) do time

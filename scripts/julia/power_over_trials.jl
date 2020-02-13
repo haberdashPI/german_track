@@ -11,8 +11,7 @@ eeg_encoding = RawEncoding()
 subjects = Dict(file =>
     load_subject(joinpath(data_dir(), file),
         stim_info,
-        encoding = eeg_encoding,
-        samplerate=64)
+        encoding = eeg_encoding)
     for file in eeg_files)
 
 const speakers = convert(Array{Int},
