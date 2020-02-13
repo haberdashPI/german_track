@@ -5,7 +5,7 @@ include(joinpath(srcdir(), "julia", "setup.jl"))
 eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 
-eeg_encoding = RawEncoding()
+eeg_encoding = JointEncoding(FFTFiltered())
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times

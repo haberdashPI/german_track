@@ -4,10 +4,12 @@
 ## frequency analyses
 
 + try a trial-by-trial FFT
-- try a time-frequency analysis
 
-### minor points
-+ pair data - lines between the two conditions (or some such)
+### lower priority points
+- try a time-frequency analysis
+- plot results on a scalp?
+
+### even lower priority
 - check on the outlier points, maybe there is an issue with the number of data points
 - try DSS instead of MCCA
 - try an FIR filter instead of FFT (should avoid lobes, consistent with

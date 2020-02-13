@@ -1,6 +1,7 @@
 export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
     RawEncoding, FilteredPower
 using DSP
+using DataStructures
 
 Base.@kwdef mutable struct EEGData
     label::Vector{String}
@@ -89,28 +90,34 @@ end
 abstract type EEGEncoding <: Encoding
 end
 
-struct FFTFiltered{R,P,I} <: EEGEncoding
-    name::String
-    indices::R
+struct FFTFiltered{R,P} <: EEGEncoding
+    bands::OrderedDict{String,Tuple{Float64,Float64}}
     plan::P
-    iplan::I
     buffer::Array{Float64,2}
 end
-function FFTFiltered(name,from,to,seconds,eeg_data)
-    n = floor(Int,seconds*samplerate(eeg_data))
-    m = size(eeg_data[1],1)
-    buffer = Array{Float64}(undef,m,n)
+Base.string(x::FFTFiltered) = join((keys(x.bands)...,"filtering"),"_")
+function FFTFiltered(bands,seconds,fs,nch)
+    n = floor(Int,seconds*fs)
+    buffer = Array{Float64}(undef,nch,n)
     plan = plan_rfft(buffer,2,flags=FFTW.PATIENT,timelimit=4)
-    iplan = plan_irfft(buffer,2,flags=FFTW.PATIENT,timelimit=4)
 
-    freqs = range(0,fs/2,length=n)
-    range = findall(from .≤ freqs .≤ to)
-
-    FFTFiltered(name,range,plan,buffer)
+    FFTFiltered(bands,plan,buffer)
 end
 Base.string(x::FFTFiltered) = x.name
 function encode(x::EEGData,tofs,filter::FFTFiltered)
+    if size(x,2) > size(filter.buffer,2)
+        error("Segment longer than filter buffer")
+    end
+    filter.buffer[Base.axes(x)...] .= x
+    filter.buffer[:,(Base.size(x,2)+1):end] .= 0
+    result = filter.plan * filter.buffer
 
+    freqs = range(0,tofs/2,length=size(result,2))
+    mapreduce(vcat,values(filter.bands)) do (from,to)
+        filtered = copy(result)
+        filtered[:,findall((freqs .< from) .| (to .< freqs))] .= 0
+        filter.plan \ filtered
+    end
 end
 
 struct FilteredPower{D} <: EEGEncoding
@@ -121,7 +128,7 @@ struct FilteredPower{D} <: EEGEncoding
 end
 FilteredPower(name,from,to;order=5,filter=Butterworth(order)) =
     FilteredPower(string(name),Float64(from),Float64(to),filter)
-Base.string(x::FilteredPower) = x.name
+Base.string(x::FilteredPower) = x.name + "_power"
 function encode(x::EEGData,tofs,filter::FilteredPower)
     bp = Bandpass(filter.from,filter.to,fs=samplerate(x))
     bandpass = digitalfilter(bp,filter.design)
