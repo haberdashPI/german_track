@@ -113,9 +113,12 @@ function encode(x::EEGData,tofs,filter::FFTFiltered)
     x = resample!(x,tofs)
     map(x.data) do trial
         if size(trial,2) > size(filter.buffer,2)
+            @show size(trial,2)
+            @show tofs
+            @show size(trial,2)/tofs
             clip = size(trial,2) -  size(filter.buffer,2)
             @warn "Clipping $(clip/tofs) seconds from eeg."
-            trial = view(:,Base.axes(filter.buffer,2))
+            trial = view(trial,:,Base.axes(filter.buffer,2))
         end
         filter.buffer[:,Base.axes(trial,2)] .= trial
         filter.buffer[:,(Base.size(trial,2)+1):end] .= 0
