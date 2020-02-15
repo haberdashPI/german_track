@@ -2,6 +2,7 @@ export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
     RawEncoding, FilteredPower, FFTFiltered
 using DSP
 using DataStructures
+using ProgressMeter
 
 Base.@kwdef mutable struct EEGData
     label::Vector{String}
@@ -16,7 +17,11 @@ Base.getindex(x::EEGData,i) = x.data[i]
 resample!(eeg::EEGData,::Missing) = eeg
 function resample!(eeg::EEGData,sr)
     ratio = sr / samplerate(eeg)
-    for i in eachindex(eeg.data)
+    if ratio ≈ 1
+        return eeg
+    end
+
+    @showprogress 0.5 for i in eachindex(eeg.data)
         old = eeg.data[i]
 
         # first channel
@@ -110,12 +115,15 @@ function FFTFiltered(bands::OrderedDict,seconds,fs,nch)
     FFTFiltered(bands,plan,buffer)
 end
 function encode(x::EEGData,tofs,filter::FFTFiltered)
+    if samplerate(x) != tofs
+        @info "Resample EEG to $tofs Hz."
+    end
     x = resample!(x,tofs)
-    map(x.data) do trial
+    labels = mapreduce(vcat,keys(filter.bands)) do band
+        x.label .* "_" .* band .* "_filtering"
+    end
+    trials = map(x.data) do trial
         if size(trial,2) > size(filter.buffer,2)
-            @show size(trial,2)
-            @show tofs
-            @show size(trial,2)/tofs
             clip = size(trial,2) -  size(filter.buffer,2)
             @warn "Clipping $(clip/tofs) seconds from eeg."
             trial = view(trial,:,Base.axes(filter.buffer,2))
@@ -130,7 +138,8 @@ function encode(x::EEGData,tofs,filter::FFTFiltered)
             filtered[:,findall((freqs .< from) .| (to .< freqs))] .= 0
             filter.plan \ filtered
         end
-    end |> @λ(EEGData(x.label+"_"+string(filter),tofs,_))
+    end
+    EEGData(labels,tofs,trials)
 end
 
 struct FilteredPower{D} <: EEGEncoding
