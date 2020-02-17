@@ -124,6 +124,7 @@ struct MixedSources <: AbstractSource
     indices::Vector{Int}
     name::String
 end
+Base.string(x::MixedSources) = x.name
 mixed_sources = MixedSources(1:3,"all")
 fem_mix_sources = MixedSources(2:3,"fem1+fem2")
 

@@ -68,7 +68,7 @@ end
 safezscore(x) = std(x) != 0 ? zscore(x) : x
 scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
-adddiag!(x,v) = x[CartesianIndex.(axes(x)...)] .+= v
+adddiag!(x,v) = x[CartesianIndex.(Base.axes(x)...)] .+= v
 function decoder_helper(l2::NormL2,stim,response,lags)
     X = withlags(scale(response),.-reverse(lags))
     Y = scale(stim)

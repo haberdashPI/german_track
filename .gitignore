@@ -7,7 +7,7 @@ timefreq_windows.feather
 # Folders to ignore - files may be too large, too many, etc. NOTE: EDIT IF NEEDED.
 data
 _research/cache
-_research/results
+_research/subject_cache
 .tags
 
 ################################################################################
