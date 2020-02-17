@@ -1,17 +1,15 @@
-using SignalOperators, CSV
+using SignalOperators, CSV, AxisArrays
 export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
     PitchSurpriseEncoding, Stimulus, DiffEncoding, WeightedEncoding
 
 struct Stimulus{A}
     data::A
+    framerate::Float64
     file::Union{String,Nothing}
     target_time::Union{Float64,Nothing}
 end
-function Stimulus(data::Array,fs::Number,file::Union{String,Nothing},
-    target_time::Union{Float64,Nothing}=nothing)
-
-    Stimulus(signal(data,fs),file,target_time)
-end
+Stimulus(data,framerate,file,target_time) =
+    Stimulus(data,Float64(framerate),file,target_time)
 
 abstract type StimEncoding <: Encoding
 end
@@ -22,16 +20,16 @@ struct RMSEnvelope <: StimEncoding end
 Base.string(::RMSEnvelope) = "rms_envelope"
 
 function encode(stim::Stimulus,tofs,::RMSEnvelope)
-    N = round(Int,size(stim.data,1)/framerate(stim.data)*tofs)
+    N = round(Int,size(stim.data,1)/stim.framerate*tofs)
     result = zeros(N)
     window_size = 1.5/tofs
-    toindex(t) = clamp(round(Int,t*framerate(stim.data)),1,size(stim.data,1))
+    toindex(t) = clamp(round(Int,t*stim.framerate),1,size(stim.data,1))
 
     for i in 1:N
         t = i/tofs
         from = toindex(t-window_size)
         to = toindex(t+window_size)
-        result[i] = mean(x^2 for x in view(stim.data.data,from:to,:))
+        result[i] = mean(x^2 for x in view(stim.data,from:to,:))
     end
 
     result
@@ -43,9 +41,10 @@ Base.string(::ASEnvelope) = "audiospect_envelope"
 function encode(stim::Stimulus,tofs,::ASEnvelope)
     @assert size(stim.data,2) == 1
 
-    spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim.data),spect_fs/framerate(stim.data))
-    spect = filt(audiospect,signal(resampled,spect_fs),false)
+    resampled = Signal(stim.data,stim.framerate) |>
+        ToFramerate(CorticalSpectralTemporalResponses.fixed_fs) |> AxisArray
+    @assert nchannels(resampled) == 1
+    spect = filt(audiospect,resampled[:,1],false)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
@@ -59,7 +58,7 @@ function encode(stim::Stimulus,tofs,method::ASBins)
     @assert size(stim.data,2) == 1
 
     spect_fs = CorticalSpectralTemporalResponses.fixed_fs
-    resampled = Filters.resample(vec(stim.data),spect_fs/framerate(stim.data))
+    resampled = Filters.resample(vec(stim.data),spect_fs/stim.framerate)
     spect = filt(audiospect,signal(resampled,spect_fs),false)
     f = frequencies(spect)
     bounds = zip([0.0Hz;method.bounds.*Hz],[method.bounds.*Hz;last(f)])

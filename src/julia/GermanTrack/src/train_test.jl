@@ -45,16 +45,19 @@ function train_test(method,stim_method,files,stim_info;
     resample = missing,
     encode_eeg = RawEncoding(),
     return_encodings = false,
-    progress = true)
+    progress = true,
+    subjects = nothing)
 
     # setup subjects
-    @info "Loading subject data..."
-    subjects = Dict(
-        file => load_subject(joinpath(data_dir(),file),stim_info,
-                             framerate=resample,encoding=encode_eeg)
-        for file in files
-    )
-    @info "Done!"
+    if isnothing(subjects)
+        @info "Loading subject data..."
+        subjects = Dict(
+            file => load_subject(joinpath(data_dir(),file),stim_info,
+                                framerate=resample,encoding=encode_eeg)
+            for file in files
+        )
+        @info "Done!"
+    end
 
     # setup sources to train
     train_sources, test_sources = sources(stim_method)

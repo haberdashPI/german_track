@@ -9,12 +9,19 @@ eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=10,fs=10,nchannels=34)
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-subjects = Dict(file =>
-    load_subject(joinpath(data_dir(), file),
-        stim_info,
-        encoding = eeg_encoding,
-        samplerate=10)
-    for file in eeg_files)
+
+cachefile = joinpath(cache_dir(),"delta_subjects.bson")
+if isfile(cachefile)
+    @load cachefile subjecst
+else
+    subjects = Dict(file =>
+        load_subject(joinpath(data_dir(), file),
+            stim_info,
+            encoding = eeg_encoding,
+            framerate=10)
+        for file in eeg_files)
+    @save cachefile subjects
+end
 
 const tindex = Dict("male" => 1, "fem" => 2)
 
@@ -46,6 +53,7 @@ df = train_test(
         encoding=encoding,
         sources=[male_source,fem1_source,fem2_source,mixed_sources,
                  fem_mix_sources,joint_source,other(male_source)]),
+    subjects = subjects,
     encode_eeg = eeg_encoding,
     resample = 10,
     eeg_files, stim_info,
