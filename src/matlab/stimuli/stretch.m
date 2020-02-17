@@ -29,7 +29,7 @@ hifft = dsp.IFFT('ConjugateSymmetricInput', true, ...
 
 %%
 % Create a System object to play original speech signal.
-% hAudioOut = dsp.AudioPlayer('SampleRate', Fs);
+% hAudioOut = dsp.AudioPlayer('framerate', Fs);
 
 % Create a System object to log your data.
 hslg = dsp.SignalSink;

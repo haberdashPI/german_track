@@ -48,7 +48,7 @@ for i = 1:length(eegfiles)
 
     raw_eeg_data = ft_preprocessing(cfg);
 
-    % downsample the trials to 256 (minimal samplerate to find artifacts)
+    % downsample the trials to 256 (minimal framerate to find artifacts)
     cfg = [];
     cfg.resamplefs = 256;
     eeg_data = ft_resampledata(cfg,raw_eeg_data);

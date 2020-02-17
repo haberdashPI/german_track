@@ -51,7 +51,7 @@ function train_test(method,stim_method,files,stim_info;
     @info "Loading subject data..."
     subjects = Dict(
         file => load_subject(joinpath(data_dir(),file),stim_info,
-                             samplerate=resample,encoding=encode_eeg)
+                             framerate=resample,encoding=encode_eeg)
         for file in files
     )
     @info "Done!"
@@ -70,7 +70,7 @@ function train_test(method,stim_method,files,stim_info;
 
     df = DataFrame()
 
-    fs = samplerate(first(values(subjects)).eeg)
+    fs = framerate(first(values(subjects)).eeg)
     lags = round(Int,minlag*fs):round(Int,maxlag*fs)
 
     weights = Dict((file,i) => w
@@ -114,9 +114,9 @@ function train_test(method,stim_method,files,stim_info;
 
                 eeg,events = subjects[file]
                 full_stim, = load_stimulus(source,i,stim_method,events,
-                    coalesce(resample,samplerate(eeg)),stim_info)
+                    coalesce(resample,framerate(eeg)),stim_info)
                 minlen = min(size(full_stim,1),size(eeg[i],2))
-                times = bound_indices(train_bounds[(file,i)],samplerate(eeg),
+                times = bound_indices(train_bounds[(file,i)],framerate(eeg),
                     minlen)
                 stim = view(full_stim,times,:) .* weights[(file,i)]
                 response = view(eeg[i],:,times)
@@ -155,11 +155,11 @@ function train_test(method,stim_method,files,stim_info;
             ) do (file,i)
                 eeg, events = subjects[file]
                 stim, stim_id = load_stimulus(source,i,stim_method,
-                    events,coalesce(resample,samplerate(eeg)),
+                    events,coalesce(resample,framerate(eeg)),
                     stim_info)
 
                 minlen = min(size(stim,1),size(eeg[i],2))
-                indices = bound_indices(test_bounds[(file,i)],samplerate(eeg),
+                indices = bound_indices(test_bounds[(file,i)],framerate(eeg),
                     minlen)
                 stim = view(stim,indices,:) .* weights[(file,i)]
                 response = view(eeg[i],:,indices)

@@ -175,14 +175,14 @@ function read_mcca_proj(filename)
 end
 
 const subject_cache = Dict()
-function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
+function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
     if !isfile(file)
         error("File '$file' does not exist.")
     end
 
     stim_events, sid = events_for_eeg(file,stim_info)
 
-    data = get!(subject_cache,(file,encoding,samplerate)) do
+    data = get!(subject_cache,(file,encoding,framerate)) do
         # data = if endswith(file,".mat")
         #     mf = MatFile(file)
         #     get_mvariable(mf,:dat)
@@ -203,7 +203,7 @@ function load_subject(file,stim_info;encoding=RawEncoding(),samplerate=missing)
             end
         end
 
-        encode(data,samplerate,encoding)
+        encode(data,framerate,encoding)
     end
 
     (eeg=data, events=stim_events, sid=sid)
@@ -326,7 +326,7 @@ function plotswitches(trial,bounds,stim_events)
         @sprintf("trial_%02d.direc",stim_index))
     dirs = load_directions(direc_file)
     len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
-    t = (1:len)./dirs.samplerate
+    t = (1:len)./dirs.framerate
 
     df = vcat(
         DataFrame(time=t,dir=dirs.dir1,source="male"),
@@ -421,12 +421,12 @@ struct Directions
     dir1::Vector{Float64}
     dir2::Vector{Float64}
     dir3::Vector{Float64}
-    samplerate::Float64
+    framerate::Float64
 end
 
 function load_directions(file)
     open(file,read=true) do stream
-        samplerate = read(stream,Float64)
+        framerate = read(stream,Float64)
         len1 = read(stream,Int)
         len2 = read(stream,Int)
         len3 = read(stream,Int)
@@ -439,7 +439,7 @@ function load_directions(file)
         @assert length(dir2) == len2
         @assert length(dir3) == len3
 
-        Directions(dir1,dir2,dir3,samplerate)
+        Directions(dir1,dir2,dir3,framerate)
     end
 end
 

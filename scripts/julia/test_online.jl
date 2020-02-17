@@ -189,12 +189,12 @@ means |>
 # testing an individual trial (to figure out why things fail)
 eeg, stim_events, sid =
     load_subject(joinpath(data_dir(),sidfile(data[1,:sid])),stim_info)
-fs = samplerate(eeg)
+fs = framerate(eeg)
 stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
     encoding=:audiospect),1:5)
 
 result = attention_marker(eegtrial(eeg,1)',stimuli...,
-    samplerate=samplerate(eeg),
+    framerate=framerate(eeg),
     γ=2e-3,tol=1e-2,maxit=10^2,verbose=0)
 
 n = round(Int,uconvert(s*Hz,250ms * (fs*Hz)))

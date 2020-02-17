@@ -87,7 +87,7 @@ df.hit = ishit.(eachrow(df))
 dfhit = df[in.(df.hit,Ref(("hit","miss","baseline"))),:]
 
 
-fs = GermanTrack.samplerate(first(values(subjects)).eeg)
+fs = GermanTrack.framerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
 channels = 1:34
 

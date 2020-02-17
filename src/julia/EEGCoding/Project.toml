@@ -34,7 +34,6 @@ StructuredOptimization = "46cd3e9d-64ff-517d-a929-236bc1a1fc9d"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-AbstractFFTs = "0.4"
 BSON = "≥0.2"
 CorticalSpectralTemporalResponses = "≥0.4"
 DataFrames = "≥0.19"

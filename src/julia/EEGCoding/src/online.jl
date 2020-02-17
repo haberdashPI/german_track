@@ -118,7 +118,7 @@ asseconds(x::Quantity) = ustrip(uconvert(s,x))
 
 function attention_marker(eeg,targets...;
     # marker parameters
-    samplerate,
+    framerate,
     window=250ms,
     lag=400ms,
     estimation_length=5s,
@@ -128,12 +128,12 @@ function attention_marker(eeg,targets...;
     code_params...)
 
     ntargets = length(targets)
-    nlag = asframes(lag,samplerate)
+    nlag = asframes(lag,framerate)
 
     eeg = withlags(eeg,UnitRange(sort([0,-nlag])...))
-    window_len = asframes(window,samplerate)
+    window_len = asframes(window,framerate)
     nwindows = cld(size(eeg,1)-nlag,window_len)
-    λ = 1 - window_len/(asframes(estimation_length,samplerate))
+    λ = 1 - window_len/(asframes(estimation_length,framerate))
 
     marker = map(_ -> Array{Float64}(undef,nwindows),targets)
     coefs = save_coefs ?
@@ -308,13 +308,13 @@ function online_decode_(;prefix,eeg,lags,indices,stim_fn,sources,progress,
         cur_bounds = bounds[i]
         stimuli = map(source_i -> stim_fn(i,source_i),eachindex(sources))
         n = min(minimum(s->size(s,1),stimuli),size(eegtrial(eeg,i),2))
-        bounded_stim = map(s->select_bounds(s,bounds[i],n,samplerate(eeg),1),stimuli)
-        response = select_bounds(eegtrial(eeg,i),bounds[i],n,samplerate(eeg),2)
+        bounded_stim = map(s->select_bounds(s,bounds[i],n,framerate(eeg),1),stimuli)
+        response = select_bounds(eegtrial(eeg,i),bounds[i],n,framerate(eeg),2)
 
         markers = cachefn(@sprintf("%s_attn_%03d",prefix,i),attention_marker,
             response',
             bounded_stim...;
-            samplerate=samplerate(eeg),
+            framerate=framerate(eeg),
             __oncache__ = () -> progress_update!(progress,length(sources)),
             merge(defaults,params.data)...)
 

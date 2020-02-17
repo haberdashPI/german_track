@@ -83,7 +83,7 @@ JointEncoding(xs...) = JointEncoding(collect(xs))
 Base.string(x::JointEncoding) = join(map(string,x.children),"_")
 
 """
-    encode(x,samplerate,method)
+    encode(x,framerate,method)
 
 Encode data (stimlus or eeg) using the given method, outputing the results
 at the given sample rate.

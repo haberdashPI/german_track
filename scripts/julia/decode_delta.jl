@@ -27,7 +27,7 @@ sids = getproperty.(values(subjects),:sid)
 
 conditions = Dict(
     (sid=sid,label=label,condition=condition,target=target) =>
-        @λ(_row.condition == cond_label[condition] &&
+        @λ(_row.condition == condition &&
            (_row.sid == sid) &&
            (label == "all" || _row.correct) &&
            speakers[_row.sound_index] == tindex[target] ?
@@ -45,7 +45,7 @@ df = train_test(
     SpeakerStimMethod(
         encoding=encoding,
         sources=[male_source,fem1_source,fem2_source,mixed_sources,
-                 fem_mix_sources,joint_sources,other(male)]),
+                 fem_mix_sources,joint_source,other(male_source)]),
     encode_eeg = eeg_encoding,
     resample = 10,
     eeg_files, stim_info,

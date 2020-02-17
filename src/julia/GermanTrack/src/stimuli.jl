@@ -136,11 +136,11 @@ function load_stimulus(mixed::MixedSources,stim_i,stim_method,events,tofs,info)
                 "mixture_components",
                 @sprintf("trial_%02d_%1d.wav",stim_num,source_i))
         end
-        mixture = mix(signal.(filenames)...)
+        mixture = mix(Signal.(filenames)...)
 
         target_time = events.target_source[stim_i] ∈ mixed.indices ?
             events.target_time[stim_i] : nothing
-        encode(Stimulus(mixture,samplerate(mixture),nothing,target_time),
+        encode(Stimulus(mixture,framerate(mixture),nothing,target_time),
             tofs,stim_method.encoding)
     end
 end

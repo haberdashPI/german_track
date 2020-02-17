@@ -11,12 +11,12 @@ Base.@kwdef mutable struct EEGData
 end
 Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
-SignalOperators.samplerate(x::EEGData) = x.fs
+SignalOperators.framerate(x::EEGData) = x.fs
 Base.getindex(x::EEGData,i) = x.data[i]
 
 resample!(eeg::EEGData,::Missing) = eeg
 function resample!(eeg::EEGData,sr)
-    ratio = sr / samplerate(eeg)
+    ratio = sr / framerate(eeg)
     if ratio ≈ 1
         return eeg
     end
@@ -115,7 +115,7 @@ function FFTFiltered(bands::OrderedDict,seconds,fs,nch)
     FFTFiltered(bands,plan,buffer)
 end
 function encode(x::EEGData,tofs,filter::FFTFiltered)
-    if samplerate(x) != tofs
+    if framerate(x) != tofs
         @info "Resample EEG to $tofs Hz."
     end
     x = resample!(x,tofs)
@@ -152,7 +152,7 @@ FilteredPower(name,from,to;order=5,filter=Butterworth(order)) =
     FilteredPower(string(name),Float64(from),Float64(to),filter)
 Base.string(x::FilteredPower) = x.name + "_power"
 function encode(x::EEGData,tofs,filter::FilteredPower)
-    bp = Bandpass(filter.from,filter.to,fs=samplerate(x))
+    bp = Bandpass(filter.from,filter.to,fs=framerate(x))
     bandpass = digitalfilter(bp,filter.design)
     power = similar(x.data)
     for trial in 1:length(x.data)

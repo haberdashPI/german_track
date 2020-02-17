@@ -99,7 +99,7 @@ freqbins = OrderedDict(
     :gamma => (30,100),
 )
 
-fs = GermanTrack.samplerate(first(values(subjects)).eeg)
+fs = GermanTrack.framerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
 channels = 1:34
 function freqrange(spect,(from,to))
