@@ -89,6 +89,8 @@ ggplot($df,aes(x=source,y=value,color=test_correct)) +
     facet_grid(train_condition~sid,labeller=label_context)
 
 group_mean = $(df) %>%
+    mutate(source = factor(source,c('male','other_male','fem1','fem2',
+        'all','fem1+fem2','joint'))) %>%
     group_by(sid,source,test_correct,train_condition) %>%
     summarize(value=mean(value))
 
@@ -96,7 +98,10 @@ ggplot(group_mean,aes(x=source,y=value,color=test_correct)) +
     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
         position=position_nudge(x=0.3)) +
     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    geom_abline(intercept=0,slope=0,linetype=2) +
     scale_color_brewer(palette='Set1') +
     facet_grid(train_condition~.,labeller=label_context)
+
+ggsave(file.path($dir,"before_target_delta_decode.pdf"),width=11,height=8)
 
 """
