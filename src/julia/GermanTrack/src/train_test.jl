@@ -14,7 +14,7 @@ struct StaticMethod{R,T} <: TrainMethod
     train::R
     test::T
 end
-StaticMethod(reg=EEGCoding.L2Matrix(0.2)) = StaticMethod(reg,cor)
+StaticMethod(reg=NormL2(0.2)) = StaticMethod(reg,cor)
 
 label(x::StaticMethod) = join(("static",label(x.train)),"_")
 test_label(x::StaticMethod) = join(("static",label(x.train),label(x.test)),"_")
@@ -148,7 +148,7 @@ function train_test(method,stim_method,files,stim_info;
                 (values(train_condition)...,
                 values(test_condition)...)
             )
-            df_ = decode_test_cv(method.train,method.test,
+            df_ = testdecode(method.train,method.test,
                 prefix=test_prefix,
                 train_prefix=prefix,
                 lags=lags,

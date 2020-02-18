@@ -1,4 +1,4 @@
-export withlags, decode_test_cv, decoder, RegNorm
+export withlags, testdecode, decoder
 
 using MetaArrays
 using Printf
@@ -14,8 +14,9 @@ using LambdaFn
 ################################################################################
 # testing and training
 
-function decoder(stim_response_for,method;prefix,group_suffix="",
-    indices, progress=Progress(length(indices),1,desc="Training"),
+function decoder(stim_response_for,method;
+    prefix,group_suffix="",indices,
+    progress=Progress(length(indices),1,desc="Training"),
     kwds...)
 
     result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
@@ -26,9 +27,26 @@ function decoder(stim_response_for,method;prefix,group_suffix="",
         kwds...)
 end
 
+struct SSLabels
+    trial::Int
+    start::Float64
+    stop::Float64
+end
+struct SemiSupervised
+    labels::Vector{SSLabels}
+end
+function decoder_(stim_response_for,method::SemiSupervised;
+    prefix,lags,indices,progress,kwds...)
+
+    # concatenate responses
+    stim_responses = (stim_response_for(i) for i in indices)
+    stim = mapreduce(@λ(_[1]),vcat,stim_responses)
+    response = mapreduce(@λ(_[2]),vcat,stim_responses)
+end
+
 cleanstring(i::Int) = @sprintf("%03d",i)
-function decoder_(stim_response_for,method;prefix,lags,indices,
-    progress,kwds...)
+function decoder_(stim_response_for,method::ProximableFunction;
+    prefix,lags,indices,progress,kwds...)
 
     models = Vector{Array{Float64,3}}(undef,length(indices))
 
@@ -103,7 +121,7 @@ end
 decode(response::AbstractArray,model,lags) =
     withlags(scale(response),.-reverse(lags)) * reshape(model,:,size(model,3))
 
-function decode_test_cv(stim_response_for,train_method,test_method;prefix,
+function testdecode(stim_response_for,train_method,test_method;prefix,
     indices,group_suffix="",
     name="Training",
     progress=Progress(length(indices),1,desc=name),
@@ -111,7 +129,7 @@ function decode_test_cv(stim_response_for,train_method,test_method;prefix,
 
     str = @sprintf("%s_for_%s_test%s",prefix,train_prefix,group_suffix)
     results = cachefn(str,
-        decode_test_cv_,stim_response_for,train_method,test_method;
+        testdecode_,stim_response_for,train_method,test_method;
         train_prefix=train_prefix,
         prefix=prefix,
         indices=indices,progress=progress,
@@ -130,8 +148,8 @@ single(x::Number) = x
 apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
-function decode_test_cv_(stim_response_for,method,test_method;prefix,
-    lags,indices,train_indices,progress,train_prefix)
+function testdecode_(stim_response_for,method::ProximableFunction,test_method;
+    prefix,lags,indices,train_indices,progress,train_prefix)
 
     df = DataFrame()
     models = map(train_indices) do i
@@ -144,8 +162,6 @@ function decode_test_cv_(stim_response_for,method,test_method;prefix,
         # construct a model from everything but the model for the trial to be
         # tested
 
-        # j = nothing
-        # @warn "Invalid code!!" maxlog=1
         j = findfirst(==(i),train_indices)
         model = if !isnothing(j)
             mean_model*n/(n-1) - models[j]/(n-1)
