@@ -25,8 +25,8 @@ end
 
 const tindex = Dict("male" => 1, "fem" => 2)
 
-before_target = map(target_times) do time
-    iszero(time) ? no_indices : only_near(time,10,window=(-1.5,0))
+during_target = map(target_times) do time
+    iszero(time) ? no_indices : only_near(time,10,window=(0,1.5))
 end
 
 listen_conds = ["object","global"]
@@ -39,7 +39,7 @@ conditions = Dict(
            (_row.sid == sid) &&
            (label == "all" || _row.correct) &&
            (speakers[_row.sound_index] ∈ condition_targets[condition]) ?
-                before_target[_row.sound_index] : no_indices)
+                during_target[_row.sound_index] : no_indices)
     for sid in sids
     for condition in listen_conds
     for label in ["correct", "all"]
@@ -102,6 +102,6 @@ ggplot(group_mean,aes(x=source,y=value,color=test_correct)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(train_condition~.,labeller=label_context)
 
-ggsave(file.path($dir,"before_target_delta_decode.pdf"),width=11,height=8)
+ggsave(file.path($dir,"during_target_delta_decode.pdf"),width=11,height=8)
 
 """
