@@ -27,8 +27,8 @@ function decoder(stim_response_for,method;
         kwds...)
 end
 
-struct SSLabels
-    trial::Int
+struct SSLabels{I}
+    index::I
     start::Float64
     stop::Float64
 end
@@ -39,6 +39,7 @@ function decoder_(stim_response_for,method::SemiSupervised;
     prefix,lags,indices,progress,kwds...)
 
     # concatenate responses
+    # TODO: how to apply the labels?
     stim_responses = (stim_response_for(i) for i in indices)
     stim = mapreduce(@λ(_[1]),vcat,stim_responses)
     response = mapreduce(@λ(_[2]),vcat,stim_responses)
