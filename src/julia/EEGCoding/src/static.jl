@@ -10,6 +10,7 @@ using DSP
 using ProximalAlgorithms
 using ProximalOperators
 using LambdaFn
+using JuMP, COSMO
 
 ################################################################################
 # testing and training
@@ -27,22 +28,28 @@ function decoder(stim_response_for,method;
         kwds...)
 end
 
-struct SSLabels{I}
-    index::I
-    start::Float64
-    stop::Float64
-end
-struct SemiSupervised
-    labels::Vector{SSLabels}
+struct SemiSupervised{I}
+    labels::Dict{I,Int}
 end
 function decoder_(stim_response_for,method::SemiSupervised;
     prefix,lags,indices,progress,kwds...)
 
     # concatenate responses
-    # TODO: how to apply the labels?
+    # THOUGHT: do we need to concatenate?
     stim_responses = (stim_response_for(i) for i in indices)
+    labels = [get(method.labels,i,missing) for i in indices]
+    last_label_indices = cumsum(size(s,1) for (s,_) in stim_responses)
     stim = mapreduce(@λ(_[1]),vcat,stim_responses)
     response = mapreduce(@λ(_[2]),vcat,stim_responses)
+
+    model = Model()
+    for i in indices
+        stim,response = stim_response_for(i)
+        n,m = size(stim)
+        n_,k = size(response)
+
+    end
+    @variable(model,x[stim_indices])
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
