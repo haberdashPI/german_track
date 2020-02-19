@@ -10,7 +10,7 @@ using DSP
 using ProximalAlgorithms
 using ProximalOperators
 using LambdaFn
-using JuMP, COSMO
+using JuMP, Convex, COSMO, SCS
 
 ################################################################################
 # testing and training
@@ -28,6 +28,38 @@ function decoder(stim_response_for,method;
         kwds...)
 end
 
+struct QuadN2
+    reg::Float64
+end
+function decoder_(stim_response_for,method::QuadN2,
+    prefix,lags,indices,progress,kwds...)
+
+    stim_responses = [stim_response_for(i) for i in indices]
+    stim = mapreduce(@λ(_[1]'),hcat,stim_responses)
+    response = mapreduce(@λ(_[2]'),hcat,stim_responses)
+
+    regress(stim,response,method.reg)
+end
+
+function regress(x,y,λ)
+    m,n = size(x)
+    k,n_ = size(y)
+    @assert n == n_ "x and y must have same number of columns"
+
+    xx = x*x'
+    xy = x*y'
+    @show size(xx)
+    @show size(xy)
+
+    model = Model(SCS.Optimizer)
+    @variable(model,A[1:k,1:m])
+    @objective(model,Min,(A*xx*A') - 2(A*xy))
+
+    optimize!(model)
+
+    value.(A)
+end
+
 struct SemiSupervised{I}
     labels::Dict{I,Int}
 end
@@ -43,6 +75,9 @@ function decoder_(stim_response_for,method::SemiSupervised;
     response = mapreduce(@λ(_[2]),vcat,stim_responses)
 
     model = Model()
+    @variable(model,0 ≤ weights[1:T,1:h] ≤ 1)
+    @variable(model,X[coef_indices])
+
     for i in indices
         stim,response = stim_response_for(i)
         n,m = size(stim)

@@ -18,6 +18,12 @@ git-tree-sha1 = "ea4e4ad8d7def7e6e83e2336454d67d4cc5c421f"
 uuid = "d9c5613a-d543-52d8-9afd-8f241a8c3f1c"
 version = "0.2.2"
 
+[[AbstractTrees]]
+deps = ["Markdown", "Test"]
+git-tree-sha1 = "6621d9645702c1c4e6970cc6a3eae440c768000b"
+uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+version = "0.2.1"
+
 [[Adapt]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "c88cfc7f9c1f9f8633cddf0b56e86302b70f64c5"
@@ -139,6 +145,14 @@ deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", 
 git-tree-sha1 = "ed2c4abadf84c53d9e58510b5fc48912c2336fbb"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
 version = "2.2.0"
+
+[[Convex]]
+deps = ["AbstractTrees", "BenchmarkTools", "LinearAlgebra", "MathOptInterface", "OrderedCollections", "SparseArrays", "Test"]
+git-tree-sha1 = "9c28c266e0ad6c6df1785c4a10768fa0881d2e2f"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaOpt/Convex.jl.git"
+uuid = "f65535da-76fb-5f13-bab9-19810c17039a"
+version = "0.13.0"
 
 [[CoordinateTransformations]]
 deps = ["Compat", "Rotations", "StaticArrays"]
@@ -625,6 +639,12 @@ deps = ["LinearAlgebra", "StaticArrays", "Statistics"]
 git-tree-sha1 = "d5f83867093db7319a9366d55f29280ecae9bcda"
 uuid = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 version = "0.13.0"
+
+[[SCS]]
+deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "MathOptInterface", "MathProgBase", "SparseArrays"]
+git-tree-sha1 = "936d43feaceae3290472ddf800b496be094d727b"
+uuid = "c946c3f1-0d1f-5ce8-9dea-7daa1f7e2d13"
+version = "0.6.6"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
