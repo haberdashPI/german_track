@@ -98,6 +98,12 @@ git-tree-sha1 = "177e58c6965e6a0f544593b490c38a6c267bd8ce"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 version = "0.5.24"
 
+[[Calculus]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "f641eb0a4f00c343bbc32346e1217b86f3ce9dad"
+uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+version = "0.5.1"
+
 [[CategoricalArrays]]
 deps = ["Compat", "DataAPI", "Future", "JSON", "Missings", "Printf", "Reexport", "Statistics", "Unicode"]
 git-tree-sha1 = "23d7324164c89638c18f6d7f90d972fa9c4fa9fb"
@@ -133,6 +139,12 @@ deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Printf", "Reexpo
 git-tree-sha1 = "c9c1845d6bf22e34738bee65c357a69f416ed5d1"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.9.6"
+
+[[CommonSubexpressions]]
+deps = ["Test"]
+git-tree-sha1 = "efdaf19ab11c7889334ca247ff4c9f7c322817b0"
+uuid = "bbf7d656-a473-5ed7-a52c-81e309532950"
+version = "0.2.0"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -230,6 +242,18 @@ git-tree-sha1 = "ea6f5b7fcc57ed25f2e584f17837d9f3d68919be"
 uuid = "191d1da1-0f37-5779-b8ea-a655caa0c150"
 version = "1.1.2"
 
+[[DiffResults]]
+deps = ["StaticArrays"]
+git-tree-sha1 = "da24935df8e0c6cf28de340b958f6aac88eaa0cc"
+uuid = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
+version = "1.0.2"
+
+[[DiffRules]]
+deps = ["NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "eb0c34204c8410888844ada5359ac8b96292cfd1"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.0.1"
+
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -253,7 +277,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "1.9.0"
 
 [[EEGCoding]]
-deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Infiltrator", "LambdaFn", "LinearAlgebra", "Match", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
+deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StructuredOptimization", "Unitful"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -310,6 +334,12 @@ deps = ["Parameters", "Test"]
 git-tree-sha1 = "8582924ac52011d08da9cf1e67f13a71dbbc2594"
 uuid = "53afe959-3a16-52fa-a8da-cf864710bae9"
 version = "0.5.4"
+
+[[ForwardDiff]]
+deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "NaNMath", "Random", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "88b082d492be6b63f967b6c96b352e25ced1a34c"
+uuid = "f6369f11-7733-5829-9624-2563aa707210"
+version = "0.10.9"
 
 [[Future]]
 deps = ["Random"]
@@ -454,6 +484,12 @@ deps = ["HTTP", "JSON", "Test"]
 git-tree-sha1 = "6f80c4ea9ccf648766380b28b63efd1050dee940"
 uuid = "7d188eb4-7ad8-530c-ae41-71a32a6d4692"
 version = "0.1.1"
+
+[[JuMP]]
+deps = ["Calculus", "DataStructures", "ForwardDiff", "LinearAlgebra", "MathOptInterface", "NaNMath", "Random", "SparseArrays", "Statistics"]
+git-tree-sha1 = "ba7f96010ed290d77d5c941c32e5df107ca688a4"
+uuid = "4076af6c-e467-56ae-b986-b466b2749572"
+version = "0.20.1"
 
 [[LambdaFn]]
 deps = ["MacroTools", "Printf"]

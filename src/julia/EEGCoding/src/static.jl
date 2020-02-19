@@ -11,6 +11,7 @@ using ProximalAlgorithms
 using ProximalOperators
 using LambdaFn
 using JuMP, Convex, COSMO, SCS
+using MathOptInterface: OPTIMAL
 
 ################################################################################
 # testing and training
@@ -41,23 +42,58 @@ function decoder_(stim_response_for,method::QuadN2,
     regress(stim,response,method.reg)
 end
 
+function regressSS(x,y,λ)
+    m,n = size(x[1])
+    h,k,n_ = size(y[1])
+    @assert length(x) == length(y) "Stimulus and response must have same trial count."
+    T = length(x)
+
+    A = Variable(k,m)
+    w = Variable(T,h)
+
+    trials = ((sumsquares(A*x[t] - (w[t,h]*y[t][h,:,:]))) for t in 1:T)
+    objective = sum(trials) + λ*norm(vec(A),2)
+    constraints = [(0 .< w .< 1), (sum(w) == 1)]
+    problem = minimize(objective,constraints)
+    problem.status == OPTIMAL ||
+        @warn("Failed to find a solution to problem:\n $problem")
+
+    A.value, w.value
+end
+
 function regress(x,y,λ)
+    m,n = size(x)
+    k,n_ = size(y)
+    @assert n == n_ "x and y must have same number of columns"
+
+    A = Variable(k,m)
+    problem = minimize(sumsquares(A*x - y) + λ*norm(vec(A),1))
+    # problem = minimize(sum(quadform(A',xx) - (A*xy)) + λ*norm(vec(A),1))
+    solve!(problem, COSMO.Optimizer())
+
+    problem.status == OPTIMAL ||
+        @warn("Failed to find solution to problem:\n $problem")
+
+    A.value
+end
+
+function regressN2(x,y,λ)
     m,n = size(x)
     k,n_ = size(y)
     @assert n == n_ "x and y must have same number of columns"
 
     xx = x*x'
     xy = x*y'
-    @show size(xx)
-    @show size(xy)
 
-    model = Model(SCS.Optimizer)
-    @variable(model,A[1:k,1:m])
-    @objective(model,Min,(A*xx*A') - 2(A*xy))
+    A = Variable(k,m)
+    problem = minimize(sumsquares(A*x - y) + λ*norm(vec(A),2))
+    # problem = minimize(sum(quadform(A',xx) - (A*xy)) + λ*norm(vec(A),1))
+    solve!(problem, COSMO.Optimizer())
 
-    optimize!(model)
+    problem.status == OPTIMAL ||
+        @warn("Failed to find solution to problem:\n $problem")
 
-    value.(A)
+    A.value
 end
 
 struct SemiSupervised{I}
