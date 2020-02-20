@@ -48,6 +48,28 @@ struct CvNorm
 end
 
 regularize(A,reg::CvNorm) = reg.λ*norm(vec(A),reg.norm)
+"""
+    regressSS(x,y,v,tt,reg)
+
+"Semi-supervised" decoding of x, a multi-channel signal (EEG) to a mixture of
+sources y across a number of trials t. The values x and y index the trials
+and are of length t. Each entry of x is a multi-channel signal (EEG) of m x n
+where m is thee number of channels, n the numbe rof time points. Each entry
+of y is a tensor of h x k x n where h is the number of sources, k the number
+of features used to represent each source, and n the number of time points
+for each source. The features of y may include time lagged values (e.g. by
+using `withlags`).
+
+regressSS infers a decoding matrix A across all trials and sources, and a set
+of weighting coefficients w. For most trials the weighting coefficients are
+unknown, but in some cases, those instances where a subject provides an
+appropriate response, are labeled. This is the semi-supervised element of the
+problem. The value v sepcies the known weights of size s x n and tt (of size
+s) indicates the trial indices that have known weights.
+
+reg specifies how the problem should be regularized (norm 1 or norm 2)
+
+"""
 function regressSS(x,y,v,tt,reg)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
