@@ -62,25 +62,35 @@ function regressSS(x,y,λ)
     A.value, w.value, problem
 end
 
-function regressSS(x,y,u,tt,λ)
-    # TODO: u are weights known for indicies tt of type t (insert into objective)
+# TODO: allow for warmstarts of the problem??
+
+function regressSS(x,y,v,tt,λ)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
     @assert length(x) == length(y) "Stimulus and response must have same trial count."
     T = length(x)
 
     A = Variable(K,M)
-    w = Variable(T,H)
 
-    trials = (sumsquares(A*x[t] - sum((w[t,h]*y[t][h,:,:]) for h in 1:H)) for t in 1:T)
+    # ss = setdiff(1:T,tt)
+    ss = 1:T
+    u = [Variable(H) for _ in 1:T]
+    # for (i,t) in enumerate(tt)
+    #     fix!(u[t],v[i,:])
+    # end
+
+    trials = (sumsquares(A*x[t] - sum((u[t][h]*y[t][h,:,:]) for h in 1:H))
+        for t in 1:T)
     objective = sum(trials) + λ*norm(vec(A),2)
-    constraints = [0 < w, w < 1, (sum(w[t,:]) == 1 for t in 1:T)...]
+    constraints = vcat([u[s] > 0 for s in ss],
+                       [u[s] < 1 for s in ss],
+                       [sum(u[s]) == 1 for s in 1:T])
     problem = minimize(objective,constraints)
     solve!(problem, COSMO.Optimizer())
     problem.status == OPTIMAL ||
         @warn("Failed to find a solution to problem:\n $problem")
 
-    A.value, w.value
+    A.value, reduce(vcat,getproperty.(u,:value))
 end
 function regress(x,y,λ)
     m,n = size(x)
