@@ -34,7 +34,10 @@ plotaxes(vec(a))
 plotaxes(ŵ)
 plotaxes(w')
  =#
-# okay, that looks good, let's try something a little larges
+
+# okay, that looks good, let's try something closer go the size of the actual
+# problem
+
 T = 1_000
 H = 3
 

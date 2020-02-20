@@ -59,9 +59,29 @@ function regressSS(x,y,λ)
     problem.status == OPTIMAL ||
         @warn("Failed to find a solution to problem:\n $problem")
 
-    A.value, w.value
+    A.value, w.value, problem
 end
 
+function regressSS(x,y,u,tt,λ)
+    # TODO: u are weights known for indicies tt of type t (insert into objective)
+    M,_ = size(x[1])
+    H,K,_ = size(y[1])
+    @assert length(x) == length(y) "Stimulus and response must have same trial count."
+    T = length(x)
+
+    A = Variable(K,M)
+    w = Variable(T,H)
+
+    trials = (sumsquares(A*x[t] - sum((w[t,h]*y[t][h,:,:]) for h in 1:H)) for t in 1:T)
+    objective = sum(trials) + λ*norm(vec(A),2)
+    constraints = [0 < w, w < 1, (sum(w[t,:]) == 1 for t in 1:T)...]
+    problem = minimize(objective,constraints)
+    solve!(problem, COSMO.Optimizer())
+    problem.status == OPTIMAL ||
+        @warn("Failed to find a solution to problem:\n $problem")
+
+    A.value, w.value
+end
 function regress(x,y,λ)
     m,n = size(x)
     k,n_ = size(y)
