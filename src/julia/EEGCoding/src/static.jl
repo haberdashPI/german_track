@@ -42,89 +42,40 @@ function decoder_(stim_response_for,method::QuadN2,
     regress(stim,response,method.reg)
 end
 
-function regressSS(x,y,λ)
-    M,_ = size(x[1])
-    H,K,_ = size(y[1])
-    @assert length(x) == length(y) "Stimulus and response must have same trial count."
-    T = length(x)
-
-    A = Variable(K,M)
-    w = Variable(T,H)
-
-    trials = (sumsquares(A*x[t] - sum((w[t,h]*y[t][h,:,:]) for h in 1:H)) for t in 1:T)
-    objective = sum(trials) + λ*norm(vec(A),2)
-    constraints = [0 < w, w < 1, (sum(w[t,:]) == 1 for t in 1:T)...]
-    problem = minimize(objective,constraints)
-    solve!(problem, COSMO.Optimizer())
-    problem.status == OPTIMAL ||
-        @warn("Failed to find a solution to problem:\n $problem")
-
-    A.value, w.value, problem
+struct CvNorm
+    λ::Float64
+    norm::Int
 end
 
-# TODO: allow for warmstarts of the problem??
-
-function regressSS(x,y,v,tt,λ)
+regularize(A,reg::CvNorm) = reg.λ*norm(vec(A),reg.norm)
+function regressSS(x,y,v,tt,reg)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
     @assert length(x) == length(y) "Stimulus and response must have same trial count."
     T = length(x)
 
+    # decoding coefficients
     A = Variable(K,M)
 
-    # ss = setdiff(1:T,tt)
-    ss = 1:T
+    # mixture weights
     u = [Variable(H) for _ in 1:T]
-    # for (i,t) in enumerate(tt)
-    #     fix!(u[t],v[i,:])
-    # end
 
+    # fix values for known weights
+    for (i,t) in enumerate(tt); fix!(u[t],v[i,:]); end
+
+    # solve the problem
     trials = (sumsquares(A*x[t] - sum((u[t][h]*y[t][h,:,:]) for h in 1:H))
         for t in 1:T)
-    objective = sum(trials) + λ*norm(vec(A),2)
-    constraints = vcat([u[s] > 0 for s in ss],
-                       [u[s] < 1 for s in ss],
-                       [sum(u[s]) == 1 for s in 1:T])
-    problem = minimize(objective,constraints)
+    objective = sum(trials) + regularize(A,reg)
+    constraints = ([u[t] > 0, u[t] < 1, sum(u[t]) == 1] for t in 1:T)
+    problem = minimize(objective,reduce(vcat,constraints))
     solve!(problem, COSMO.Optimizer())
+
+    # return result
     problem.status == OPTIMAL ||
         @warn("Failed to find a solution to problem:\n $problem")
 
-    A.value, reduce(vcat,getproperty.(u,:value))
-end
-function regress(x,y,λ)
-    m,n = size(x)
-    k,n_ = size(y)
-    @assert n == n_ "x and y must have same number of columns"
-
-    A = Variable(k,m)
-    problem = minimize(sumsquares(A*x - y) + λ*norm(vec(A),1))
-    # problem = minimize(sum(quadform(A',xx) - (A*xy)) + λ*norm(vec(A),1))
-    solve!(problem, COSMO.Optimizer())
-
-    problem.status == OPTIMAL ||
-        @warn("Failed to find solution to problem:\n $problem")
-
-    A.value
-end
-
-function regressN2(x,y,λ)
-    m,n = size(x)
-    k,n_ = size(y)
-    @assert n == n_ "x and y must have same number of columns"
-
-    xx = x*x'
-    xy = x*y'
-
-    A = Variable(k,m)
-    problem = minimize(sumsquares(A*x - y) + λ*norm(vec(A),2))
-    # problem = minimize(sum(quadform(A',xx) - (A*xy)) + λ*norm(vec(A),1))
-    solve!(problem, COSMO.Optimizer())
-
-    problem.status == OPTIMAL ||
-        @warn("Failed to find solution to problem:\n $problem")
-
-    A.value
+    A.value, reduce(hcat,getproperty.(u,:value))
 end
 
 struct SemiSupervised{I}
