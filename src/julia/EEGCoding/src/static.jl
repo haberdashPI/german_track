@@ -101,30 +101,29 @@ function regressSS(x,y,v,tt,reg)
 end
 
 struct SemiSupervised{I}
-    labels::Dict{I,Int}
+    num_sources::Int
+    responses::Dict{I,Int}
+    norm::Int
+    λ::Float64
+end
+function onehot(i,n)
+    x = zeros(n)
+    x[i] = 1
+    x
 end
 function decoder_(stim_response_for,method::SemiSupervised;
     prefix,lags,indices,progress,kwds...)
 
-    # concatenate responses
-    # THOUGHT: do we need to concatenate?
-    stim_responses = (stim_response_for(i) for i in indices)
-    labels = [get(method.labels,i,missing) for i in indices]
-    last_label_indices = cumsum(size(s,1) for (s,_) in stim_responses)
-    stim = mapreduce(@λ(_[1]),vcat,stim_responses)
-    response = mapreduce(@λ(_[2]),vcat,stim_responses)
+    stim_responses = [stim_response_for(i) for i in indices]
+    # TODO: reshape stims into tensors with the different sources and add lags
+    stims = getindex.(stim_responses,1)
+    resp = getindex.(stim_responses,2)
+    tt = findall(in.(indices,Ref(keys(method.responses))))
+    v = reduce(hcat,onehot.(method.responses[indices[tt]],method.num_sources))
 
-    model = Model()
-    @variable(model,0 ≤ weights[1:T,1:h] ≤ 1)
-    @variable(model,X[coef_indices])
+    Â, ŵ = regressSS(stims,resp,tt,v,CvNorm(method.λ,method.norm))
 
-    for i in indices
-        stim,response = stim_response_for(i)
-        n,m = size(stim)
-        n_,k = size(response)
-
-    end
-    @variable(model,x[stim_indices])
+    # TODO: reshape Â and ŵ to be in appropriate forms
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
