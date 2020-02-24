@@ -5,12 +5,13 @@ include(joinpath(srcdir(), "julia", "setup.jl"))
 eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 
-eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=10,fs=10,nchannels=34)
+fs = 32
+eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=15,fs=fs,nchannels=34)
 encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-cachefile = joinpath(cache_dir(),"..","subject_cache","delta_subjects.bson")
+cachefile = joinpath(cache_dir(),"..","subject_cache","delta_subjects$(fs).bson")
 if isfile(cachefile)
     @load cachefile subjecst
 else
@@ -18,7 +19,7 @@ else
         load_subject(joinpath(data_dir(), file),
             stim_info,
             encoding = eeg_encoding,
-            framerate=10)
+            framerate=fs)
         for file in eeg_files)
     @save cachefile subjects
 end
