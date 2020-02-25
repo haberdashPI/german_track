@@ -70,13 +70,13 @@ s) indicates the trial indices that have these known weights.
 reg specifies how the problem should be regularized (norm 1 or norm 2)
 
 """
-function regressSS(x,y,v,tt,reg)
+function regressSS(x,y,v,tt,reg;settings...)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
     T = length(x)
 
     @assert length(x) == length(y) "Stimulus and response must have same trial count."
-    @assert H == size(v,2) "Number of sources must match weight dimension"
+    @assert size(v,1) == 0 || H == size(v,2) "Number of sources must match weight dimension"
     @assert length(tt) == size(v,1) "Number of weights must number of weight indices"
 
     # decoding coefficients
@@ -94,13 +94,17 @@ function regressSS(x,y,v,tt,reg)
     objective = sum(trials) + regularize(A,reg)
     constraints = ([u[t] > 0, u[t] < 1, sum(u[t]) == 1] for t in 1:T)
     problem = minimize(objective,reduce(vcat,constraints))
-    solve!(problem, COSMO.Optimizer())
+    solve!(problem, COSMO.Optimizer(;settings...))
 
     # return result
     problem.status == OPTIMAL ||
         @warn("Failed to find a solution to problem:\n $problem")
 
-    (A = A.value, w = reduce(hcat,getproperty.(u,:value)))
+    if isnothing(A.value) || any(isnothing,getproperty.(u,:value))
+        (A = nothing, w = nothing)
+    else
+        (A = A.value, w = reduce(hcat,getproperty.(u,:value)))
+    end
 end
 
 struct SemiSupervised{I}
