@@ -4,9 +4,9 @@
 ## frequency analyses
 
 + try a trial-by-trial FFT
+- try a time-frequency analysis
 
 ### lower priority points
-- try a time-frequency analysis
 - plot results on a scalp?
 
 ### even lower priority
@@ -18,6 +18,8 @@
 ## revisit decoding
 
 try old approach, but using just the delta band instead of all bands (probably via FIR filter)
+
+Consider a cross subject approach, so that the training can incorporate all participants.
 
 ## semi-supervised decoding
 
