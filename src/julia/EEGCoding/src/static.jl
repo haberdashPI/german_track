@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder
+export withlags, testdecode, decoder, withlags, regressSS, onehot, CvNorm
 
 using MetaArrays
 using Printf
@@ -64,8 +64,8 @@ regressSS infers a decoding matrix A across all trials and sources, and a set
 of weighting coefficients w. For most trials the weighting coefficients are
 unknown, but in some cases, those instances where a subject provides an
 appropriate response, are labeled. This is the semi-supervised element of the
-problem. The value v sepcies the known weights of size s x n and tt (of size
-s) indicates the trial indices that have known weights.
+problem. The value v sepcies the known weights of size s x n while tt (of size
+s) indicates the trial indices that have these known weights.
 
 reg specifies how the problem should be regularized (norm 1 or norm 2)
 
@@ -73,8 +73,11 @@ reg specifies how the problem should be regularized (norm 1 or norm 2)
 function regressSS(x,y,v,tt,reg)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
-    @assert length(x) == length(y) "Stimulus and response must have same trial count."
     T = length(x)
+
+    @assert length(x) == length(y) "Stimulus and response must have same trial count."
+    @assert H == size(v,2) "Number of sources must match weight dimension"
+    @assert length(tt) == size(v,1) "Number of weights must number of weight indices"
 
     # decoding coefficients
     A = Variable(K,M)
@@ -97,7 +100,7 @@ function regressSS(x,y,v,tt,reg)
     problem.status == OPTIMAL ||
         @warn("Failed to find a solution to problem:\n $problem")
 
-    A.value, reduce(hcat,getproperty.(u,:value))
+    (A = A.value, w = reduce(hcat,getproperty.(u,:value)))
 end
 
 struct SemiSupervised{I}

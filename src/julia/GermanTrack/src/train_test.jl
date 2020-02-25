@@ -116,7 +116,7 @@ function train_test(method,stim_method,files,stim_info;
             ) do (file,i)
 
                 eeg,events = subjects[file]
-                full_stim, = load_stimulus(source,i,stim_method,events,
+                full_stim, = load_stimulus(source,i,stim_method.encoding,events,
                     coalesce(resample,framerate(eeg)),stim_info)
                 minlen = min(size(full_stim,1),size(eeg[i],2))
                 times = bound_indices(train_bounds[(file,i)],framerate(eeg),
@@ -157,7 +157,7 @@ function train_test(method,stim_method,files,stim_info;
                 progress = prog
             ) do (file,i)
                 eeg, events = subjects[file]
-                stim, stim_id = load_stimulus(source,i,stim_method,
+                stim, stim_id = load_stimulus(source,i,stim_method.encoding,
                     events,coalesce(resample,framerate(eeg)),
                     stim_info)
 
