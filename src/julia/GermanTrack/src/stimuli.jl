@@ -26,7 +26,7 @@ end
 clear_stim_cache!() = empty!(encodings)
 
 function load_stimulus(source::AbstractSource,stim_i::Int,encoding,events,tofs,stim_info)
-    load_stimulus(load_stimulus,events[stim_i,:],encoding,tofs,stim_info)
+    load_stimulus(source,events[stim_i,:],encoding,tofs,stim_info)
 end
 
 struct SingleSource <: AbstractSource
@@ -147,7 +147,7 @@ function load_stimulus(mixed::MixedSources,event::RowType,encoding,
     tofs,info)
 
     stim_num = event.sound_index
-    key = (:mixed,mixed.indices,stim_i,tofs,stim_num,encoding)
+    key = (:mixed,mixed.indices,stim_num,tofs,stim_num,encoding)
     encode_cache(key,stim_num) do
         filenames = map(mixed.indices) do source_i
             joinpath(stimulus_dir(),"mixtures","testing",
