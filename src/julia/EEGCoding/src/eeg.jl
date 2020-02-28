@@ -1,4 +1,4 @@
-export EEGData, eegtrial, select_bounds, all_indices, no_indices, resample!,
+export EEGData, select_bounds, all_indices, no_indices, resample!,
     RawEncoding, FilteredPower, FFTFiltered
 using DSP
 using DataStructures
