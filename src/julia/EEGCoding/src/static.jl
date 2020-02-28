@@ -16,31 +16,32 @@ using MathOptInterface: OPTIMAL
 ################################################################################
 # testing and training
 
-function decoder(stim_response_for,method;
-    prefix,group_suffix="",indices,
-    progress=Progress(length(indices),1,desc="Training"),
-    kwds...)
+# function decoder(stim_response_for,method;
+#     prefix,group_suffix="",indices,
+#     progress=Progress(length(indices),1,desc="Training"),
+#     kwds...)
 
-    result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
-        decoder_,stim_response_for,method;prefix=prefix,
-        progress=progress,indices=indices,
-        __oncache__ = () ->
-            progress_update!(progress,length(indices)),
-        kwds...)
-end
+#     result = cachefn(@sprintf("%s_avg%s",prefix,group_suffix),
+#         decoder_,stim_response_for,method;prefix=prefix,
+#         progress=progress,indices=indices,
+#         __oncache__ = () ->
+#             progress_update!(progress,length(indices)),
+#         kwds...)
+# end
 
-struct QuadN2
-    reg::Float64
-end
-function decoder_(stim_response_for,method::QuadN2,
-    prefix,lags,indices,progress,kwds...)
+# struct QuadN2
+#     reg::Float64
+# end
 
-    stim_responses = [stim_response_for(i) for i in indices]
-    stim = mapreduce(@λ(_[1]'),hcat,stim_responses)
-    response = mapreduce(@λ(_[2]'),hcat,stim_responses)
+# function decoder_(stim_response_for,method::QuadN2,
+#     prefix,lags,indices,progress,kwds...)
 
-    regress(stim,response,method.reg)
-end
+#     stim_responses = [stim_response_for(i) for i in indices]
+#     stim = mapreduce(@λ(_[1]'),hcat,stim_responses)
+#     response = mapreduce(@λ(_[2]'),hcat,stim_responses)
+
+#     regress(stim,response,method.reg)
+# end
 
 struct CvNorm
     λ::Float64
@@ -107,51 +108,51 @@ function regressSS(x,y,v,tt,reg;settings...)
     end
 end
 
-struct SemiSupervised{I}
-    num_sources::Int
-    responses::Dict{I,Int}
-    norm::Int
-    λ::Float64
-end
+# struct SemiSupervised{I}
+#     num_sources::Int
+#     responses::Dict{I,Int}
+#     norm::Int
+#     λ::Float64
+# end
 function onehot(i,n)
     x = zeros(n)
     x[i] = 1
     x
 end
-function decoder_(stim_response_for,method::SemiSupervised;
-    prefix,lags,indices,progress,kwds...)
+# function decoder_(stim_response_for,method::SemiSupervised;
+#     prefix,lags,indices,progress,kwds...)
 
-    stim_responses = [stim_response_for(i) for i in indices]
-    # TODO: reshape stims into tensors with the different sources and add lags
-    stims = getindex.(stim_responses,1)
-    resp = getindex.(stim_responses,2)
-    tt = findall(in.(indices,Ref(keys(method.responses))))
-    v = reduce(hcat,onehot.(method.responses[indices[tt]],method.num_sources))
+#     stim_responses = [stim_response_for(i) for i in indices]
+#     # TODO: reshape stims into tensors with the different sources and add lags
+#     stims = getindex.(stim_responses,1)
+#     resp = getindex.(stim_responses,2)
+#     tt = findall(in.(indices,Ref(keys(method.responses))))
+#     v = reduce(hcat,onehot.(method.responses[indices[tt]],method.num_sources))
 
-    Â, ŵ = regressSS(stims,resp,tt,v,CvNorm(method.λ,method.norm))
+#     Â, ŵ = regressSS(stims,resp,tt,v,CvNorm(method.λ,method.norm))
 
-    # TODO: reshape Â and ŵ to be in appropriate forms
-end
+#     # TODO: reshape Â and ŵ to be in appropriate forms
+# end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
-function decoder_(stim_response_for,method::ProximableFunction;
-    prefix,lags,indices,progress,kwds...)
+# function decoder_(stim_response_for,method::ProximableFunction;
+#     prefix,lags,indices,progress,kwds...)
 
-    models = Vector{Array{Float64,3}}(undef,length(indices))
+#     models = Vector{Array{Float64,3}}(undef,length(indices))
 
-    for (j,i) in enumerate(indices)
-        filename = string(prefix,"_",cleanstring(i))
-        # @warn "Change this code back!!" maxlog=1
-        # stim, response = stim_response_for(train ∪ test)
-        stim, response = stim_response_for(i)
-        models[j] = cachefn(filename, decoder_helper, method, stim,
-            response, lags)
+#     for (j,i) in enumerate(indices)
+#         filename = string(prefix,"_",cleanstring(i))
+#         # @warn "Change this code back!!" maxlog=1
+#         # stim, response = stim_response_for(train ∪ test)
+#         stim, response = stim_response_for(i)
+#         models[j] = cachefn(filename, decoder_helper, method, stim,
+#             response, lags)
 
-        progress_update!(progress)
-    end
+#         progress_update!(progress)
+#     end
 
-    models
-end
+#     models
+# end
 
 function withlags(x,lags)
     if lags == 0:0
@@ -176,7 +177,8 @@ safezscore(x) = std(x) != 0 ? zscore(x) : x
 scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(Base.axes(x)...)] .+= v
-function decoder_helper(l2::NormL2,stim,response,lags)
+
+function decoder(l2::NormL2,stim,response,lags)
     X = withlags(scale(response),.-reverse(lags))
     Y = scale(stim)
 
