@@ -48,8 +48,8 @@ pf = raw_pf %>% rename(subtrial=Trial) %>%
           response_time =
               last(TTime[Event.Type == "Response" & Code %in% c(2,3)]) / 10^4)
 
-    pf = pf %>% filter(condition %in% c("test","object","feature"),
-                       !is.na(response)) %>%
+pf = pf %>% filter(condition %in% c("test","object","feature"),
+                   !is.na(response)) %>%
     arrange(time) %>%
     mutate(trial = trial - first(trial)+1)
 
@@ -71,22 +71,34 @@ if(sid == 9){
     pf$trial = pf$trial - 1
     if(nrow(sound_events) != 153)
         stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+
+    pf = pf %>%
+        rename(pres_time = time) %>%
+        mutate(sample = sound_events$sample[trial],
+               time = sound_events$time[trial]) %>%
+        mutate(trial = trial - ifelse(trial <= 49,0,ifelse(trial <= 103,2,4)))
 }else{
     sound_events = filter(ef,bit == 5)
     if(nrow(sound_events) != 154)
         stop(sprintf("Unexpected number of rows: %d",nrow(sound_events)))
+
+    pf = pf %>%
+        rename(pres_time = time) %>%
+        mutate(sample = sound_events$sample[trial],
+               time = sound_events$time[trial]) %>%
+        mutate(trial = trial - ifelse(trial <= 50,0,ifelse(trial <= 104,2,4)))
 }
 
-pf = pf %>%
-    rename(pres_time = time) %>%
-    mutate(sample = sound_events$sample[trial],
-           time = sound_events$time[trial]) %>%
-    mutate(trial = trial - ifelse(trial < 50,0,ifelse(trial < 105,2,4)))
+if(any(diff(pf$trial) != 1)){
+    stop("Improper trial indices!")
+}
+
 
 pf %>%
     select(trial,sample,time,condition,response,sound_index) %>%
     write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)),
         row.names=FALSE)
+
 
 pf %>%
     mutate(index = as.numeric(condition)) %>%
