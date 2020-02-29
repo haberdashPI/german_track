@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, onehot, CvNorm
+export withlags, testdecode, decoder, withlags, regressSS, onehot, CvNorm, decode
 
 using MetaArrays
 using Printf
@@ -173,7 +173,7 @@ function withlags(x,lags)
     y
 end
 
-safezscore(x) = std(x) != 0 ? zscore(x) : x
+safezscore(x) = length(x) == 1 || std(x) == 0 ? x : zscore(x)
 scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
 adddiag!(x,v) = x[CartesianIndex.(Base.axes(x)...)] .+= v

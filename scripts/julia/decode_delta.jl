@@ -73,7 +73,7 @@ for subject in values(subjects)
 
         for source in sources
             stim, = load_stimulus(source,event,stim_encoding,fs,stim_info)
-            maxlen = min(size(subject.eeg[row],2),size(stim,2))
+            maxlen = min(size(subject.eeg[row],2),size(stim,1))
             ixs = bound_indices(window,fs,maxlen)
             push!(df,merge(event,(
                 eeg = view(subject.eeg[row]',ixs,:),
@@ -90,7 +90,7 @@ end
 # santity check, train all data in each condition, and then test all
 # data (then implement k-fold validation)
 dfcorr = df[(df.target_present .== true) .& (df.correct .== true),:]
-N = groupby(dfcorr, [:condition,:source,:target_source]) |> size()
+N = groupby(dfcorr, [:condition,:source,:target_source]) |> length
 progress = Progress(N,desc="Building decoders: ")
 models = by(dfcorr, [:condition,:source,:target_source]) do sdf
     model = decoder(NormL2(0.2),reduce(vcat,sdf.stim),
@@ -99,74 +99,51 @@ models = by(dfcorr, [:condition,:source,:target_source]) do sdf
     (model = model,)
 end
 
-dftest = df[(df.target_present .== true)]
-results = by(dftest,[:condition,:source,:target_source]) do sdf
-    smodels = models[
-        (models.condition .== sdf.condition[1]) .&
-        (models.source .== sdf.source[1]) .&
-        (models.target_source .== sdf.target_source[1]), :]
-    @assert size(smodels,1) == 1
-    model = smodels.model[1]
-    by(sdf,[:trial]) do trial
+dftest = df[(df.target_present .== true),:]
+dftest = join(dftest,models,on = [:condition, :source, :target_source], kind = :left)
 
-    end
+only(x) = length(x) == 1 ? first(x) : error("expected single element")
+
+# TODO: now use k-fold cross validation
+
+# TODO: fix an issue with the trial labels for SID 14
+results = by(dftest, [:sid,:condition,:source,:target_source,:trial]) do sdf
+    @infiltrate size(sdf,1) > 1
+    pred = decode(only(sdf.eeg), only(sdf.model), 0:nlags)
+    C = only(cor(vec(pred),vec(only(sdf.stim))))
+    @infiltrate isnan(C)
+    result = (C = C,copy(sdf[1,[:correct]])...)
+    @infiltrate
+    result
 end
+source_names = ["male", "female"]
+results.target_source = get.(Ref(source_names),results.target_source,missing)
 
 
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
 
+R"""
 
-# df = train_test(
-#     StaticMethod(NormL2(0.2),cor),
-#     SpeakerStimMethod(
-#         encoding=encoding,
-#         sources=),
-#     subjects = subjects,
-#     encode_eeg = eeg_encoding,
-#     resample = 10,
-#     eeg_files, stim_info,
-#     maxlag=0.8,
-#     train = subdict(conditions,
-#         (label = "correct", condition = cond) for cond in listen_conds
-#     ),
-#     test = subdict(conditions,
-#         (label = "all", condition = cond) for cond in listen_conds
-#     )
-# );
-# alert()
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
 
-# df[!,:location] = directions[df.stim_id]
+plotdf = $(results) %>%
+    mutate(source = factor(source,c('male','other_male','fem1','fem2',
+        'all','fem1+fem2','joint'))) %>%
+    group_by(sid,source,correct,condition) %>%
+    summarize(C=mean(C))
 
-# dir = joinpath(plotsdir(),string("results_",Date(now())))
-# isdir(dir) || mkdir(dir)
-
-# R"""
-
-# library(tidyr)
-# library(dplyr)
-# library(ggplot2)
-# library(stringr)
-
-# ggplot($df,aes(x=source,y=value,color=test_correct)) +
-#     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-#         position=position_nudge(x=0.3)) +
-#     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-#     scale_color_brewer(palette='Set1') +
-#     facet_grid(train_condition~sid,labeller=label_context)
-
-# group_mean = $(df) %>%
-#     mutate(source = factor(source,c('male','other_male','fem1','fem2',
-#         'all','fem1+fem2','joint'))) %>%
-#     group_by(sid,source,test_correct,train_condition) %>%
-#     summarize(value=mean(value))
-
-# ggplot($df,aes(x=source,y=value,color=test_correct)) +
-#     stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
-#         position=position_nudge(x=0.3)) +
-#     geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
-#     geom_abline(intercept=0,slope=0,linetype=2) +
-#     scale_color_brewer(palette='Set1') +
-#     facet_grid(train_condition~.,labeller=label_context)
+ggplot(plotdf,aes(x=source,y=C,color=correct)) +
+    stat_summary(fun.data='mean_cl_boot',#fun.args=list(conf.int=0.75),
+        position=position_nudge(x=0.3)) +
+    geom_point(alpha=0.5,position=position_jitter(width=0.1)) +
+    geom_abline(intercept=0,slope=0,linetype=2) +
+    scale_color_brewer(palette='Set1') +
+    facet_grid(condition~.,labeller=label_context)
 
 # ggsave(file.path($dir,"during_target_delta_decode.pdf"),width=11,height=8)
 
-# """
+"""
