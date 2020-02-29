@@ -1,4 +1,4 @@
-export cachefn, cache_dir, JointEncoding, encode
+export cachefn, cache_dir, JointEncoding, encode, folds
 using BSON: @save, @load
 using BSON
 using ProgressMeter
@@ -44,7 +44,7 @@ function folds(K,indices,test_indices=indices)
 
             (train,test)
         else
-            shared_test, shared_test
+            shared_test, shared_test # empty, empty
         end
     end
 end

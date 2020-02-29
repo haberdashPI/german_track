@@ -89,32 +89,36 @@ end
 
 # santity check, train all data in each condition, and then test all
 # data (then implement k-fold validation)
-dfcorr = df[(df.target_present .== true) .& (df.correct .== true),:]
-N = groupby(dfcorr, [:condition,:source,:target_source]) |> length
-progress = Progress(N,desc="Building decoders: ")
-models = by(dfcorr, [:condition,:source,:target_source]) do sdf
-    model = decoder(NormL2(0.2),reduce(vcat,sdf.stim),
-        reduce(vcat,sdf.eeg), 0:nlags)
-    next!(progress)
-    (model = model,)
+df.index = 1:size(df,1)
+dftarget = df[(df.target_present .== true),:]
+K = 10
+N = groupby(dftarget, [:condition,:source,:target_source]) |> length
+progress = Progress(K*N,desc="Building decoders: ")
+models = by(dftarget, [:condition,:source,:target_source]) do sdf
+    test_indices = sdf.index
+    train_indices = sdf.index[(sdf.correct .== true),:]
+    mapreduce(vcat,folds(K,train_indices,test_indices)) do (trainfold,testfold)
+        ix = findall(in.(sdf.index,Ref(trainfold)))
+        model = decoder(NormL2(0.2),reduce(vcat,sdf.stim[ix]),
+            reduce(vcat,sdf.eeg[ix]), 0:nlags)
+        next!(progress)
+        DataFrame(model = [model],indices = [testfold])
+    end
 end
-
-dftest = df[(df.target_present .== true),:]
-dftest = join(dftest,models,on = [:condition, :source, :target_source], kind = :left)
 
 only(x) = length(x) == 1 ? first(x) : error("expected single element")
 
 # TODO: now use k-fold cross validation
 
 # TODO: fix an issue with the trial labels for SID 14
-results = by(dftest, [:sid,:condition,:source,:target_source,:trial]) do sdf
-    @infiltrate size(sdf,1) > 1
-    pred = decode(only(sdf.eeg), only(sdf.model), 0:nlags)
-    C = only(cor(vec(pred),vec(only(sdf.stim))))
-    @infiltrate isnan(C)
-    result = (C = C,copy(sdf[1,[:correct]])...)
-    @infiltrate
-    result
+cols = [:correct,:sid,:condition,:source,:target_source]
+N = sum(length,models.indices)
+results = mapreduce(vcat,eachrow(models)) do modeled
+    mapreduce(vcat,modeled.indices) do index
+        pred = decode(df.eeg[index], modeled.model, 0:nlags)
+        C = only(cor(vec(pred),vec(df.stim[index])))
+        DataFrame(C = C;copy(df[index,cols])...)
+    end
 end
 source_names = ["male", "female"]
 results.target_source = get.(Ref(source_names),results.target_source,missing)
@@ -144,6 +148,6 @@ ggplot(plotdf,aes(x=source,y=C,color=correct)) +
     scale_color_brewer(palette='Set1') +
     facet_grid(condition~.,labeller=label_context)
 
-# ggsave(file.path($dir,"during_target_delta_decode.pdf"),width=11,height=8)
+ggsave(file.path($dir,"during_target_delta_decode.pdf"),width=11,height=8)
 
 """
