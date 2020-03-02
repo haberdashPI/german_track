@@ -38,20 +38,6 @@ listen_conds = ["object","global"]
 sids = getproperty.(values(subjects),:sid)
 condition_targets = Dict("object" => [1], "global" => [1,2])
 
-df = DataFrame(
-    correct=Bool[],
-    target_present=Bool[],
-    target_source=Int[],
-    condition=String[],
-    trial=Int[],
-    sound_index=Int[],
-    target_time=Float64[],
-    eeg=AbstractArray{Float64,2}[],
-    stim=AbstractArray{Float64,2}[],
-    source=String[],
-    sid=Int[],
-)
-
 # TODO: using the simpler approach of collecting on the data transparently
 # should get rid of a lot of old code; and serve as a double check on any bugs
 
@@ -59,31 +45,33 @@ df = DataFrame(
 # being trained and tested vs. the folds
 N = sum(@λ(size(_subj.events,1)), values(subjects))
 progress = Progress(N,desc="Assembling Data: ")
-for subject in values(subjects)
+df = mapreduce(vcat,values(subjects)) do subject
     rows = filter(1:size(subject.events,1)) do i
         !subject.events.bad_trial[i]
     end
 
-    for row in 1:size(subject.events,1)
+    mapreduce(vcat,1:size(subject.events,1)) do row
         si = subject.events.sound_index[row]
         event = subject.events[row,[:correct,:target_present,:target_source,
             :condition,:trial,:sound_index,:target_time]] |> copy
 
         window = only_near(event.target_time,fs,window=(0,0.5))
 
-        for source in sources
+        result = mapreduce(vcat,sources) do source
             stim, = load_stimulus(source,event,stim_encoding,fs,stim_info)
             maxlen = min(size(subject.eeg[row],2),size(stim,1))
             ixs = bound_indices(window,fs,maxlen)
-            push!(df,merge(event,(
-                eeg = view(subject.eeg[row]',ixs,:),
-                stim = view(stim,ixs,:),
+
+            DataFrame(;
+                event...,
+                eeg = [view(subject.eeg[row]',ixs,:)],
+                stim = [view(stim,ixs,:)],
                 source = string(source),
                 sid = subject.sid
-            )))
+            )
         end
-
         next!(progress)
+        result
     end
 end
 
@@ -121,7 +109,7 @@ results = mapreduce(vcat,eachrow(models)) do modeled
     end
 end
 source_names = ["male", "female"]
-results.target_source = get.(Ref(source_names),results.target_source,missing)
+results.target_source = get.(Ref(source_names),Int.(results.target_source),missing)
 
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))

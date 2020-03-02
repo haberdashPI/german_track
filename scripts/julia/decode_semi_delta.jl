@@ -43,30 +43,15 @@ function target_label(row)::Union{Missing,Int}
 end
 
 if !isdefined(Main,:df)
-    df = DataFrame(
-        correct=Bool[],
-        target_present=Bool[],
-        target_source=Int[],
-        condition=String[],
-        trial=Int[],
-        sound_index=Int[],
-        target_time=Float64[],
-        eeg=AbstractArray{Float64,2}[],
-        stim=AbstractArray{Float64,3}[],
-        source=String[],
-        label=Union{Int,Missing}[],
-        sid=Int[],
-    )
-
     N = sum(@λ(size(_subj.events,1)), values(subjects))
     progress = Progress(N,desc="Assembling Data: ")
-    for subject in values(subjects)
+    df = mapreduce(vcat,values(subjects)) do subject
         rows = filter(1:size(subject.events,1)) do i
             subject.events.condition[i] in conditions &&
             !subject.events.bad_trial[i]
         end
 
-        for row in 1:size(subject.events,1)
+        mapreduce(vcat,1:size(subject.events,1)) do row
             si = subject.events.sound_index[row]
             event = subject.events[row,[:correct,:target_present,:target_source,
                 :condition,:trial,:sound_index,:target_time]] |> copy
@@ -84,19 +69,19 @@ if !isdefined(Main,:df)
             )
             next!(progress)
 
-            for window in eachrow(windows)
+            mapreduce(vcat,eachrow(windows)) do window
                 for source in sources
                     stim, = load_stimulus(source,event,stim_encoding,fs,stim_info)
                     stim = mapslices(slice -> withlags(slice,0:nlags),stim,dims=(2,3))
                     maxlen = min(size(subject.eeg[row],2),size(stim,2))
                     ixs = bound_indices(window.range,fs,maxlen)
-                    push!(df,merge(event,(
-                        eeg = view(subject.eeg[row],:,ixs),
-                        stim = permutedims(view(stim,:,ixs,:),(1,3,2)),
+                    DataFrame(;event...,
+                        eeg = [view(subject.eeg[row],:,ixs)],
+                        stim = [permutedims(view(stim,:,ixs,:),(1,3,2))],
                         source = string(source),
                         label = window.hastarget ? target_label(event) : missing,
                         sid = subject.sid
-                    )))
+                    )
                 end
             end
         end
