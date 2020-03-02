@@ -170,10 +170,10 @@ uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 version = "1.0.0"
 
 [[Convex]]
-deps = ["AbstractTrees", "BenchmarkTools", "LinearAlgebra", "MathOptInterface", "OrderedCollections", "SparseArrays", "Test"]
-path = "/Users/davidlittle/.julia/dev/Convex"
+deps = ["AbstractTrees", "BenchmarkTools", "LinearAlgebra", "MathProgBase", "OrderedCollections", "SparseArrays", "Test"]
+git-tree-sha1 = "77cb20ed09c5b8d2b548c0892d123939bd1011c7"
 uuid = "f65535da-76fb-5f13-bab9-19810c17039a"
-version = "0.13.0"
+version = "0.12.7"
 
 [[CoordinateTransformations]]
 deps = ["Compat", "Rotations", "StaticArrays"]

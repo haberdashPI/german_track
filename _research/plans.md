@@ -17,15 +17,14 @@
 
 ## revisit decoding
 
-try old approach, but using just the delta band instead of all bands (probably via FIR filter)
-
-Consider a cross subject approach, so that the training can incorporate all participants.
++ try old approach, but using just the delta band instead of all bands (probably via FIR filter)
++ Consider a cross subject approach, so that the training can incorporate all participants.
 
 ## semi-supervised decoding
 
 as a first pass:
 
-using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so easy to train
+using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so "easy" to train
 
 ### more advanced semi-supervised (low priority)
 
