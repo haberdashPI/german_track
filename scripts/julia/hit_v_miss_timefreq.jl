@@ -14,106 +14,117 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
 const tindex = Dict("male" => 1, "fem" => 2)
 
 halfway = filter(@λ(_ > 0),target_times) |> median
+regions = ["target", "baseline"]
+fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
-windows = Dict(
-    "before" => (time,start,len) -> iszero(time) ? no_indices :
-        only_near(time,10, window=(-start-len,-start)),
-    "after" => (time,start,len) -> iszero(time) ? no_indices :
-        only_near(time,10, window=(start,start+len))
-)
+width = 3
 
-conditions = Dict((
-    sid = sid,
-    label = label,
-    timing = timing,
-    condition = condition,
-    direction = dir,
-    target = target) =>
+df = mapreduce(vcat,values(subjects)) do subject
+    rows = filter(1:size(subject.events,1)) do i
+        !subject.events.bad_trial[i] && subject.events.target_present[i] == 1
+    end
 
-    function(row)
-        if (row.condition == condition &&
-            ((label == "detected") == row.correct) &&
-            sid == row.sid &&
-            directions[row.sound_index] == dir &&
-            (target == "baseline" ||
-             speakers[row.sound_index] == tindex[target]))
+    mapreduce(vcat,rows) do row
+        si = subject.events.sound_index[row]
+        event = subject.events[row,[:correct,:target_present,:target_source,
+            :condition,:trial,:sound_index,:target_time]] |> copy
 
-            if target == "baseline"
-                times = vcat(switch_times[row.sound_index],
-                    target_times[row.sound_index]) |> sort!
-                ranges = far_from(times,10, mindist=0.2,minlength=0.5)
+        mapreduce(vcat,regions) do region
+            center, window = if region == "target"
+                event.target_time, only_near(event.target_time,fs,window=(-width,width))
+            else
+                times = vcat(switch_times[si], target_times[si]) |> sort!
+                ranges = far_from(times, 10, mindist=0.2, minlength=0.5)
                 if isempty(ranges)
                     error("Could not find any valid region for baseline ",
                           "'target'. Times: $(times)")
                 end
-                windows[timing](sample_from_ranges(ranges), 0, 1.5)
-            else
-                windows[timing](target_times[row.sound_index], 0.0, 1.5)
+                at = sample_from_ranges(ranges)
+                at, only_near(at,fs,window=(-width,width))
             end
-        else
-            no_indices
+
+            maxlen = size(subject.eeg[row],2)
+            ixs = bound_indices(window,fs,maxlen)
+            maxtime = maxlen*fs
+            DataFrame(;
+                event...,
+                region = region,
+                window_offset = max(0,window[1]) - center,
+                sid = subject.sid,
+                direction = directions[si],
+                eeg = [view(subject.eeg[row],:,ixs)],
+            )
         end
     end
-
-    for condition in unique(first(subjects)[2].events.condition)
-    for target in vcat(collect(keys(tindex)),"baseline")
-    for label in ["detected", "not_detected"]
-    for dir in unique(directions)
-    for timing in keys(windows)
-    # for target_timing in ["early", "late"]
-    for sid in getproperty.(values(subjects),:sid)
-)
-df = select_windows(conditions, subjects)
+end
+source_names = ["male", "female"]
+df.target_source = get.(Ref(source_names),Int.(df.target_source),missing)
 
 function ishit(row)
     if row.condition == "global"
-        row.target == "baseline" ? "baseline" :
-            row.label == "detected" ? "hit" : "miss"
+        row.region == "baseline" ? "baseline" :
+            row.correct ? "hit" : "miss"
     elseif row.condition == "object"
-        row.target == "baseline" ? "baseline" :
-            row.target == "male" ?
-                (row.label == "detected" ? "hit" : "miss") :
-                (row.label == "detected" ? "falsep" : "reject")
+        row.region == "baseline" ? "baseline" :
+            row.target_source == "male" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     else
         @assert row.condition == "spatial"
-        row.target == "baseline" ? "baseline" :
+        row.region == "baseline" ? "baseline" :
             row.direction == "right" ?
-                (row.label == "detected" ? "hit" : "miss") :
-                (row.label == "detected" ? "falsep" : "reject")
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     end
 end
 
-df.hit = ishit.(eachrow(df))
+df[!,:hit] = ishit.(eachrow(df))
 dfhit = df[in.(df.hit,Ref(("hit","miss","baseline"))),:]
 
 
-fs = GermanTrack.framerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
 channels = 1:34
 
 using DSP: Periodograms
-freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition]) do rows
-    signal = reduce(hcat,row.window for row in eachrow(rows))
-    if size(signal,2) < 100
-        DataFrame(power = Float64[], channel = Int[], timebin = Int[],
-            freqbin = Int[])
+cols = [:sid,:trial,:hit,:region,:condition]
+progress = Progress(length(groupby(dfhit,cols)), "Computing Spectrograms: ")
+freqpower = by(dfhit, cols) do rows
+    @assert size(rows,1) == 1
+    times = nothing
+    freqs = nothing
+    spects = mapreduce(vcat,Base.axes(rows.eeg[1],1)) do ch
+        spect = spectrogram(rows.eeg[1][ch,:], 32, fs=fs, window=DSP.Windows.hanning)
+        times = isnothing(times) ? spect.time : times
+        freqs = isnothing(freqs) ? spect.freq : freqs
+        reshape(spect.power,1,size(spect.power)...)
     end
-    spects = mapreduce(vcat,Base.axes(signal,1)) do ch
-        spect = abs.(stft(signal[ch,:], 32, fs=256, window=DSP.Windows.hanning))
-        reshape(spect,1,size(spect)...)
-    end
-
-    # totalpower = mean(spect,dims = 2)
-
-    DataFrame(power = vec(spects),
+    next!(progress)
+    # aligns window times across conditions
+    times = times .+ step(times) * div(rows.window_offset[1],step(times))
+    DataFrame(
+        power = vec(spects),
         channel = vec(getindex.(CartesianIndices(spects),1)),
-        timebin = vec(getindex.(CartesianIndices(spects),2)),
-        freqbin = vec(getindex.(CartesianIndices(spects),3)))
+        freq = freqs[vec(getindex.(CartesianIndices(spects),2))],
+        time = times[vec(getindex.(CartesianIndices(spects),3))]
+    )
 end
 
-using Feather
-Feather.write("timefreq_windows.feather",freqmeans)
+medpower = by(freqpower,
+    [:sid,:hit,:region,:condition,:time,:freq],
+    (:power,) => x -> (logmed_power = median(log.(x.power)),))
+# To start, let's just look at the median TF plot
 
-# TODO: plot median time-freq diff across conditions
-# use below to load old data, rather than re-running above analysis
-freqmeans = Feather.read("timefreq_windows.feather")
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
+
+R"""
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+p = ggplot($medpower,aes(x=time,y=freq,fill=logmed_power)) +
+    facet_grid(condition~region+hit) + geom_raster()
+p
+
+ggsave(file.path($dir,"timefreq_hits.pdf"),width=11,height=8)
