@@ -117,6 +117,7 @@ function regressSS2(x,y,v,tt,reg;settings...)
     decoder = SemiDecoder(x,y,v,tt)
 
     opt = ADAGrad()
+    # TODO: add regularizer
     Flux.train!(data -> loss(decoder,data...,v,tt), params(decoder), zip(x,y), opt)
 
     # bla bla bla
