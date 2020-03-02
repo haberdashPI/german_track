@@ -36,12 +36,12 @@ function select_windows_helper((condition, boundfn), subjects)
             ixs = bound_indices(bounds[(file, i)], 256, size(eeg[i], 2))
 
             # power in relevant frequency bins across all channels and times
-            DataFrame([(
+            DataFrame(
                 sid = sidfor(file),
-                trial = i,
+                trial = i;
                 condition...,
-                window = view(eeg[i],:,ixs)
-            )])
+                window = [view(eeg[i],:,ixs)]
+            )
         end
     else
         DataFrame()
