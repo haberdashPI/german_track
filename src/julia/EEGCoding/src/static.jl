@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, onehot, CvNorm, decode
+export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode
 
 using MetaArrays
 using Printf
@@ -12,6 +12,7 @@ using ProximalOperators
 using LambdaFn
 using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
+using Flux
 
 struct CvNorm
     λ::Float64
@@ -76,6 +77,49 @@ function regressSS(x,y,v,tt,reg;settings...)
     else
         (A = A.value, w = reduce(hcat,getproperty.(u,:value)))
     end
+end
+
+struct SemiDecoder{T}
+    A::Array{T,2}
+    u::Array{T,2}
+end
+Flux.params(x::SemiDecoder) = params(x.A,x.u)
+function SemiDecoder(x,y,v,tt)
+    M,_ = size(x[1])
+    H,K,_ = size(y[1])
+    T = length(x)
+    V = length(tt)
+
+    @assert length(x) == length(y) "Stimulus and response must have same trial count."
+    @assert size(v,1) == 0 || H == size(v,2) "Number of sources must match weight dimension"
+    @assert length(tt) == size(v,1) "Number of weights must match number of weight indices"
+
+    A = randn(K,M)
+    u = randn(T - V),H
+    SemiDecoder(A,u)
+end
+loss(model::SemiDecoder,x,y,uindex) =
+    Flux.mse(model.A*x,sum(model.u[:,uindex]*y,dims=1))
+loss(model::SemiDecoder,x,y,v) =
+    Flux.mse(model.A*x,sum(v*y,dims=1))
+function loss(model::SemiDecoder,x,y,v,tt)
+    T = length(x)
+    loss = 0.0
+    loss += sum(enumerate(setdiff(1:T,tt))) do (ui,i)
+        loss(model,x[i],y[i],ui)
+    end
+    loss += sum(enumerate(tt)) do (vi,i)
+        loss(model,x[i],y[i],v[tt,:])
+    end
+end
+
+function regressSS2(x,y,v,tt,reg;settings...)
+    decoder = SemiDecoder(x,y,v,tt)
+
+    opt = ADAGrad()
+    Flux.train!(data -> loss(decoder,data...,v,tt), params(decoder), zip(x,y), opt)
+
+    # bla bla bla
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
