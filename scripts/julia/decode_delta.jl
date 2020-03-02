@@ -44,24 +44,25 @@ condition_targets = Dict("object" => [1], "global" => [1,2])
 # the plan is to first look at the indices that are actually
 # being trained and tested vs. the folds
 N = sum(@λ(size(_subj.events,1)), values(subjects))
-progress = Progress(N,desc="Assembling Data: ")
+progress = Progress(length(sources)*N,desc="Assembling Data: ")
 df = mapreduce(vcat,values(subjects)) do subject
     rows = filter(1:size(subject.events,1)) do i
         !subject.events.bad_trial[i]
     end
 
-    mapreduce(vcat,1:size(subject.events,1)) do row
+    mapreduce(vcat,rows) do row
         si = subject.events.sound_index[row]
         event = subject.events[row,[:correct,:target_present,:target_source,
             :condition,:trial,:sound_index,:target_time]] |> copy
 
         window = only_near(event.target_time,fs,window=(0,0.5))
 
-        result = mapreduce(vcat,sources) do source
+        mapreduce(vcat,sources) do source
             stim, = load_stimulus(source,event,stim_encoding,fs,stim_info)
             maxlen = min(size(subject.eeg[row],2),size(stim,1))
             ixs = bound_indices(window,fs,maxlen)
 
+            next!(progress)
             DataFrame(;
                 event...,
                 eeg = [view(subject.eeg[row]',ixs,:)],
@@ -70,8 +71,6 @@ df = mapreduce(vcat,values(subjects)) do subject
                 sid = subject.sid
             )
         end
-        next!(progress)
-        result
     end
 end
 
