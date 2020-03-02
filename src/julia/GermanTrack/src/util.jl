@@ -556,7 +556,7 @@ end
 function sample_from_ranges(ranges)
     weights = Weights(map(x -> x[2]-x[1],ranges))
     range = sample(ranges,weights)
-    rand(Uniform(range...))
+    rand(Distributions.Uniform(range...))
 end
 
 function alert(message="Done!")
