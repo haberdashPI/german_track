@@ -3,9 +3,9 @@ function Features=Calc_Salience_Features(File_Name)
 loadload; %requires NSL tools
 
 if nargin < 1
-    
+
     File_Name = 'Test.wav';
-    
+
 end
 
 Full_File = File_Name;
@@ -42,12 +42,13 @@ CF = cochfil(1:129,log2(fs/16000));
 
 %Spectrogram
 if isempty(dir(Spec_File));
-    
+
     sfs = fs / 176;
-    
+
+    % parameters: 8 millseconds binsize, 8 millsecond shift, specifies sampling rate
     Spec = wav2aud(unitseq(Wave), [8 8 -2 log2(fs/16000)]);
     save(Spec_File,'Spec','sfs')
-    
+
     1;
 else
     load(Spec_File);
@@ -55,15 +56,15 @@ end
 
 %Cortical representation
 if isempty(dir(Cort_File));
-    
+
     Cort = aud2cor(Spec, [8 8 -2 log2(fs/16000) 0 0 1], 2.^(1:1:5), 2.^(-2:1:3),'tmpxxx',0);
     Cort_Rate = squeeze(mean(mean(Cort,1),4))';
     Cort_Scale = squeeze(mean(mean(Cort,2),4))';
     Cort_Freq = squeeze(mean(mean(Cort,1),2))';
     clear Cort
-    
+
     save(Cort_File, 'Cort_Rate', 'Cort_Scale','Cort_Freq','sfs','-v7.3');
-    
+
     1;
 else
     load(Cort_File)
@@ -71,12 +72,12 @@ end
 
 %Pitch and harmonicity
 if isempty(dir(Pitch_File));
-    
-    
+
+
     th = exp(mean(log(max(Spec(:),1e-3))));
     [Pitch,Sal] = pitch(log(max(Spec',th)) - log(th), CF(1:(end-1)),'pitlet_templates');
     save(Pitch_File,'Pitch','Sal')
-    
+
     1;
 else
     load(Pitch_File)
@@ -84,23 +85,23 @@ end
 
 %Loudness and Sharpness
 if isempty(dir(Loud_File));
-    
-    
+
+
     Window = 1500;
     Step = 240;
     lfs = 30000;
-    
+
     Sound = resample(Wave,lfs,fs); %hm...
     nTime = ceil(length(Sound) / Step);
     Sound(ceil(nTime * Step)) = 0;
-    
+
     Loud = zeros(nTime,1);
     Sharp = zeros(nTime,1);
     Loud_Bark = zeros(nTime,240);
     Loud_P = zeros(nTime,21);
-    
+
     Off = ceil(Window / Step / 2)+1;
-    
+
     %     Points = .008 * 30000; %consider stepping
     %     nTime = floor(length(Sound) / Points);
     %     N_entire = zeros(1,nTime);
@@ -112,7 +113,7 @@ if isempty(dir(Loud_File));
         Sharp(iTime) = sharpness_Fastl(N_Single);
         Loud_P(iTime,:) = P;
     end
-    
+
     Sharp_Zero = Sharp;
     Fill = isnan(Sharp);
     [First,Last] = First_and_Last(find(Fill));
@@ -122,7 +123,7 @@ if isempty(dir(Loud_File));
         Sharp(F:L) = linspace(Sharp(F),Sharp(L),L - F + 1);
     end
     Sharp_Zero(isnan(Sharp_Zero)) = 0;
-    
+
     save(Loud_File,'Loud','Sharp','Loud_Bark','Sharp_Zero','Loud_P','lfs');
     %     save(['Block' num2str(Block) '/Loud_Sharp_NoBark.mat'],'Loud','Sharp','Sharp_Zero','-v7.3');
     1;
@@ -185,56 +186,56 @@ SV = 2.^(-2:1:3);
 %and Scale
 for iTime = (Step+2):(Points-1)
     Samp = (iTime)*Step + (1:Window);
-    
+
     %Single features, vector matches the previous order
     C(iTime+1,[7 4 9 10 6 8]) = mean(Single_Features(Samp,:),1);
-    
+
     %Spec average energy
     Stim = Spec(Samp,:);
     Mean_Stim = mean(Stim,1)';
     C(iTime+1,1) = mean(Mean_Stim);
-    
+
     %Rate, average energy
     Stim = Cort_Rate(Samp,:);
     Mean_Stim = mean(Stim,1)';
     C(iTime+1,2) = mean(Mean_Stim);
-    
+
     %Scale, average energy
     Stim = Cort_Scale(Samp,:);
     Mean_Stim = mean(Stim,1)';
     C(iTime+1,3) = mean(Mean_Stim);
-% 
+%
     %Spec average energy
     Stim = Loud_Bark(Samp,:);
     Mean_Stim = mean(Stim,1)';
     C(iTime+1,5) = mean(Mean_Stim);
-%     
-%         
+%
+%
     %Rate, Max
     Stim = Cort_Rate(Samp,:);
-    Max_Stim = max(Stim,[],1)'; 
-    C(iTime+1,11) = max(Max_Stim); 
-% 
+    Max_Stim = max(Stim,[],1)';
+    C(iTime+1,11) = max(Max_Stim);
+%
     %Scale, Max
     Stim = Cort_Scale(Samp,:);
-    Max_Stim = max(Stim,[],1)'; 
-    C(iTime+1,12) = max(Max_Stim); 
-% 
+    Max_Stim = max(Stim,[],1)';
+    C(iTime+1,12) = max(Max_Stim);
+%
     %Rate, Centroid
     Stim = Cort_Rate(Samp,:);
     Cent_Stim = sum( Stim.^2 * diag(RV),2) ./ sum(Stim.^2,2);
-    C(iTime+1,13) = mean(Cent_Stim); 
+    C(iTime+1,13) = mean(Cent_Stim);
 
     %Scale, Centroid
     Stim = Cort_Scale(Samp,:);
     Cent_Stim = sum( Stim.^2 * diag(SV),2) ./ sum(Stim.^2,2);
-    C(iTime+1,14) = mean(Cent_Stim); 
+    C(iTime+1,14) = mean(Cent_Stim);
 
 %    Rate, Centroid using absolute value of rate
     Stim = Cort_Rate(Samp,:);
     Cent_Stim = sum( Stim.^2 * diag(abs(RV)),2) ./ sum(Stim.^2,2);
     C(iTime+1,15) = mean(Cent_Stim);
-    
+
 end
 
 M = mean(C,1);

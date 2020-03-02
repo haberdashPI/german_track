@@ -1,5 +1,6 @@
 function [Output] = combined_salience(P_Events, LDA_W, ML)
 
+% Bin_Size determines length of bin in seconds
 Bin_Size = 2;
 Overlap = 0.75;
 nFeat = size(P_Events,1);

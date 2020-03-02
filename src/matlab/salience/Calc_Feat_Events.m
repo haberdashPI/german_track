@@ -23,11 +23,11 @@ for iWav = 1:num_files
     for iFeat = 1:size(M{iWav},1)
         M_Temp = M{iWav}(iFeat,:);
         temp = diff(M_Temp); %Spec only?
-        
+
         temp = movmean(temp,round(MV*sampling_freq));
         temp = movmean(temp,round(MV*sampling_freq));
         temp = movmean(temp,round(MV*sampling_freq));
-        
+
         dM{iWav}(iFeat,:) = temp;
     end
 end
@@ -51,7 +51,6 @@ parfor iWav = Wav_List
         M_Temp = M{iWav}(iFeat,:);
         dM = M_Temp;
 
-        
         [PM,M_Ind] = findpeaks(dM * Flip * -1,'minpeakdistance',round(Ref*sampling_freq)); %only negate if flip
  %       Cut = M_Ind > ML(iWav);
  %       PM(Cut) = [];
