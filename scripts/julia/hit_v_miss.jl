@@ -104,10 +104,10 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition,:winstart,:winlen]) do rows
-    @assert size(rows,1) == 1
-    # signal = reduce(hcat,row.eeg for row in eachrow(rows))
-    signal = rows.eeg[1]
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen]) do rows
+    # @assert size(rows,1) == 1
+    # signal = rows.eeg[1]
+    signal = reduce(hcat,row.eeg for row in eachrow(rows))
     if size(signal,2) < 100
         empty = mapreduce(hcat,keys(freqbins)) do bin
             DataFrame(Symbol(bin) => Float64[])
@@ -190,7 +190,7 @@ p
 
 # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
 # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-name = 'hits_by_trial_all_windows.pdf'
+name = 'hits_by_all_windows.pdf'
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
@@ -220,7 +220,7 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
-name = sprintf('hits_by_trial_%03.1f_%03.1f.pdf',0.5,1.0)
+name = sprintf('hits_by_%03.1f_%03.1f.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 # p = ggplot(filter(plotdf,freqbin=='delta'),
