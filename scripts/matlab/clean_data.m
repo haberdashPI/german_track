@@ -37,7 +37,7 @@ plot_detrend_cfg = plot_cfg;
 plot_detrend_cfg.preproc.detrend = 'no';
 plot_detrend_cfg.preproc.demean = 'no';
 plot_detrend_cfg.eegscale = 50;
-plot_detrend_cfg.mychan = ft_channelselection('EX*',eeg)
+plot_detrend_cfg.mychan = ft_channelselection('EX*',eeg);
 plot_detrend_cfg.mychanscale = 50;
 
 % ======================================================================
