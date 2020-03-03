@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate("german_track")
-include(joinpath(srcdir(), "julia", "setup.jl"))
+include(joinpath("..", "..", "src", "julia", "setup.jl"))
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))

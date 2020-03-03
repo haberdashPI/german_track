@@ -1,5 +1,6 @@
-using DrWatson; @quickactivate("german_track")
-include(joinpath(srcdir(), "julia", "setup.jl"))
+using DrWatson
+@quickactivate("german_track")
+include(joinpath("..", "..", "src", "julia", "setup.jl"))
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
@@ -14,77 +15,73 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
 const tindex = Dict("male" => 1, "fem" => 2)
 
 halfway = filter(@λ(_ > 0),target_times) |> median
+regions = ["target", "baseline"]
+timings = ["before", "after"]
+winlens = (0.5,1,1.5)
+winstarts = (0.0,0.25,0.5)
+fs = GermanTrack.framerate(first(values(subjects)).eeg)
+factors = Iterators.product(regions,timings,winlens,winstarts)
 
-windows = Dict(
-    "before" => (time,start,len) -> iszero(time) ? no_indices :
-        only_near(time,10, window=(-start-len,-start)),
-    "after" => (time,start,len) -> iszero(time) ? no_indices :
-        only_near(time,10, window=(start,start+len))
-)
+df = mapreduce(vcat,values(subjects)) do subject
+    rows = filter(1:size(subject.events,1)) do i
+        !subject.events.bad_trial[i] && subject.events.target_present[i] == 1
+    end
 
-baseline_len = 0.5
-conditions = Dict((
-    sid = sid,
-    label = label,
-    timing = timing,
-    condition = condition,
-    winstart = start,
-    winlen = len,
-    direction = dir,
-    target = target) =>
+    mapreduce(vcat,rows) do row
+        si = subject.events.sound_index[row]
+        event = subject.events[row,[:correct,:target_present,:target_source,
+            :condition,:trial,:sound_index,:target_time]] |> copy
 
-    function(row)
-        if (row.condition == condition &&
-            ((label == "detected") == row.correct) &&
-            sid == row.sid &&
-            directions[row.sound_index] == dir &&
-            (target == "baseline" ||
-             speakers[row.sound_index] == tindex[target]))
-
-            if target == "baseline"
-                times = vcat(switch_times[row.sound_index],
-                    target_times[row.sound_index]) |> sort!
-                ranges = far_from(times,10, mindist=0.2,minlength=baseline_len)
+        mapreduce(vcat,factors) do (region,timing,len,start)
+            winbounds = timing == "before" ? (-start-len,-start) :
+                (start,start+len)
+            window = if region == "target"
+                only_near(event.target_time,fs,window=winbounds)
+            else
+                times = vcat(switch_times[si], target_times[si]) |> sort!
+                ranges = far_from(times, 10, mindist=0.2, minlength=0.5)
                 if isempty(ranges)
                     error("Could not find any valid region for baseline ",
                           "'target'. Times: $(times)")
                 end
-                windows[timing](sample_from_ranges(ranges), 0, baseline_len)
-            else
-                windows[timing](target_times[row.sound_index], start, len)
+                at = sample_from_ranges(ranges)
+                only_near(at,fs,window=winbounds)
             end
-        else
-            no_indices
+
+            maxlen = size(subject.eeg[row],2)
+            ixs = bound_indices(window,fs,maxlen)
+            maxtime = maxlen*fs
+            DataFrame(;
+                event...,
+                region = region,
+                timing = timing,
+                winlen = len,
+                winstart = start,
+                sid = subject.sid,
+                direction = directions[si],
+                eeg = [view(subject.eeg[row],:,ixs)],
+            )
         end
     end
-
-    for condition in unique(first(subjects)[2].events.condition)
-    for target in vcat(collect(keys(tindex)),"baseline")
-    for label in ["detected", "not_detected"]
-    for dir in unique(directions)
-    for timing in keys(windows)
-    # for target_timing in ["early", "late"]
-    for start in (0.0,0.25,0.5)
-    for len in (0.5,1,1.5)
-    for sid in getproperty.(values(subjects),:sid)
-)
-df = select_windows(conditions, subjects)
+end
+source_names = ["male", "female"]
+df.target_source = get.(Ref(source_names),Int.(df.target_source),missing)
 
 function ishit(row)
     if row.condition == "global"
-        row.target == "baseline" ? "baseline" :
-            row.label == "detected" ? "hit" : "miss"
+        row.region == "baseline" ? "baseline" :
+            row.correct ? "hit" : "miss"
     elseif row.condition == "object"
-        row.target == "baseline" ? "baseline" :
-            row.target == "male" ?
-                (row.label == "detected" ? "hit" : "miss") :
-                (row.label == "detected" ? "falsep" : "reject")
+        row.region == "baseline" ? "baseline" :
+            row.target_source == "male" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     else
         @assert row.condition == "spatial"
-        row.target == "baseline" ? "baseline" :
+        row.region == "baseline" ? "baseline" :
             row.direction == "right" ?
-                (row.label == "detected" ? "hit" : "miss") :
-                (row.label == "detected" ? "falsep" : "reject")
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     end
 end
 
@@ -104,12 +101,13 @@ fs = GermanTrack.framerate(first(values(subjects)).eeg)
 channels = 1:34
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
-    view(spect,:,findall(from .≤ freqs .≤ to))
+    view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
 freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition,:winstart,:winlen]) do rows
-
-    signal = reduce(hcat,row.window for row in eachrow(rows))
+    @assert size(rows,1) == 1
+    # signal = reduce(hcat,row.eeg for row in eachrow(rows))
+    signal = rows.eeg[1]
     if size(signal,2) < 100
         empty = mapreduce(hcat,keys(freqbins)) do bin
             DataFrame(Symbol(bin) => Float64[])
@@ -119,7 +117,6 @@ freqmeans = by(dfhit, [:sid,:trial,:hit,:timing,:condition,:winstart,:winlen]) d
     end
     spect = abs.(rfft(signal, 2))
     # totalpower = mean(spect,dims = 2)
-
     result = mapreduce(hcat,keys(freqbins)) do bin
         mfreq = mean(freqrange(spect, freqbins[bin]), dims = 2) #./ totalpower
         DataFrame(Symbol(bin) => vec(mfreq))
@@ -132,6 +129,7 @@ dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 R"""
+
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -192,7 +190,7 @@ p
 
 # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
 # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-name = 'mcca_hits_all_windows.pdf'
+name = 'hits_by_trial_all_windows.pdf'
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
@@ -221,28 +219,29 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     ylab("Median power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
-name = sprintf('mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
+
+name = sprintf('hits_by_trial_%03.1f_%03.1f.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
-p = ggplot(filter(plotdf,freqbin=='delta'),
-        aes(x=hit,y=diff,fill=hit,color=hit)) +
-    geom_line(alpha=0.2,color='black',aes(group=sid)) +
-    geom_point(alpha=0.4, position=pos, size=1) +
-    stat_summary(fun.data = "mean_cl_boot", geom='point',
-        position=position_dodge(width=0.4),
-        size=2,fun.args = list(conf.int=0.68)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-        position=position_dodge(width=0.4), width=0.5,
-        fun.args = list(conf.int=0.68)) +
-    # geom_text(position=pos, size=4, aes(label=sid)) +
-    scale_fill_brewer(palette='Set1',direction=-1) +
-    scale_color_brewer(palette='Set1',direction=-1) +
-    facet_grid(winlen~condition,scales='free_y') +
-    ylab("Median power difference across channels (after - before)") +
-    geom_abline(slope=0,intercept=0,linetype=2)
-p
+# p = ggplot(filter(plotdf,freqbin=='delta'),
+#         aes(x=hit,y=diff,fill=hit,color=hit)) +
+#     geom_line(alpha=0.2,color='black',aes(group=sid)) +
+#     geom_point(alpha=0.4, position=pos, size=1) +
+#     stat_summary(fun.data = "mean_cl_boot", geom='point',
+#         position=position_dodge(width=0.4),
+#         size=2,fun.args = list(conf.int=0.68)) +
+#     stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
+#         position=position_dodge(width=0.4), width=0.5,
+#         fun.args = list(conf.int=0.68)) +
+#     # geom_text(position=pos, size=4, aes(label=sid)) +
+#     scale_fill_brewer(palette='Set1',direction=-1) +
+#     scale_color_brewer(palette='Set1',direction=-1) +
+#     facet_grid(winlen~condition,scales='free_y') +
+#     ylab("Median power difference across channels (after - before)") +
+#     geom_abline(slope=0,intercept=0,linetype=2)
+# p
 
-name = sprintf('delta_lines_mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
-ggsave(file.path($dir,name),plot=p,width=11,height=8)
+# name = sprintf('delta_lines_mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
+# ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """
