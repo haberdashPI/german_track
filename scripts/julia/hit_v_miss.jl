@@ -12,6 +12,10 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                      encoding = eeg_encoding)
     for file in eeg_files)
 
+target_salience =
+    CSV.read(joinpath(stimulus_dir(), "target_salience.csv")).salience |> Array
+med_salience = median(target_salience)
+
 const tindex = Dict("male" => 1, "fem" => 2)
 
 halfway = filter(@λ(_ > 0),target_times) |> median
@@ -59,6 +63,7 @@ df = mapreduce(vcat,values(subjects)) do subject
                 winstart = start,
                 sid = subject.sid,
                 direction = directions[si],
+                salience = target_salience[si] > med_salience ? "high" : "low",
                 eeg = [view(subject.eeg[row],:,ixs)],
             )
         end
@@ -104,7 +109,7 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen]) do rows
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
@@ -145,7 +150,7 @@ bins = $(collect(keys(freqbins)))
 df = $(freqmeans) %>%
     # filter(channel %in% 1:3) %>%
     group_by(sid,winstart,winlen,hit,#target_timing,
-    timing,condition) %>%
+        salience,timing,condition) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
     filter(sid != 11) %>%
     ungroup() %>%
@@ -156,7 +161,7 @@ df = $(freqmeans) %>%
 
 group_means = df %>%
     group_by(sid,winstart,winlen,hit,#target_timing,
-    timing,condition,freqbin) %>%
+        salience,timing,condition,freqbin) %>%
     summarize(meanpower = median(meanpower))
 
 # for(start in unique(df$winstart)){
@@ -166,7 +171,7 @@ plotdf = group_means %>%
     # filter(condition %in% c('global','object')) %>%
     #filter(group_means,winstart == start,winlen == len) %>%
     filter(hit %in% c('hit','miss')) %>%
-    group_by(sid,hit,condition) %>%
+    group_by(sid,hit,condition,salience) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
 
@@ -182,22 +187,22 @@ p = ggplot(plotdf,aes(x=winstart,y=diff,
     geom_point(alpha=0.1, position=pos) +
     scale_fill_brewer(palette='Paired',direction=-1) +
     scale_color_brewer(palette='Paired',direction=-1) +
-    facet_grid(freqbin~condition,scales='free_y') +
+    facet_grid(freqbin~condition+salience,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
-    coord_cartesian(ylim=c(-0.0003,0.0003))
+    coord_cartesian(ylim=c(-0.01,0.01)) +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
 # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
 # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-name = 'hits_by_all_windows.pdf'
+name = 'hits_by_salience_all_windows.pdf'
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.0,winlen == 0.5) %>%
-    group_by(sid,hit,condition) %>%
+    filter(winstart == 0.2,winlen == 1.0) %>%
+    group_by(sid,hit,condition,salience) %>%
     spread(timing,meanpower) %>%
     mutate(diff = after - before)
 
@@ -215,12 +220,13 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
-    facet_grid(winlen~condition,scales='free_y') +
+    coord_cartesian(ylim=c(-0.01,0.01)) +
+    facet_grid(salience~condition,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
-name = sprintf('hits_by_%03.1f_%03.1f.pdf',0.5,1.0)
+name = sprintf('hits_by_salience_%03.1f_%03.1f.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 # p = ggplot(filter(plotdf,freqbin=='delta'),
