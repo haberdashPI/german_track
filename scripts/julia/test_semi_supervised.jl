@@ -35,6 +35,8 @@ plotaxes(ŵ)
 R"quartz()"
 plotaxes(w')
 
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:1,:],1:1,EEGCoding.CvNorm(0.5,2))
+
 # okay, that looks good, let's try something closer go the size of the actual
 # problem
 

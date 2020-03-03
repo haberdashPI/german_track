@@ -88,7 +88,7 @@ if !isdefined(Main,:df)
     end
 end
 
-models = by(df, [:condition,:source]) do sdf
+models = by(df, [:source]) do sdf
     labeled = findall(.!ismissing.(sdf.label))
     k = size(sdf.stim[1],1)
     labels = isempty(labeled) ? [] : reduce(hcat,onehot.(skipmissing(sdf.label),k))'

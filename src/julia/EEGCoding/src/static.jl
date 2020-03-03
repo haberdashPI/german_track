@@ -13,6 +13,7 @@ using LambdaFn
 using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
 using Flux
+using Flux: mse
 
 struct CvNorm
     λ::Float64
@@ -66,7 +67,7 @@ function regressSS(x,y,v,tt,reg;settings...)
     objective = sum(trials) + regularize(A,reg)
     constraints = ([u[t] > 0, u[t] < 1, sum(u[t]) == 1] for t in 1:T)
     problem = minimize(objective,reduce(vcat,constraints))
-    solve!(problem, COSMO.Optimizer(;settings...))
+    solve!(problem, COSMO.Optimizer; settings...)
 
     # return result
     problem.status == OPTIMAL ||
@@ -84,6 +85,21 @@ struct SemiDecoder{T}
     u::Array{T,2}
 end
 Flux.params(x::SemiDecoder) = params(x.A,x.u)
+
+# transform a point in Rⁿ to an n-simplex
+function tosimplex(x)
+    K = length(x)
+    z = [σ(x[k] + log(1/(K - k))) for k in 1:(K-1)]
+    x = Array{eltype(x)}(undef,K)
+    c = x[1] = z[1]
+    for k in 2:(K-1)
+        x[k] = (1-c)z[k]
+        c += x[k]
+    end
+    x[K] = (1-c)
+    x
+end
+
 function SemiDecoder(x,y,v,tt)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
@@ -98,10 +114,13 @@ function SemiDecoder(x,y,v,tt)
     u = randn(T - V),H
     SemiDecoder(A,u)
 end
-loss(model::SemiDecoder,x,y,uindex) =
-    Flux.mse(model.A*x,sum(model.u[:,uindex]*y,dims=1))
-loss(model::SemiDecoder,x,y,v) =
-    Flux.mse(model.A*x,sum(v*y,dims=1))
+
+function loss(model::SemiDecoder,x,y,uindex::Int)
+    w = tosimplex(model.u[:,uindex])
+    mse(model.A*x,sum(w*y,dims=1))
+end
+loss(model::SemiDecoder,x,y,v::Array) = mse(model.A*x,sum(v*y,dims=1))
+
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
     loss = 0.0
@@ -113,14 +132,31 @@ function loss(model::SemiDecoder,x,y,v,tt)
     end
 end
 
-function regressSS2(x,y,v,tt,reg;settings...)
+function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2)
     decoder = SemiDecoder(x,y,v,tt)
 
     opt = ADAGrad()
-    # TODO: add regularizer
-    Flux.train!(data -> loss(decoder,data...,v,tt), params(decoder), zip(x,y), opt)
+    testx = x[sample(1:length(x),batchsize,replace=false)]
+    testy = y[sample(1:length(x),batchsize,replace=false)]
+    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
 
-    # bla bla bla
+    data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffe=true)
+    for n in 1:epochs
+        function status()
+            testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
+            @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
+        end
+
+        Flux.train!(@λ(loss(decoder,_data...,v,tt) + regf(decoder)),
+            params(decoder), data, opt,
+            callback = Flux.throttle(status,5))
+    end
+
+    T = length(x)
+    w = Array{eltype(v)}(undef,length(x),size(v,2))
+    w[tt,:] = v
+    w[setdiff(1:T,tt),:] = decoder.u
+    decoder.A, w
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
