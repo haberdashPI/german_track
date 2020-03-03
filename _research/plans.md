@@ -1,30 +1,29 @@
 
 # Plans
 
-## frequency analyses
+## data
 
-+ try a trial-by-trial FFT
-- try a time-frequency analysis
+- find the behavioral data
+- start analyzing the subjects
+- try DSS to clean the data, followed by MCCA to compress/analyze
 
 ### lower priority points
 - plot results on a scalp?
 
 ### even lower priority
+
 - check on the outlier points, maybe there is an issue with the number of data points
-- try DSS instead of MCCA
 - try an FIR filter instead of FFT (should avoid lobes, consistent with
   paper mounya sent)
-
-## revisit decoding
-
-+ try old approach, but using just the delta band instead of all bands (probably via FIR filter)
-+ Consider a cross subject approach, so that the training can incorporate all participants.
 
 ## semi-supervised decoding
 
 as a first pass:
 
 using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so "easy" to train
+
+first approach to solve takes up too much memory: try a solution that
+uses only first-order derivative information
 
 ### more advanced semi-supervised (low priority)
 
@@ -42,16 +41,7 @@ employ continuous nuisance variables W of current target weightings, and apply a
 - analyze frequency bins
 - analyze decoding approach
 
-## high vs. low salience
-
-- get model from sandeep
-- analyze old behavioral data (if I can find it)
-- analyze my current behavioral data
-- analyze frequency bins
-- analyze decoding approach
-
 ## follow-up analyses
-
 
 ### baseline issues
 - revisit baseline later on: baseline didn't look all that great;
