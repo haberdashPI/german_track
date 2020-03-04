@@ -1,5 +1,8 @@
 timefreq_windows.feather
 *.tgz
+.tags
+tags
+.undo/*
 
 ################################################################################
 #                          DrWatson Project Structure                          #
@@ -10,7 +13,6 @@ data
 _research/cache
 _research/subject_cache
 _research/results
-.tags
 
 ################################################################################
 #                                    Config                                    #
