@@ -11,7 +11,8 @@ encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-cachefile = joinpath(cache_dir(),"..","subject_cache","delta_subjects$(fs).bson")
+cachefile = joinpath(cache_dir(),"eeg","delta_subjects$(fs).bson")
+isdir(splitdir(cachefile)[1]) || mkpath(splitdir(cachefile)[1])
 if isfile(cachefile)
     @load cachefile subjecst
 else

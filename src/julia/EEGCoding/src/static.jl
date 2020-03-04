@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, onehot, CvNorm
+export withlags, testdecode, decoder, regressSS, onehot, CvNorm
 
 using MetaArrays
 using Printf

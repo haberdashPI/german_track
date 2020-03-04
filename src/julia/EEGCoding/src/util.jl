@@ -61,7 +61,7 @@ function cachefn(prefix,fn,args...;__oncache__=() -> nothing,kwds...)
             " use EEGCoding.set_cache_dir! to change where results are cached."
     end
 
-    file = joinpath(cache_dir_[],prefix * ".bson")
+    file = joinpath(abspath(cache_dir_[]),prefix * ".bson")
     if isfile(file)
         __oncache__()
         @load file contents

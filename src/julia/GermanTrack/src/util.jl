@@ -226,35 +226,35 @@ totuples(::AllIndices,len) = [(0,len)]
 totuples((lo,hi)::Tuple,len) = [(lo,min(lo+len,hi))]
 totuples(xs::Array{<:Tuple},len) = map(((lo,hi)) -> (lo,min(xs[1][1]+len,hi)),xs)
 
-function plotresponse(method,results,bounds,stim_events,trial)
-    len = minimum(map(x -> length(x.probs),results))
-    step = ustrip.(uconvert.(s,method.params.window))
-    bounds = totuples(bounds,len*step)
-    if stim_events.target_present[trial] == stim_events.correct[trial]
-        DataFrame(start=map(@λ(_[1]),bounds),stop=map(@λ(_[2]),bounds)) |> @vlplot() +
-            @vlplot(:rect, x=:start, x2=:stop, opacity={value=0.15},
-                color={value="#000"})
-    end
-end
+# function plotresponse(method,results,bounds,stim_events,trial)
+#     len = minimum(map(x -> length(x.probs),results))
+#     step = ustrip.(uconvert.(s,method.params.window))
+#     bounds = totuples(bounds,len*step)
+#     if stim_events.target_present[trial] == stim_events.correct[trial]
+#         DataFrame(start=map(@λ(_[1]),bounds),stop=map(@λ(_[2]),bounds)) |> @vlplot() +
+#             @vlplot(:rect, x=:start, x2=:stop, opacity={value=0.15},
+#                 color={value="#000"})
+#     end
+# end
 
-function plottarget(stim_events,trial,stim_info)
-    if stim_events.target_present[trial]
-        stim_index = stim_events.sound_index[trial]
-        start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
-        stop_time = stim_info["target_len"]+start_time
+# function plottarget(stim_events,trial,stim_info)
+#     if stim_events.target_present[trial]
+#         stim_index = stim_events.sound_index[trial]
+#         start_time = stim_info["test_block_cfg"]["target_times"][stim_index]
+#         stop_time = stim_info["target_len"]+start_time
 
-        target_speaker_i =
-            stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
-        target_speaker = target_speaker_i == 1 ? "male" :
-            target_speaker_i == 2 ? "fem1" :
-            "unknown"
+#         target_speaker_i =
+#             stim_info["test_block_cfg"]["trial_target_speakers"][stim_index]
+#         target_speaker = target_speaker_i == 1 ? "male" :
+#             target_speaker_i == 2 ? "fem1" :
+#             "unknown"
 
-        DataFrame(start=start_time,stop=stop_time,source=target_speaker) |>
-            @vlplot() +
-            @vlplot(:rect, x=:start, x2=:stop, color=:source,
-                opacity={value=0.2})
-    end
-end
+#         DataFrame(start=start_time,stop=stop_time,source=target_speaker) |>
+#             @vlplot() +
+#             @vlplot(:rect, x=:start, x2=:stop, color=:source,
+#                 opacity={value=0.2})
+#     end
+# end
 
 totimes(::AllIndices,step,len) = step.*((1:len) .- 1)
 totimes(x::Tuple,step,len) =
@@ -262,52 +262,52 @@ totimes(x::Tuple,step,len) =
 totimes(x::Array{<:Tuple},step,len) =
     filter(@λ(inbounds(_,x)),range(0,maximum(getindex.(x,2)),step=step))[1:len]
 
-function plotatten(method,results,raw,bounds)
-    len = minimum(map(x -> length(x.probs),results))
-    step = ustrip.(uconvert.(s,method.params.window))
-    t = totimes(bounds,step,len)
+# function plotatten(method,results,raw,bounds)
+#     len = minimum(map(x -> length(x.probs),results))
+#     step = ustrip.(uconvert.(s,method.params.window))
+#     t = totimes(bounds,step,len)
 
-    df = DataFrame()
-    plot = if raw
-        for result in results
-            if !isempty(t)
-                df = vcat(df,DataFrame(time=float(t),level=result.norms[1:len],
-                    source=result.source))
-            end
-        end
-        df |> @vlplot() + @vlplot(
-            :line,
-            x={:time,axis={title="Time (s)"}},
-            y={:level,axis={title="Level"}},
-            color=:source
-        )
-    else
-        for result in results
-            df = vcat(df,DataFrame(
-                time=float(t),
-                level=result.probs[1:len],
-                source=result.source,
-                lower=result.lower[1:len],
-                upper=result.upper[1:len]
-            ))
-        end
-        df |> @vlplot() +
-            @vlplot(:area,
-                x=:time,
-                y=:lower,
-                y2=:upper,opacity={value=0.3},
-                color=:source
-            ) + @vlplot(:line,
-                encoding={
-                    x={:time,axis={title="Time (s)"}},
-                    y={:level,axis={title="Level"}}
-                },
-                color=:source
-            )
-    end
+#     df = DataFrame()
+#     plot = if raw
+#         for result in results
+#             if !isempty(t)
+#                 df = vcat(df,DataFrame(time=float(t),level=result.norms[1:len],
+#                     source=result.source))
+#             end
+#         end
+#         df |> @vlplot() + @vlplot(
+#             :line,
+#             x={:time,axis={title="Time (s)"}},
+#             y={:level,axis={title="Level"}},
+#             color=:source
+#         )
+#     else
+#         for result in results
+#             df = vcat(df,DataFrame(
+#                 time=float(t),
+#                 level=result.probs[1:len],
+#                 source=result.source,
+#                 lower=result.lower[1:len],
+#                 upper=result.upper[1:len]
+#             ))
+#         end
+#         df |> @vlplot() +
+#             @vlplot(:area,
+#                 x=:time,
+#                 y=:lower,
+#                 y2=:upper,opacity={value=0.3},
+#                 color=:source
+#             ) + @vlplot(:line,
+#                 encoding={
+#                     x={:time,axis={title="Time (s)"}},
+#                     y={:level,axis={title="Level"}}
+#                 },
+#                 color=:source
+#             )
+#     end
 
-    plot
-end
+#     plot
+# end
 
 
 combine(x,y) =
@@ -320,43 +320,43 @@ inbound(x,::AllIndices) = true
 inbound(x,(lo,hi)::Tuple) = lo <= x <= hi
 inbound(x,bounds::Array{<:Tuple}) = inbound.(Ref(x),bounds)
 
-function plotswitches(trial,bounds,stim_events)
-    stim_index = stim_events.sound_index[trial]
-    direc_file = joinpath(stimulus_dir(),"mixtures","testing",
-        @sprintf("trial_%02d.direc",stim_index))
-    dirs = load_directions(direc_file)
-    len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
-    t = (1:len)./dirs.framerate
+# function plotswitches(trial,bounds,stim_events)
+#     stim_index = stim_events.sound_index[trial]
+#     direc_file = joinpath(stimulus_dir(),"mixtures","testing",
+#         @sprintf("trial_%02d.direc",stim_index))
+#     dirs = load_directions(direc_file)
+#     len = minimum(length.((dirs.dir1,dirs.dir2,dirs.dir3)))
+#     t = (1:len)./dirs.framerate
 
-    df = vcat(
-        DataFrame(time=t,dir=dirs.dir1,source="male"),
-        DataFrame(time=t,dir=dirs.dir2,source="fem1"),
-        DataFrame(time=t,dir=dirs.dir3,source="fem2")
-    )
-    df[inbound.(df.time,Ref(bounds)),:] |> @vlplot(:line,
-        height=60,
-        x={:time,scale={domain=t[[1,end]]},axis=nothing},
-        y={:dir,axis={title="direciton (° Azimuth)"}},color=:source)
-end
+#     df = vcat(
+#         DataFrame(time=t,dir=dirs.dir1,source="male"),
+#         DataFrame(time=t,dir=dirs.dir2,source="fem1"),
+#         DataFrame(time=t,dir=dirs.dir3,source="fem2")
+#     )
+#     df[inbound.(df.time,Ref(bounds)),:] |> @vlplot(:line,
+#         height=60,
+#         x={:time,scale={domain=t[[1,end]]},axis=nothing},
+#         y={:dir,axis={title="direciton (° Azimuth)"}},color=:source)
+# end
 
-function plottrial(method,results,stim_info,file;raw=false,bounds=all_indices)
-    trial = single(unique(map(r->r.trial,results)),
-        "Expected single trial number")
-    stim_events, = events_for_eeg(file,stim_info)
-    bounds = bounds(stim_events[trial,:])
-    attenplot = plotatten(method,results,raw,bounds)
+# function plottrial(method,results,stim_info,file;raw=false,bounds=all_indices)
+#     trial = single(unique(map(r->r.trial,results)),
+#         "Expected single trial number")
+#     stim_events, = events_for_eeg(file,stim_info)
+#     bounds = bounds(stim_events[trial,:])
+#     attenplot = plotatten(method,results,raw,bounds)
 
-    @vlplot(title=string("Trial ",trial),
-        spacing = 15,bounds = "flush") +
-    [
-        plotswitches(trial,bounds,stim_events);
-        combine(
-            plotresponse(method,results,bounds,stim_events,trial),
-            plottarget(stim_events,trial,stim_info),
-            attenplot
-        );
-    ]
-end
+#     @vlplot(title=string("Trial ",trial),
+#         spacing = 15,bounds = "flush") +
+#     [
+#         plotswitches(trial,bounds,stim_events);
+#         combine(
+#             plotresponse(method,results,bounds,stim_events,trial),
+#             plottarget(stim_events,trial,stim_info),
+#             attenplot
+#         );
+#     ]
+# end
 
 function channelattend(rows,stim_events,stim_info,fs)
     trial = single(unique(rows.trial),"Expected single trial number")
