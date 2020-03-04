@@ -16,7 +16,8 @@ To setup these analysis scripts on a new computer:
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
 3. Install [Julia](https://julialang.org)
-5. Install [fieldtrip](http://www.fieldtriptoolbox.org/download/) in Matlab
+4. Download [fieldtrip](http://www.fieldtriptoolbox.org/download/) and add it to the MATLAB path.
+5. Download [NoiseTools](http://audition.ens.fr/adc/NoiseTools/src/) (Version from 18-Feb-2020) and add it to the MATLAB path.
 6. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
 
 Run `scripts/julia/install.jl` in julia.
@@ -54,15 +55,8 @@ Run `scripts/julia/install.jl` in julia.
 
 ### EEG data
 
-There are few steps necessary to regenerate the preprocessed data files
-(which are stored in the `data/exp_pro` subfolder). In
-`data/exp_raw/config.json` you can specify the location of the raw BDF files
-and Presentation *.log files for your local machine. Once specified, you can
-use the following steps to generate the preprocessed data on your computer.
-This pipeline will skip file generation if it finds existing files in the
-output directory so you can also use this pipeline to add preprocessed data
-for a new participant, by including their raw BDF file in the same location
-as all other participant's raw data.
+There are few steps necessary to regenerate the preprocessed data files (which
+are stored in the `data/exp_pro` subfolder).
 
 1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers.
 2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
