@@ -36,9 +36,9 @@ channel_repair_cfg.elec = elec;
 plot_detrend_cfg = plot_cfg;
 plot_detrend_cfg.preproc.detrend = 'no';
 plot_detrend_cfg.preproc.demean = 'no';
-plot_detrend_cfg.eegscale = 50;
+plot_detrend_cfg.eegscale = 1;
 plot_detrend_cfg.mychan = ft_channelselection('EX*',eeg);
-plot_detrend_cfg.mychanscale = 50;
+plot_detrend_cfg.mychanscale = 1;
 
 % ======================================================================
 % clean the data: remove egregious artifacts, and de-trend the
@@ -71,6 +71,11 @@ eeg = my_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
@@ -120,8 +125,11 @@ alert()
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
-% add to data set
-% trial_order{2} = sort_trial_times(eeg,stim_events);
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
+ft_databrowser(plot_detrend_cfg,eeg);
+
 save_subject(eeg,'eeg_response_009_cleaned.mat')
 
 % subj 10 ----------------------------------------
@@ -149,7 +157,10 @@ alert()
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
-% TODO: what's with the differetn scales for different subjects?
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
+ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
 % trial_order{3} = sort_trial_times(eeg,stim_events);
@@ -206,6 +217,11 @@ alert()
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
+ft_databrowser(plot_detrend_cfg,eeg);
+
 % add to data set
 % trial_order{4} = sort_trial_times(eeg,stim_events);
 save_subject(eeg,'eeg_response_011_cleaned.mat')
@@ -249,6 +265,11 @@ alert()
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
+ft_databrowser(plot_detrend_cfg,eeg);
+
 % add to data set
 % trial_order{5} = sort_trial_times(eeg,stim_events);
 save_subject(eeg,'eeg_response_012_cleaned.mat')
@@ -277,6 +298,11 @@ eeg = my_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
@@ -320,6 +346,11 @@ eeg = my_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
+ft_databrowser(plot_detrend_cfg,eeg);
+
+% just use a very basic regression for now, to remove eyeblinks
+eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % add to data set
