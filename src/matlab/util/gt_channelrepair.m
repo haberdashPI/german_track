@@ -1,4 +1,4 @@
-function eeg = my_channelrepair(cfg,eeg)
+function eeg = gt_channelrepair(cfg,eeg)
     trials = 1:length(eeg.trial);
     if isfield(cfg,'trials') && ~strcmp(cfg.trials,'all')
         trials = cfg.trials;

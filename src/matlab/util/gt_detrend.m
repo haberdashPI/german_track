@@ -1,4 +1,4 @@
-function eeg = my_detrend(eeg,bad_trials)
+function eeg = gt_detrend(eeg,bad_trials)
     % linear detrending
     textprogressbar('Linear Detrending...');
     onCleanup(@() textprogressbar(''));

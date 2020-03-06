@@ -64,17 +64,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A28'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -116,17 +116,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A1','A2','A7','B1','B2','B3','B4','B21','A28',''};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -148,17 +148,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A4','A5','A28','B25'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -208,17 +208,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A28','B31'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -234,11 +234,11 @@ ft_databrowser(plot_cfg,eeg);
 
 channel_repair_cfg.badchannel = {'B26'};
 channel_repair_cfg.trials = 90;
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 channel_repair_cfg.badchannel = {'A21'};
 channel_repair_cfg.trials = 102;
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 ft_rejectvisual(reject_cfg,eeg);
 ft_databrowser(plot_cfg,eeg);
@@ -255,18 +255,18 @@ eeg = zero_trials(eeg,bad_trials);
 % TODO:
 channel_repair_cfg.badchannel = {'B26'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -291,17 +291,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A28'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -320,11 +320,11 @@ ft_databrowser(plot_cfg,eeg);
 
 % channel_repair_cfg.badchannel = {'B1','B2','A1'};
 % channel_repair_cfg.trials = 17;
-% eeg = my_channelrepair(channel_repair_cfg,eeg);
+% eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 channel_repair_cfg.badchannel = {'B26'};
 channel_repair_cfg.trials = 35;
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 ft_rejectvisual(reject_cfg,eeg);
 
@@ -339,17 +339,17 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'B1','B2','B14'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
 ft_databrowser(plot_detrend_cfg,eeg);
 
 % just use a very basic regression for now, to remove eyeblinks
-eeg = my_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
+eeg = gt_rmeog(eeg,ft_channelselection('EX*',eeg),bad_trials);
 
 ft_databrowser(plot_detrend_cfg,eeg);
 
@@ -378,10 +378,10 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A4','B3','A28'}
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % detrend the data
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
@@ -408,9 +408,9 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A28'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
@@ -435,9 +435,9 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'A24','B3'}
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result
@@ -462,12 +462,12 @@ writetable(stim_events,fullfile(data_dir,sprintf('sound_events_%03d.csv',sid)))
 eeg = zero_trials(eeg,bad_trials);
 channel_repair_cfg.badchannel = {'B25','A8','A28'};
 channel_repair_cfg.trials = 'all';
-eeg = my_channelrepair(channel_repair_cfg,eeg);
+eeg = gt_channelrepair(channel_repair_cfg,eeg);
 
 % double check rejections
 ft_rejectvisual(reject_cfg,eeg);
 
-eeg = my_detrend(eeg,bad_trials);
+eeg = gt_detrend(eeg,bad_trials);
 alert()
 
 % verify the result

@@ -1,4 +1,4 @@
-function eeg = my_rmeog(eeg,eog_channels,bad_trials)
+function eeg = gt_rmeog(eeg,eog_channels,bad_trials)
     selection = [];
     selection.channel = eog_channels;
     eog = ft_selectdata(selection,eeg);

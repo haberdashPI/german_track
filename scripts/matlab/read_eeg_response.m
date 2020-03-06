@@ -1,95 +1,80 @@
 run(fullfile('..','..','src','matlab','util','setup.m'));
-usecache = 1;
+usecache = 0;
 
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% subject 008
+% plot configuration
+
+% trial plot configuration
+plot_cfg = [];
+plot_cfg.viewmode = 'vertical';
+plot_cfg.eegscale = 1;
+plot_cfg.ylim = [-20 20];
+plot_cfg.preproc.detrend = 'yes';
+plot_cfg.preproc.demean = 'no';
+plot_cfg.blocksize = 8;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% subject 009
+
+% STEPS to get working:
+% 1. do on a per trial basis, rather than across all trials
+%    (the trials are quite long)
+% 2. get outlier detection working (see if it is worth it)
+% 3. find and remove eye blinks ussing DSS
 
 % get filename and SID
-file = fullfile(raw_data_dir,eegfiles(1).name);
+file = fullfile(raw_data_dir,eegfiles(2).name);
 numstr = regexp(file,'([0-9]+)_','tokens');
 sid = str2num(numstr{1}{1});
 
 % load and downsample the data
 head = ft_read_header(file);
+head.label = head.label([1:64 129:134]);
 eeg = ft_read_data(file)';
+eeg = eeg(:,[1:64 129:134]);
 eeg = nt_dsample(eeg,8);
+eeg = nt_demean(eeg);
 fs = head.Fs / 8; % 256 Hz
+head.Fs = fs;
 
 % read in the events
 event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
 stim_events = readtable(event_file);
 
+% drop samples after the end of the last trial (to avoid wacky channels as I
+% unplug the device)
+last_sample = round((stim_events(end,:).time+10) * fs);
+eeg = eeg(1:last_sample,:);
+
 % find bad channels, interpolate
-proportion=0.5; % criterion proportion of bad samples
-thresh1=3; % threshold in units of median absolute value over all data
-thresh2=[]; % absolute threshold
-thresh3=[]; % absolute threshold applied to sns-processed data
-bad_indices = nt_find_bad_channels(eeg(:,1:64),proportion,thresh1,thresh2,thresh3);
-[toGood,fromGood]=nt_interpolate_bad_channels(x(:,1:128),iBad,'biosemi64.lay');
-x(:,1:128)=x(:,1:128)*(toGood*fromGood);
-% iBad=nt_find_bad_channels(x(:,129:end),proportion,thresh1,thresh2,thresh3);
-% x(:,128+iBad)=0; % positions unknown, just zap
+bad_indices = nt_find_bad_channels(eeg(:,1:64),0.5,[],[],100);
+head.label(bad_indices) % run this line to see which indices are bad
 
-% for i = 1:length(eegfiles)
-%     eegfile = eegfiles(i).name;
-%     numstr = regexp(eegfile,'([0-9]+)_','tokens');
-%     sid = str2num(numstr{1}{1});
-%     result_file = fullfile(data_dir,sprintf('eeg_response_%03d.mat',sid));
+% visualize the bad channels next to neighboring good channels
+check_indices = [bad_indices; [bad_indices + 1]];
+check_indices = unique(check_indices(:));
+ft_databrowser(plot_cfg,gt_tofieldtrip(eeg,head,check_indices));
 
-%     if exist(result_file,'file') && usecache
-%         warning(['The file ' result_file ' already exists. Skipping...']);
-%         continue;
-%     end
+% select the actually bad indices
+bad_indices = bad_indices(2);
 
-%     disp(['reading responses for ' eegfile]);
-%     disp(['Found SID = ' num2str(sid)]);
+coords = nt_proximity('biosemi64.lay',63);
+[toGood,fromGood]=nt_interpolate_bad_channels(eeg(:,1:64),bad_indices,coords);
+eeg(:,1:64)=eeg(:,1:64)*(toGood*fromGood);
 
-%     event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
-%     stim_events = readtable(event_file);
-%     head = ft_read_header(fullfile(raw_data_dir,eegfile));
-%     fs = head.Fs;
+% visualize the data (with some basic preprocessing to make the data viewable)
+ft_databrowser(plot_cfg, gt_tofieldtrip(eeg,head));
 
-%     baseline = 0;
-%     % TODO: define the length based on the audio
-%     % to simplify my life later on
-%     baseline_samples = floor(baseline*fs);
-%     trial_len_samples = arrayfun(@(i)trial_length(fs,stim_events,i,0.5), 1:size(stim_events,1));
+% detrend: order of 1 point per 8 seconds
+[eeg,w]=nt_detrend(eeg,100);
+this_plot = plot_cfg;
+this_plot.preproc.detrend = 'no';
+ft_databrowser(this_plot, gt_tofieldtrip(eeg,head));
 
-%     % load the trials
-%     cfg = [];
-%     cfg.dataset = fullfile(raw_data_dir,eegfile);
-%     cfg.trl = [max(0,stim_events{:,'sample'}-baseline_samples) ...
-%         min(head.nSamples,stim_events{:,'sample'}+trial_len_samples) ...
-%         baseline_samples*ones(height(stim_events),1)];
-%     cfg.continuous = 'yes';
-%     if sid == 1
-%         cfg.channel = [1:128 257:264];
-%     elseif sid == 9
-%         cfg.channel = [1:64 129:134];
-%     else
-%         cfg.channel = 1:70;
-%     end
+% detect channel specific glitches
+[w,y]=nt_outliers(eeg,w,2,3);
 
-%     % Note: based on https://www.biorxiv.org/content/10.1101/530220v1
-%     % we don't apply a high-pass filter: instead, during clean_data.m
-%     % we use NoiseTools robust de-trending.
-
-%     raw_eeg_data = ft_preprocessing(cfg);
-
-%     % downsample the trials to 256 (minimal framerate to find artifacts)
-%     cfg = [];
-%     cfg.resamplefs = 256;
-%     eeg_data = ft_resampledata(cfg,raw_eeg_data);
-
-%     % re-reference the data
-%     cfg = [];
-%     cfg.refchannel = 'all';
-%     cfg.reref = 'yes';
-%     eeg_data = ft_preprocessing(cfg,eeg_data);
-
-%     % save to a file
-%     ft_write_data(result_file,eeg_data,'dataformat','matlab');
-% end
-% alert()
+% do we find any new bad indices? no, the found index doesn't look bad
+% bad_indices = nt_find_bad_channels(eeg(:,1:64),0.5,[],[],5);
