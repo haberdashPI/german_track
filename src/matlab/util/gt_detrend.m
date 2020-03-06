@@ -1,25 +1,18 @@
-function eeg = gt_detrend(eeg,bad_trials)
-    % linear detrending
-    textprogressbar('Linear Detrending...');
-    onCleanup(@() textprogressbar(''));
-    for i = 1:length(eeg.trial)
-        data = eeg.trial{i}';
-        if ~any(i == bad_trials)
-            eeg.trial{i} = nt_detrend(data,1)';
-        end
-        textprogressbar(100*(i/length(eeg.trial)));
-    end
-    fprintf('\n');
+function [data,w] = gt_detrend(data,orders,varargin)
+    p = inputParser;
+    p.addOptional('w',[]);
+    p.addOptional('basis','polynomials');
+    p.addOptional('threshs',[3 3]);
+    p.addOptional('niters',[3 3]);
+    p.addOptional('wsizes',{[], []});
+    parse(p,varargin{:});
 
-    % polynomial detrending
-    textprogressbar('Polynomial Detrending...');
-    onCleanup(@() textprogressbar('\n'));
-    for i = 1:length(eeg.trial)
-        data = eeg.trial{i}';
-        if ~any(i == bad_trials)
-            eeg.trial{i} = nt_detrend(data,10)';
-        end
-        textprogressbar(100*(i/length(eeg.trial)));
+    i = 0;
+    w = p.Results.w;
+    for ord = orders
+        i = i + 1;
+        [data,w] = nt_detrend(data,ord,w,...
+            p.Results.basis,p.Results.threshs(i),p.Results.niters(i),...
+            p.Results.wsizes{i});
     end
-    fprintf('\n');
 end
