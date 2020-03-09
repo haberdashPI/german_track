@@ -5,10 +5,7 @@ function eeg = gt_settrials(fn,args,varargin)
         cellargs = args(2:end);
     else
         eeg = args;
-        cellargs = cell(length(eeg.trial));
-        for i = 1:length(eeg.trial)
-            cellargs{i} = {};
-        end
+        cellargs = {};
     end
 
     [fnargs,params] = gt_findparams(varargin,{'progress','channels'});

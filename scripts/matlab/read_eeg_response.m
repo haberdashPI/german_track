@@ -115,25 +115,15 @@ nt_imagescc(outw')
 
 eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
 
-% find glithes in eye and reference channels
-exch= 65:70
-[outexw,exy] = gt_outliers(eegcat(:,exch),w(:,exch),2,3); % like nt_outliers, but shows a progress bar
-eegcat(:,exch)=gt_inpaint(eegcat,outexw); % interpolate over outliers
-nt_imagescc(outexw')
-
-eegcat(:,exch)=gt_inpaint(eegcat(:,exch),outexw); % interpolate over outliers
-
 % eyeblink removal
 
 % step 1: find regions of likely eye blinks and movement
 eog = 67:70; % the sensors near the eyes
-time_shifts = -5:5
+time_shifts = -5:5;
 eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(head.Fs/2), 'high');
-tmp=nt_pca(filter(B,A,eyes),time_shifts,4);
-plot(((1:size(tmp,1))/head.Fs),tmp);
-[b,a]=butter(5,20/(head.Fs/2), 'low');
-tmp=filter(b,a,tmp);
+plot(tmp);
+tmp=nt_pca(tmp,time_shifts,4);
 plot(((1:size(tmp,1))/head.Fs),tmp);
 mask=abs(tmp(:,1))>3*median(abs(tmp(:,1)));
 plot((1:size(eyes,1))/head.Fs,[eyes [mask; zeros(10,1)]*200])
@@ -144,14 +134,11 @@ C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
 [todss,pwr0,pwr1] = nt_dss0(C0,C1);
 % look at power of the components (to pick which ones to keep)
 plot(pwr1./pwr0, '.-')
-eye_comps = eegcat*todss(:,1:5);
-plot((1:size(eye_comps,1))/head.Fs,eye_comps)
-% Component 4 doesn't look very convincing
-plot((1:size(eye_comps,1))/head.Fs,eye_comps(:,1:3))
+eye_comps = eegcat*todss(:,1:8);
 
-% plot the components on a scalp to verify
+% plot the components on a scalp
 topo = [];
-topo.component = 1:4;
+topo.component = 1:8;
 topo.layout = lay;
 topo_data = eeg;
 topo_data.topo = todss;
@@ -159,7 +146,11 @@ topo_data.unmixing = pinv(todss);
 topo_data.topolabel = eeg.label; %cellfun(@(x)sprintf('EOG%02d',x),num2cell(1:size(todss,2)),'UniformOutput',0);
 ft_topoplotIC(topo,topo_data);
 
-eegclean = nt_tsr(eegcat,eye_comps(:,1:4),time_shifts);
+% plot timecourse of the components
+plot((1:size(eye_comps,1))/head.Fs,eye_comps)
+
+% looks like 5 and 6 are good
+eegclean = nt_tsr(eegcat,eye_comps(:,5:6),time_shifts);
 
 % rereference
 eegreref = nt_rereference(eegclean,[outw(6:end-5,:) outexw(6:end-5,:)]);
@@ -186,4 +177,4 @@ this_plot.preproc.detrend = 'no';
 ft_databrowser(plot_cfg, eegfinal);
 
 savename = regexprep(filename,'.bdf$','.eeg');
-save_subject_binary(eegfinal,fullfile(data_dir,name))
+save_subject_binary(eegfinal,fullfile(data_dir,savename))
