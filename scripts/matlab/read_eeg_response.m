@@ -55,17 +55,19 @@ event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
 stim_events = readtable(event_file);
 
 % read in eeg data header
-head = ft_read_header(file);
+head = ft_read_header(filepath);
 % for SID 9, we recorded some extra channels (skip them)
 head.label = head.label([1:64 129:134]);
 head.nChans = 70;
 
 % define trial boundaries
 cfg = [];
-cfg.dataset = file;
+cfg.dataset = filepath
 trial_lengths = round((sound_lengths(stim_events.sound_index)+0.5)*head.Fs);
 cfg.trl = [stim_events.sample stim_events.sample + trial_lengths ...
            zeros(length(stim_events.sample),1)];
+
+% read in the data
 cfg.continuous = 'no';
 cfg.channel = [1:64 129:134]; % for SID 9, extra channels were recorded
 eeg = ft_preprocessing(cfg);
@@ -80,21 +82,23 @@ eeg.time = gt_fortrials(@(data) ((1:size(data,1))/head.Fs),eeg)';
 eeg.fsample = eeg.fsample / 8;
 eeg.sampleinfo = round([stim_events.time*eeg.fsample stim_events.time*eeg.fsample + (cellfun(@(x) size(x,2),eeg.trial))' - 1]);
 
-% find bad channels
+% detrend the trials
+eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+
+% find bad channels, using linear detrending to avoid false positives
 freq = 0.5;
-all_bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,[],3,'channels',1:64);
-badfreqs = tabulate(horzcat(all_bad_indices{:}));
-bad_indices = badfreqs(badfreqs(:,2)/ntrials > freq,1);
-head.label(bad_indices) % run this line to see which indices are bad
+bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,150,0.75,'channels',1:64);
+head.label(bad_indices{15}) % run this line to see which indices are bad for a given trial
+ft_databrowser(plot_cfg, eeg);
 
 % interpolate bad channels
-coords = nt_proximity('biosemi64.lay',63);
-eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,bad_indices,coords,'channels',1:64);
+[closest,d]=nt_proximity('biosemi64.lay',63);
+eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,d,'channels',1:64);
 
 % visualize the data
 ft_databrowser(plot_cfg, eeg);
 
-% polynomial detrending
+% detrend again, this time recording the weights, for later use
 [trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
 this_plot = plot_cfg;

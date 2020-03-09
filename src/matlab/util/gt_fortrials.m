@@ -1,4 +1,15 @@
-function [varargout] = gt_fortrials(fn,eeg,varargin)
+function [varargout] = gt_fortrials(fn,args,varargin)
+    if iscell(args)
+        eeg = args{1};
+        cellargs = args{2:end};
+    else
+        eeg = args;
+        cellargs = cell(length(eeg.trial));
+        for i = 1:length(eeg.trial)
+            cellargs{i} = {};
+        end
+    end
+
     [fnargs,params] = gt_findparams(varargin,{'progress','channels'});
     p = inputParser;
     addParameter(p,'progress','',@ischar);
@@ -18,12 +29,17 @@ function [varargout] = gt_fortrials(fn,eeg,varargin)
         onCleanup(@() textprogressbar(''));
     end
     for i = 1:length(eeg.trial)
+        this_cellargs = cell(length(cellargs{i}),1);
+        for a = 1:length(cellargs{i})
+            this_cellargs{a} = cellargs{i}(a);
+        end
+
         result = cell(length(nargout),1);
         data = eeg.trial{i};
         if isempty(channels)
-            [result{1:nargout}] = fn(data',fnargs{:});
+            [result{1:nargout}] = fn(data',this_cellargs{:},fnargs{:});
         else
-            [result{1:nargout}] = fn(data(channels,:)',fnargs{:});
+            [result{1:nargout}] = fn(data(channels,:)',this_cellargs{:},fnargs{:});
         end
         for j = 1:nargout
             varargout{j}{i} = result{j};

@@ -1,5 +1,16 @@
 
-function eeg = gt_settrials(fn,eeg,varargin)
+function eeg = gt_settrials(fn,args,varargin)
+    if iscell(args)
+        eeg = args{1};
+        cellargs = args(2:end);
+    else
+        eeg = args;
+        cellargs = cell(length(eeg.trial));
+        for i = 1:length(eeg.trial)
+            cellargs{i} = {};
+        end
+    end
+
     [fnargs,params] = gt_findparams(varargin,{'progress','channels'});
     p = inputParser;
     addParameter(p,'progress','',@ischar);
@@ -15,12 +26,17 @@ function eeg = gt_settrials(fn,eeg,varargin)
         onCleanup(@() textprogressbar(''));
     end
     for i = 1:length(eeg.trial)
+        this_cellargs = cell(length(cellargs),1);
+        for a = 1:length(cellargs)
+            this_cellargs{a} = cellargs{a}{i};
+        end
+
         if isempty(channels)
             data = eeg.trial{i}';
-            eeg.trial{i} = fn(data,fnargs{:})';
+            eeg.trial{i} = fn(data,this_cellargs{:},fnargs{:})';
         else
             data = eeg.trial{i};
-            data(channels,:) = fn(data(channels,:)',fnargs{:})';
+            data(channels,:) = fn(data(channels,:)',this_cellargs{:},fnargs{:})';
             eeg.trial{i} = data;
         end
 
