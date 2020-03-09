@@ -14,6 +14,8 @@ using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
 using Flux
 using Flux: mse
+using TransformVariables
+using Zygote: @adjoint
 
 struct CvNorm
     λ::Float64
@@ -84,7 +86,7 @@ struct SemiDecoder{T}
     A::Array{T,2}
     u::Array{T,2}
 end
-Flux.params(x::SemiDecoder) = params(x.A,x.u)
+Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
 # transform a point in Rⁿ to an n-simplex
 function tosimplex(x)
@@ -100,6 +102,9 @@ function tosimplex(x)
     x
 end
 
+# TODO: working on this
+# @adjoint tosimplex(x) = tosimplex(x), fromsimplex(c)
+
 function SemiDecoder(x,y,v,tt)
     M,_ = size(x[1])
     H,K,_ = size(y[1])
@@ -111,45 +116,46 @@ function SemiDecoder(x,y,v,tt)
     @assert length(tt) == size(v,1) "Number of weights must match number of weight indices"
 
     A = randn(K,M)
-    u = randn(T - V),H
+    u = randn(T - V,H-1)
     SemiDecoder(A,u)
 end
 
 function loss(model::SemiDecoder,x,y,uindex::Int)
-    w = tosimplex(model.u[:,uindex])
-    mse(model.A*x,sum(w*y,dims=1))
+    w = transform(UnitSimplex(size(model.u)[2]+1),model.u[uindex,:])
+    mse(vec(model.A*x),vec(sum(w.*y,dims=1)))
 end
-loss(model::SemiDecoder,x,y,v::Array) = mse(model.A*x,sum(v*y,dims=1))
+loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1)))
 
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
-    loss = 0.0
-    loss += sum(enumerate(setdiff(1:T,tt))) do (ui,i)
+    L = 0.0
+    L += sum(enumerate(setdiff(1:T,tt))) do (ui,i)
         loss(model,x[i],y[i],ui)
     end
-    loss += sum(enumerate(tt)) do (vi,i)
-        loss(model,x[i],y[i],v[tt,:])
+    L += sum(enumerate(tt)) do (vi,i)
+        loss(model,x[i],y[i],vec(v[tt,:]))
     end
 end
 
 function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2)
     decoder = SemiDecoder(x,y,v,tt)
+    @assert batchsize < length(x) "Batch size must be less than data size."
 
     opt = ADAGrad()
     testx = x[sample(1:length(x),batchsize,replace=false)]
     testy = y[sample(1:length(x),batchsize,replace=false)]
     regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
 
-    data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffe=true)
+    data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffle=true)
     for n in 1:epochs
         function status()
             testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
             @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
         end
 
-        Flux.train!(@λ(loss(decoder,_data...,v,tt) + regf(decoder)),
-            params(decoder), data, opt,
-            callback = Flux.throttle(status,5))
+        Flux.train!(@λ(loss(decoder,_x,_y,v,tt) + regf(decoder)),
+            Flux.params(decoder), data, opt,
+            cb = Flux.throttle(status,5))
     end
 
     T = length(x)

@@ -33,13 +33,6 @@ for i = 1:length(sounds)
     sound_lengths(i) = size(x,1) / fs;
 end
 
-% STEPS to get working:
-% 1. do on a per trial basis, rather than across all trials
-%    (the trials are quite long, and there's data outside the trials
-%     that we don't need to clean)
-% 2. get outlier detection working (see if it is worth it)
-% 3. find and remove eye blinks ussing DSS
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % subject 008
 
