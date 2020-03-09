@@ -13,7 +13,14 @@ plot_cfg.eegscale = 1;
 plot_cfg.ylim = [-20 20];
 plot_cfg.preproc.detrend = 'yes';
 plot_cfg.preproc.demean = 'no';
-plot_cfg.blocksize = 8;
+plot_cfg.blocksize = 10;
+
+% topographic alyout
+elec = ft_read_sens(fullfile(raw_data_dir,'biosemi64.txt'));
+cfg = [];
+cfg.elec = elec;
+lay = ft_prepare_layout(cfg);
+ft_layoutplot(cfg)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find the length of all stimuli
@@ -21,7 +28,7 @@ plot_cfg.blocksize = 8;
 soundsdir = fullfile(stim_data_dir,'mixtures','testing');
 sounds = sort({dir(fullfile(soundsdir,'*.wav')).name});
 sound_lengths = zeros(length(sounds),1);
-set i = 1:length(sounds)
+for i = 1:length(sounds)
     [x,fs] = audioread(char(fullfile(soundsdir,sounds(i))));
     sound_lengths(i) = size(x,1) / fs;
 end
@@ -37,8 +44,10 @@ end
 % subject 009
 
 % get filename and SID
-file = fullfile(raw_data_dir,eegfiles(2).name);
-numstr = regexp(file,'([0-9]+)_','tokens');
+
+filename = eegfiles(2).name;
+filepath = fullfile(raw_data_dir,filename);
+numstr = regexp(filepath,'([0-9]+)_','tokens');
 sid = str2num(numstr{1}{1});
 
 % read in the events
@@ -54,8 +63,9 @@ head.nChans = 70;
 % define trial boundaries
 cfg = [];
 cfg.dataset = file;
-trial_lengths = round(sound_lengths(stim_events.sound_index)*head.Fs);
-cfg.trl = [stim_events.sample stim_events.sample + trial_lengths zeros(length(stim_events.sample),1)];
+trial_lengths = round((sound_lengths(stim_events.sound_index)+0.5)*head.Fs);
+cfg.trl = [stim_events.sample stim_events.sample + trial_lengths ...
+           zeros(length(stim_events.sample),1)];
 cfg.continuous = 'no';
 cfg.channel = [1:64 129:134]; % for SID 9, extra channels were recorded
 eeg = ft_preprocessing(cfg);
@@ -85,26 +95,91 @@ eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,bad_indices,coords,'channels
 ft_databrowser(plot_cfg, eeg);
 
 % polynomial detrending
-[trials,w] = gt_fortrials(@gt_detrend,eeg,[1 5],'progress','detrending...');
+[trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
 this_plot = plot_cfg;
 this_plot.preproc.detrend = 'no';
 ft_databrowser(this_plot, eeg);
 
-% eyeblin removal
+% find channel glitches (exclude ref and eyeblinks)
+eegcat = gt_fortrials(@(x)x,eeg);
+eegcat = vertcat(eegcat{:});
+w = vertcat(w{:});
+eegch = 1:64;
+[outw,y] = gt_outliers(eegcat(:,eegch),w(:,eegch),2,3); % like nt_outliers, but shows a progress bar
+nt_imagescc(outw')
+
+eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
+
+% find glithes in eye and reference channels
+exch= 65:70
+[outexw,exy] = gt_outliers(eegcat(:,exch),w(:,exch),2,3); % like nt_outliers, but shows a progress bar
+eegcat(:,exch)=gt_inpaint(eegcat,outexw); % interpolate over outliers
+nt_imagescc(outexw')
+
+eegcat(:,exch)=gt_inpaint(eegcat(:,exch),outexw); % interpolate over outliers
+
+% eyeblink removal
 
 % step 1: find regions of likely eye blinks and movement
 eog = 67:70; % the sensors near the eyes
-eyes = gt_fortrials(@(x) x(:,eog),eeg);
-eyes = vertcat(eyes{:});
+time_shifts = -5:5
+eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(head.Fs/2), 'high');
-tmp=nt_pca(filter(B,A,eyes));
+tmp=nt_pca(filter(B,A,eyes),time_shifts,4);
+plot(((1:size(tmp,1))/head.Fs),tmp);
+[b,a]=butter(5,20/(head.Fs/2), 'low');
+tmp=filter(b,a,tmp);
+plot(((1:size(tmp,1))/head.Fs),tmp);
 mask=abs(tmp(:,1))>3*median(abs(tmp(:,1)));
-plot([eyes mask*200])
+plot((1:size(eyes,1))/head.Fs,[eyes [mask; zeros(10,1)]*200])
 
 % step 2: find components using
-C0=nt_cov(x);
-C1=nt_cov(bsxfun(@times, x,mask));
+C0=nt_cov(eegcat);
+C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
+[todss,pwr0,pwr1] = nt_dss0(C0,C1);
+% look at power of the components (to pick which ones to keep)
+plot(pwr1./pwr0, '.-')
+eye_comps = eegcat*todss(:,1:5);
+plot((1:size(eye_comps,1))/head.Fs,eye_comps)
+% Component 4 doesn't look very convincing
+plot((1:size(eye_comps,1))/head.Fs,eye_comps(:,1:3))
 
-% do we find any new bad indices? no, the found index doesn't look bad
-% bad_indices = nt_find_bad_channels(eeg(:,1:64),0.5,[],[],5);
+% plot the components on a scalp to verify
+topo = [];
+topo.component = 1:4;
+topo.layout = lay;
+topo_data = eeg;
+topo_data.topo = todss;
+topo_data.unmixing = pinv(todss);
+topo_data.topolabel = eeg.label; %cellfun(@(x)sprintf('EOG%02d',x),num2cell(1:size(todss,2)),'UniformOutput',0);
+ft_topoplotIC(topo,topo_data);
+
+eegclean = nt_tsr(eegcat,eye_comps(:,1:4),time_shifts);
+
+% rereference
+eegreref = nt_rereference(eegclean,[outw(6:end-5,:) outexw(6:end-5,:)]);
+
+eegfinal = eeg;
+eegfinal.time{1} = eegfinal.time{1}(6:end);
+eegfinal.time{end} = eegfinal.time{end}(1:end-5);
+eegfinal.trial = {};
+eegfinal.sampleinfo = eeg.sampleinfo;
+eegfinal.sampleinfo(1,1) = eegfinal.sampleinfo(1,1)+5;
+eegfinal.sampleinfo(end,2) = eegfinal.sampleinfo(end,2)-5;
+k = 1;
+for i = 1:ntrials
+    n = size(eeg.trial{i},2);
+    if i == 1 || i == ntrials
+        n = n - 5;
+    end
+    eegfinal.trial{i} = eegreref(k:(k+n-1),:)';
+    k = k+n;
+end
+
+this_plot = plot_cfg;
+this_plot.preproc.detrend = 'no';
+ft_databrowser(plot_cfg, eegfinal);
+
+savename = regexprep(filename,'.bdf$','.eeg');
+save_subject_binary(eegfinal,fullfile(data_dir,name))
