@@ -7,7 +7,13 @@ library(forcats)
 # way to infer which events are missing (it appears some triggers did not
 # record at it isn't clear which ones from looking at the data)
 
-for(sid in c(8:14,16:19)){
+# missing SID:
+# 1-7: piloting data using different stimulus
+# 15, 20, 23: badly recorded event file, can't be certain which events correspond to what stimuli
+#  (might be able to fix some of these)
+# 26: badly reorded event file, and listener reported memorizing stimuli to determine the correct response (!!)
+
+for(sid in c(8:14,16:19, 21:22, 24:25, 27:35)){
 
 cat(paste0('Sid: ',sid,'\n'))
 efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
@@ -77,6 +83,8 @@ if(sid == 9){
         mutate(sample = sound_events$sample[trial],
                time = sound_events$time[trial]) %>%
         mutate(trial = trial - ifelse(trial <= 49,0,ifelse(trial <= 103,2,4)))
+}else if(sid == 23){
+    # presentation failed to record the final trial
 }else{
     sound_events = filter(ef,bit == 5)
     if(nrow(sound_events) != 154)
@@ -86,8 +94,13 @@ if(sid == 9){
         rename(pres_time = time) %>%
         mutate(sample = sound_events$sample[trial],
                time = sound_events$time[trial]) %>%
-        mutate(trial = trial - ifelse(trial <= 50,0,ifelse(trial <= 104,2,4)))
+        mutate(trial = trial - ifelse(trial <= 50,0,ifelse(trial <= 104,2,4))) %>%
+        arrange(trial)
 }
+
+# if we have indexing errors above, check them using the below plot
+# plotdf = ef %>% filter(bit == 5) %>% mutate(index = 1:length(bit))
+# ggplot(plotdf,aes(x=time,y=index)) + geom_point() + geom_text(aes(label=index),nudge_x = 50)
 
 if(any(diff(pf$trial) != 1)){
     stop("Improper trial indices!")
