@@ -16,6 +16,7 @@ using Flux
 using Flux: mse
 using TransformVariables
 using Zygote: @adjoint
+using StatsFuns
 
 struct CvNorm
     λ::Float64
@@ -88,22 +89,37 @@ struct SemiDecoder{T}
 end
 Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
-# transform a point in Rⁿ to an n-simplex
-function tosimplex(x)
-    K = length(x)
-    z = [σ(x[k] + log(1/(K - k))) for k in 1:(K-1)]
-    x = Array{eltype(x)}(undef,K)
-    c = x[1] = z[1]
+# transform a point in Rⁿ to an (n+1)-simplex
+zsticks(x,K) = [σ(x[k] + log(1/(K - k))) for k in 1:(K-1)]
+
+function zsimplex(z,K)
+    y = Array{eltype(z)}(undef,K)
+    c = y[1] = z[1]
     for k in 2:(K-1)
-        x[k] = (1-c)z[k]
-        c += x[k]
+        y[k] = (1-c)z[k]
+        c += y[k]
     end
-    x[K] = (1-c)
-    x
+    y[K] = (1-c)
+    y
 end
 
-@adjoint function tosimplex(x)
-    # TODO: refer to stan reference, or use jacabian from `TransformVariables`
+@adjoint function zsimplex(z,K)
+    y = zsimplex(z,K)
+    y, function(Δ)
+        Δx = Array{eltype(z)}(undef,K-1)
+        Δx[1] = Δ[1]
+        c = y[1]
+        for k in 2:(K-1)
+            Δx[k] = Δ[k]*(1 - c)
+            c += y[k]
+        end
+        (Δx, nothing)
+    end
+end
+
+function tosimplex(x)
+    K = length(x)+1
+    zsimplex(zsticks(x,K),K)
 end
 
 function SemiDecoder(x,y,v,tt)
@@ -122,7 +138,8 @@ function SemiDecoder(x,y,v,tt)
 end
 
 function loss(model::SemiDecoder,x,y,uindex::Int)
-    w = transform(UnitSimplex(size(model.u)[2]+1),model.u[uindex,:])
+    # w = transform(UnitSimplex(size(model.u)[2]+1),model.u[uindex,:])
+    w = tosimplex(model.u[uindex,:])
     mse(vec(model.A*x),vec(sum(w.*y,dims=1)))
 end
 loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1)))

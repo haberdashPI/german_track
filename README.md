@@ -99,3 +99,8 @@ Subjects 8-16: A28 is a bad electrode.
 Subject 9 used an older version of the trigger codes, and the first test
 trial (of 150) was lost (the scripts loading 9's data account for this).
 
+Subject 24: Recorded start of EEG data using wrong config: this is stored as
+24A (under the `ignore` folder); this recording occurred during the training
+section of the experiment; since training data is already ignored, no change in
+the analysis for this subject is necessary.
+

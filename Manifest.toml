@@ -327,7 +327,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "1.9.1"
 
 [[EEGCoding]]
-deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StructuredOptimization", "Tables", "TensorOperations", "TransformVariables", "Unitful", "Zygote"]
+deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StatsFuns", "StructuredOptimization", "Tables", "TensorOperations", "TransformVariables", "Unitful", "Zygote"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -719,9 +719,9 @@ version = "0.3.7+7"
 
 [[OpenSpecFun_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
-git-tree-sha1 = "d110040968b9afe95c6bd9c6233570b0fe8abd22"
+git-tree-sha1 = "d51c416559217d974a1113522d5919235ae67a87"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
-version = "0.5.3+2"
+version = "0.5.3+3"
 
 [[OrderedCollections]]
 deps = ["Random", "Serialization", "Test"]
