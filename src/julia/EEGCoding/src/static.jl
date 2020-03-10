@@ -102,8 +102,9 @@ function tosimplex(x)
     x
 end
 
-# TODO: working on this
-# @adjoint tosimplex(x) = tosimplex(x), fromsimplex(c)
+@adjoint function tosimplex(x)
+    # TODO: refer to stan reference, or use jacabian from `TransformVariables`
+end
 
 function SemiDecoder(x,y,v,tt)
     M,_ = size(x[1])
@@ -129,12 +130,13 @@ loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1))
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
     L = 0.0
-    L += sum(enumerate(setdiff(1:T,tt))) do (ui,i)
-        loss(model,x[i],y[i],ui)
+    for (ui,i) in enumerate(setdiff(1:T,tt))
+        L += loss(model,x[i],y[i],ui)
     end
-    L += sum(enumerate(tt)) do (vi,i)
-        loss(model,x[i],y[i],vec(v[tt,:]))
+    for (vi,i) in enumerate(tt)
+        L += loss(model,x[i],y[i],vec(v[tt,:]))
     end
+    L
 end
 
 function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2)
