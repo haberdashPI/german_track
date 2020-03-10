@@ -204,7 +204,7 @@ for iIter=1:niter
         MAXGAPSIZE=100;
         y(:,iChan)=fillgap(y(:,iChan),www,MAXGAPSIZE);
 
-        textprogressbar(100*(iChan+(iIter-1)*iChan)/(niter*nchan))
+        textprogressbar(100*(iChan+(iIter-1)*nchan)/(niter*nchan))
     end
 
 

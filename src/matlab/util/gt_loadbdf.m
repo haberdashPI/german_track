@@ -25,5 +25,4 @@ function [eeg,ntrials,markers] = gt_loadbdf(filepath,stim_events,varargin)
 
     eeg = ft_preprocessing(cfg);
     ntrials = length(eeg.trial);
-    markers = cumsum(eeg.sampleinfo(:,2) - eeg.sampleinfo(:,1));
 end
