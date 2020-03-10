@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode
+export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex
 
 using MetaArrays
 using Printf
@@ -13,7 +13,7 @@ using LambdaFn
 using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
 using Flux
-using Flux: mse
+using Flux: mse, onehot
 using TransformVariables
 using Zygote: @adjoint
 using StatsFuns
@@ -106,6 +106,7 @@ end
 @adjoint function zsimplex(z,K)
     y = zsimplex(z,K)
     y, function(Δ)
+        @show Δ
         Δx = Array{eltype(z)}(undef,K-1)
         Δx[1] = Δ[1]
         c = y[1]
@@ -113,6 +114,7 @@ end
             Δx[k] = Δ[k]*(1 - c)
             c += y[k]
         end
+        @show Δx
         (Δx, nothing)
     end
 end
