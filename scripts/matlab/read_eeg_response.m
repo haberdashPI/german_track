@@ -595,7 +595,7 @@ stim_events = readtable(event_file);
 % read in eeg data header
 [eeg,ntrials] = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',1:70);
 % useful when we concatenate the trials for analysis
-trial_markers = cumsum(eeg.sampleinfo(:,2) - eeg.sampleinfo(:,1));
+markers = cumsum(eeg.sampleinfo(:,2) - eeg.sampleinfo(:,1));
 
 eeg = gt_downsample(eeg,stim_events,8);
 eeg = gt_settrials(@nt_demean,eeg);
@@ -646,7 +646,7 @@ eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
 tmp = filter(B,A,eyes);
 % select trial 8 as a good example
-trial = trial_markers(13):trial_markers(14);
+trial = markers(13):markers(14);
 % figure;
 plot(tmp(trial,:));
 pcas=nt_pca(tmp,time_shifts,4);
@@ -745,8 +745,7 @@ time_shifts = -5:5;
 eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
 tmp = filter(B,A,eyes);
-% select trial 8 as a good example
-trial = markers(13):markers(14);
+trial = markers(5):markers(6);
 % figure;
 plot(tmp(trial,:));
 pcas=nt_pca(tmp,time_shifts,4);
