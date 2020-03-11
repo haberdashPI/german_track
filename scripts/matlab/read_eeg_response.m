@@ -979,7 +979,7 @@ eegcat = vertcat(eegcat{:});
 % there are basically no glithes (after agressive channel imterpolation)
 w = vertcat(w{:});
 eegch = 1:64;
-[outw,~] = gt_outliers(eegcat(:,eegch),w(:,eegch),3,4); % like nt_outliers, but shows a progress bar
+[outw,~] = gt_outliers(eegcat(:,eegch),w(:,eegch),5,4); % like nt_outliers, but shows a progress bar
 
 % inspect the weights
 this_plot = plot_cfg;
@@ -989,10 +989,8 @@ ft_databrowser(plot_cfg, eeg);
 
 eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
 
-ft_databrowser(plot_cfg, eeg);
-
 % visualize the data
-figure; ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegcat));
+ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegcat));
 
 % step 1: find regions of likely eye blinks and movement
 eog = 67:70; % the sensors near the eyes
