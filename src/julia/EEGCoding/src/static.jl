@@ -90,9 +90,10 @@ end
 Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
 # transform a point in Rⁿ to an (n+1)-simplex
-zsticks(x,K) = [σ(x[k] + log(1/(K - k))) for k in 1:(K-1)]
+zsticks(x) = [σ(x[k] + log(1/(length(x)+1 - k))) for k in 1:length(x)]
 
-function zsimplex(z,K)
+function zsimplex(z)
+    K = length(z)+1
     y = Array{eltype(z)}(undef,K)
     c = y[1] = z[1]
     for k in 2:(K-1)
@@ -103,8 +104,9 @@ function zsimplex(z,K)
     y
 end
 
-@adjoint function zsimplex(z,K)
-    y = zsimplex(z,K)
+@adjoint function zsimplex(z)
+    K = length(z)+1
+    y = zsimplex(z)
     y, function(Δ)
         @show Δ
         Δx = Array{eltype(z)}(undef,K-1)
@@ -115,14 +117,11 @@ end
             c += y[k]
         end
         @show Δx
-        (Δx, nothing)
+        (Δx,)
     end
 end
 
-function tosimplex(x)
-    K = length(x)+1
-    zsimplex(zsticks(x,K),K)
-end
+tosimplex(x) = zsimplex(zsticks(x))
 
 function SemiDecoder(x,y,v,tt)
     M,_ = size(x[1])
