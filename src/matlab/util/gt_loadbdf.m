@@ -4,17 +4,20 @@ function [eeg,ntrials,markers] = gt_loadbdf(filepath,stim_events,varargin)
     p = inputParser;
     addParameter(p,'channels',[],@isnumeric);
     addParameter(p,'lengths',[],@isnumeric);
+    addParameter(p,'padend',0.5,@isnumeric);
     p.FunctionName = 'gt_loadbdf';
     parse(p,varargin{:});
     sound_lengths = p.Results.lengths;
     channels = p.Results.channels;
+    padend = p.Results.padend;
 
     % define trial boundaries
     cfg = [];
     cfg.dataset = filepath;
-    trial_lengths = round((sound_lengths(stim_events.sound_index)+0.5)*head.Fs);
+    trial_lengths = round((sound_lengths(stim_events.sound_index)+padend)*head.Fs);
+    leading = [stim_events.sample(2:end); head.nSamples];
     cfg.trl = [stim_events.sample ...
-               min(head.nSamples,stim_events.sample + trial_lengths) ...
+               min(leading,stim_events.sample + trial_lengths) ...
                zeros(length(stim_events.sample),1)];
 
     % read in the data

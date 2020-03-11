@@ -926,4 +926,136 @@ ft_databrowser(plot_cfg, eegfinal);
 savename = regexprep(filename,'.bdf$','.eeg');
 save_subject_binary(eegfinal,fullfile(data_dir,savename))
 
+% subject 017 is complete garbage, there is no signal
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% subject 018
+
+filename = eegfiles(10).name;
+filepath = fullfile(raw_data_dir,filename);
+numstr = regexp(filepath,'([0-9]+)_','tokens');
+sid = str2num(numstr{1}{1});
+
+% read in the events
+event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
+stim_events = readtable(event_file);
+
+% read in eeg data header
+[eeg,ntrials] = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,...
+    'channels',1:70,'padend',0.25);
+% useful when we concatenate the trials for analysis
+
+eeg = gt_downsample(eeg,stim_events,8);
+eeg = gt_settrials(@nt_demean,eeg);
+eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+markers = cumsum(eeg.sampleinfo(:,2) - eeg.sampleinfo(:,1));
+
+ft_databrowser(plot_cfg, eeg);
+
+% remove two channels I know, immediately are bad
+channels = [28];
+eeg.hdr.label(channels) % shows the channels 'A28' and 'B25';
+eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,channels,closest,d,'channels',1:64);
+
+freq = 0.5;
+bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,150,1.5,'channels',1:64);
+eeg.hdr.label(bad_indices{25}) % run this line to see which indices are bad for a given trial
+
+ft_databrowser(plot_cfg, eeg);
+
+% interpolate bad channels
+eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,d,'channels',1:64);
+
+% detrend again, this time recording the weights, for later use
+[trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
+
+% visualize the data
+ft_databrowser(plot_cfg, eeg);
+
+% find channel glitches (exclude ref and eye channels)
+eegcat = gt_fortrials(@(x)x,eeg);
+eegcat = vertcat(eegcat{:});
+% there are basically no glithes (after agressive channel imterpolation)
+w = vertcat(w{:});
+eegch = 1:64;
+[outw,~] = gt_outliers(eegcat(:,eegch),w(:,eegch),3,4); % like nt_outliers, but shows a progress bar
+
+% inspect the weights
+this_plot = plot_cfg;
+this_plot.ylim = [0 1];
+ft_databrowser(this_plot,gt_asfieldtrip(eeg,[outw zeros(size(outw,1),6)]));
+ft_databrowser(plot_cfg, eeg);
+
+eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
+
+ft_databrowser(plot_cfg, eeg);
+
+% visualize the data
+figure; ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegcat));
+
+% step 1: find regions of likely eye blinks and movement
+eog = 67:70; % the sensors near the eyes
+time_shifts = -5:5;
+eyes = eegcat(:,eog);
+[B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
+tmp = filter(B,A,eyes);
+pcas=nt_pca(tmp,time_shifts,4);
+
+% figure;
+chans = cellfun(@(x)sprintf('pca%02d',x),num2cell(1:4),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-30 30];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,...
+    'cropfirst',5,'croplast',5))
+
+% compute signal envelope via hilbert transform
+c = pcas(:,1);
+c = abs(hilbert(c));
+
+% blinks are quite rare in this subject
+mask=abs(c)>5*median(abs(c));
+eyemask = [eyes [mask; zeros(10,1)]*200];
+chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(1:4),'UniformOutput',false);
+chans = [ chans 'mask' ];
+this_plot = plot_cfg;
+this_plot.ylim = [-200 200];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,eyemask,'label',chans))
+
+
+% ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
+
+% step 2: find components using
+C0=nt_cov(eegcat)
+C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
+[todss,pwr0,pwr1] = nt_dss0(C0,C1);
+% look at power of the components (to pick which ones to keep)
+figure; plot(pwr1./pwr0, '.-')
+comps = 1:12;
+eye_comps = eegcat*todss(:,comps);
+
+% plot the components on a scalp
+topo = [];
+topo.component = comps;
+topo.layout = lay;
+ft_topoplotIC(topo,gt_ascomponent(eeg,todss));
+
+% plot timecourse of the components
+chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-1e-3 1e-3];
+figure; ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans))
+
+eegclean = nt_tsr(eegcat,eye_comps(:,4),time_shifts);
+
+% rereference
+eegreref = nt_rereference(eegclean,[outw(6:end-5,:) ones(size(eegclean,1),6)]);
+
+eegfinal = gt_asfieldtrip(eeg,eegreref,'cropfirst',5,'croplast',5);
+ft_databrowser(plot_cfg, eegfinal);
+
+savename = regexprep(filename,'.bdf$','.eeg');
+save_subject_binary(eegfinal,fullfile(data_dir,savename))
+
+
 
