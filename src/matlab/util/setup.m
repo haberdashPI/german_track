@@ -10,15 +10,6 @@ base_dir = join(dirs,filesep);
 base_dir = base_dir{1};
 cd(base_dir)
 
-fprintf('Base directory is %s\n',base_dir);
-addpath(fullfile(base_dir,'src','matlab','util'));
-
-% fieldtrip can be installed from http://www.fieldtriptoolbox.org/
-% add it to the MATLAB path
-ft_defaults;
-% download https://github.com/sofacoustics/API_MO and add to MATLAB path
-SOFAstart;
-
 global base_dir;
 global analysis_dir;
 global cache_dir;
@@ -27,6 +18,15 @@ global raw_data_dir;
 global stim_data_dir;
 global stimulus_dir;
 global raw_stim_dir;
+
+fprintf('Base directory is %s\n',base_dir);
+addpath(fullfile(base_dir,'src','matlab','util'));
+
+% fieldtrip can be installed from http://www.fieldtriptoolbox.org/
+% add it to the MATLAB path
+ft_defaults;
+% download https://github.com/sofacoustics/API_MO and add to MATLAB path
+SOFAstart;
 
 dates = read_json(fullfile(base_dir,'dateconfig.json'));
 
