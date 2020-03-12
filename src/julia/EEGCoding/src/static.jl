@@ -16,6 +16,7 @@ using Flux
 using Flux: mse, onehot
 using TransformVariables
 using Zygote: @adjoint
+using Zygote
 using StatsFuns
 
 struct CvNorm
@@ -108,7 +109,6 @@ end
     K = length(z)+1
     y = zsimplex(z)
     y, function(Δ)
-        @show Δ
         Δx = Array{eltype(z)}(undef,K-1)
         Δx[1] = Δ[1]
         c = y[1]
@@ -116,7 +116,6 @@ end
             Δx[k] = Δ[k]*(1 - c)
             c += y[k]
         end
-        @show Δx
         (Δx,)
     end
 end
@@ -148,40 +147,54 @@ loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1))
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
     L = 0.0
-    for (ui,i) in enumerate(setdiff(1:T,tt))
-        L += loss(model,x[i],y[i],ui)
-    end
-    for (vi,i) in enumerate(tt)
-        L += loss(model,x[i],y[i],vec(v[tt,:]))
+    stt = Set(tt)
+    ui = 0
+    vi = 0
+    for i in 1:T
+        if i in stt
+            vi += 1
+            L += loss(model,x[i],y[i],vec(v[tt,:]))
+        else
+            ui += 1
+            L += loss(model,x[i],y[i],ui)
+        end
     end
     L
 end
 
-function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2)
+function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,testcb)
     decoder = SemiDecoder(x,y,v,tt)
-    @assert batchsize < length(x) "Batch size must be less than data size."
+    @assert batchsize <= length(x) "Batch size must be less than data size."
 
-    opt = ADAGrad()
-    testx = x[sample(1:length(x),batchsize,replace=false)]
-    testy = y[sample(1:length(x),batchsize,replace=false)]
+    # testx = x[sample(1:length(x),batchsize,replace=false)]
+    # testy = y[sample(1:length(x),batchsize,replace=false)]
+    testx = x
+    testy = y
     regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
 
     data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffle=true)
-    for n in 1:epochs
-        function status()
-            testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
-            @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
-        end
 
-        Flux.train!(@λ(loss(decoder,_x,_y,v,tt) + regf(decoder)),
-            Flux.params(decoder), data, opt,
-            cb = Flux.throttle(status,5))
+    epoch = 0
+    function status()
+        testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
+        Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
+        @info "Weight Gradient $(Δ[decoder.u])"
+        @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
+        testcb(decoder)
     end
+    throt_status = Flux.throttle(status,status_rate)
+
+    for n in 1:epochs
+        epoch = n
+        Flux.train!(@λ(loss(decoder,_x,_y,v,tt) + regf(decoder)),
+            Flux.params(decoder), data, optimizer, cb = throt_status)
+    end
+    status()
 
     T = length(x)
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
-    w[setdiff(1:T,tt),:] = decoder.u
+    w[setdiff(1:T,tt),:] = mapslices(tosimplex,decoder.u,dims=2)
     decoder.A, w
 end
 

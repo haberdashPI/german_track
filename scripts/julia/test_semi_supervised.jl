@@ -31,15 +31,27 @@ eeg = [vcat(0.2randn(20,size(envelopes[1],3)),
 a, ŵ = EEGCoding.regressSS(eeg,envelopes,w[1:1,:],1:1,EEGCoding.CvNorm(0.5,2))
 
 plotaxes(vec(a))
-plotaxes(ŵ)
-R"quartz()"
 plotaxes(w')
+R"quartz()"
+plotaxes(ŵ)
 
-a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:1,:],1:1,EEGCoding.CvNorm(0.5,2),batchsize=2)
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:1,:],1:1,EEGCoding.CvNorm(0.5,1),
+    batchsize=2,epochs=5,status_rate=0.5,optimizer = AMSGrad(),
+    testcb = function(decoder)
+        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[2:end,:]
+        @info "Weight differences: $(sum(diff.^2))."
+    end)
+
+plotaxes(vec(a))
+R"quartz()"
+plotaxes(w)
+R"quartz()"
+plotaxes(ŵ)
 
 # okay, that looks good, let's try something closer go the size of the actual
 # problem
 
+#=
 T = 1_000
 H = 3
 
@@ -58,3 +70,4 @@ plotaxes(vec(a))
 plotaxes(ŵ)
 R"quartz()"
 plotaxes(w')
+=#
