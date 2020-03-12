@@ -79,35 +79,57 @@ eegcat = vertcat(eegcat{:});
 w = vertcat(w{:});
 eegch = 1:64;
 [outw,~] = gt_outliers(eegcat(:,eegch),w(:,eegch),2,3); % like nt_outliers, but shows a progress bar
-nt_imagescc(outw')
 
+% inspect the weights
 this_plot = plot_cfg;
-this_plot.continuous = 'yes';
-ft_databrowser(this_plot, eeg);
+this_plot.ylim = [0 1];
+ft_databrowser(this_plot,gt_asfieldtrip(eeg,[outw zeros(size(outw,1),6)]));
+ft_databrowser(plot_cfg, eeg);
 
 eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
+
+% visualize the data
+ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegcat));
 
 % ft_databrowser(plot_cfg, eeg);
 
 % step 1: find regions of likely eye blinks and movement
 eog = 67:70; % the sensors near the eyes
-time_shifts = -5:5;
+time_shifts = 0:10;
 eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
 tmp = filter(B,A,eyes);
-plot(tmp(35000:36000,:));
+
+% figure;
+chans = cellfun(@(x)sprintf('eog%02d',x),num2cell(1:4),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-100 100];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp,'label',chans))
+
 % note: this participant has a strong alpha component in their activity
 % I filter it out to find just eyeblinks
 b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
 tmp2 = filtfilt(b,1,tmp);
-figure; plot(tmp2(35000:36000,:));
 
-pcas=nt_pca(tmp2,time_shifts,4);
-figure; plot(pcas(35000:36000,:));
-plot(((1:size(pcas))/eeg.hdr.Fs),pcas);
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp2,'label',chans))
+
+[pcas,idx]=nt_pca(tmp2,time_shifts,4);
+
+chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-400 400];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,'cropfirst',10));
+
 % blinks are quite rare in this subject
-mask=abs(pcas(:,1))>8*median(abs(pcas(:,1)));
-plot((1:size(eyes,1))/eeg.hdr.Fs,[tmp [mask; zeros(10,1)]*200])
+c = abs(hilbert(pcas(:,1)));
+mask=abs(c)>4*median(abs(c));
+eyemask = [eyes [mask; zeros(10,1)]*200];
+chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(1:4),'UniformOutput',false);
+chans = [ chans 'mask' ];
+this_plot = plot_cfg;
+this_plot.ylim = [-200 200];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,eyemask,'label',chans))
+
 % ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
 
 % step 2: find components using
@@ -116,24 +138,30 @@ C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
 [todss,pwr0,pwr1] = nt_dss0(C0,C1);
 % look at power of the components (to pick which ones to keep)
 plot(pwr1./pwr0, '.-')
-eye_comps = eegcat*todss(:,1:4);
+comps = 1:3;
+eye_comps = eegcat*todss(:,comps);
 
-% plot the components on a scalp
+% plot a component on a scalp
 topo = [];
-topo.component = 1:4;
+topo.component = comps;
 topo.layout = lay;
-ft_topoplotIC(topo,gt_ascomponent(eeg,todss));
+ft_topoplotIC(topo,gt_ascomponent(eeg,todss(:,comps)));
 
-% plot timecourse of the components
-plot((1:size(eye_comps,1))/eeg.hdr.Fs,eye_comps)
+% plot timecourse of components
+chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-1 1] .* 1e-2;
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans,'croplast',10))
 
-% I think 1-2 will do the best jo2
-eegclean = nt_tsr(eegcat,eye_comps(:,1:3),time_shifts);
+selected = 1:3;
 
+eegclean = nt_tsr(eegcat,eye_comps(:,selected),time_shifts);
+
+ft_databrowser(plot_cfg,gt_asfieldtrip(eeg,eegclean,'croplast',10))
 % rereference
-eegreref = nt_rereference(eegclean,[outw(6:end-5,:) ones(size(eegclean,1),6)]);
+eegreref = nt_rereference(eegclean,w(1:(end-length(time_shifts)+1),:));
 
-eegfinal = gt_asfieldtrip(eeg,eegreref,'cropfirst',5,'croplast',5);
+eegfinal = gt_asfieldtrip(eeg,eegreref,'croplast',10);
 ft_databrowser(plot_cfg, eegfinal);
 
 savename = regexprep(filename,'.bdf$','.eeg');
