@@ -35,35 +35,69 @@ for i = 1:length(sounds)
     sound_lengths(i) = size(x,1) / fs;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setup parameters for individual participant
+
+% Each subject should have a different entry belowto tune the data cleaning
+% parameters to their data.
+
 subject = [];
 
 subject(1).sid = 8;
+subject(1).load_channels = 1:70;
+subject(1).known_bad_channels = [];
 subject(1).bad_channel_threshs = {3,150,0.6};
+subject(1).eye_pca_comps = 1;
 subject(1).eye_mask_threshold = 4;
 subject(1).plot_eye_comps = 1:3;
 subject(1).eye_comps = 1:3;
 
 subject(2).sid = 9;
+subject(2).load_channels = [1:64,129:134];
+subject(2).known_bad_channels = 28;
 subject(2).bad_channel_threshs = {3,150,1};
-subject(2).eye_mask_threshold = 5;
-subject(2).plot_eye_comps = 1:8;
-subject(2).eye_comps = 5:6;
+subject(2).eye_pca_comps = 1;
+subject(2).eye_mask_threshold = 4;
+subject(2).plot_eye_comps = 1:4;
+subject(2).eye_comps = 1:2;
+
+subject(3).sid = 10;
+subject(3).load_channels = 1:70;
+subject(3).known_bad_channels = [28,57];
+subject(3).bad_channel_threshs = {3,150,1};
+subject(5).eye_pca_comps = 1;
+subject(3).eye_mask_threshold = 4;
+subject(3).plot_eye_comps = 1:4;
+subject(3).eye_comps = 1:2;
+
+subject(4).sid = 11;
+subject(4).load_channels = 1:70;
+subject(4).known_bad_channels = [28];
+subject(4).bad_channel_threshs = {3,150,1.2};
+subject(4).eye_pca_comps = 1;
+subject(4).eye_mask_threshold = 3;
+subject(4).plot_eye_comps = 1:4;
+subject(4).eye_comps = 3:4;
+
+subject(5).sid = 12;
+subject(5).load_channels = 1:70;
+subject(5).known_bad_channels = [28];
+subject(5).bad_channel_threshs = {3,150,1};
+subject(5).eye_pca_comps = 3;
+subject(5).eye_mask_threshold = 5;
+subject(5).plot_eye_comps = 1:3;
+subject(5).eye_comps = 1:2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 % if you are rerunning analyses you can set this to false, if you are analyzing a
 % new subject set this to true and run each section below, one at a time, using
 % the plots to verify the results
-
-% Each subject should have a different entry above to tune the data cleaning
-% parameters to that data set.
-
 interactive = false;
 for i = 1:length(eegfiles)
 
     %% file information
-    filename = eegfiles(1).name;
+    filename = eegfiles(i).name;
     filepath = fullfile(raw_data_dir,filename);
     numstr = regexp(filepath,'([0-9]+)_','tokens');
     sid = str2num(numstr{1}{1});
@@ -77,20 +111,24 @@ for i = 1:length(eegfiles)
     stim_events = readtable(event_file);
 
     %% read in eeg data header
-    eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',1:70);
+    eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',subject(i).load_channels);
 
     %% preprocess data
     eeg = gt_downsample(eeg,stim_events,8);
     eeg = gt_settrials(@nt_demean,eeg);
+    if interactive
+        ft_databrowser(plot_cfg, eeg);
+    end
+    eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,...
+        subject(i).known_bad_channels,closest,d,'channels',1:64);
     eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 
-    %% find bad channels, using linear detrending to avoid false positives
+    %% find bad channels
     freq = 0.5;
     bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,...
         subject(i).bad_channel_threshs{:},'channels',1:64);
-
     if interactive
-        eeg.hdr.label(bad_indices{2}) % run this line to see which indices are bad for a given trial
+        eeg.hdr.label(bad_indices{6}) % run this line to see which indices are bad for a given trial
         this_plot = plot_cfg;
         this_plot.preproc.detrend = 'yes';
         ft_databrowser(plot_cfg, eeg);
@@ -104,7 +142,7 @@ for i = 1:length(eegfiles)
     eegcat = vertcat(eegcat{:});
     w = vertcat(w{:});
 
-    ie interactive
+    if interactive
         ft_databrowser(plot_cfg, eeg);
     end
 
@@ -114,16 +152,8 @@ for i = 1:length(eegfiles)
     eyes = eegcat(:,eog);
     [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
     tmp = filter(B,A,eyes);
-    if sid == 8
-        % note: SID 8 has a strong alpha component in their activity
-        % I filter it out to find just eyeblinks
-        b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
-        tmp2 = filtfilt(b,1,tmp);
-        if interactive
-            ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp2,'label',chans));
-        end
-        % ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
-    end
+    b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
+    tmp= filtfilt(b,1,tmp);
     if interactive
         chans = cellfun(@(x)sprintf('eog%02d',x),num2cell(1:length(eog)),...
             'UniformOutput',false);
@@ -135,7 +165,7 @@ for i = 1:length(eegfiles)
     %% compute TSPCAs (crop the start and end of each trial, because it is glitchy)
     pcaweight = gt_fortrials(@(x)gt_cropend_weights(x,round(eeg.hdr.Fs*0.5)),eeg);
     pcaweight = vertcat(pcaweight{:});
-    [pcas,idx]=nt_pca(tmp2.*pcaweight,time_shifts,4);
+    [pcas,idx]=nt_pca(tmp.*pcaweight,time_shifts,4);
     if interactive
         chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
         this_plot = plot_cfg;
@@ -144,7 +174,7 @@ for i = 1:length(eegfiles)
     end
 
     %% compute a mask, to select regions of probable eyeblinks
-    c = abs(hilbert(pcas(:,1)));
+    c = abs(hilbert(pcas(:,subject(i).eye_pca_comps)));
     mask=abs(c)>subject(i).eye_mask_threshold*median(abs(c));
     if interactive
         eyemask = [eyes [mask; zeros(10,1)]*200];
@@ -160,7 +190,7 @@ for i = 1:length(eegfiles)
     C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
     [todss,pwr0,pwr1] = nt_dss0(C0,C1);
     % look at power of the components (to pick which ones to keep)
-    comps = subject(i).eye_comps;
+    comps = subject(i).plot_eye_comps;
     eye_comps = eegcat*todss(:,comps);
 
     %% plot components in several ways to verify
@@ -180,6 +210,7 @@ for i = 1:length(eegfiles)
     end
 
     %% apply eye blinks to clean data, and rereference
+    eye_comps = eegcat*todss(:,subject(i).eye_comps);
     eegclean = nt_tsr(eegcat,eye_comps,time_shifts);
     eegreref = nt_rereference(eegclean,w(1:(end-length(time_shifts)+1),:));
     eegfinal = gt_asfieldtrip(eeg,eegreref,'croplast',10);
@@ -189,7 +220,7 @@ for i = 1:length(eegfiles)
 
     % save the results
     savename = regexprep(filename,'.bdf$','.eeg');
-    save_subject_binary(eegfinal,fullfile(data_dir,savename)):
+    save_subject_binary(eegfinal,fullfile(data_dir,savename));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
