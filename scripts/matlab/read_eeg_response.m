@@ -35,141 +35,166 @@ for i = 1:length(sounds)
     sound_lengths(i) = size(x,1) / fs;
 end
 
+subject = [];
+
+subject(1).sid = 8;
+subject(1).bad_channel_threshs = {3,150,0.6};
+subject(1).eye_mask_threshold = 4;
+subject(1).plot_eye_comps = 1:3;
+subject(1).eye_comps = 1:3;
+
+subject(2).sid = 9;
+subject(2).bad_channel_threshs = {3,150,1};
+subject(2).eye_mask_threshold = 5;
+subject(2).plot_eye_comps = 1:8;
+subject(2).eye_comps = 5:6;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% subject 008
 
-filename = eegfiles(1).name;
-filepath = fullfile(raw_data_dir,filename);
-numstr = regexp(filepath,'([0-9]+)_','tokens');
-sid = str2num(numstr{1}{1});
 
-% read in the events
-event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
-stim_events = readtable(event_file);
+% if you are rerunning analyses you can set this to false, if you are analyzing a
+% new subject set this to true and run each section below, one at a time, using
+% the plots to verify the results
 
-% read in eeg data header
-[eeg,ntrials] = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',1:70);
+% Each subject should have a different entry above to tune the data cleaning
+% parameters to that data set.
 
-eeg = gt_downsample(eeg,stim_events,8);
-eeg = gt_settrials(@nt_demean,eeg);
-eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+interactive = false;
+for i = 1:length(eegfiles)
 
-% find bad channels, using linear detrending to avoid false positives
-freq = 0.5;
-bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,150,0.6,'channels',1:64);
-eeg.hdr.label(bad_indices{1}) % run this line to see which indices are bad for a given trial
+    %% file information
+    filename = eegfiles(1).name;
+    filepath = fullfile(raw_data_dir,filename);
+    numstr = regexp(filepath,'([0-9]+)_','tokens');
+    sid = str2num(numstr{1}{1});
+    if subject(i).sid ~= sid
+        error('Wrong subject id (%d) specified for index %d, expected sid %d',...
+            subject(i).sid,i,sid);
+    end
 
-this_plot = plot_cfg;
-this_plot.preproc.detrend = 'yes';
-ft_databrowser(plot_cfg, eeg);
+    %% read in the events
+    event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
+    stim_events = readtable(event_file);
 
-% interpolate bad channels
-eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,d,'channels',1:64);
+    %% read in eeg data header
+    eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',1:70);
 
-% detrend again, this time recording the weights, for later use
-[trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
-eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
+    %% preprocess data
+    eeg = gt_downsample(eeg,stim_events,8);
+    eeg = gt_settrials(@nt_demean,eeg);
+    eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 
-% visualize the data
-ft_databrowser(plot_cfg, eeg);
+    %% find bad channels, using linear detrending to avoid false positives
+    freq = 0.5;
+    bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,...
+        subject(i).bad_channel_threshs{:},'channels',1:64);
 
-% find channel glitches (exclude ref and eye channels)
-eegcat = gt_fortrials(@(x)x,eeg);
-eegcat = vertcat(eegcat{:});
-w = vertcat(w{:});
-eegch = 1:64;
-[outw,~] = gt_outliers(eegcat(:,eegch),w(:,eegch),2,3); % like nt_outliers, but shows a progress bar
+    if interactive
+        eeg.hdr.label(bad_indices{2}) % run this line to see which indices are bad for a given trial
+        this_plot = plot_cfg;
+        this_plot.preproc.detrend = 'yes';
+        ft_databrowser(plot_cfg, eeg);
+    end
 
-% inspect the weights
-this_plot = plot_cfg;
-this_plot.ylim = [0 1];
-ft_databrowser(this_plot,gt_asfieldtrip(eeg,[outw zeros(size(outw,1),6)]));
-ft_databrowser(plot_cfg, eeg);
+    %% interpolate bad channels
+    eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,d,'channels',1:64);
+    [trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+    eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
+    eegcat = gt_fortrials(@(x)x,eeg);
+    eegcat = vertcat(eegcat{:});
+    w = vertcat(w{:});
 
-eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
+    ie interactive
+        ft_databrowser(plot_cfg, eeg);
+    end
 
-% visualize the data
-ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegcat));
+    %% select and filter eyeblink channels
+    eog = 67:70; % the sensors near the eyes
+    time_shifts = 0:10;
+    eyes = eegcat(:,eog);
+    [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
+    tmp = filter(B,A,eyes);
+    if sid == 8
+        % note: SID 8 has a strong alpha component in their activity
+        % I filter it out to find just eyeblinks
+        b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
+        tmp2 = filtfilt(b,1,tmp);
+        if interactive
+            ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp2,'label',chans));
+        end
+        % ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
+    end
+    if interactive
+        chans = cellfun(@(x)sprintf('eog%02d',x),num2cell(1:length(eog)),...
+            'UniformOutput',false);
+        this_plot = plot_cfg;
+        this_plot.ylim = [-100 100];
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp,'label',chans))
+    end
 
-% ft_databrowser(plot_cfg, eeg);
+    %% compute TSPCAs (crop the start and end of each trial, because it is glitchy)
+    pcaweight = gt_fortrials(@(x)gt_cropend_weights(x,round(eeg.hdr.Fs*0.5)),eeg);
+    pcaweight = vertcat(pcaweight{:});
+    [pcas,idx]=nt_pca(tmp2.*pcaweight,time_shifts,4);
+    if interactive
+        chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
+        this_plot = plot_cfg;
+        this_plot.ylim = [-400 400];
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,'cropfirst',10));
+    end
 
-% step 1: find regions of likely eye blinks and movement
-eog = 67:70; % the sensors near the eyes
-time_shifts = 0:10;
-eyes = eegcat(:,eog);
-[B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
-tmp = filter(B,A,eyes);
+    %% compute a mask, to select regions of probable eyeblinks
+    c = abs(hilbert(pcas(:,1)));
+    mask=abs(c)>subject(i).eye_mask_threshold*median(abs(c));
+    if interactive
+        eyemask = [eyes [mask; zeros(10,1)]*200];
+        chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(1:4),'UniformOutput',false);
+        chans = [ chans 'mask' ];
+        this_plot = plot_cfg;
+        this_plot.ylim = [-200 200];
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,eyemask,'label',chans))
+    end
 
-% figure;
-chans = cellfun(@(x)sprintf('eog%02d',x),num2cell(1:4),'UniformOutput',false);
-this_plot = plot_cfg;
-this_plot.ylim = [-100 100];
-ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp,'label',chans))
+    %% compute eyeblink sources
+    C0=nt_cov(eegcat);
+    C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
+    [todss,pwr0,pwr1] = nt_dss0(C0,C1);
+    % look at power of the components (to pick which ones to keep)
+    comps = subject(i).eye_comps;
+    eye_comps = eegcat*todss(:,comps);
 
-% note: this participant has a strong alpha component in their activity
-% I filter it out to find just eyeblinks
-b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
-tmp2 = filtfilt(b,1,tmp);
+    %% plot components in several ways to verify
+    if interactive
+        plot(pwr1./pwr0, '.-')
 
-ft_databrowser(this_plot, gt_asfieldtrip(eeg,tmp2,'label',chans))
+        topo = [];
+        topo.component = comps;
+        topo.layout = lay;
+        ft_topoplotIC(topo,gt_ascomponent(eeg,todss(:,comps)));
 
-[pcas,idx]=nt_pca(tmp2,time_shifts,4);
+        % plot timecourse of components
+        chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
+        this_plot = plot_cfg;
+        this_plot.ylim = [-1 1] .* 1e-1;
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans,'croplast',10))
+    end
 
-chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
-this_plot = plot_cfg;
-this_plot.ylim = [-400 400];
-ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,'cropfirst',10));
+    %% apply eye blinks to clean data, and rereference
+    eegclean = nt_tsr(eegcat,eye_comps,time_shifts);
+    eegreref = nt_rereference(eegclean,w(1:(end-length(time_shifts)+1),:));
+    eegfinal = gt_asfieldtrip(eeg,eegreref,'croplast',10);
+    if interactive
+        ft_databrowser(plot_cfg, eegfinal);
+    end
 
-% blinks are quite rare in this subject
-c = abs(hilbert(pcas(:,1)));
-mask=abs(c)>4*median(abs(c));
-eyemask = [eyes [mask; zeros(10,1)]*200];
-chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(1:4),'UniformOutput',false);
-chans = [ chans 'mask' ];
-this_plot = plot_cfg;
-this_plot.ylim = [-200 200];
-ft_databrowser(this_plot, gt_asfieldtrip(eeg,eyemask,'label',chans))
-
-% ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
-
-% step 2: find components using
-C0=nt_cov(eegcat);
-C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
-[todss,pwr0,pwr1] = nt_dss0(C0,C1);
-% look at power of the components (to pick which ones to keep)
-plot(pwr1./pwr0, '.-')
-comps = 1:3;
-eye_comps = eegcat*todss(:,comps);
-
-% plot a component on a scalp
-topo = [];
-topo.component = comps;
-topo.layout = lay;
-ft_topoplotIC(topo,gt_ascomponent(eeg,todss(:,comps)));
-
-% plot timecourse of components
-chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
-this_plot = plot_cfg;
-this_plot.ylim = [-1 1] .* 1e-2;
-ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans,'croplast',10))
-
-selected = 1:3;
-
-eegclean = nt_tsr(eegcat,eye_comps(:,selected),time_shifts);
-
-ft_databrowser(plot_cfg,gt_asfieldtrip(eeg,eegclean,'croplast',10))
-% rereference
-eegreref = nt_rereference(eegclean,w(1:(end-length(time_shifts)+1),:));
-
-eegfinal = gt_asfieldtrip(eeg,eegreref,'croplast',10);
-ft_databrowser(plot_cfg, eegfinal);
-
-savename = regexprep(filename,'.bdf$','.eeg');
-save_subject_binary(eegfinal,fullfile(data_dir,savename))
+    % save the results
+    savename = regexprep(filename,'.bdf$','.eeg');
+    save_subject_binary(eegfinal,fullfile(data_dir,savename)):
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % subject 009
-
+%{
 % get filename and SID
 
 filename = eegfiles(2).name;
@@ -181,41 +206,22 @@ sid = str2num(numstr{1}{1});
 event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
 stim_events = readtable(event_file);
 
-% read in eeg data header
-head = ft_read_header(filepath);
-% for SID 9, we recorded some extra channels (skip them)
-head.label = head.label([1:64 129:134]);
-head.nChans = 70;
+eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',[1:64,129:134]);
 
-% define trial boundaries
-cfg = [];
-cfg.dataset = filepath;
-trial_lengths = round((sound_lengths(stim_events.sound_index)+0.5)*eeg.hdr.Fs);
-cfg.trl = [stim_events.sample stim_events.sample + trial_lengths ...
-           zeros(length(stim_events.sample),1)];
-
-% read in the data
-cfg.continuous = 'no';
-cfg.channel = [1:64 129:134]; % for SID 9, extra channels were recorded
-eeg = ft_preprocessing(cfg);
-raw_eeg = eeg;
-ntrials = length(eeg.trial);
-
-% downsample and demean the data
-eeg = gt_settrials(@nt_dsample,eeg,8,'progress','resampling...');
+% downsample, demean and detrend the data
+eeg = gt_downsample(eeg,stim_events,8);
 eeg = gt_settrials(@nt_demean,eeg);
-eeg.hdr.Fs = eeg.hdr.Fs / 8;
-eeg.time = gt_fortrials(@(data) ((1:size(data,1))/eeg.hdr.Fs),eeg)';
-eeg.fsample = eeg.fsample / 8;
-eeg.sampleinfo = round([stim_events.time*eeg.fsample stim_events.time*eeg.fsample + (cellfun(@(x) size(x,2),eeg.trial))' - 1]);
-
-% detrend the trials
 eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+
+% remove two channels I know, immediately are bad
+eeg.hdr.label([28]) % shows the channels 'A28' and 'B25';
+[closest,d]=nt_proximity('biosemi64.lay',63);
+eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,[28],closest,d,'channels',1:64);
 
 % find bad channels, using linear detrending to avoid false positives
 freq = 0.5;
-bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,150,0.75,'channels',1:64);
-eeg.hdr.label(bad_indices{15}) % run this line to see which indices are bad for a given trial
+bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,3,150,1,'channels',1:64);
+eeg.hdr.label(bad_indices{1})
 ft_databrowser(plot_cfg, eeg);
 
 % interpolate bad channels
@@ -228,19 +234,22 @@ ft_databrowser(plot_cfg, eeg);
 % detrend again, this time recording the weights, for later use
 [trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
-this_plot = plot_cfg;
-this_plot.preproc.detrend = 'no';
-ft_databrowser(this_plot, eeg);
+ft_databrowser(plot_cfg, eeg);
 
-% find channel glitches (exclude ref and eyeblinks)
-eegcat = gt_fortrials(@(x)x,eeg);
-eegcat = vertcat(eegcat{:});
-w = vertcat(w{:});
-eegch = 1:64;
-[outw,y] = gt_outliers(eegcat(:,eegch),w(:,eegch),2,3); % like nt_outliers, but shows a progress bar
-nt_imagescc(outw')
+% % find channel glitches (exclude ref and eyeblinks)
+% eegcat = gt_fortrials(@(x)x,eeg);
+% eegcat = vertcat(eegcat{:});
+% w = vertcat(w{:});
+% eegch = 1:64;
+% [outw,y] = gt_outliers(eegcat(:,eegch),w(:,eegch),2,3); % like nt_outliers, but shows a progress bar
 
-eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
+% % inspect the weights
+% this_plot = plot_cfg;
+% this_plot.ylim = [0 1];
+% ft_databrowser(this_plot,gt_asfieldtrip(eeg,[outw zeros(size(outw,1),6)]));
+% ft_databrowser(plot_cfg, eeg);
+
+% eegcat(:,eegch)=gt_inpaint(eegcat(:,eegch),outw); % interpolate over outliers
 
 % eyeblink removal
 
@@ -249,11 +258,21 @@ eog = 67:70; % the sensors near the eyes
 time_shifts = -5:5;
 eyes = eegcat(:,eog);
 [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
-plot(tmp);
-tmp=nt_pca(tmp,time_shifts,4);
-plot(((1:size(tmp,1))/eeg.hdr.Fs),tmp);
-mask=abs(tmp(:,1))>3*median(abs(tmp(:,1)));
-plot((1:size(eyes,1))/eeg.hdr.Fs,[eyes [mask; zeros(10,1)]*200])
+
+w = gt_fortrials(@(x) gt_gropend_weights(x,round(eeg.hdr.Fs*)))
+tmp=nt_pca(tmp,time_shifts,4,[],[],);
+
+% figure;
+chans = cellfun(@(x)sprintf('pca%02d',x),num2cell(1:4),'UniformOutput',false);
+this_plot = plot_cfg;
+this_plot.ylim = [-30 30];
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,...
+    'cropfirst',5,'croplast',5))
+
+% compute signal envelope via hilbert transform
+c = pcas(:,1);
+c = abs(hilbert(c));
+mask=abs(c)>5*median(abs(c));
 
 % step 2: find components using
 C0=nt_cov(eegcat);
@@ -1038,18 +1057,14 @@ ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,...
 % compute signal envelope via hilbert transform
 c = pcas(:,1);
 c = abs(hilbert(c));
-
-% blinks are quite rare in this subject
 mask=abs(c)>5*median(abs(c));
+
 eyemask = [eyes [mask; zeros(10,1)]*200];
 chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(1:4),'UniformOutput',false);
 chans = [ chans 'mask' ];
 this_plot = plot_cfg;
 this_plot.ylim = [-200 200];
 ft_databrowser(this_plot, gt_asfieldtrip(eeg,eyemask,'label',chans))
-
-
-% ... was this subject closing their eye to avoid eyeblinks (against my instructions???)
 
 % step 2: find components using
 C0=nt_cov(eegcat)
@@ -1070,7 +1085,7 @@ ft_topoplotIC(topo,gt_ascomponent(eeg,todss));
 chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
 this_plot = plot_cfg;
 this_plot.ylim = [-1e-3 1e-3];
-figure; ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans))
+ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans))
 
 eegclean = nt_tsr(eegcat,eye_comps(:,4),time_shifts);
 
@@ -1083,5 +1098,4 @@ ft_databrowser(plot_cfg, eegfinal);
 savename = regexprep(filename,'.bdf$','.eeg');
 save_subject_binary(eegfinal,fullfile(data_dir,savename))
 
-
-
+}%
