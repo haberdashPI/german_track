@@ -22,7 +22,7 @@ cfg.elec = elec;
 lay = ft_prepare_layout(cfg);
 ft_layoutplot(cfg)
 
-[closest,d]=nt_proximity('biosemi64.lay',63);
+[closest,dists]=nt_proximity('biosemi64.lay',63);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find the length of all stimuli
@@ -47,15 +47,21 @@ subject(1).sid = 8;
 subject(1).load_channels = 1:70;
 subject(1).known_bad_channels = [];
 subject(1).bad_channel_threshs = {3,150,0.6};
+subject(1).fix_glitches = false;
+subject(1).trial_outlier_threshs = [];
+subject(1).crop_eye_components = 0.25;
 subject(1).eye_pca_comps = 1;
-subject(1).eye_mask_threshold = 4;
+subject(1).eye_mask_threshold = 6;
 subject(1).plot_eye_comps = 1:3;
-subject(1).eye_comps = 1:3;
+subject(1).eye_comps = 1:2;
 
 subject(2).sid = 9;
 subject(2).load_channels = [1:64,129:134];
 subject(2).known_bad_channels = 28;
 subject(2).bad_channel_threshs = {3,150,1};
+subject(2).fix_glitches = false;
+subject(2).trial_outlier_threshs = [];
+subject(2).crop_eye_components = 0.5;
 subject(2).eye_pca_comps = 1;
 subject(2).eye_mask_threshold = 4;
 subject(2).plot_eye_comps = 1:4;
@@ -65,28 +71,63 @@ subject(3).sid = 10;
 subject(3).load_channels = 1:70;
 subject(3).known_bad_channels = [28,57];
 subject(3).bad_channel_threshs = {3,150,1};
-subject(5).eye_pca_comps = 1;
-subject(3).eye_mask_threshold = 4;
-subject(3).plot_eye_comps = 1:4;
+subject(3).fix_glitches = false;
+subject(3).trial_outlier_threshs = [];
+subject(3).crop_eye_components = 0.5;
+subject(3).eye_pca_comps = 2;
+subject(3).eye_mask_threshold = 6;
+subject(3).plot_eye_comps = 1:3;
 subject(3).eye_comps = 1:2;
 
 subject(4).sid = 11;
 subject(4).load_channels = 1:70;
 subject(4).known_bad_channels = [28];
-subject(4).bad_channel_threshs = {3,150,1.2};
-subject(4).eye_pca_comps = 1;
-subject(4).eye_mask_threshold = 3;
+subject(4).bad_channel_threshs = {2,150,1};
+subject(4).fix_glitches = true;
+subject(4).glitch_params = {6,4};
+subject(4).trial_outlier_threshs = [4,3];
+subject(4).crop_eye_components = 0.5;
+subject(4).eye_pca_comps = 2;
+subject(4).eye_mask_threshold = 4;
 subject(4).plot_eye_comps = 1:4;
-subject(4).eye_comps = 3:4;
+subject(4).eye_comps = 1:4;
 
 subject(5).sid = 12;
 subject(5).load_channels = 1:70;
 subject(5).known_bad_channels = [28];
 subject(5).bad_channel_threshs = {3,150,1};
-subject(5).eye_pca_comps = 3;
+subject(5).fix_glitches = false;
+subject(5).trial_outlier_threshs = [];
+subject(5).crop_eye_components = 0.5;
+subject(5).eye_pca_comps = 2;
 subject(5).eye_mask_threshold = 5;
 subject(5).plot_eye_comps = 1:3;
-subject(5).eye_comps = 1:2;
+subject(5).eye_comps = 1:1;
+
+subject(6).sid = 13;
+subject(6).load_channels = 1:70;
+subject(6).known_bad_channels = [28];
+subject(6).bad_channel_threshs = {2,150,1};
+subject(6).fix_glitches = true;
+subject(6).glitch_params = {8,4};
+subject(6).trial_outlier_threshs = 4;
+subject(6).crop_eye_components = [];
+subject(6).eye_pca_comps = 1;
+subject(6).eye_mask_threshold = 6;
+subject(6).plot_eye_comps = 1:4;
+subject(6).eye_comps = 1:4;
+
+subject(7).sid = 14;
+subject(7).load_channels = 1:70;
+subject(7).known_bad_channels = [28];
+subject(7).bad_channel_threshs = {2,150,1};
+subject(7).fix_glitches = false;
+subject(7).trial_outlier_threshs = [];
+subject(7).crop_eye_components = 0.5;
+subject(7).eye_pca_comps = 1;
+subject(7).eye_mask_threshold = 4;
+subject(7).plot_eye_comps = 1:4;
+subject(7).eye_comps = 1:2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -119,37 +160,69 @@ for i = 1:length(eegfiles)
     if interactive
         ft_databrowser(plot_cfg, eeg);
     end
+
     eeg = gt_settrials(@gt_interpolate_bad_channels,eeg,...
-        subject(i).known_bad_channels,closest,d,'channels',1:64);
-    eeg = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
+        subject(i).known_bad_channels,closest,dists,'channels',1:64);
+    [eeg,w] = gt_settrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
 
     %% find bad channels
     freq = 0.5;
     bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,...
         subject(i).bad_channel_threshs{:},'channels',1:64);
     if interactive
-        eeg.hdr.label(bad_indices{6}) % run this line to see which indices are bad for a given trial
+        eeg.hdr.label(bad_indices{8}) % run this line to see which indices are bad for a given trial
         this_plot = plot_cfg;
         this_plot.preproc.detrend = 'yes';
         ft_databrowser(plot_cfg, eeg);
     end
 
     %% interpolate bad channels
-    eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,d,'channels',1:64);
-    [trials,w] = gt_fortrials(@gt_detrend,eeg,[1 10],'progress','detrending...');
-    eeg.trials = cellfun(@(x) x',trials,'UniformOutput',false);
-    eegcat = gt_fortrials(@(x)x,eeg);
-    eegcat = vertcat(eegcat{:});
-    w = vertcat(w{:});
-
+    eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,dists,'channels',1:64);
     if interactive
         ft_databrowser(plot_cfg, eeg);
+    end
+
+    % find single-channel glitches
+    if subject(i).fix_glitches
+
+        % question, do I need to do this on a per trial basis?
+        [eegoutl,w] = gt_settrials(@gt_outliers,{eeg,w},...
+            subject(i).glitch_params{:},false,'progress','finding outliers...'); % like nt_outliers, but shows a progress bar
+        if interactive
+            ft_databrowser(plot_cfg, eegoutl);
+            ft_databrowser(plot_cfg, gt_asfieldtrip(eegoutl,w));
+        end
+
+        eeg = eegoutl;
+    end
+
+    %% find outlier trials
+    for thresh = subject(i).trial_outlier_threshs
+
+        keep = nt_find_outlier_trials(nt_trial2mat(eeg.trial,round(max(sound_lengths)*eeg.hdr.Fs)),thresh);
+        discard = setdiff(1:length(eeg.trial),keep);
+
+        for d = discard
+            eeg.trial{d} = zeros(size(eeg.trial{d}));
+            w{d} = zeros(size(w{d}));
+        end
+
+    end
+
+    % concatenate all trials
+    eegcat = gt_fortrials(@(x)x,eeg);
+    eegcat = vertcat(eegcat{:});
+    wcat = vertcat(w{:});
+
+    eegreref = nt_rereference(eegcat,wcat);
+    if interactive
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,eegreref));
     end
 
     %% select and filter eyeblink channels
     eog = 67:70; % the sensors near the eyes
     time_shifts = 0:10;
-    eyes = eegcat(:,eog);
+    eyes = eegreref(:,eog);
     [B,A]=butter(2,1/(eeg.hdr.Fs/2), 'high');
     tmp = filter(B,A,eyes);
     b = fir1(512,[8/(eeg.hdr.Fs/2) 14/(eeg.hdr.Fs/2)],'stop');
@@ -163,8 +236,13 @@ for i = 1:length(eegfiles)
     end
 
     %% compute TSPCAs (crop the start and end of each trial, because it is glitchy)
-    pcaweight = gt_fortrials(@(x)gt_cropend_weights(x,round(eeg.hdr.Fs*0.5)),eeg);
-    pcaweight = vertcat(pcaweight{:});
+    if ~isempty(subject(i).crop_eye_components)
+        len = subject(i).crop_eye_components;
+        pcaweight = gt_fortrials(@(x)gt_cropend_weights(x,round(eeg.hdr.Fs*len)),eeg);
+        pcaweight = vertcat(pcaweight{:});
+    else
+        pcaweight = 1;
+    end
     [pcas,idx]=nt_pca(tmp.*pcaweight,time_shifts,4);
     if interactive
         chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
@@ -186,17 +264,17 @@ for i = 1:length(eegfiles)
     end
 
     %% compute eyeblink sources
-    C0=nt_cov(eegcat);
-    C1=nt_cov(bsxfun(@times,eegcat,[zeros(5,1);mask;zeros(5,1)]));
+    C0=nt_cov(eegreref);
+    C1=nt_cov(bsxfun(@times,eegreref,[zeros(5,1);mask;zeros(5,1)]));
     [todss,pwr0,pwr1] = nt_dss0(C0,C1);
     % look at power of the components (to pick which ones to keep)
-    comps = subject(i).plot_eye_comps;
-    eye_comps = eegcat*todss(:,comps);
 
     %% plot components in several ways to verify
     if interactive
         plot(pwr1./pwr0, '.-')
 
+        comps = subject(i).plot_eye_comps;
+        eye_comps = eegreref*todss(:,comps);
         topo = [];
         topo.component = comps;
         topo.layout = lay;
@@ -207,13 +285,12 @@ for i = 1:length(eegfiles)
         this_plot = plot_cfg;
         this_plot.ylim = [-1 1] .* 1e-1;
         ft_databrowser(this_plot, gt_asfieldtrip(eeg,eye_comps,'label',chans,'croplast',10))
+
     end
 
     %% apply eye blinks to clean data, and rereference
-    eye_comps = eegcat*todss(:,subject(i).eye_comps);
-    eegclean = nt_tsr(eegcat,eye_comps,time_shifts);
-    eegreref = nt_rereference(eegclean,w(1:(end-length(time_shifts)+1),:));
-    eegfinal = gt_asfieldtrip(eeg,eegreref,'croplast',10);
+    eye_comps = eegreref*todss(:,subject(i).eye_comps);
+    eegfinal = gt_asfieldtrip(eeg,nt_tsr(eegreref,eye_comps,time_shifts),'croplast',10);
     if interactive
         ft_databrowser(plot_cfg, eegfinal);
     end

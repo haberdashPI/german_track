@@ -1,5 +1,5 @@
 
- function [w,y]=gt_outliers(x,w,thresh,niter)
+ function [y,w]=gt_outliers(x,w,thresh,niter,progress)
 % copied directly from NoiseTools (http://audition.ens.fr/adc/NoiseTools/src/)
 % with modifications to show progress
 
@@ -25,6 +25,7 @@ if nargin<1; error('!'); end
 if nargin<2||isempty(w); w=ones(size(x)); end
 if nargin<3||isempty(thresh); thresh=2; end
 if nargin<4||isempty(niter); niter=4; end
+if nargin<5||isempty(progress); progress=false; end
 if ndims(x)>2; error('!'); end
 if ~all(size(x)==size(w)); error('!'); end
 [nsamples,nchan]=size(x);
@@ -36,10 +37,12 @@ then flag the parts that mismatch as corrupt.
 %}
 x0=x;
 
-textprogressbar('Finding outliers...');
-onCleanup(@() textprogressbar(''));
+if progress
+    textprogressbar('Finding outliers...');
+    onCleanup(@() textprogressbar(''));
+    figure(200); clf
+end
 
-figure(200); clf
 for iIter=1:niter
 
     %{
@@ -204,7 +207,9 @@ for iIter=1:niter
         MAXGAPSIZE=100;
         y(:,iChan)=fillgap(y(:,iChan),www,MAXGAPSIZE);
 
-        textprogressbar(100*(iChan+(iIter-1)*nchan)/(niter*nchan))
+        if progress
+            textprogressbar(100*(iChan+(iIter-1)*nchan)/(niter*nchan))
+        end
     end
 
 
@@ -216,13 +221,15 @@ for iIter=1:niter
     d = abs(y-x0);
     w=double( (d/v < thresh) );
     score=mean( (d.*w)) ./ mean(w);
-    disp([num2str(iIter), ', score: ',num2str(sum(score))]);
 
-    ch=33; FOCUS=1:size(x,1);
-    figure(200);
-    %plot(x0(FOCUS,ch), 'k'); hold on
-    %plot(w(FOCUS,ch) .* (y(FOCUS,ch)-x0(FOCUS,ch)));  hold on; drawnow
-    plot(score); hold on; drawnow
+    if progress
+        disp([num2str(iIter), ', score: ',num2str(sum(score))]);
+        ch=33; FOCUS=1:size(x,1);
+        figure(200);
+        %plot(x0(FOCUS,ch), 'k'); hold on
+        %plot(w(FOCUS,ch) .* (y(FOCUS,ch)-x0(FOCUS,ch)));  hold on; drawnow
+        plot(score); hold on; drawnow
+    end
 
 end % iterations
 

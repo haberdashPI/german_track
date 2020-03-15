@@ -31,7 +31,7 @@ function [varargout] = gt_fortrials(fn,args,varargin)
             this_cellargs{a} = cellargs{a}{i};
         end
 
-        result = cell(length(nargout),1);
+        result = cell(nargout,1);
         data = eeg.trial{i};
         if isempty(channels)
             [result{1:nargout}] = fn(data',this_cellargs{:},fnargs{:});

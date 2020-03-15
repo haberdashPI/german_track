@@ -1,5 +1,5 @@
 
-function eeg = gt_settrials(fn,args,varargin)
+function [eeg,varargout] = gt_settrials(fn,args,varargin)
     if iscell(args)
         eeg = args{1};
         cellargs = args(2:end);
@@ -15,6 +15,10 @@ function eeg = gt_settrials(fn,args,varargin)
     p.FunctionName = 'gt_fortrials';
     parse(p,params{:});
 
+    for i = 2:nargout
+        varargout{i-1} = cell(length(eeg.trial),1);
+    end
+
     channels = p.Results.channels;
     progress = p.Results.progress;
 
@@ -28,13 +32,18 @@ function eeg = gt_settrials(fn,args,varargin)
             this_cellargs{a} = cellargs{a}{i};
         end
 
+        result = cell(nargout,1);
         if isempty(channels)
             data = eeg.trial{i}';
-            eeg.trial{i} = fn(data,this_cellargs{:},fnargs{:})';
+            [result{1:nargout}] = fn(data,this_cellargs{:},fnargs{:});
+            eeg.trial{i} = result{1}';
         else
             data = eeg.trial{i};
-            data(channels,:) = fn(data(channels,:)',this_cellargs{:},fnargs{:})';
-            eeg.trial{i} = data;
+            [result{1:nargout}] = fn(data(channels,:)',this_cellargs{:},fnargs{:});
+            eeg.trial{i}(channels,:) = result{1}';
+        end
+        for j = 2:nargout
+            varargout{j-1}{i} = result{j};
         end
 
         if ~isempty(progress)
