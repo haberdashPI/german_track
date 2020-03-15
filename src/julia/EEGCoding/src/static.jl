@@ -153,10 +153,11 @@ function loss(model::SemiDecoder,x,y,v,tt)
     for i in 1:T
         if i in stt
             vi += 1
-            L += loss(model,x[i],y[i],vec(v[tt,:]))
+            L += loss(model,x[i],y[i],vec(v[tt[vi],:]))
         else
             ui += 1
-            L += loss(model,x[i],y[i],ui)
+            l = loss(model,x[i],y[i],ui)
+            L += l
         end
     end
     L
@@ -164,13 +165,13 @@ end
 
 function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,testcb)
     decoder = SemiDecoder(x,y,v,tt)
-    @assert batchsize <= length(x) "Batch size must be less than data size."
+    @assert batchsize <= length(x) "Batch size cannot be larger than data size."
 
     # testx = x[sample(1:length(x),batchsize,replace=false)]
     # testy = y[sample(1:length(x),batchsize,replace=false)]
     testx = x
     testy = y
-    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
+    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm) + reg.λ*norm(vec(dec.u), reg.norm)
 
     data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffle=true)
 

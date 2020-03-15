@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, SignalOperators, SignalOperators.Units, RCall, Distributions,
-    PlotAxes
+    PlotAxes, Flux
 Uniform = Distributions.Uniform
 
 randenvelope(dur,fr) =
@@ -35,10 +35,10 @@ plotaxes(w')
 R"quartz()"
 plotaxes(ŵ)
 
-a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:1,:],1:1,EEGCoding.CvNorm(0.5,1),
-    batchsize=2,epochs=5,status_rate=0.5,optimizer = AMSGrad(),
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1),
+    batchsize=5,epochs=10_0000,status_rate=0.5,optimizer = AMSGrad(),
     testcb = function(decoder)
-        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[2:end,:]
+        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[3:end,:]
         @info "Weight differences: $(sum(diff.^2))."
     end)
 
@@ -47,6 +47,15 @@ R"quartz()"
 plotaxes(w)
 R"quartz()"
 plotaxes(ŵ)
+
+# something is wrong with the simplex gradient, let's do an isolated "training"
+# of the simplex parameters
+x = randn(2)
+
+opt = AMSGrad()
+@showprogress for n in 1:1_000
+    Flux.train!(@λ(Flux.mse(tosimplex(x),_)), Flux.params(x), [[0.1,0.3,0.5]], opt)
+end
 
 # okay, that looks good, let's try something closer go the size of the actual
 # problem
