@@ -120,10 +120,32 @@ subject(13).known_bad_channels = [];
 subject(13).bad_channel_threshs = {3,150,2};
 
 subject(14).sid = 22;
-subject(14).reref_first = false;
+subject(14).reref_first = true;
 subject(14).load_channels = 1:70;
-subject(14).known_bad_channels = [];
-subject(14).bad_channel_threshs = {3,150,2};
+subject(14).known_bad_channels = 28;
+subject(14).bad_channel_threshs = {2,150,0.75};
+
+subject(15).sid = [];
+
+subject(16).sid = 24;
+subject(16).reref_first = false;
+subject(16).load_channels = 1:70;
+subject(16).known_bad_channels = 28;
+subject(16).bad_channel_threshs = {3,150,2};
+
+subject(17).sid = 25;
+subject(17).reref_first = false;
+subject(17).load_channels = 1:70;
+subject(17).known_bad_channels = [];
+subject(17).bad_channel_threshs = {3,150,2};
+
+subject(18).sid = [];
+
+subject(19).sid = 27;
+subject(19).reref_first = false;
+subject(19).load_channels = 1:70;
+subject(19).known_bad_channels = [22,28];
+subject(19).bad_channel_threshs = {3,150,2};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -176,7 +198,7 @@ for i = 5:7 %1:7 %length(eegfiles)
     bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,...
         subject(i).bad_channel_threshs{:},'channels',1:64);
     if interactive
-        eeg.hdr.label(bad_indices{8}) % run this line to see which indices are bad for a given trial
+        eeg.hdr.label(bad_indices{1}) % run this line to see which indices are bad for a given trial
         this_plot = plot_cfg;
         this_plot.preproc.detrend = 'yes';
         ft_databrowser(plot_cfg, eeg);
