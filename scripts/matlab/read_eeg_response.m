@@ -37,10 +37,7 @@ for i = 1:length(sounds)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% setup parameters for individual participant
-
-% Each subject should have a different entry belowto tune the data cleaning
-% parameters to their data.
+% setup data cleaning parameters for individual participants
 
 subject = [];
 
@@ -53,6 +50,9 @@ for i = 1:length(eegfiles)
     subject(i).eye_mask_threshold = 4;
     subject(i).segment_outlier_thresh = 3;
 end
+
+% Each subject should have a different entry below to tune the data cleaning
+% parameters to their data.
 
 subject(1).sid = 8;
 subject(1).known_bad_channels = 28;
@@ -146,6 +146,7 @@ subject(27).sid = 35;
 subject(27).known_bad_channels = 28;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% data cleaning
 
 data = [];
 
@@ -183,7 +184,8 @@ for i = 1:length(eegfiles)
     stim_events = readtable(event_file);
 
     %% read in eeg data header
-    eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',subject(i).load_channels);
+    eeg = gt_loadbdf(filepath,stim_events,'lengths',sound_lengths,'channels',...
+        subject(i).load_channels);
     if subject(i).reref_first
         eegcat = gt_fortrials(@(x)x,eeg);
         eegcat = vertcat(eegcat{:});
@@ -206,14 +208,16 @@ for i = 1:length(eegfiles)
     bad_indices = gt_fortrials(@nt_find_bad_channels,eeg,freq,...
         subject(i).bad_channel_threshs{:},'channels',1:64);
     if interactive
-        eeg.hdr.label(bad_indices{1}) % run this line to see which indices are bad for a given trial
+        % run below line to see which indices are bad for a given trial
+        eeg.hdr.label(bad_indices{1})
         this_plot = plot_cfg;
         this_plot.preproc.detrend = 'yes';
         ft_databrowser(plot_cfg, eeg);
     end
 
     %% interpolate bad channels
-    eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},closest,dists,'channels',1:64);
+    eeg = gt_settrials(@gt_interpolate_bad_channels,{eeg,bad_indices},...
+        closest,dists,'channels',1:64);
     if interactive
         ft_databrowser(plot_cfg, eeg);
     end
@@ -223,16 +227,19 @@ for i = 1:length(eegfiles)
 
     if interactive
 
-        chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
+        chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),...
+            'UniformOutput',false);
         this_plot = plot_cfg;
         this_plot.ylim = [-400 400];
-        ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,'cropfirst',10));
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,...
+            'cropfirst',10));
 
         eyemask = min(horzcat(weye{:}))';
         eegcat = gt_fortrials(@(x)x,eeg);
         eegcat = vertcat(eegcat{:});
         chans = [ eeg.label; 'mask' ];
-        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*eyemask],'label',chans))
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*eyemask],...
+            'label',chans))
 
     end
 
@@ -259,7 +266,8 @@ for i = 1:length(eegfiles)
         eegcat = gt_fortrials(@(x)x,eeg);
         eegcat = vertcat(eegcat{:});
         chans = [ eeg.label; 'mask' ];
-        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*segmask],'label',chans));
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*segmask],...
+            'label',chans));
 
     end
 
