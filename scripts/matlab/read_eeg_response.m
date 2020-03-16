@@ -123,12 +123,27 @@ subject(20).sid = 28;
 subject(20).known_bad_channels = [57,28];
 
 subject(21).sid = 29;
-subject(21).reref_first = false;
-subject(21).load_channels = 1:70;
-subject(21).known_bad_channels = [];
-subject(21).bad_channel_threshs = {3,150,2};
-subject(21).eye_pca_comps = 1;
-subject(21).eye_mask_threshold = 4;
+
+subject(22).sid = 30;
+subject(22).eye_mask_threshold = 3;
+
+subject(23).sid = 31;
+subject(23).known_bad_channels = [16,24,57,60,61];
+
+subject(24).sid = 32;
+subject(24).known_bad_channels = 63;
+
+subject(25).sid = 33;
+subject(25).known_bad_channels = 5;
+
+subject(26).sid = 34;
+subject(26).reref_first = true;
+subject(26).known_bad_channels = 28;
+subject(26).bad_channel_threshs = {2,150,1};
+subject(26).eye_mask_threshold = 3;
+
+subject(27).sid = 35;
+subject(27).known_bad_channels = 28;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -246,3 +261,5 @@ for i = 1:length(eegfiles)
     save_subject_binary(eeg,topath,'weights',wseg);
 
 end
+
+% TODO: compute covaraince matrix for MCCA
