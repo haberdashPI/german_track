@@ -149,10 +149,11 @@ subject(27).known_bad_channels = 28;
 
 data = [];
 
-% if you are rerunning analyses you can set this to false, if you are analyzing a
-% new subject set this to true and run each section below, one at a time, using
-% the plots to verify the results
+% if you are rerunning analyses you can set interactive to false, if you are
+% analyzing a new subject set this to true and run each section below,
+% one at a time, using the plots to verify the results
 interactive = false;
+
 for i = 1:length(eegfiles)
 
     %% file information
@@ -168,6 +169,12 @@ for i = 1:length(eegfiles)
 
     if isempty(subject(i).sid)
         warning("Subject id %d will be ignored.",sid);
+        continue
+    end
+    savename = regexprep(filename,'.bdf$','.eeg');
+    savetopath = fullfile(cache_dir,'eeg',savename);
+    if isfile(savetopath)
+        warning("Using cached subject data for sid %d.",sid)
         continue
     end
 
@@ -256,10 +263,17 @@ for i = 1:length(eegfiles)
 
     end
 
-    savename = regexprep(filename,'.bdf$','.eeg');
-    topath = fullfile(cache_dir,'eeg',savename);
-    save_subject_binary(eeg,topath,'weights',wseg);
-
+    save_subject_binary(eeg,savetopath,'weights',wseg);
 end
 
-% TODO: compute covaraince matrix for MCCA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% compute correlation (C) of channel-subject features across all
+% stimulus-condition pairs
+
+cleaned_files = dir(fullfile(cache_dir,'eeg','*.eeg'));
+maxlen = round(256*(max(sound_lengths)+0.5));
+C = gt_mcca_C(cleaned_files,maxlen,{'global','object','spatial'},1:50,1:64);
+
+[A,score,AA] = nt_mcca(C,n_chans,64);
+
+bar(score(1:300));
