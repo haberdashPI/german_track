@@ -1,5 +1,6 @@
 run(fullfile('..','..','src','matlab','util','setup.m'));
-usecache = 0;
+mkdir(fullfile(cache_dir,'eeg'));
+usecache = 1; % whether to use previously preprocessed data stored in the cache
 
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
 
@@ -43,121 +44,91 @@ end
 
 subject = [];
 
+for i = 1:length(eegfiles)
+    subject(i).load_channels = 1:70;
+    subject(i).reref_first = false;
+    subject(i).known_bad_channels = [];
+    subject(i).bad_channel_threshs = {3,150,2};
+    subject(i).eye_pca_comps = 1;
+    subject(i).eye_mask_threshold = 4;
+    subject(i).segment_outlier_thresh = 3;
+end
+
 subject(1).sid = 8;
-subject(1).load_channels = 1:70;
-subject(1).reref_first = false;
-subject(1).known_bad_channels = [];
-subject(1).bad_channel_threshs = {3,150,2};
+subject(1).known_bad_channels = 28;
 
 subject(2).sid = 9;
 subject(2).load_channels = [1:64,129:134];
-subject(2).reref_first = false;
 subject(2).known_bad_channels = 28;
-subject(2).bad_channel_threshs = {3,150,2};
 
 subject(3).sid = 10;
-subject(3).load_channels = 1:70;
-subject(3).reref_first = false;
 subject(3).known_bad_channels = [28,57];
-subject(3).bad_channel_threshs = {3,150,2};
-subject(3).fix_glitches = false;
+subject(3).eye_pca_comps = 2;
 
 subject(4).sid = 11;
-subject(4).load_channels = 1:70;
-subject(4).reref_first = false;
-subject(4).known_bad_channels = [28];
-subject(4).bad_channel_threshs = {3,150,2};
+subject(4).known_bad_channels = 28;
+subject(4).eye_pca_comps = 1;
+subject(4).eye_mask_threshold = 3;
 
 subject(5).sid = 12;
-subject(5).load_channels = 1:70;
-subject(5).reref_first = false;
-subject(5).known_bad_channels = [28];
-subject(5).bad_channel_threshs = {3,150,2};
+subject(5).known_bad_channels = 28;
+subject(5).eye_pca_comps = 3;
+subject(5).eye_mask_threshold = 4;
 
 subject(6).sid = 13;
-subject(6).load_channels = 1:70;
-subject(6).reref_first = false;
-subject(6).known_bad_channels = [28];
-subject(6).bad_channel_threshs = {3,150,2};
-subject(6).fix_glitches = true;
+subject(6).known_bad_channels = 28;
 
 subject(7).sid = 14;
-subject(7).reref_first = false;
-subject(7).load_channels = 1:70;
-subject(7).known_bad_channels = [28];
-subject(7).bad_channel_threshs = {3,150,2};
+subject(7).known_bad_channels = 28;
+
+% subject 15 has no good data, file not generated
 
 subject(8).sid = 16;
-subject(8).reref_first = false;
-subject(8).load_channels = 1:70;
-subject(8).known_bad_channels = [4];
-subject(8).bad_channel_threshs = {3,150,2};
+subject(8).known_bad_channels = 4;
 
 subject(9).sid = 17;
 subject(9).reref_first = true;
-subject(9).load_channels = 1:70;
-subject(9).known_bad_channels = [28];
-subject(9).bad_channel_threshs = {3,150,2};
+subject(9).known_bad_channels = 28;
 
 subject(10).sid = 18;
-subject(10).reref_first = false;
-subject(10).load_channels = 1:70;
-subject(10).known_bad_channels = [];
-subject(10).bad_channel_threshs = {3,150,2};
 
 subject(11).sid = 19;
-subject(11).reref_first = false;
-subject(11).load_channels = 1:70;
 subject(11).known_bad_channels = 57;
-subject(11).bad_channel_threshs = {3,150,2};
 
+subject(12).sid = 20;
 subject(12).sid = [];
 
 subject(13).sid = 21;
-subject(13).reref_first = false;
-subject(13).load_channels = 1:70;
-subject(13).known_bad_channels = [];
-subject(13).bad_channel_threshs = {3,150,2};
+subject(13).eye_mask_threshold = 3;
 
 subject(14).sid = 22;
 subject(14).reref_first = true;
-subject(14).load_channels = 1:70;
 subject(14).known_bad_channels = 28;
-subject(14).bad_channel_threshs = {2,150,0.75};
 
+subject(15).sid = 23;
 subject(15).sid = [];
 
 subject(16).sid = 24;
-subject(16).reref_first = false;
-subject(16).load_channels = 1:70;
 subject(16).known_bad_channels = 28;
-subject(16).bad_channel_threshs = {3,150,2};
 
 subject(17).sid = 25;
-subject(17).reref_first = false;
-subject(17).load_channels = 1:70;
-subject(17).known_bad_channels = [];
-subject(17).bad_channel_threshs = {3,150,2};
 
+subject(18).sid = 26;
 subject(18).sid = [];
 
 subject(19).sid = 27;
-subject(19).reref_first = false;
-subject(19).load_channels = 1:70;
 subject(19).known_bad_channels = [22,28];
-subject(19).bad_channel_threshs = {3,150,2};
 
 subject(20).sid = 28;
-subject(20).reref_first = false;
-subject(20).load_channels = 1:70;
-subject(20).known_bad_channels = 57;
-subject(20).bad_channel_threshs = {3,150,2};
+subject(20).known_bad_channels = [57,28];
 
 subject(21).sid = 29;
 subject(21).reref_first = false;
 subject(21).load_channels = 1:70;
 subject(21).known_bad_channels = [];
 subject(21).bad_channel_threshs = {3,150,2};
+subject(21).eye_pca_comps = 1;
+subject(21).eye_mask_threshold = 4;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -167,19 +138,22 @@ data = [];
 % new subject set this to true and run each section below, one at a time, using
 % the plots to verify the results
 interactive = false;
-for i = 5:7 %1:7 %length(eegfiles)
+for i = 1:length(eegfiles)
 
     %% file information
     filename = eegfiles(i).name;
     filepath = fullfile(raw_data_dir,filename);
     numstr = regexp(filepath,'([0-9]+)_','tokens');
     sid = str2num(numstr{1}{1});
-    if isempty(subject(i).sid)
-        warning("Subject id %d will be ignored.",sid);
-    end
     if subject(i).sid ~= sid
         error('Wrong subject id (%d) specified for index %d, expected sid %d',...
             subject(i).sid,i,sid);
+    end
+
+
+    if isempty(subject(i).sid)
+        warning("Subject id %d will be ignored.",sid);
+        continue
     end
 
     %% read in the events
@@ -222,15 +196,53 @@ for i = 5:7 %1:7 %length(eegfiles)
         ft_databrowser(plot_cfg, eeg);
     end
 
-    %% rerefence
-    eegcat = gt_fortrials(@(x)x,eeg);
-    eegcat = vertcat(eegcat{:});
-    wcat = vertcat(w{:});
-    eegreref = gt_asfieldtrip(eeg,nt_rereference(eegcat,wcat));
+    [weye,pcas] = gt_mask_eyeblinks(eeg,w,67:70,subject(i).eye_pca_comps,...
+        subject(i).eye_mask_threshold);
+
     if interactive
-        ft_databrowser(plot_cfg, eegreref);
+
+        chans = cellfun(@(x)sprintf('pc%02d',x),num2cell(1:4),'UniformOutput',false);
+        this_plot = plot_cfg;
+        this_plot.ylim = [-400 400];
+        ft_databrowser(this_plot, gt_asfieldtrip(eeg,pcas,'label',chans,'cropfirst',10));
+
+        eyemask = min(horzcat(weye{:}))';
+        eegcat = gt_fortrials(@(x)x,eeg);
+        eegcat = vertcat(eegcat{:});
+        chans = [ eeg.label; 'mask' ];
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*eyemask],'label',chans))
+
     end
 
-    data(i).eeg = eegreref;
-    data(i).w = w;
+    %% weighted rerefence
+    eegcat = gt_fortrials(@(x)x,eeg);
+    eegcat = vertcat(eegcat{:});
+    eeg = gt_asfieldtrip(eeg,nt_rereference(eegcat));
+    if interactive
+        ft_databrowser(plot_cfg, eeg);
+    end
+
+    %% detect outlying segments
+    [wseg,segnorm,segsd] = gt_segment_outliers(eeg,weye,...
+        subject(i).segment_outlier_thresh);
+
+    if interactive
+
+        imagesc(segsd);
+
+        plot(segnorm,'.-')
+        mean(segnorm > subject(i).segment_outlier_thresh)
+
+        segmask = min(horzcat(wseg{:}))';
+        eegcat = gt_fortrials(@(x)x,eeg);
+        eegcat = vertcat(eegcat{:});
+        chans = [ eeg.label; 'mask' ];
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*segmask],'label',chans));
+
+    end
+
+    savename = regexprep(filename,'.bdf$','.eeg');
+    topath = fullfile(cache_dir,'eeg',savename);
+    save_subject_binary(eeg,topath,'weights',wseg);
+
 end

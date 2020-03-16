@@ -1,10 +1,16 @@
-function save_subject_binary(subj,filename)
+function save_subject_binary(subj,filename,varargin)
+    p = inputParser;
+    addParameter(p,'weights',[],@iscell);
+    p.FunctionName = 'save_subject_binary';
+    parse(p,varargin{:})
+    weights = p.Results.weights;
+
     fid = fopen(filename,'w','n','UTF-8');
     try
-        % onCleanup(@() fclose(fid));
-
         % number of channels
         nchan = size(subj.trial{1},1);
+        fwrite(fid,2,'int32'); % file version
+        fwrite(fid,~isempty(weights),'uint8');
         fwrite(fid,nchan,'int32');
         % fprintf('number of channels %d\n',nchan);
         % channel names
@@ -29,6 +35,12 @@ function save_subject_binary(subj,filename)
             % fprintf('Trial size: %d %d\n',trial_size)
             fwrite(fid,trial_size,'int32');
             fwrite(fid,trial,'float64');
+            if ~isempty(weights)
+                if all(size(weights{i}) ~= size(subj.trial{i}))
+                    error("Weight size does not match trial size.")
+                end
+                fwrite(fid,weights{i},'float64');
+            end
         end
     catch e
         fclose(fid);
