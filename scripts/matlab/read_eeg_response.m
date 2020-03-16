@@ -147,6 +147,18 @@ subject(19).load_channels = 1:70;
 subject(19).known_bad_channels = [22,28];
 subject(19).bad_channel_threshs = {3,150,2};
 
+subject(20).sid = 28;
+subject(20).reref_first = false;
+subject(20).load_channels = 1:70;
+subject(20).known_bad_channels = 57;
+subject(20).bad_channel_threshs = {3,150,2};
+
+subject(21).sid = 29;
+subject(21).reref_first = false;
+subject(21).load_channels = 1:70;
+subject(21).known_bad_channels = [];
+subject(21).bad_channel_threshs = {3,150,2};
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 data = [];
