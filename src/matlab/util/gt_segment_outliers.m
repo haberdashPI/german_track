@@ -1,8 +1,9 @@
 function [wseg,segnorm,segsd] = gt_segment_outliers(eeg,w,thresh)
 
-    %% find outlier segments (we ignore mean because we used nt_demean)
+    %% find outlier segments
     segsize = round(0.25*eeg.hdr.Fs);
     segn = zeros(70,segsize);
+    segsum1 = zeros(70,segsize);
     segsum2 = zeros(70,segsize);
     n = 0;
     for j = 1:length(eeg.trial)
@@ -13,10 +14,11 @@ function [wseg,segnorm,segsd] = gt_segment_outliers(eeg,w,thresh)
             wt = w{j}(:,k:until);
             at = (k:until) - k + 1;
             segn(:,at) = segn(:,at) + wt;
+            segsum1(:,at) = segsum1(:,at) + seg.*wt;
             segsum2(:,at) = segsum2(:,at) + seg.*seg.*wt;
         end
     end
-    segsd = sqrt(segsum2 ./ segn);
+    segsd = sqrt((segsum2  - segsum1^2) ./ segn);
 
     segnorm = zeros(n,1);
     n = 0;

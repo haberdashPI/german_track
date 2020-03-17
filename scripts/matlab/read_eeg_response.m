@@ -2,7 +2,7 @@ run(fullfile('..','..','src','matlab','util','setup.m'));
 mkdir(fullfile(cache_dir,'eeg'));
 
 % whether to use previously preprocessed data stored in the cache
-usecache = 1;
+usecache = 0;
 
 % if you are rerunning analyses you can set interactive to false; if you are
 % analyzing a new subject, set this to true and run each section below,
@@ -53,10 +53,10 @@ subject = [];
 for i = 1:length(eegfiles)
     subject(i).load_channels = 1:70;
     subject(i).reref_first = false;
-    subject(i).known_bad_channels = [];
+    subject(i).known_bad_channels = [28];
     subject(i).bad_channel_threshs = {3,150,2};
     subject(i).eye_pca_comps = 1;
-    subject(i).eye_mask_threshold = 4;
+    subject(i).eye_mask_threshold = 3;
     subject(i).segment_outlier_thresh = 3;
 end
 
@@ -64,61 +64,49 @@ end
 % parameters to their data.
 
 subject(1).sid = 8;
-subject(1).known_bad_channels = 28;
 
 subject(2).sid = 9;
 subject(2).load_channels = [1:64,129:134];
-subject(2).known_bad_channels = 28;
 
 subject(3).sid = 10;
 subject(3).known_bad_channels = [28,57];
 subject(3).eye_pca_comps = 2;
 
 subject(4).sid = 11;
-subject(4).known_bad_channels = 28;
 subject(4).eye_pca_comps = 1;
-subject(4).eye_mask_threshold = 3;
 
 subject(5).sid = 12;
-subject(5).known_bad_channels = 28;
 subject(5).eye_pca_comps = 3;
-subject(5).eye_mask_threshold = 4;
 
 subject(6).sid = 13;
-subject(6).known_bad_channels = 28;
 
 subject(7).sid = 14;
-subject(7).known_bad_channels = 28;
 
 % subject 15 has no good data, file not generated
 
 subject(8).sid = 16;
-subject(8).known_bad_channels = 4;
+subject(8).known_bad_channels = [4,28];
 
 subject(9).sid = 17;
 subject(9).reref_first = true;
-subject(9).known_bad_channels = 28;
 
 subject(10).sid = 18;
 
 subject(11).sid = 19;
-subject(11).known_bad_channels = 57;
+subject(11).known_bad_channels = [28,57];
 
 subject(12).sid = 20;
 subject(12).sid = [];
 
 subject(13).sid = 21;
-subject(13).eye_mask_threshold = 3;
 
 subject(14).sid = 22;
 subject(14).reref_first = true;
-subject(14).known_bad_channels = 28;
 
 subject(15).sid = 23;
 subject(15).sid = [];
 
 subject(16).sid = 24;
-subject(16).known_bad_channels = 28;
 
 subject(17).sid = 25;
 
@@ -129,30 +117,26 @@ subject(19).sid = 27;
 subject(19).known_bad_channels = [22,28];
 
 subject(20).sid = 28;
-subject(20).known_bad_channels = [57,28];
+subject(20).known_bad_channels = [28,57];
 
 subject(21).sid = 29;
 
 subject(22).sid = 30;
-subject(22).eye_mask_threshold = 3;
 
 subject(23).sid = 31;
-subject(23).known_bad_channels = [16,24,57,60,61];
+subject(23).known_bad_channels = [16,24,28,57,60,61];
 
 subject(24).sid = 32;
-subject(24).known_bad_channels = 63;
+subject(24).known_bad_channels = [28,63];
 
 subject(25).sid = 33;
-subject(25).known_bad_channels = 5;
+subject(25).known_bad_channels = [5,28];
 
 subject(26).sid = 34;
 subject(26).reref_first = true;
-subject(26).known_bad_channels = 28;
 subject(26).bad_channel_threshs = {2,150,1};
-subject(26).eye_mask_threshold = 3;
 
 subject(27).sid = 35;
-subject(27).known_bad_channels = 28;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % data cleaning
@@ -226,6 +210,7 @@ for i = 1:length(eegfiles)
         ft_databrowser(plot_cfg, eeg);
     end
 
+    % eliminate eyblinks
     [weye,pcas] = gt_mask_eyeblinks(eeg,w,67:70,subject(i).eye_pca_comps,...
         subject(i).eye_mask_threshold);
 
@@ -242,9 +227,50 @@ for i = 1:length(eegfiles)
         eegcat = gt_fortrials(@(x)x,eeg);
         eegcat = vertcat(eegcat{:});
         chans = [ eeg.label; 'mask' ];
-        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 20.*eyemask],...
+        ft_databrowser(plot_cfg, gt_asfieldtrip(eeg,[eegcat 100.*eyemask],...
             'label',chans))
 
+    end
+
+    % eegcat = gt_fortrials(@(x)x,eeg);
+    % eegcat = vertcat(eegcat{:});
+    % weyecat = horzcat(weye{:})';
+    % [toeye,p1,p2] = nt_dss0(nt_cov(eegcat),nt_cov(bsxfun(@times,eegcat,1-weyecat)));
+    % eegcat = nt_tsr(eegcat,eegcat*toeye(:,comps));
+    % eegeye = gt_asfieldtrip(eeg,eegcat);
+    % ft_databrowser(plot_cfg,eegeye);
+
+    % if interactive
+
+    %     plot(p2./p1, '.-');
+
+    %     comps = 1:4
+
+    %     % plot timecourse of components
+    %     chans = cellfun(@(x)sprintf('eye%02d',x),num2cell(comps),'UniformOutput',false);
+    %     this_plot = plot_cfg;
+    %     this_plot.ylim = [-1 1] .* 1e-1;
+    %     ft_databrowser(this_plot, gt_asfieldtrip(eeg,eegcat*toeye(:,comps),...
+    %         'label',chans,'croplast',10))
+
+    %     % plot components
+    %     topo = [];
+    %     topo.component = 1:length(comps);
+    %     topo.layout = lay;
+    %     figure; ft_topoplotIC(topo,gt_ascomponent(eeg,toeye(:,comps)));
+
+    % end
+
+    wcomb = cellfun(@(x,y) min(x,y'), w, weye', 'UniformOutput', false);
+    [eegoutl,woutl] = gt_settrials(@gt_outliers,{eeg,wcomb},5,3,false,...
+        'progress','finding outliers...'); % like nt_outliers, but shows a progress bar
+    if interactive
+        ft_databrowser(plot_cfg, eegoutl);
+        eegw = eegoutl
+        eegw.trial = cellfun(@(x) x',woutl','UniformOutput',false);
+        this_plot = plot_cfg;
+        this_plot.ylim = [0 1];
+        ft_databrowser(this_plot, eegw);
     end
 
     %% weighted rerefence
@@ -256,8 +282,9 @@ for i = 1:length(eegfiles)
     end
 
     %% detect outlying segments
-    [wseg,segnorm,segsd] = gt_segment_outliers(eeg,weye,...
-        subject(i).segment_outlier_thresh);
+    wcomb = cellfun(@(x,y) min(x',y'), woutl', weye', 'UniformOutput', false);
+    [wseg,segnorm,segsd] = ...
+        gt_segment_outliers(eeg,wcomb,subject(i).segment_outlier_thresh);
 
     if interactive
 
@@ -301,7 +328,8 @@ save(fullfile(cache_dir,'eeg','C.mat'),'C');
 if interactive
     imagesc(log(abs(C)));
 
-    bar(score(1:50));
+    bar(score(1:60));
+    bar(score);
 
     total = 0;
     for i = 1:length(cleaned_files)
@@ -310,19 +338,26 @@ if interactive
     % total should be 0
 
     % examine MCCA cleaned data
-    i = 2;
-    nkeep = 3;
+    i = 3;
+    nkeep = 35;
 
     filename = cleaned_files(i).name;
     filepath = fullfile(cache_dir,'eeg',filename);
 
-    [trial,label] = load_subject_binary(filepath);
+    [trial,label,w] = load_subject_binary(filepath);
     raw = gt_eeg_to_ft(trial,label,256);
     mcca = project_mcca(raw,nkeep,1:64,AA{i},0);
 
     this_plot = plot_cfg;
     this_plot.channel = mcca.label;
     ft_databrowser(this_plot,raw);
-    this_plot.ylim = [-0.1 0.1];
+    this_plot.ylim = [-1 1].*1e0;
     ft_databrowser(this_plot,mcca);
+
+    comps = 10:20
+    topo = [];
+    topo.component = 1:length(comps);
+    topo.layout = lay;
+    figure; ft_topoplotIC(topo,gt_ascomponent(mcca,AA{i}(:,comps)));
+
 end
