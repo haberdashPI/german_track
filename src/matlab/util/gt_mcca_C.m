@@ -5,7 +5,6 @@ function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
     nchans = length(channels);
     nsubj = length(files);
     C = zeros(nchans*nsubj);
-    conds = {'object','global','spatial'};
 
     textprogressbar('Computing C...');
     onCleanup(@() textprogressbar(''));
@@ -16,6 +15,7 @@ function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
         for c = 1:length(conds)
 
             x = zeros(maxlen,nchans*nsubj);
+            wt = zeros(maxlen,nchans*nsubj);
 
             for i = 1:length(files)
                 n = n+1;
@@ -35,7 +35,7 @@ function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
                 %% find the index for this stimulus index and condition
                 row = find(strcmp(stim_events.condition,conds{c}) & stim_events.sound_index == t);
                 if isempty(row)
-                    warning("Missing stimulus %d in condition %s of sid %d",t,conds{c},sid);
+                    warning("Missing stimulus %d in condition '%s' of sid %d",t,conds{c},sid);
                     continue
                 end
                 if length(row) > 1
@@ -44,12 +44,17 @@ function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
 
                 data = eeg{row}(channels,:);
                 wdata = w{row}(channels,:);
-                x(1:size(data,2),(1:nchans) + (i-1)*nsubj) = (data.*wdata)';
+                x(1:size(data,2),(1:nchans) + (i-1)*nchans) = (data.*wdata)';
+                wt(1:size(data,2),(1:nchans) + (i-1)*nchans) = wdata';
 
                 textprogressbar(100*n/totalitr);
             end
 
-            C = C + x'*x;
+            % wt has 1 and 0 entries, so we can square it to
+            % count observations for each x*y correlation pair
+            w2 = wt'*wt;
+            w2(w2 == 0) = 1; % avoid NaNs
+            C = C + (x'*x)./w2;
         end
     end
 end

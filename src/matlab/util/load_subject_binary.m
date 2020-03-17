@@ -11,7 +11,7 @@ function [trial,label,w] = load_subject_binary(filename)
         label = cell(nchan,1);
         for i = 1:nchan
             nchar = fread(fid,1,'int32');
-            label{i} = convertCharsToStrings(native2unicode(fread(fid,nchar,'char')));
+            label{i} = native2unicode(fread(fid,nchar,'char')');
         end
         ntrial = fread(fid,1,'int32');
         sr = fread(fid,1,'int32');
@@ -31,4 +31,5 @@ function [trial,label,w] = load_subject_binary(filename)
         fclose(fid);
         rethrow(e);
     end
+    fclose(fid);
 end

@@ -46,4 +46,5 @@ function save_subject_binary(subj,filename,varargin)
         fclose(fid);
         rethrow(e);
     end
+    fclose(fid);
 end

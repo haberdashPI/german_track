@@ -1,6 +1,13 @@
 run(fullfile('..','..','src','matlab','util','setup.m'));
 mkdir(fullfile(cache_dir,'eeg'));
-usecache = 1; % whether to use previously preprocessed data stored in the cache
+
+% whether to use previously preprocessed data stored in the cache
+usecache = 1;
+
+% if you are rerunning analyses you can set interactive to false; if you are
+% analyzing a new subject, set this to true and run each section below,
+% one at a time, using the plots to verify the results
+interactive = false;
 
 eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
 
@@ -21,7 +28,9 @@ elec = ft_read_sens(fullfile(raw_data_dir,'biosemi64.txt'));
 cfg = [];
 cfg.elec = elec;
 lay = ft_prepare_layout(cfg);
-ft_layoutplot(cfg)
+if interactive
+    ft_layoutplot(cfg);
+end
 
 [closest,dists]=nt_proximity('biosemi64.lay',63);
 
@@ -150,11 +159,6 @@ subject(27).known_bad_channels = 28;
 
 data = [];
 
-% if you are rerunning analyses you can set interactive to false, if you are
-% analyzing a new subject set this to true and run each section below,
-% one at a time, using the plots to verify the results
-interactive = false;
-
 for i = 1:length(eegfiles)
 
     %% file information
@@ -174,7 +178,7 @@ for i = 1:length(eegfiles)
     end
     savename = regexprep(filename,'.bdf$','.eeg');
     savetopath = fullfile(cache_dir,'eeg',savename);
-    if isfile(savetopath)
+    if isfile(savetopath) && usecache
         warning("Using cached subject data for sid %d.",sid)
         continue
     end
@@ -270,6 +274,13 @@ for i = 1:length(eegfiles)
             'label',chans));
 
     end
+    for j = 1:length(wseg)
+        if size(wseg{j},1) ~= 70
+            error("Unexpected number of channels")
+        end
+        wseg{j}(bad_indices{j},:) = 0;
+        wseg{j}(subject(i).known_bad_channels,:) = 0;
+    end
 
     save_subject_binary(eeg,savetopath,'weights',wseg);
 end
@@ -282,6 +293,36 @@ cleaned_files = dir(fullfile(cache_dir,'eeg','*.eeg'));
 maxlen = round(256*(max(sound_lengths)+0.5));
 C = gt_mcca_C(cleaned_files,maxlen,{'global','object','spatial'},1:50,1:64);
 
-[A,score,AA] = nt_mcca(C,n_chans,64);
+% load(fullfile(cache_dir,'eeg','C.mat'))
+save(fullfile(cache_dir,'eeg','C.mat'),'C');
 
-bar(score(1:300));
+[A,score,AA] = nt_mcca(C,64);
+
+if interactive
+    imagesc(log(abs(C)));
+
+    bar(score(1:50));
+
+    total = 0;
+    for i = 1:length(cleaned_files)
+        total = total + all(all(AA{i} == 0));
+    end
+    % total should be 0
+
+    % examine MCCA cleaned data
+    i = 2;
+    nkeep = 3;
+
+    filename = cleaned_files(i).name;
+    filepath = fullfile(cache_dir,'eeg',filename);
+
+    [trial,label] = load_subject_binary(filepath);
+    raw = gt_eeg_to_ft(trial,label,256);
+    mcca = project_mcca(raw,nkeep,1:64,AA{i},0);
+
+    this_plot = plot_cfg;
+    this_plot.channel = mcca.label;
+    ft_databrowser(this_plot,raw);
+    this_plot.ylim = [-0.1 0.1];
+    ft_databrowser(this_plot,mcca);
+end
