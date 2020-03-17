@@ -282,9 +282,9 @@ for i = 1:length(eegfiles)
     end
 
     %% detect outlying segments
-    wcomb = cellfun(@(x,y) min(x',y'), woutl', weye', 'UniformOutput', false);
+    wcomb = cellfun(@(x,y) min(x',y), woutl', weye, 'UniformOutput', false);
     [wseg,segnorm,segsd] = ...
-        gt_segment_outliers(eeg,wcomb,subject(i).segment_outlier_thresh);
+        gt_segment_outliers(eeg,wcomb,subject(i).segment_outlier_thresh,0.25);
 
     if interactive
 
