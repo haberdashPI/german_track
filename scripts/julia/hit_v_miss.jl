@@ -1,9 +1,10 @@
 using DrWatson
 @quickactivate("german_track")
-include(joinpath("..", "..", "src", "julia", "setup.jl"))
+
+using EEGCoding, GermanTrack, DataFrames
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 

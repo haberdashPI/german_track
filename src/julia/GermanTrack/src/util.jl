@@ -189,12 +189,12 @@ function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
         data = if endswith(file,".bson")
             @load file data
             data
-        elseif endswith(file,".mcca_proj")
+        elseif endswith(file,".mcca_proj") || endswith(file,".mcca")
             read_mcca_proj(file)
         elseif endswith(file,".eeg")
             read_eeg_binary(file)
         else
-            pat = match(r"\.(.+)$",file)
+            pat = match(r"\.([^\.]+)$",file)
             if pat != nothing
                 ext = pat[1]
                 error("Unsupported data format '.$ext'.")
@@ -457,7 +457,11 @@ function sidfor(file)
     pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$"
     matched = match(pattern,file)
     if isnothing(matched)
-        error("Could not find subject id in filename '$file'.")
+        pattern = r"([0-9]+)(_[a-z_]+)?([0-9]+)?\.[a-z_]+$"
+        matched = match(pattern,file)
+        if isnothing(matched)
+            error("Could not find subject id in filename '$file'.")
+        end
     end
     parse(Int,matched[1])
 end
