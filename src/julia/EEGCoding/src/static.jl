@@ -105,6 +105,17 @@ function zsimplex(z)
     y
 end
 
+function unzsimplex(x)
+    K = length(x)
+    y = Array{eltype(x)}(undef,K-1)
+    c = y[1] = x[1]
+    for k in 2:(K-1)
+        y[k] = x[k]/(1-c)
+        c += x[k]
+    end
+    y
+end
+
 @adjoint function zsimplex(z)
     K = length(z)+1
     y = zsimplex(z)
@@ -133,13 +144,12 @@ function SemiDecoder(x,y,v,tt)
     @assert length(tt) == size(v,1) "Number of weights must match number of weight indices"
 
     A = randn(K,M)
-    u = randn(T - V,H-1)
+    u = rand(T - V,H-1)
     SemiDecoder(A,u)
 end
 
 function loss(model::SemiDecoder,x,y,uindex::Int)
-    # w = transform(UnitSimplex(size(model.u)[2]+1),model.u[uindex,:])
-    w = tosimplex(model.u[uindex,:])
+    w = zsimplex(clamp.(model.u[uindex,:],0,1))
     mse(vec(model.A*x),vec(sum(w.*y,dims=1)))
 end
 loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1)))
@@ -160,18 +170,30 @@ function loss(model::SemiDecoder,x,y,v,tt)
             L += l
         end
     end
+
+    # impose cost when u is outside the 0,1 boundary
+    for ui in model.u
+        dist = abs(ui - 0.5)
+        L += max(0,dist - 0.5)^2
+    end
+
     L
 end
 
-function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,testcb)
-    decoder = SemiDecoder(x,y,v,tt)
+function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
+        testcb,hint=nothing)
+    decoder = if !isnothing(hint)
+        SemiDecoder(hint[1],mapslices(unzsimplex,hint[2],dims=2))
+    else
+        SemiDecoder(x,y,v,tt)
+    end
     @assert batchsize <= length(x) "Batch size cannot be larger than data size."
 
     # testx = x[sample(1:length(x),batchsize,replace=false)]
     # testy = y[sample(1:length(x),batchsize,replace=false)]
     testx = x
     testy = y
-    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm) + reg.λ*norm(vec(dec.u), reg.norm)
+    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
 
     data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffle=true)
 
@@ -195,7 +217,7 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     T = length(x)
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
-    w[setdiff(1:T,tt),:] = mapslices(tosimplex,decoder.u,dims=2)
+    w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
     decoder.A, w
 end
 
