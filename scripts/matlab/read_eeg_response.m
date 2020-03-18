@@ -349,8 +349,21 @@ if interactive
         chweights(:,i) = mean(wcat(1:64,:),2);
     end
 
+    % plot components of all particiapnts
+    figure; tiledlayout(5,5);
+    for i = 1:length(cleaned_files)
+        nexttile;
+
+        sid = gt_sidforfile(cleaned_files(i).name);
+
+        im = AA{i}(:,1:nkeep);
+        im = im.*chweights(:,i);
+        imagesc(im);
+        title(sprintf("Subject %d",sid));
+    end
+
     % examine MCCA cleaned data of selected individual participants
-    i = 4; % select participant here
+    i = 24; % select participant here
     nkeep = 30;
 
     filename = cleaned_files(i).name
@@ -366,31 +379,35 @@ if interactive
     this_plot.ylim = [-1 1].*1e0;
     ft_databrowser(this_plot,mcca);
 
+    mcca_comp = mcca;
+    mcca_comp.trial = mcca_comp.projected;
+    mcca_comp.label = cellfun(@(x)sprintf('comp%02d',x),num2cell(1:nkeep),...
+        'UniformOutput',false)
+    this_plot.channel = mcca_comp.label;
+    this_plot.ylim = [-1 1].*1e-1;
+    ft_databrowser(this_plot,mcca_comp);
+
     comps = 1:4
     topo = [];
     topo.component = 1:length(comps);
     topo.layout = lay;
     figure; ft_topoplotIC(topo,gt_ascomponent(mcca,AA{i}(:,comps).*chweights(:,i)));
 
-    % plot components of all particiapnts
-    figure; tiledlayout(5,5);
-    for i = 1:length(cleaned_files)
-        nexttile;
-
-        sid = gt_sidforfile(cleaned_files(i).name);
-
-        im = AA{i}(:,1:nkeep);
-        im = im.*chweights(:,i);
-        imagesc(im);
-        title(sprintf("Subject %d",sid));
-    end
-
 end
 
-% for i = 1:length(cleaned_files)
-%     filename = cleaned_files(i).name
-%     filepath = fullfile(cache_dir,'eeg',filename);
-%     sid = gt_sidforfile(filepath);
+% save the subjects using the best MCCA components
+nkeep = 30;
+for i = 1:length(cleaned_files)
+    filename = cleaned_files(i).name;
+    filepath = fullfile(cache_dir,'eeg',filename);
+    sid = gt_sidforfile(filepath);
 
+    [trial,label,w] = load_subject_binary(filepath);
+    raw = gt_eeg_to_ft(trial,label,256);
+    mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
+    savename = regexprep(cleaned_files(i).name,'.eeg$','.mcca');
+    mccafile = fullfile(data_dir,savename);
 
+    save_subject_components(mcca,mccafile)
+end

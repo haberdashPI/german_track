@@ -7,10 +7,12 @@ function save_subject_binary(subj,filename,varargin)
 
     fid = fopen(filename,'w','n','UTF-8');
     try
+        % file version
+        fwrite(fid,2,'int32'); % file version
+        % whether the channels are weighted
+        fwrite(fid,~isempty(weights),'uint8');
         % number of channels
         nchan = size(subj.trial{1},1);
-        fwrite(fid,2,'int32'); % file version
-        fwrite(fid,~isempty(weights),'uint8');
         fwrite(fid,nchan,'int32');
         % fprintf('number of channels %d\n',nchan);
         % channel names
