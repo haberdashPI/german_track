@@ -5,7 +5,7 @@ function save_subject_components(mcca,filename)
         nchan = size(mcca.label,1);
         fwrite(fid,nchan,'int32');
         % channel names
-        for i = 1:size(mcca.projected{1},1)
+        for i = 1:length(mcca.label{1})
             nchar = numel(mcca.label{i});
             fwrite(fid,nchar,'int32');
             fwrite(fid,mcca.label{i},'char');

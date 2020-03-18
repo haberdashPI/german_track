@@ -2,7 +2,7 @@ run(fullfile('..','..','src','matlab','util','setup.m'));
 mkdir(fullfile(cache_dir,'eeg'));
 
 % whether to use previously preprocessed data stored in the cache
-usecache = 0;
+usecache = 1;
 
 % if you are rerunning analyses you can set interactive to false; if you are
 % analyzing a new subject, set this to true and run each section below,
@@ -318,10 +318,14 @@ end
 
 cleaned_files = dir(fullfile(cache_dir,'eeg','*.eeg'));
 maxlen = round(256*(max(sound_lengths)+0.5));
-C = gt_mcca_C(cleaned_files,maxlen,{'global','object','spatial'},1:50,1:64);
 
-% load(fullfile(cache_dir,'eeg','C.mat'))
-save(fullfile(cache_dir,'eeg','C.mat'),'C');
+cachefile = fullfile(cache_dir,'eeg','C.mat')
+if usecache && isfile(cachefile)
+    load(fullfile(cache_dir,'eeg','C.mat'))
+else
+    C = gt_mcca_C(cleaned_files,maxlen,{'global','object','spatial'},1:50,1:64);
+    save(cachefile,'C');
+end
 
 [A,score,AA] = nt_mcca(C,64);
 
