@@ -166,8 +166,7 @@ function loss(model::SemiDecoder,x,y,v,tt)
             L += loss(model,x[i],y[i],vec(v[tt[vi],:]))
         else
             ui += 1
-            l = loss(model,x[i],y[i],ui)
-            L += l
+            L += loss(model,x[i],y[i],ui)
         end
     end
 
@@ -181,7 +180,7 @@ function loss(model::SemiDecoder,x,y,v,tt)
 end
 
 function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
-        testcb,hint=nothing)
+        testcb = x -> nothing,hint=nothing)
     decoder = if !isnothing(hint)
         SemiDecoder(hint[1],mapslices(unzsimplex,hint[2],dims=2))
     else
@@ -217,7 +216,9 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     T = length(x)
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
-    w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
+    if length(decoder.u) > 0
+        w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
+    end
     decoder.A, w
 end
 

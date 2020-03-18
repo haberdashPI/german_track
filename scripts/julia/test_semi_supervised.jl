@@ -35,18 +35,6 @@ plotaxes(w)
 R"quartz()"
 plotaxes(ŵ')
 
-# small test, and a "good" hint for the run below
-u = randn(3,2)
-
-opt = AMSGrad()
-@showprogress for n in 1:10_000
-    Flux.train!(x -> sum(Flux.mse(tosimplex(u[i,:]),x[i,:]) for i in 1:3),
-        Flux.params(u), [w[3:5,:]], opt)
-end
-
-
-# thought: what if we instead just used the stick breaking, and
-# left the variables in the (0,1) range?
 a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1),
     batchsize=5,epochs=10_000,status_rate=0.5,optimizer = AMSGrad(),
     testcb = function(decoder)
@@ -72,6 +60,13 @@ a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1)
         diff = mapslices(EEGCoding.zsimplex,decoder.u,dims=2) .- w[3:end,:]
         @info "Weight differences: $(sqrt(sum(diff.^2)))."
     end)
+
+# does it work without the unknown weights?
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:5,:],1:5,EEGCoding.CvNorm(0.3,1),
+    batchsize=5,epochs=100_000,status_rate=0.5,optimizer = AMSGrad())
+plotaxes(vec(a))
+
+
 
 
 
