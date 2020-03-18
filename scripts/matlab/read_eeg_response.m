@@ -148,20 +148,19 @@ for i = 1:length(eegfiles)
     %% file information
     filename = eegfiles(i).name;
     filepath = fullfile(raw_data_dir,filename);
-    numstr = regexp(filepath,'([0-9]+)_','tokens');
-    sid = str2num(numstr{1}{1});
+    sid = gt_sidforfile(filename);
     if subject(i).sid ~= sid
         error('Wrong subject id (%d) specified for index %d, expected sid %d',...
             subject(i).sid,i,sid);
     end
 
+    savename = regexprep(filename,'.bdf$','.eeg');
+    savetopath = fullfile(cache_dir,'eeg',savename);
 
     if isempty(subject(i).sid)
         warning("Subject id %d will be ignored.",sid);
         continue
     end
-    savename = regexprep(filename,'.bdf$','.eeg');
-    savetopath = fullfile(cache_dir,'eeg',savename);
     if isfile(savetopath) && usecache
         warning("Using cached subject data for sid %d.",sid)
         continue
@@ -301,6 +300,7 @@ for i = 1:length(eegfiles)
             'label',chans));
 
     end
+
     for j = 1:length(wseg)
         if size(wseg{j},1) ~= 70
             error("Unexpected number of channels")
@@ -327,9 +327,10 @@ save(fullfile(cache_dir,'eeg','C.mat'),'C');
 
 if interactive
     imagesc(log(abs(C)));
+    imagesc(C);
 
-    bar(score(1:60));
-    bar(score);
+    plot(score(1:60),'.-');
+    plot(score,'.-');
 
     total = 0;
     for i = 1:length(cleaned_files)
@@ -337,16 +338,27 @@ if interactive
     end
     % total should be 0
 
-    % examine MCCA cleaned data
-    i = 3;
-    nkeep = 35;
+    chweights = zeros(1:64,length(cleaned_files))
+    for i = 1:length(cleaned_files)
+        filename = cleaned_files(i).name;
+        filepath = fullfile(cache_dir,'eeg',filename);
+        sid = gt_sidforfile(filename);
+        [~,~,w] = load_subject_binary(filepath);
 
-    filename = cleaned_files(i).name;
+        wcat = horzcat(w{:});
+        chweights(:,i) = mean(wcat(1:64,:),2);
+    end
+
+    % examine MCCA cleaned data of selected individual participants
+    i = 4; % select participant here
+    nkeep = 30;
+
+    filename = cleaned_files(i).name
     filepath = fullfile(cache_dir,'eeg',filename);
 
     [trial,label,w] = load_subject_binary(filepath);
     raw = gt_eeg_to_ft(trial,label,256);
-    mcca = project_mcca(raw,nkeep,1:64,AA{i},0);
+    mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
     this_plot = plot_cfg;
     this_plot.channel = mcca.label;
@@ -354,10 +366,31 @@ if interactive
     this_plot.ylim = [-1 1].*1e0;
     ft_databrowser(this_plot,mcca);
 
-    comps = 10:20
+    comps = 1:4
     topo = [];
     topo.component = 1:length(comps);
     topo.layout = lay;
-    figure; ft_topoplotIC(topo,gt_ascomponent(mcca,AA{i}(:,comps)));
+    figure; ft_topoplotIC(topo,gt_ascomponent(mcca,AA{i}(:,comps).*chweights(:,i)));
+
+    % plot components of all particiapnts
+    figure; tiledlayout(5,5);
+    for i = 1:length(cleaned_files)
+        nexttile;
+
+        sid = gt_sidforfile(cleaned_files(i).name);
+
+        im = AA{i}(:,1:nkeep);
+        im = im.*chweights(:,i);
+        imagesc(im);
+        title(sprintf("Subject %d",sid));
+    end
 
 end
+
+% for i = 1:length(cleaned_files)
+%     filename = cleaned_files(i).name
+%     filepath = fullfile(cache_dir,'eeg',filename);
+%     sid = gt_sidforfile(filepath);
+
+
+

@@ -19,7 +19,7 @@ function [wout,pcas] = gt_mask_eyeblinks(eeg,w,eog,use_comp,thresh)
     mask=abs(c)>thresh*median(abs(c));
 
     wout = ones(size(wcat));
-    wout(mask) = 0;
+    wout(mask,:) = 0;
     wout = gt_asfieldtrip(eeg,wout,'croplast',10).trial;
     wout{end} = [wout{end} zeros(size(wout{end},1),10)];
 end
