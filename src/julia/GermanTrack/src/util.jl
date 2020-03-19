@@ -180,6 +180,7 @@ function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
         error("File '$file' does not exist.")
     end
 
+    @show file
     stim_events, sid = events_for_eeg(file,stim_info)
 
     data = get!(subject_cache,(file,encoding,framerate)) do
@@ -453,11 +454,12 @@ function timeline(target_time,target_present,correct;step=0.05,len=8)
     DataFrame(value=values, time=times)
 end
 
-function sidfor(file)
+function sidfor(filepath)
+    file = splitdir(filepath)[2]
     pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$"
     matched = match(pattern,file)
     if isnothing(matched)
-        pattern = r"([0-9]+)(_[a-z_]+)?([0-9]+)?\.[a-z_]+$"
+        pattern = r"([0-9]+).*\.[a-z_]+$"
         matched = match(pattern,file)
         if isnothing(matched)
             error("Could not find subject id in filename '$file'.")

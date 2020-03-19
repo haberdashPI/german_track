@@ -5,12 +5,15 @@ function save_subject_components(mcca,filename)
         nchan = size(mcca.label,1);
         fwrite(fid,nchan,'int32');
         % channel names
-        for i = 1:length(mcca.label{1})
+        for i = 1:length(mcca.label)
             nchar = numel(mcca.label{i});
             fwrite(fid,nchar,'int32');
             fwrite(fid,mcca.label{i},'char');
         end
         % number of components
+        if size(mcca.components,2) ~= nchan
+            error("Expected each component to have %d channels.",nchan)
+        end
         ncomp = size(mcca.components,1);
         fwrite(fid,ncomp,'int32');
         % components

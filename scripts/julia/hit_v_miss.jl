@@ -1,7 +1,8 @@
 using DrWatson
 @quickactivate("german_track")
 
-using EEGCoding, GermanTrack, DataFrames
+using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
+    Dates
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -104,7 +105,7 @@ freqbins = OrderedDict(
 
 fs = GermanTrack.framerate(first(values(subjects)).eeg)
 # channels = first(values(subjects)).eeg.label
-channels = 1:34
+channels = 1:30
 function freqrange(spect,(from,to))
     freqs = range(0,fs/2,length=size(spect,2))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
@@ -153,7 +154,6 @@ df = $(freqmeans) %>%
     group_by(sid,winstart,winlen,hit,#target_timing,
         salience,timing,condition) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
-    filter(sid != 11) %>%
     ungroup() %>%
     mutate(timing = factor(timing,levels=c('before','after')),
            freqbin = factor(freqbin,levels=bins, ordered=T),
@@ -174,7 +174,7 @@ plotdf = group_means %>%
     filter(hit %in% c('hit','miss')) %>%
     group_by(sid,hit,condition,salience) %>%
     spread(timing,meanpower) %>%
-    mutate(diff = after - before)
+    mutate(diff = log(after) - log(before))
 
 pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
 
@@ -185,12 +185,12 @@ p = ggplot(plotdf,aes(x=winstart,y=diff,
         size=1) +
     stat_summary(geom='linerange',position=position_dodge(width=0.1),
                  fun.args = list(conf.int=0.68)) +
-    geom_point(alpha=0.1, position=pos) +
+    # geom_point(alpha=0.1, position=pos) +
     scale_fill_brewer(palette='Paired',direction=-1) +
     scale_color_brewer(palette='Paired',direction=-1) +
     facet_grid(freqbin~condition+salience,scales='free_y') +
-    ylab("Median power difference across channels (after - before)") +
-    coord_cartesian(ylim=c(-0.01,0.01)) +
+    ylab("Median log power difference across channels (after - before)") +
+    # coord_cartesian(ylim=c(-0.1,0.1)) +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
@@ -202,16 +202,17 @@ ggsave(file.path($dir,name),plot=p,width=11,height=8)
 # }
 
 plotdf = group_means %>%
-    filter(winstart == 0.2,winlen == 1.0) %>%
+    filter(((winstart == 0.25) & (winlen == 0.5)) |
+           ((winstart == 0.5) & (winlen == 1.5))) %>%
     group_by(sid,hit,condition,salience) %>%
     spread(timing,meanpower) %>%
-    mutate(diff = after - before)
+    mutate(diff = log(after) - log(before))
 
 pos = position_jitterdodge(dodge.width=0.2,jitter.width=0.1)
 
 p = ggplot(plotdf,aes(x=freqbin,y=diff,
         fill=hit,color=hit)) +
-    geom_point(alpha=0.4, position=pos, size=1) +
+    # geom_point(alpha=0.4, position=pos, size=1) +
     stat_summary(fun.data = "mean_cl_boot", geom='point',
         position=position_dodge(width=0.4),
         size=2,fun.args = list(conf.int=0.68)) +
@@ -221,34 +222,50 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     # geom_text(position=pos, size=4, aes(label=sid)) +
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
-    coord_cartesian(ylim=c(-0.01,0.01)) +
-    facet_grid(salience~condition,scales='free_y') +
-    ylab("Median power difference across channels (after - before)") +
+    # coord_cartesian(ylim=c(-0.01,0.01)) +
+    facet_grid(salience~condition+winlen,scales='free_y') +
+    theme(axis.text.x = element_text(angle=90,hjust=1)) +
+    ylab("Median log power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
-name = sprintf('hits_by_salience_%03.1f_%03.1f.pdf',0.5,1.0)
+name = sprintf('hits_by_salience_select_windows.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
-# p = ggplot(filter(plotdf,freqbin=='delta'),
-#         aes(x=hit,y=diff,fill=hit,color=hit)) +
-#     geom_line(alpha=0.2,color='black',aes(group=sid)) +
-#     geom_point(alpha=0.4, position=pos, size=1) +
-#     stat_summary(fun.data = "mean_cl_boot", geom='point',
-#         position=position_dodge(width=0.4),
-#         size=2,fun.args = list(conf.int=0.68)) +
-#     stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-#         position=position_dodge(width=0.4), width=0.5,
-#         fun.args = list(conf.int=0.68)) +
-#     # geom_text(position=pos, size=4, aes(label=sid)) +
-#     scale_fill_brewer(palette='Set1',direction=-1) +
-#     scale_color_brewer(palette='Set1',direction=-1) +
-#     facet_grid(winlen~condition,scales='free_y') +
-#     ylab("Median power difference across channels (after - before)") +
-#     geom_abline(slope=0,intercept=0,linetype=2)
-# p
+df = $(freqmeans) %>%
+    # filter(channel %in% 1:3) %>%
+    mutate(timing = factor(timing,levels=c('before','after')),
+           condition = factor(condition,levels=c('global','object','spatial'))) %>%
+    arrange(timing,condition)
 
-# name = sprintf('delta_lines_mcca34_hits_%03.1f_%03.1f.pdf',0.5,1.0)
-# ggsave(file.path($dir,name),plot=p,width=11,height=8)
+plotdf = df %>%
+    filter(((winstart == 0.25) & (winlen == 0.5)) |
+           ((winstart == 0.5) & (winlen == 1.5))) %>%
+    group_by(sid,hit,condition,salience,channel,winstart,winlen) %>%
+    select(timing,alpha) %>%
+    spread(timing,alpha) %>%
+    summarize(meandiff = mean(log(after) - log(before)))
+
+p = ggplot(filter(plotdf,channel <= 5),aes(x=channel,y=meandiff,
+        fill=hit,color=hit)) +
+    # geom_point(alpha=0.4, position=pos, size=1) +
+    stat_summary(fun.data = "mean_cl_boot", geom='point',
+        position=position_dodge(width=0.4),
+        size=2,fun.args = list(conf.int=0.68)) +
+    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
+        position=position_dodge(width=0.4), width=0.5,
+        fun.args = list(conf.int=0.68)) +
+    # geom_text(position=pos, size=4, aes(label=sid)) +
+    scale_fill_brewer(palette='Set1',direction=-1) +
+    scale_color_brewer(palette='Set1',direction=-1) +
+    # coord_cartesian(ylim=c(-0.01,0.01)) +
+    facet_grid(salience~condition+winlen,scales='free_y') +
+    ylab("Median power difference across channels (after - before)") +
+    xlab("MCCA Component")
+    geom_abline(slope=0,intercept=0,linetype=2)
+p
+
+name = sprintf('hits_by_salience_by_channel_select_windows.pdf',0.5,1.0)
+ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """
