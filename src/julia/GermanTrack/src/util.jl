@@ -180,7 +180,6 @@ function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
         error("File '$file' does not exist.")
     end
 
-    @show file
     stim_events, sid = events_for_eeg(file,stim_info)
 
     data = get!(subject_cache,(file,encoding,framerate)) do

@@ -111,7 +111,7 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen]) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
@@ -151,8 +151,8 @@ bins = $(collect(keys(freqbins)))
 
 df = $(freqmeans) %>%
     # filter(channel %in% 1:3) %>%
-    group_by(sid,winstart,winlen,hit,#target_timing,
-        salience,timing,condition) %>%
+    group_by(sid,winstart,winlen,hit,#target_timing, salience,
+        timing,condition) %>%
     gather(key="freqbin", value="meanpower", delta:gamma) %>%
     ungroup() %>%
     mutate(timing = factor(timing,levels=c('before','after')),
@@ -161,8 +161,8 @@ df = $(freqmeans) %>%
     arrange(timing,freqbin)
 
 group_means = df %>%
-    group_by(sid,winstart,winlen,hit,#target_timing,
-        salience,timing,condition,freqbin) %>%
+    group_by(sid,winstart,winlen,hit,#target_timing, salience,
+        timing,condition,freqbin) %>%
     summarize(meanpower = median(meanpower))
 
 # for(start in unique(df$winstart)){
@@ -172,7 +172,7 @@ plotdf = group_means %>%
     # filter(condition %in% c('global','object')) %>%
     #filter(group_means,winstart == start,winlen == len) %>%
     filter(hit %in% c('hit','miss')) %>%
-    group_by(sid,hit,condition,salience) %>%
+    group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = log(after) - log(before))
 
@@ -188,7 +188,7 @@ p = ggplot(plotdf,aes(x=winstart,y=diff,
     # geom_point(alpha=0.1, position=pos) +
     scale_fill_brewer(palette='Paired',direction=-1) +
     scale_color_brewer(palette='Paired',direction=-1) +
-    facet_grid(freqbin~condition+salience,scales='free_y') +
+    facet_grid(freqbin~condition,scales='free_y') +
     ylab("Median log power difference across channels (after - before)") +
     # coord_cartesian(ylim=c(-0.1,0.1)) +
     geom_abline(slope=0,intercept=0,linetype=2)
@@ -196,7 +196,7 @@ p
 
 # name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
 # name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-name = 'hits_by_salience_all_windows.pdf'
+name = 'hits_by_all_windows.pdf'
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 #     }
 # }
@@ -204,7 +204,7 @@ ggsave(file.path($dir,name),plot=p,width=11,height=8)
 plotdf = group_means %>%
     filter(((winstart == 0.25) & (winlen == 0.5)) |
            ((winstart == 0.5) & (winlen == 1.5))) %>%
-    group_by(sid,hit,condition,salience) %>%
+    group_by(sid,hit,condition) %>%
     spread(timing,meanpower) %>%
     mutate(diff = log(after) - log(before))
 
@@ -223,13 +223,13 @@ p = ggplot(plotdf,aes(x=freqbin,y=diff,
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
     # coord_cartesian(ylim=c(-0.01,0.01)) +
-    facet_grid(salience~condition+winlen,scales='free_y') +
+    facet_grid(.~condition+winlen,scales='free_y') +
     theme(axis.text.x = element_text(angle=90,hjust=1)) +
     ylab("Median log power difference across channels (after - before)") +
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
-name = sprintf('hits_by_salience_select_windows.pdf',0.5,1.0)
+name = sprintf('hits_by_select_windows.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 df = $(freqmeans) %>%
@@ -241,7 +241,7 @@ df = $(freqmeans) %>%
 plotdf = df %>%
     filter(((winstart == 0.25) & (winlen == 0.5)) |
            ((winstart == 0.5) & (winlen == 1.5))) %>%
-    group_by(sid,hit,condition,salience,channel,winstart,winlen) %>%
+    group_by(sid,hit,condition,channel,winstart,winlen) %>%
     select(timing,alpha) %>%
     spread(timing,alpha) %>%
     summarize(meandiff = mean(log(after) - log(before)))
@@ -259,13 +259,13 @@ p = ggplot(filter(plotdf,channel <= 5),aes(x=channel,y=meandiff,
     scale_fill_brewer(palette='Set1',direction=-1) +
     scale_color_brewer(palette='Set1',direction=-1) +
     # coord_cartesian(ylim=c(-0.01,0.01)) +
-    facet_grid(salience~condition+winlen,scales='free_y') +
+    facet_grid(.~condition+winlen,scales='free_y') +
     ylab("Median power difference across channels (after - before)") +
     xlab("MCCA Component")
     geom_abline(slope=0,intercept=0,linetype=2)
 p
 
-name = sprintf('hits_by_salience_by_channel_select_windows.pdf',0.5,1.0)
+name = sprintf('hits_alpha_by_channel_select_windows.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
 
 """
