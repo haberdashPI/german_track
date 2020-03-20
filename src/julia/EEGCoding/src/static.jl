@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex
+export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex, zsimplex
 
 using MetaArrays
 using Printf
@@ -199,8 +199,9 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     epoch = 0
     function status()
         testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
-        Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
-        @info "Weight Gradient $(Δ[decoder.u])"
+        # Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
+        # @info "Decoder Gradient $(Δ[decoder.A])"
+        # @info "Weight Gradient $(Δ[decoder.u])"
         @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
         testcb(decoder)
     end
@@ -217,7 +218,7 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
     if length(decoder.u) > 0
-        w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
+        w[@show(setdiff(1:T,tt)),:] = @show(mapslices(zsimplex,decoder.u,dims=2))
     end
     decoder.A, w
 end

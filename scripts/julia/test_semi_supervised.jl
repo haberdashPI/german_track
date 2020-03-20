@@ -62,18 +62,39 @@ a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1)
     end)
 
 # does it work without the unknown weights?
-a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:5,:],1:5,EEGCoding.CvNorm(0.3,1),
-    batchsize=5,epochs=100_000,status_rate=0.5,optimizer = AMSGrad())
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:4,:],1:4,EEGCoding.CvNorm(0.3,1),
+    batchsize=5,epochs=20_000,status_rate=0.5,optimizer = ADAM())
 plotaxes(vec(a))
 
+plotaxes(ŵ)
+R"quartz()"
+plotaxes(w)
 
+# small test, and a "good" hint for the run below
+u = rand(3,2)
 
+opt = AMSGrad()
+@showprogress for n in 1:1_000
+    Flux.train!(x -> sum(Flux.mse(zsimplex(u[i,:]),x[i,:]) for i in 1:3),
+        Flux.params(u), [w[3:5,:]], opt)
+end
 
+# does it work without the unknown weights?
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:5,:],1:5,EEGCoding.CvNorm(0.3,1),
+    batchsize=5,epochs=20_000,status_rate=0.5,optimizer = ADAM())
+
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:0,:],1:0,EEGCoding.CvNorm(0.3,1),
+    batchsize=5,epochs=20_000,status_rate=0.5,optimizer = ADAM())
+plotaxes(vec(a))
+
+plotaxes(ŵ)
+R"quartz()"
+plotaxes(w)
 
 # okay, that looks good, let's try something closer go the size of the actual
 # problem
 
-#=
+
 T = 1_000
 H = 3
 
@@ -92,4 +113,12 @@ plotaxes(vec(a))
 plotaxes(ŵ)
 R"quartz()"
 plotaxes(w')
-=#
+
+a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:10,:],1:10,EEGCoding.CvNorm(0.5,1),
+    batchsize=100,epochs=100,status_rate=0.0,optimizer = AMSGrad())
+
+plotaxes(vec(a))
+plotaxes(ŵ)
+R"quartz()"
+plotaxes(w)
+
