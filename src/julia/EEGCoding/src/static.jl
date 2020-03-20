@@ -87,6 +87,7 @@ end
 struct SemiDecoder{T}
     A::Array{T,2}
     u::Array{T,2}
+    indices::BitArray{1}
 end
 Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
@@ -145,7 +146,8 @@ function SemiDecoder(x,y,v,tt)
 
     A = randn(K,M)
     u = rand(T - V,H-1)
-    SemiDecoder(A,u)
+    indices = in.(1:length(x),Ref(Set(tt)))
+    SemiDecoder(A,u,indices)
 end
 
 function loss(model::SemiDecoder,x,y,uindex::Int)
@@ -157,11 +159,10 @@ loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1))
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
     L = 0.0
-    stt = Set(tt)
     ui = 0
     vi = 0
     for i in 1:T
-        if i in stt
+        if model.indices[i]
             vi += 1
             L += loss(model,x[i],y[i],vec(v[tt[vi],:]))
         else
@@ -218,7 +219,7 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
     if length(decoder.u) > 0
-        w[@show(setdiff(1:T,tt)),:] = @show(mapslices(zsimplex,decoder.u,dims=2))
+        w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
     end
     decoder.A, w
 end
