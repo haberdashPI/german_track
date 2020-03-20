@@ -25,7 +25,7 @@ const direction = convert(Array{String},
 target_times =
     convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
 
-halfway = filter(@λ(_ > 0),target_times) |> median
+halfway = @_ filter(_ > 0,target_times) |> median
 
 before_window(time,start,len) =
     iszero(time) ? no_indices : only_near(time,10, window=(-start-len,-start))

@@ -1,8 +1,10 @@
-using DrWatson; @quickactivate("german_track")
-include(joinpath("..", "..", "src", "julia", "setup.jl"))
+using DrWatson
+@quickactivate("german_track")
+using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
+    Dates, ProgressMeter, DSP, LambdaFn, PaddedViews
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(data_dir()))
+eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
 
@@ -83,7 +85,7 @@ dfhit = df[in.(df.hit,Ref(("hit","miss","baseline"))),:]
 
 
 # channels = first(values(subjects)).eeg.label
-channels = 1:34
+channels = 1:30
 
 using DSP: Periodograms
 cols = [:sid,:trial,:hit,:region,:condition]
@@ -109,10 +111,8 @@ freqpower = by(dfhit, cols) do rows
     )
 end
 
-medpower = by(freqpower,
-    [:sid,:hit,:region,:condition,:time,:freq],
-    (:power,) => x -> (logmed_power = median(log.(x.power)),))
-# To start, let's just look at the median TF plot
+medpower = timefreq_hitmiss(freqpower,
+    Progress(length(groupby(dfhit,[:condition,:sid]))))
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -123,8 +123,17 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 
-p = ggplot($medpower,aes(x=time,y=freq,fill=logmed_power)) +
-    facet_grid(condition~region+hit) + geom_raster()
+dfplot = $medpower %>%
+    group_by(condition,sid,time,freq) %>%
+    gather("contrast","powerdiff",hitvmiss:hitvbase)
+
+p = ggplot(dfplot,aes(x=time,y=freq,fill=powerdiff)) +
+    facet_grid(contrast~condition) + geom_raster() +
+    scale_fill_distiller(type="div",limits=c(-2,2))
 p
 
 ggsave(file.path($dir,"timefreq_hits.pdf"),width=11,height=8)
+"""
+
+topchannels = view(freqpower,freqpower.channel .<= 5,:)
+
