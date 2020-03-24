@@ -4,13 +4,6 @@
 			"path": "."
 		}
 	],
-	"settings": {
-		"workbench.colorCustomizations": {
-			"activityBar.background": "#480D68",
-			"titleBar.activeBackground": "#651291",
-			"titleBar.activeForeground": "#FDFBFE"
-		}
-	},
 	"extensions": {
 		"recommendations": [
 			"mikhail-arkhipov.r",
