@@ -1,6 +1,17 @@
 
 # Plans
 
+## most recent
+
+- groups of MCCA components (e.g. top-10, top-20, or random)
+            (add additional columns)
+- change color (below chance, and multi colors)
+- SVM across different time points
+- global vs. spatial
+- 3-way classifier
+- try early vs. late
+- different bins
+
 ## data
 
 - find the behavioral data
