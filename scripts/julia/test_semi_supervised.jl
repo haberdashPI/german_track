@@ -27,6 +27,12 @@ eeg = [vcat(0.2randn(20,size(envelopes[1],3)),
             sum(envelopes[t][h,:,:] * w[t,h] for h in 1:H))
        for t in 1:T]
 
+#= two things that could be going wrong
+1. loss function (does ŵ work better than w?)
+2. miss transformation (does w turn into something else?)
+=#
+
+
 # a, ŵ = EEGCoding.regressSS(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1))
 
 # plotaxes(vec(a))
