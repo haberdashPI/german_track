@@ -11,31 +11,6 @@ function mat2bson(file)
     file
 end
 
-function timefreq_hitmiss(freqpower,progress)
-    by(freqpower, [:condition,:sid]) do sdf
-        hit = by(view(sdf,sdf.hit .== "hit",:),[:freq,:time],:power => median)
-        base = by(view(sdf,sdf.hit .== "baseline",:),[:freq,:time],:power => median)
-        miss = by(view(sdf,sdf.hit .== "miss",:),[:freq,:time],:power => median)
-
-        size(miss,1) == 0 && (miss[!,:power_median] = Float64[])
-        size(base,1) == 0 && (base[!,:power_median] = Float64[])
-        size(hit,1) == 0 && (hit[!,:power_median] = Float64[])
-
-        rename!(miss,Dict(:power_median => "miss"))
-        rename!(base,Dict(:power_median => "base"))
-        rename!(hit,Dict(:power_median => "hit"))
-        hitvmiss = join(hit,miss,on=[:freq,:time],kind=:outer)
-        hitvmiss[!,:hitvmiss] = log.(hitvmiss.hit) .- log.(hitvmiss.miss)
-        hitvbase = join(hit,base,on=[:freq,:time],kind=:outer)
-        hitvbase[!,:hitvbase] = log.(hitvbase.hit) .- log.(hitvbase.base)
-
-        next!(progress)
-
-        join(hitvmiss[:,[:time,:freq,:hitvmiss]],
-             hitvbase[:,[:time,:freq,:hitvbase]],on=[:time,:freq],kind=:outer)
-    end
-end
-
 function padmeanpower(xs)
     rows = maximum(@λ(size(_,1)), xs)
     cols = maximum(@λ(size(_,2)), xs)

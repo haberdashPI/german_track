@@ -1,7 +1,7 @@
 using DrWatson
 @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates, ProgressMeter, DSP, LambdaFn, PaddedViews
+    Dates, ProgressMeter, DSP, Underscores, PaddedViews
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -15,7 +15,7 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
 
 const tindex = Dict("male" => 1, "fem" => 2)
 
-halfway = filter(@λ(_ > 0),target_times) |> median
+halfway = @_ filter(_ > 0,target_times) |> median
 regions = ["target", "baseline"]
 fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
@@ -111,8 +111,30 @@ freqpower = by(dfhit, cols) do rows
     )
 end
 
-medpower = timefreq_hitmiss(freqpower,
-    Progress(length(groupby(dfhit,[:condition,:sid]))))
+progres = Progress(length(unique(dfhit.condition))*length(unique(dfhit.sid)))
+medpower = by(freqpower, [:condition,:sid]) do sdf
+    hit = by(view(sdf,sdf.hit .== "hit",:),[:freq,:time],:power => median)
+    miss = by(view(sdf,sdf.hit .== "miss",:),[:freq,:time],:power => median)
+    base = by(view(sdf,sdf.hit .== "baseline",:),[:freq,:time],:power => median)
+
+    size(hit,1) == 0 && (hit[!,:power_median] = Float64[])
+    size(miss,1) == 0 && (miss[!,:power_median] = Float64[])
+    size(base,1) == 0 && (base[!,:power_median] = Float64[])
+
+    rename!(hit,Dict(:power_median => "hit"))
+    rename!(miss,Dict(:power_median => "miss"))
+    rename!(base,Dict(:power_median => "base"))
+
+    hitvbase = join(hit,base,on=[:freq,:time],kind=:outer)
+    hitvbase[!,:hitvbase] = log.(hitvbase.hit) .- log.(hitvbase.base)
+    missvbase = join(miss,base,on=[:freq,:time],kind=:outer)
+    missvbase[!,:missvbase] = log.(missvbase.miss) .- log.(missvbase.base)
+
+    next!(progress)
+
+    join(missvbase[:,[:time,:freq,:miss,:missvbase]],
+         hitvbase[:,[:time,:freq,:hit,:hitvbase]],on=[:time,:freq],kind=:outer)
+end
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -125,15 +147,37 @@ library(tidyr)
 
 dfplot = $medpower %>%
     group_by(condition,sid,time,freq) %>%
-    gather("contrast","powerdiff",hitvmiss:hitvbase)
+    summarize(logdiff = log(hit) - log(miss))
 
-p = ggplot(dfplot,aes(x=time,y=freq,fill=powerdiff)) +
-    facet_grid(contrast~condition) + geom_raster() +
-    scale_fill_distiller(type="div",limits=c(-2,2))
+p = ggplot(dfplot,aes(x=time,y=freq,fill=logdiff)) +
+    facet_grid(.~condition) + geom_raster() +
+    scale_y_continuous(breaks = seq(0,128,by=16)) +
+    scale_fill_distiller(type="div",limits=c(-1,1),name='log(hit) - log(miss)') +
+    xlim(-1,3)
 p
 
 ggsave(file.path($dir,"timefreq_hits.pdf"),width=11,height=8)
+
+dfplot2 = dfplot %>%
+    mutate(band = ifelse(freq < 9,"delta-theta",
+                  ifelse(freq > 30 & freq < 50, "low-gamma", "other"))) %>%
+    filter(band != "other") %>%
+    group_by(condition,sid,time,band) %>%
+    summarize(logdiff = mean(logdiff))
+
+p = ggplot(dfplot2,aes(x=time,y=logdiff,color=condition,fill=condition)) +
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    stat_summary(fun.data = "mean_cl_boot", geom='line') +
+    stat_summary(fun.data = "mean_cl_boot", geom='ribbon',color=NA,alpha=0.5,
+                 fun.args = list(conf.int=0.68)) +
+    scale_color_brewer(palette='Set1',direction=-1) +
+    scale_fill_brewer(palette='Set1',direction=-1) +
+    facet_grid(band~.) +
+    ylab('log(hit) - log(miss)') +
+    xlim(-1,3) +
+    coord_cartesian(ylim=c(-1,1))
+p
+
+ggsave(file.path($dir,"continuous_band_hits.pdf"),width=11,height=8)
+
 """
-
-topchannels = view(freqpower,freqpower.channel .<= 5,:)
-
