@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates
+    Dates, LIBSVM, Underscores
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -20,7 +20,7 @@ med_salience = median(target_salience)
 
 const tindex = Dict("male" => 1, "fem" => 2)
 
-halfway = filter(@λ(_ > 0),target_times) |> median
+halfway = @_ filter(_ > 0,target_times) |> median
 regions = ["target", "baseline"]
 timings = ["before", "after"]
 winlens = (0.5,1,1.5)
@@ -111,7 +111,7 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen]) do rows
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
@@ -267,5 +267,58 @@ p
 
 name = sprintf('hits_alpha_by_channel_select_windows.pdf',0.5,1.0)
 ggsave(file.path($dir,name),plot=p,width=11,height=8)
+
+"""
+
+svmdf = @_ freqmeans |>
+    filter((_1.winstart == 0.25 && _1.winlen == 0.5) ||
+           (_1.winstart == 0.5 && _1.winlen == 1.5),__) |>
+    filter(_.condition in ["global","object"],__) |>
+    stack(__, [:delta,:theta,:alpha,:beta,:gamma],
+        variable_name = :freqbin, value_name = :power) |>
+    unstack(__, :timing, :power) |>
+    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+        (:before,:after) => sdf ->
+            (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
+
+svmclass = by(svmdf,[:winstart,:winlen,:channel,:salience,:freqbin]) do sdf
+    N = 0
+    correct = 0
+    for (train_ids,test_ids) in folds(10,unique(sdf.sid))
+        train = @_ filter(_.sid in train_ids,sdf)
+        test = @_ filter(_.sid in test_ids,sdf)
+        model = svmtrain(Array(train[:,[:powerdiff]])',
+                         Array(train[:,:condition]))
+        labels, = svmpredict(model, Array(test[:, [:powerdiff]])')
+        N += size(test,1)
+        correct += sum(labels .== test[:, :condition])
+    end
+    DataFrame(N=N,correct=correct)
+end
+svmclass.freqbin = String.(svmclass.freqbin)
+
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
+
+R"""
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+bins = $(collect(keys(freqbins)))
+
+plotdf = $svmclass %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(freqbin)
+
+p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
+    geom_raster() + facet_grid(winstart~salience,labeller="label_both") +
+    scale_fill_distiller(name="Label Accuracy (global v object)",
+        type="div",palette=5,limits=c(0,1),direction=0) +
+    xlab('MCCA Component')
+p
+
+ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=8)
 
 """
