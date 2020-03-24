@@ -110,12 +110,17 @@ a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:0,:],1:0,EEGCoding.CvNorm(0.3,1)
     batchsize=5,epochs=20_000,status_rate=0.5,optimizer = ADAM())
 plotaxes(vec(a))
 
+## eventually
+
 plotaxes(ŵ)
 R"quartz()"
 plotaxes(w)
 
 # is it different with a larger data set?
 
+# TODO: let's try scaling up again, this time using GPU
+# on the cluster to speed things up, I think this just might
+# be an issue of need more time to converge, and richer data???
 
 T = 1_000
 H = 3
