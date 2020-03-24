@@ -183,7 +183,8 @@ end
 function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
         testcb = x -> nothing,hint=nothing)
     decoder = if !isnothing(hint)
-        SemiDecoder(hint[1],mapslices(unzsimplex,hint[2],dims=2))
+        SemiDecoder(hint[1],mapslices(unzsimplex,hint[2],dims=2),
+            in.(1:length(x),Ref(Set(tt))))
     else
         SemiDecoder(x,y,v,tt)
     end

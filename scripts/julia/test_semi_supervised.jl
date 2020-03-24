@@ -1,12 +1,13 @@
 using DrWatson
 @quickactivate("german_track")
 
-using EEGCoding, SignalOperators, SignalOperators.Units, RCall, Distributions,
-    PlotAxes, Flux
+using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP
 Uniform = Distributions.Uniform
 
+# TODO: use something else for the random envelope
 randenvelope(dur,fr) =
-    Signal(randn,fr) |> Filt(Lowpass,10Hz,order=2) |> Until(dur) |> Array
+    DSP.filt(digitalfilter(Lowpass(2,fs=fr),Butterworth(2)),randn(dur*fr))
+    # Signal(randn,fr) |> Filt(Lowpass,10Hz,order=2) |> Until(dur) |> Array
 function randweight(n)
     h = rand(1:n)
     level = rand(Uniform(0.55,1.0))
@@ -18,12 +19,12 @@ end
 
 T = 1_000
 H = 3
-envelopes = [reshape(reduce(hcat,randenvelope(5s,50Hz) for h in 1:H),H,1,:)
+envelopes = [permutedims(reshape(reduce(hcat,randenvelope(5,50) for h in 1:H),1,:,H),(3,1,2))
     for t in 1:T]
 w = reduce(hcat,randweight(3) for t in 1:T)'
 
-eeg = [vcat(0.2randn(20,size(envelopes[1],3)),
-            0.2randn(5,size(envelopes[1],3)) .+
+eeg = [vcat(1e-1randn(20,size(envelopes[1],3)),
+            1e-1randn(5,size(envelopes[1],3)) .+
             sum(envelopes[t][h,:,:] * w[t,h] for h in 1:H))
        for t in 1:T]
 
@@ -33,25 +34,42 @@ eeg = [vcat(0.2randn(20,size(envelopes[1],3)),
 =#
 
 
-# a, ŵ = EEGCoding.regressSS(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1))
-
-# plotaxes(vec(a))
-# plotaxes(w)
-# R"quartz()"
-# plotaxes(ŵ')
-
-a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(0.5,1),
-    batchsize=100,epochs=500,status_rate=5,optimizer = AMSGrad(),
-    testcb = function(decoder)
-        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[201:end,:]
-        @info "Weight differences: $(sqrt(sum(diff.^2)))."
-    end)
+a, ŵ = EEGCoding.regressSS(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(0.5,1))
 
 plotaxes(vec(a))
+p = plotaxes(w);
+R"$p + scale_fill_continuous(limits=c(0,1))"
 R"quartz()"
-plotaxes(w)
+p = plotaxes(ŵ');
+R"$p + scale_fill_continuous(limits=c(0,1))"
+
+â, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(0.5,1),
+    batchsize=300,epochs=2_000,status_rate=2,optimizer = AMSGrad(),
+    hint = (â,ŵ'[201:end,:]),
+    testcb = function(decoder)
+        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[201:end,:]
+        @info "Weight differences: $(sqrt(mean(diff.^2)))."
+    end)
+
+plotaxes(vec(â))
+p = plotaxes(w);
+R"$p + scale_fill_continuous(limits=c(0,1))"
 R"quartz()"
-plotaxes(ŵ)
+p = plotaxes(ŵ);
+R"$p + scale_fill_continuous(limits=c(0,1))"
+
+# why are some of the weights pushed into an identical pattern? (why does
+# this happen even when we seed the initial value with the correct solution?)
+
+â, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(0.5,1),
+    batchsize=300,epochs=2_000,status_rate=2,optimizer = AMSGrad(1e-5),
+    hint = (â,ŵ'[201:end,:]),
+    testcb = function(decoder)
+        diff = mapslices(tosimplex,decoder.u,dims=2) .- w[201:end,:]
+        @info "Weight differences: $(sqrt(mean(diff.^2)))."
+    end)
+
+#  sort of weights from least to most similar
 
 # is it that it can't find the optimal values, or that those
 # "optimal" values aren't optimal according to the loss function I wrote?
