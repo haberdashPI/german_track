@@ -226,6 +226,7 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
     function loss(x,y,w)
         # TODO: problem, we don't have w, we have a tuple of u
         # this gives a good conceptualization of the implementation goal, however
+        # can we use reinterpret?? should be able to do that using SVector
         @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
         @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
         mse(Ŷ,Y)
