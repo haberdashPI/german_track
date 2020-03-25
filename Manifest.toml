@@ -332,6 +332,12 @@ path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
 
+[[Einsum]]
+deps = ["Compat"]
+git-tree-sha1 = "4a6b3eee0161c89700b6c1949feae8b851da5494"
+uuid = "b7d42ee7-0b51-5a75-98ca-779d3107e4c0"
+version = "0.4.1"
+
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "IntelOpenMP_jll", "Libdl", "LinearAlgebra", "MKL_jll", "Reexport"]
 git-tree-sha1 = "109d82fa4b00429f9afcce873e9f746f11f018d3"

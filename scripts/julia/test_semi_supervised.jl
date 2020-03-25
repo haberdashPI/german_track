@@ -1,7 +1,9 @@
 using DrWatson
 @quickactivate("german_track")
 
-using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP
+using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP, Underscores,
+    Einsum
+
 Uniform = Distributions.Uniform
 
 # TODO: use something else for the random envelope
@@ -17,9 +19,40 @@ function randweight(n)
     result
 end
 
+# TODO: start with an even simpler version of this regression problem
+# to troubleshoot the Flux code
+
+A = vcat(randn(3),zeros(7))
+weights = mapslices(tosimplex,rand(2,1000),dims=1)
+
+envelopes = Array{Float64}(undef,250,1,3,1000)
+for I in CartesianIndices((3,1000))
+    envelopes[:,1,I] = randenvelope(5,50)
+end
+
+@einsum x[t,f,i] := A[f]*envelopes[t,1,s,i]*weights[i,s]
+x .+= 1e-8randn(size(y))
+
+Â,ŵ = EEGCoding.regressSS(
+    [view(x,:,:,i)' for i in 1:1000],
+    [PermutedDimsArray(view(envelopes,:,:,:,i),(3,2,1)) for i in 1:1000],
+    weights[1:200,:],1:200,
+    EEGCoding.CvNorm(1e-3,2))
+
+plotaxes(A)
+plotaxes(vec(Â))
+plotaxes(weights)
+R"quartz()"
+plotaxes(ŵ')
+
+Â₂,ŵ₂ = EEGCoding.regressSS2()
+
+################################################################################
+# old
+
 T = 1_000
 H = 3
-envelopes = [permutedims(reshape(reduce(hcat,randenvelope(5,50) for h in 1:H),1,:,H),(3,1,2))
+envelopes2 = [permutedims(reshape(reduce(hcat,randenvelope(5,50) for h in 1:H),1,:,H),(3,1,2))
     for t in 1:T]
 w = reduce(hcat,randweight(3) for t in 1:T)'
 
@@ -45,7 +78,7 @@ R"$p + scale_fill_continuous(limits=c(0,1))"
 
 â, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(0.5,1),
     batchsize=300,epochs=2_000,status_rate=2,optimizer = AMSGrad(),
-    hint = (â,ŵ'[201:end,:]),
+    # hint = (â,ŵ'[201:end,:]),
     testcb = function(decoder)
         diff = mapslices(tosimplex,decoder.u,dims=2) .- w[201:end,:]
         @info "Weight differences: $(sqrt(mean(diff.^2)))."
@@ -75,6 +108,8 @@ â, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:200,:],1:200,EEGCoding.CvNorm(
 # "optimal" values aren't optimal according to the loss function I wrote?
 
 # a, ŵ = EEGCoding.regressSS(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1))
+
+# I think what I need to do is be abele to run this fsster to more quicly toublesshoot (use gpus)
 
 a, ŵ = EEGCoding.regressSS2(eeg,envelopes,w[1:2,:],1:2,EEGCoding.CvNorm(0.5,1),
     batchsize=5,epochs=10,status_rate=0.0,optimizer = AMSGrad(),

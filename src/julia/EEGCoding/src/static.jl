@@ -84,17 +84,23 @@ function regressSS(x,y,v,tt,reg;settings...)
     end
 end
 
-struct SemiDecoder{T}
+struct SemiDecoder{N,T}
     A::Array{T,2}
-    u::Array{T,2}
-    indices::BitArray{1}
+    u::Array{NTuple{N,T},2}
 end
 Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
-# transform a point in Rⁿ to an (n+1)-simplex
-zsticks(x) = [σ(x[k] + log(1/(length(x)+1 - k))) for k in 1:length(x)]
+tosimplex(x::Tuple{},c) = (1-c,)
+function tosimplex(x::NTuple{N,T},c=zero(T)) where {N,T}
+    yi = (1-c)x[1]
+    (yi, tosimplex(Base.tail(x),c+yi)...)
+end
+fromsimplex(x::NTuple{1},c) = ()
+function fromsimplex(x::NTuple{N,T},c=zero(T)) where {N,T}
+    (x[1]/(1-c), fromsimplex(Base.tail(x),c+x[1])...)
+end
 
-function zsimplex(z)
+function tosimplex(z::AbstractArray)
     K = length(z)+1
     y = Array{eltype(z)}(undef,K)
     c = y[1] = z[1]
@@ -106,7 +112,7 @@ function zsimplex(z)
     y
 end
 
-function unzsimplex(x)
+function fromsimplex(x)
     K = length(x)
     y = Array{eltype(x)}(undef,K-1)
     c = y[1] = x[1]
@@ -117,7 +123,7 @@ function unzsimplex(x)
     y
 end
 
-@adjoint function zsimplex(z)
+@adjoint function tosimplex(z::AbstractArray)
     K = length(z)+1
     y = zsimplex(z)
     y, function(Δ)
@@ -132,30 +138,35 @@ end
     end
 end
 
-tosimplex(x) = zsimplex(zsticks(x))
-
 function SemiDecoder(x,y,v,tt)
-    M,_ = size(x[1])
-    H,K,_ = size(y[1])
-    T = length(x)
+    N,M,H,I = size(x)
+    N,K,I = size(y)
     V = length(tt)
 
-    @assert length(x) == length(y) "Stimulus and response must have same trial count."
-    @assert size(v,1) == 0 || H == size(v,2) "Number of sources must match weight dimension"
-    @assert length(tt) == size(v,1) "Number of weights must match number of weight indices"
+    @assert(size(x,4) == I,
+        "Stimulus and response must have same trial count.")
+    @assert(size(x,1) == N,
+        "Stimulus and response must have number of time points.")
+    @assert(V == size(v,1),
+        "Number of weights must match number of weight indices")
+    @assert(size(v,1) == 0 || H == size(v,2),
+        "Number of sources must match weight dimension")
 
-    A = randn(K,M)
-    u = rand(T - V,H-1)
+    A = randn(M,K)
+    u = mapslices(Tuple,rand(I - V,H-1),dims=2)
     indices = in.(1:length(x),Ref(Set(tt)))
     SemiDecoder(A,u,indices)
 end
 
-function loss(model::SemiDecoder,x,y,uindex::Int)
-    w = zsimplex(clamp.(model.u[uindex,:],0,1))
+function loss(model::SemiDecoder{T},x,y,uindex::Int) where T
+    u = model.u[uindex]
+    w = zsimplex(clamp.(u,zero(T),one(T)))
     mse(vec(model.A*x),vec(sum(w.*y,dims=1)))
 end
 loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1)))
 
+# THERE'S a bug!!! the indices of x and y do not correspond to those of tt
+# (one is for the whole data set, the other for the batch)
 function loss(model::SemiDecoder,x,y,v,tt)
     T = length(x)
     L = 0.0
@@ -173,34 +184,51 @@ function loss(model::SemiDecoder,x,y,v,tt)
 
     # impose cost when u is outside the 0,1 boundary
     for ui in model.u
-        dist = abs(ui - 0.5)
-        L += max(0,dist - 0.5)^2
+        dist = abs.(ui - 0.5)
+        L += sum(max.(0,dist - 0.5)^2)
     end
 
     L
 end
 
-function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
-        testcb = x -> nothing,hint=nothing)
-    decoder = if !isnothing(hint)
-        SemiDecoder(hint[1],mapslices(unzsimplex,hint[2],dims=2),
-            in.(1:length(x),Ref(Set(tt))))
-    else
-        SemiDecoder(x,y,v,tt)
-    end
-    @assert batchsize <= length(x) "Batch size cannot be larger than data size."
+"""
 
-    # testx = x[sample(1:length(x),batchsize,replace=false)]
+- `x`: An `NxFxI` tensor of neural responses, where N is the number of time
+    points, F the number of neural features and I the number of observations.
+- `y`: An `NxGxHxI` tensor, where N is the number of time points (as above),
+   G the number of stimulus features, H the number of sources and I the number
+   of observations.
+- `v`: A `HxJ` matrix of known source weightings where J < I.
+- `vi`: A `J` length vector of the known observation indices for `v`.
+
+"""
+function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
+        status_rate=5,optimizer,testcb = x -> nothing)
     # testy = y[sample(1:length(x),batchsize,replace=false)]
     testx = x
     testy = y
-    regf(dec) = reg.λ*norm(vec(dec.A), reg.norm)
 
-    data = Flux.Data.DataLoader(x,y,batchsize=batchsize,shuffle=true)
+    N,F,I = size(x)
+    N,G,H,I = size(y)
+    H,J = size(v)
+
+    xᵥ = view(x,:,:,vi)
+    xᵤ = view(x,:,:,setdiff(1:size(x,3),vi))
+    yᵥ = view(y,:,:,:,vi)
+    yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
+
+    A = randn(F,G)
+    u = mapslices(Tuple,rand(H,I-J),dims=1)
+
+    Dᵤ = Flux.Data.DataLoader(xᵤ,yᵤ,u,batchsize=batchsize,shuffle=true)
+    Dᵥ = Flux.Data.DataLoader(xᵥ,yᵥ,batchsize=batchsize,shuffle=true)
+
+    function loss(x,y,v)
+
 
     epoch = 0
     function status()
-        testloss = loss(decoder,testx,testy,v,tt) + regf(decoder)
+        testloss = loss(decoder,testx,testy,v,tt) + regularize(vec(decoder.A))
         # Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
         # @info "Decoder Gradient $(Δ[decoder.A])"
         # @info "Weight Gradient $(Δ[decoder.u])"
@@ -210,6 +238,7 @@ function regressSS2(x,y,v,tt,reg;batchsize=100,epochs=2,status_rate=5,optimizer,
     throt_status = Flux.throttle(status,status_rate)
 
     for n in 1:epochs
+
         epoch = n
         Flux.train!(@λ(loss(decoder,_x,_y,v,tt) + regf(decoder)),
             Flux.params(decoder), data, optimizer, cb = throt_status)
