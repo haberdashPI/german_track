@@ -223,8 +223,16 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
     Dᵤ = Flux.Data.DataLoader(xᵤ,yᵤ,u,batchsize=batchsize,shuffle=true)
     Dᵥ = Flux.Data.DataLoader(xᵥ,yᵥ,batchsize=batchsize,shuffle=true)
 
-    function loss(x,y,v)
+    function loss(x,y,w)
+        # TODO: problem, we don't have w, we have a tuple of u
+        # this gives a good conceptualization of the implementation goal, however
+        @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
+        @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
+        mse(Ŷ,Y)
+    end
 
+    # from here on, we can compute the gradients with respect to x,y,w or x,y
+    # depending on whether we are using xᵥ or xᵤ.
 
     epoch = 0
     function status()
