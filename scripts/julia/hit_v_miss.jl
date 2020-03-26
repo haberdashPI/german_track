@@ -18,6 +18,8 @@ target_salience =
     CSV.read(joinpath(stimulus_dir(), "target_salience.csv")).salience |> Array
 med_salience = median(target_salience)
 
+med_target_time = median(target_times)
+
 const tindex = Dict("male" => 1, "fem" => 2)
 
 halfway = @_ filter(_ > 0,target_times) |> median
@@ -66,6 +68,7 @@ df = mapreduce(vcat,values(subjects)) do subject
                 sid = subject.sid,
                 direction = directions[si],
                 salience = target_salience[si] > med_salience ? "high" : "low",
+                target_time = target_times[si] > med_target_time ? "early" : "late",
                 eeg = [view(subject.eeg[row],:,ixs)],
             )
         end
@@ -111,7 +114,7 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:target_time]) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
@@ -277,7 +280,7 @@ svmdf = @_ freqmeans |>
     stack(__, [:delta,:theta,:alpha,:beta,:gamma],
         variable_name = :freqbin, value_name = :power) |>
     unstack(__, :timing, :power) |>
-    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
@@ -297,7 +300,7 @@ function svmaccuracy(sdf,cols)
 end
 
 svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
-    [:winstart,:winlen,:channel,:salience,:freqbin])
+    [:winstart,:winlen,:channel,:target_time,:freqbin])
 svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
 
 rnd = MersenneTwister(1983)
@@ -311,7 +314,7 @@ channel_groups = OrderedDict(
 
 for group in keys(channel_groups)
     channels = channel_groups[group]
-    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+    newrows = by(svmdf,[:winstart,:winlen,:target_time,:freqbin]) do sdf
         @_ sdf |>
             filter(_.channel in channels,__) |>
             unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
@@ -340,7 +343,7 @@ plotdf = $svmclass %>%
     arrange(freqbin)
 
 p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
-    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
+    geom_raster() + facet_grid(winlen~target_time,labeller="label_both") +
     scale_fill_distiller(name="Label Accuracy (global v object)",
         na.value="gray95",palette="PuBuGn",limits=c(0.5,0.75),direction=0) +
     scale_x_continuous(breaks=c(0,10,20,30,
@@ -351,21 +354,21 @@ p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
 
 p
 
-ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"svm_freqbin_target_time.pdf"),plot=p,width=11,height=6)
 
-sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
+sortdf = plotdf %>% group_by(target_time,freqbin,winlen) %>%
     arrange(desc(correct/N)) %>%
     mutate(rank = row_number())
 
 p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
     geom_line() + scale_color_brewer(palette='RdYlGn') +
-    facet_grid(winlen~salience,labeller="label_both") +
+    facet_grid(winlen~target_time,labeller="label_both") +
     geom_abline(intercept=0.5,slope=0,linetype=2) +
     xlab('Rank of MCCA Component Grouping')
 
 p
 
-ggsave(file.path($dir,"svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"svm_freqbin_channel_rank_target_time.pdf"),plot=p,width=11,height=6)
 
 """
 
@@ -376,12 +379,12 @@ svmdf = @_ freqmeans |>
     stack(__, [:delta,:theta,:alpha,:beta,:gamma],
         variable_name = :freqbin, value_name = :power) |>
     unstack(__, :timing, :power) |>
-    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
 svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
-    [:winstart,:winlen,:channel,:salience,:freqbin])
+    [:winstart,:winlen,:channel,:target_time,:freqbin])
 svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
 
 rnd = MersenneTwister(1983)
@@ -395,7 +398,7 @@ channel_groups = OrderedDict(
 
 for group in keys(channel_groups)
     channels = channel_groups[group]
-    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+    newrows = by(svmdf,[:winstart,:winlen,:target_time,:freqbin]) do sdf
         @_ sdf |>
             filter(_.channel in channels,__) |>
             unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
@@ -424,8 +427,8 @@ plotdf = $svmclass %>%
     arrange(freqbin)
 
 p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
-    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
-    scale_fill_distiller(name="Label Accuracy (global v object)",
+    geom_raster() + facet_grid(winlen~target_time,labeller="label_both") +
+    scale_fill_distiller(name="Label Accuracy (global v spatial)",
         na.value="gray95",palette="PuBuGn",limits=c(0.5,0.75),direction=0) +
     scale_x_continuous(breaks=c(0,10,20,30,
         31:$(30+length(keys(channel_groups)))),
@@ -435,20 +438,20 @@ p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
 
 p
 
-ggsave(file.path($dir,"spatial_svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"spatial_svm_freqbin_target_time.pdf"),plot=p,width=11,height=6)
 
-sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
+sortdf = plotdf %>% group_by(target_time,freqbin,winlen) %>%
     arrange(desc(correct/N)) %>%
     mutate(rank = row_number())
 
 p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
     geom_line() + scale_color_brewer(palette='RdYlGn') +
-    facet_grid(winlen~salience,labeller="label_both") +
+    facet_grid(winlen~target_time,labeller="label_both") +
     geom_abline(intercept=0.5,slope=0,linetype=2) +
     xlab('Rank of MCCA Component Grouping')
 
 p
 
-ggsave(file.path($dir,"spatial_svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"spatial_svm_freqbin_channel_rank_target_time.pdf"),plot=p,width=11,height=6)
 
 """

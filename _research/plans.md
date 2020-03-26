@@ -3,15 +3,15 @@
 
 ## most recent
 
-- groups of MCCA components (e.g. top-10, top-20, or random)
++ groups of MCCA components (e.g. top-10, top-20, or random)
             (add additional columns)
-- change color (below chance, and multi colors)
-- global vs. spatial
-- 3-way classifier
++ change color (below chance, and multi colors)
++ global vs. spatial
 - try early vs. late
+- 3-way classifier
 
 - SVM across different time points
-- different bins (???)
+  - different bins (???)
 
 - check on noisiest points
 
