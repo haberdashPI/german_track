@@ -298,6 +298,12 @@ git-tree-sha1 = "ea6f5b7fcc57ed25f2e584f17837d9f3d68919be"
 uuid = "191d1da1-0f37-5779-b8ea-a655caa0c150"
 version = "1.1.2"
 
+[[Dictionaries]]
+deps = ["Indexing", "Random"]
+git-tree-sha1 = "a09aff60a525650db2575907411734c4cceabd93"
+uuid = "85a47980-9c8c-11e8-2b9f-f7ca1fa99fb4"
+version = "0.2.1"
+
 [[DiffResults]]
 deps = ["StaticArrays"]
 git-tree-sha1 = "da24935df8e0c6cf28de340b958f6aac88eaa0cc"
@@ -478,6 +484,12 @@ deps = ["AxisAlgorithms", "ColorVectorSpace", "CoordinateTransformations", "Iden
 git-tree-sha1 = "34e3b7549af44043e37ba321334afa322ec63a9d"
 uuid = "02fcd773-0e25-5acc-982a-7f6622650795"
 version = "0.8.4"
+
+[[Indexing]]
+deps = ["Test"]
+git-tree-sha1 = "0cf3ac621cd74b1d03af0cc4275f680b2070a5cc"
+uuid = "313cdc1a-70c2-5d6a-ae34-0150d3930a38"
+version = "1.1.0"
 
 [[Infiltrator]]
 deps = ["REPL"]
@@ -1019,6 +1031,12 @@ deps = ["OpenSpecFun_jll"]
 git-tree-sha1 = "e19b98acb182567bcb7b75bb5d9eedf3a3b5ec6c"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
 version = "0.10.0"
+
+[[SplitApplyCombine]]
+deps = ["Dictionaries", "Indexing"]
+git-tree-sha1 = "02845fc448cf504681508057ce697b46d4385e21"
+uuid = "03a91e81-4c3e-53e1-a0a4-9c0c8f19dd66"
+version = "1.0.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]

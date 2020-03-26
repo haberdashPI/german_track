@@ -296,17 +296,17 @@ function svmaccuracy(sdf,cols)
     DataFrame(N=N,correct=correct)
 end
 
-svmclass = @_ by(svmaccuracy(_,[:channel]),svmdf,
+svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
     [:winstart,:winlen,:channel,:salience,:freqbin])
 svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
 
 rnd = MersenneTwister(1983)
-channel_groups = Dict(
-    "top5" => 1:5,
-    "top10" => 1:10,
-    "top20" => 1:20,
-    "randseq1" => sample(rnd,1:30,5,replace=false),
-    "randseq2" => sample(rnd,1:30,5,replace=false)
+rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
+channel_groups = OrderedDict(
+    "1-5" => 1:5,
+    "1-10" => 1:10,
+    "1-20" => 1:20,
+    (join(r,",") => r for r in rseqs)...
 )
 
 for group in keys(channel_groups)
@@ -343,15 +343,12 @@ p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
     geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
     scale_fill_distiller(name="Label Accuracy (global v object)",
         type="div",palette=5,limits=c(0,1),direction=0) +
-    xlab('MCCA Component')
-p
+    scale_x_continuous(breaks=c(0,10,20,30,
+        31:$(30+length(keys(channel_groups)))),
+        labels=c(0,10,20,30,$(collect(keys(channel_groups))))) +
+    xlab('MCCA Component') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-
-p = ggplot(plotdf,aes(x=channelgroup,y=freqbin,fill=correct/N)) +
-    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
-    scale_fill_distiller(name="Label Accuracy (global v object)",
-        type="div",palette=5,limits=c(0,1),direction=0) +
-    xlab('MCCA Component Grouping')
 p
 
 ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=8)
