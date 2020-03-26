@@ -342,15 +342,113 @@ plotdf = $svmclass %>%
 p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
     geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
     scale_fill_distiller(name="Label Accuracy (global v object)",
-        type="div",palette=5,limits=c(0,1),direction=0) +
+        na.value="gray95",palette="PuBuGn",limits=c(0.5,0.75),direction=0) +
     scale_x_continuous(breaks=c(0,10,20,30,
         31:$(30+length(keys(channel_groups)))),
         labels=c(0,10,20,30,$(collect(keys(channel_groups))))) +
-    xlab('MCCA Component') +
-    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    xlab('MCCA Component Grouping') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 
 p
 
-ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=8)
+ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
+
+sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
+    arrange(desc(correct/N)) %>%
+    mutate(rank = row_number())
+
+p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
+    geom_line() + scale_color_brewer(palette='RdYlGn') +
+    facet_grid(winlen~salience,labeller="label_both") +
+    geom_abline(intercept=0.5,slope=0,linetype=2) +
+    xlab('Rank of MCCA Component Grouping')
+
+p
+
+ggsave(file.path($dir,"svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
+
+"""
+
+svmdf = @_ freqmeans |>
+    filter((_1.winstart == 0.25 && _1.winlen == 0.5) ||
+           (_1.winstart == 0.5 && _1.winlen == 1.5),__) |>
+    filter(_.condition in ["global","spatial"],__) |>
+    stack(__, [:delta,:theta,:alpha,:beta,:gamma],
+        variable_name = :freqbin, value_name = :power) |>
+    unstack(__, :timing, :power) |>
+    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+        (:before,:after) => sdf ->
+            (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
+
+svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
+    [:winstart,:winlen,:channel,:salience,:freqbin])
+svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
+
+rnd = MersenneTwister(1983)
+rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
+channel_groups = OrderedDict(
+    "1-5" => 1:5,
+    "1-10" => 1:10,
+    "1-20" => 1:20,
+    (join(r,",") => r for r in rseqs)...
+)
+
+for group in keys(channel_groups)
+    channels = channel_groups[group]
+    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+        @_ sdf |>
+            filter(_.channel in channels,__) |>
+            unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
+            svmaccuracy(__,All(r"channel[0-9]+"))
+    end
+    newrows[!,:channelgroup] .= group
+    newrows[!,:channel] .= maximum(svmclass.channel)+1
+    append!(svmclass,newrows)
+end
+
+svmclass.freqbin = String.(svmclass.freqbin)
+
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
+
+R"""
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+bins = $(collect(keys(freqbins)))
+
+plotdf = $svmclass %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(freqbin)
+
+p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
+    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
+    scale_fill_distiller(name="Label Accuracy (global v object)",
+        na.value="gray95",palette="PuBuGn",limits=c(0.5,0.75),direction=0) +
+    scale_x_continuous(breaks=c(0,10,20,30,
+        31:$(30+length(keys(channel_groups)))),
+        labels=c(0,10,20,30,$(collect(keys(channel_groups))))) +
+    xlab('MCCA Component Grouping') +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+p
+
+ggsave(file.path($dir,"spatial_svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
+
+sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
+    arrange(desc(correct/N)) %>%
+    mutate(rank = row_number())
+
+p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
+    geom_line() + scale_color_brewer(palette='RdYlGn') +
+    facet_grid(winlen~salience,labeller="label_both") +
+    geom_abline(intercept=0.5,slope=0,linetype=2) +
+    xlab('Rank of MCCA Component Grouping')
+
+p
+
+ggsave(file.path($dir,"spatial_svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
 
 """
