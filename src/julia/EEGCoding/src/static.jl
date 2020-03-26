@@ -18,6 +18,7 @@ using TransformVariables
 using Zygote: @adjoint
 using Zygote
 using StatsFuns
+using OMEinsum
 
 struct CvNorm
     λ::Float64
@@ -197,12 +198,12 @@ end
     points, F the number of neural features and I the number of observations.
 - `y`: An `NxGxHxI` tensor, where N is the number of time points (as above),
    G the number of stimulus features, H the number of sources and I the number
-   of observations.
+   of observations (as above).
 - `v`: A `HxJ` matrix of known source weightings where J < I.
 - `vi`: A `J` length vector of the known observation indices for `v`.
 
 """
-function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
+function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
         status_rate=5,optimizer,testcb = x -> nothing)
     # testy = y[sample(1:length(x),batchsize,replace=false)]
     testx = x
@@ -218,26 +219,26 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
     yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
 
     A = randn(F,G)
-    u = mapslices(Tuple,rand(H,I-J),dims=1)
+    u = reinterpret(NTuple{H,eltype(x)},rand(H-1,I-J))
+    u = reshape(u,H-1,:)
 
-    Dᵤ = Flux.Data.DataLoader(xᵤ,yᵤ,u,batchsize=batchsize,shuffle=true)
-    Dᵥ = Flux.Data.DataLoader(xᵥ,yᵥ,batchsize=batchsize,shuffle=true)
-
-    function loss(x,y,w)
-        # TODO: problem, we don't have w, we have a tuple of u
-        # this gives a good conceptualization of the implementation goal, however
-        # can we use reinterpret?? should be able to do that using SVector
+    function loss(x,y,u::AbstractArray{<:Tuple})
+        w = reinterpret(eltype(x),tosimplex.(u))
+        reshape(w,H,:)
+    end
+    function loss(x,y,w::AbstractArray{<:Number})
+        # predicted mixture
         @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
+        # source mixture for given weightings (may be unknown)
         @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
+
         mse(Ŷ,Y)
     end
 
-    # from here on, we can compute the gradients with respect to x,y,w or x,y
-    # depending on whether we are using xᵥ or xᵤ.
-
     epoch = 0
     function status()
-        testloss = loss(decoder,testx,testy,v,tt) + regularize(vec(decoder.A))
+        # TODO: change this to a select mini-batch, or something
+        testloss = loss(xᵥ,yᵥ,v) + regularize(vec(A))
         # Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
         # @info "Decoder Gradient $(Δ[decoder.A])"
         # @info "Weight Gradient $(Δ[decoder.u])"
@@ -245,6 +246,21 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=100,epochs=2,
         testcb(decoder)
     end
     throt_status = Flux.throttle(status,status_rate)
+
+    for epoch in 1:epochs
+        Dᵤ = Flux.Data.DataLoader(xᵤ,yᵤ,u,batchsize=batchsize,shuffle=true)
+        Dᵥ = Flux.Data.DataLoader(xᵥ,yᵥ,v,batchsize=batchsize,shuffle=true)
+        for (xi,yi,wi) in Dᵥ
+            # TODO: this is where we would use `cu` to convert the data
+            Δ = gradient(() -> loss(xi,yi,wi) + regularize(vec(A)),A)
+            update!(optimizer,A,Δ)
+        end
+        for (xi,yi,ui) in Dᵤ
+            Δ = gradient(() -> loss(xi,yi,ui) + regularize(vec(A)),(A,ui))
+            update!(optimizer,(A,ui),Δ)
+        end
+    end
+
 
     for n in 1:epochs
 
