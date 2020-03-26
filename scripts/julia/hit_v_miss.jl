@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates, LIBSVM, Underscores
+    Dates, LIBSVM, Underscores, StatsBase, Random, Printf
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -281,20 +281,47 @@ svmdf = @_ freqmeans |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
-svmclass = by(svmdf,[:winstart,:winlen,:channel,:salience,:freqbin]) do sdf
+function svmaccuracy(sdf,cols)
     N = 0
     correct = 0
     for (train_ids,test_ids) in folds(10,unique(sdf.sid))
         train = @_ filter(_.sid in train_ids,sdf)
         test = @_ filter(_.sid in test_ids,sdf)
-        model = svmtrain(Array(train[:,[:powerdiff]])',
+        model = svmtrain(Array(disallowmissing(train[:,cols]))',
                          Array(train[:,:condition]))
-        labels, = svmpredict(model, Array(test[:, [:powerdiff]])')
+        labels, = svmpredict(model, Array(disallowmissing(test[:, cols]))')
         N += size(test,1)
         correct += sum(labels .== test[:, :condition])
     end
     DataFrame(N=N,correct=correct)
 end
+
+svmclass = @_ by(svmaccuracy(_,[:channel]),svmdf,
+    [:winstart,:winlen,:channel,:salience,:freqbin])
+svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
+
+rnd = MersenneTwister(1983)
+channel_groups = Dict(
+    "top5" => 1:5,
+    "top10" => 1:10,
+    "top20" => 1:20,
+    "randseq1" => sample(rnd,1:30,5,replace=false),
+    "randseq2" => sample(rnd,1:30,5,replace=false)
+)
+
+for group in keys(channel_groups)
+    channels = channel_groups[group]
+    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+        @_ sdf |>
+            filter(_.channel in channels,__) |>
+            unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
+            svmaccuracy(__,All(r"channel[0-9]+"))
+    end
+    newrows[!,:channelgroup] .= group
+    newrows[!,:channel] .= maximum(svmclass.channel)+1
+    append!(svmclass,newrows)
+end
+
 svmclass.freqbin = String.(svmclass.freqbin)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -313,10 +340,18 @@ plotdf = $svmclass %>%
     arrange(freqbin)
 
 p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
-    geom_raster() + facet_grid(winstart~salience,labeller="label_both") +
+    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
     scale_fill_distiller(name="Label Accuracy (global v object)",
         type="div",palette=5,limits=c(0,1),direction=0) +
     xlab('MCCA Component')
+p
+
+
+p = ggplot(plotdf,aes(x=channelgroup,y=freqbin,fill=correct/N)) +
+    geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
+    scale_fill_distiller(name="Label Accuracy (global v object)",
+        type="div",palette=5,limits=c(0,1),direction=0) +
+    xlab('MCCA Component Grouping')
 p
 
 ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=8)

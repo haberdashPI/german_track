@@ -339,7 +339,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "1.10.2"
 
 [[EEGCoding]]
-deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StatsFuns", "StructuredOptimization", "Tables", "TensorOperations", "TransformVariables", "Unitful", "Zygote"]
+deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "OMEinsum", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StatsFuns", "StructuredOptimization", "Tables", "TensorOperations", "TransformVariables", "Unitful", "Zygote"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -1168,9 +1168,7 @@ deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[Underscores]]
-git-tree-sha1 = "c778ce4f97db35f32472c013bfa21d2e5ad8d9a7"
-repo-rev = "master"
-repo-url = "https://github.com/c42f/Underscores.jl"
+git-tree-sha1 = "874c19bf1bdcd45fb1886aac37b677916b377035"
 uuid = "d9a01c3f-67ce-4d8c-9b55-35f6e4050bb1"
 version = "1.0.0"
 

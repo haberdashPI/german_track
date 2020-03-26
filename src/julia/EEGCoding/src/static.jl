@@ -261,16 +261,7 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
         end
     end
 
-
-    for n in 1:epochs
-
-        epoch = n
-        Flux.train!(@λ(loss(decoder,_x,_y,v,tt) + regf(decoder)),
-            Flux.params(decoder), data, optimizer, cb = throt_status)
-    end
-    status()
-
-    T = length(x)
+    # TODO: fix this (it'sd from the old code)
     w = Array{eltype(v)}(undef,length(x),size(v,2))
     w[tt,:] = v
     if length(decoder.u) > 0
