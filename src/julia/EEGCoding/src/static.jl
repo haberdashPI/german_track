@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex, zsimplex
+export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex
 
 using MetaArrays
 using Printf
@@ -19,6 +19,8 @@ using Zygote: @adjoint
 using Zygote
 using StatsFuns
 using OMEinsum
+using Underscores
+using Random
 
 struct CvNorm
     λ::Float64
@@ -101,43 +103,53 @@ function fromsimplex(x::NTuple{N,T},c=zero(T)) where {N,T}
     (x[1]/(1-c), fromsimplex(Base.tail(x),c+x[1])...)
 end
 
-function tosimplex(z::AbstractArray)
-    K = length(z)+1
-    y = Array{eltype(z)}(undef,K)
-    c = y[1] = z[1]
-    for k in 2:(K-1)
-        y[k] = (1-c)z[k]
-        c += y[k]
-    end
-    y[K] = (1-c)
-    y
+function tupleapply(fn,x::AbstractArray{T}) where T
+    @assert size(x,1) < 10
+    N = size(x,1)
+    @_ x |>
+        reinterpret(NTuple{N,T},__) |>
+        fn.(__) |>
+        reinterpret(T,__) |>
+        reshape(__,N+1,size(x)[2:end]...)
 end
 
-function fromsimplex(x)
-    K = length(x)
-    y = Array{eltype(x)}(undef,K-1)
-    c = y[1] = x[1]
-    for k in 2:(K-1)
-        y[k] = x[k]/(1-c)
-        c += x[k]
-    end
-    y
-end
+# function tosimplex(z::AbstractArray)
+#     K = length(z)+1
+#     y = Array{eltype(z)}(undef,K)
+#     c = y[1] = z[1]
+#     for k in 2:(K-1)
+#         y[k] = (1-c)z[k]
+#         c += y[k]
+#     end
+#     y[K] = (1-c)
+#     y
+# end
 
-@adjoint function tosimplex(z::AbstractArray)
-    K = length(z)+1
-    y = zsimplex(z)
-    y, function(Δ)
-        Δx = Array{eltype(z)}(undef,K-1)
-        Δx[1] = Δ[1]
-        c = y[1]
-        for k in 2:(K-1)
-            Δx[k] = Δ[k]*(1 - c)
-            c += y[k]
-        end
-        (Δx,)
-    end
-end
+# function fromsimplex(x)
+#     K = length(x)
+#     y = Array{eltype(x)}(undef,K-1)
+#     c = y[1] = x[1]
+#     for k in 2:(K-1)
+#         y[k] = x[k]/(1-c)
+#         c += x[k]
+#     end
+#     y
+# end
+
+# @adjoint function tosimplex(z::AbstractArray)
+#     K = length(z)+1
+#     y = zsimplex(z)
+#     y, function(Δ)
+#         Δx = Array{eltype(z)}(undef,K-1)
+#         Δx[1] = Δ[1]
+#         c = y[1]
+#         for k in 2:(K-1)
+#             Δx[k] = Δ[k]*(1 - c)
+#             c += y[k]
+#         end
+#         (Δx,)
+#     end
+# end
 
 function SemiDecoder(x,y,v,tt)
     N,M,H,I = size(x)
@@ -192,6 +204,83 @@ function loss(model::SemiDecoder,x,y,v,tt)
     L
 end
 
+struct SemiDecodeTrainer
+    A::AbstractArray
+    xᵤ::AbstractArray
+    yᵤ::AbstractArray
+    u::AbstractArray
+    xᵥ::AbstractArray
+    yᵥ::AbstractArray
+    v::AbstractArray
+    vi::Vector{Int}
+end
+
+function SemiDecodeTrainer(x,y,v,vi)
+    N,F,I = size(x)
+    N_,G,H,I_ = size(y)
+    H_,J = size(v)
+    @show vi[1:min(end,10)]
+    @assert I == I_ "Must have the same number of neural and stimulus observations"
+    @assert N == N_ "Must have same number of time neural and stimulus time points"
+    @assert H == H_ "Must have same number of stimulus sources and stimulus weights"
+
+    xᵥ = view(x,:,:,vi)
+    xᵤ = view(x,:,:,setdiff(1:size(x,3),vi))
+    yᵥ = view(y,:,:,:,vi)
+    yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
+
+    # TODO: we would store A and u in the GPU
+    A = randn(F,G)
+    u = rand(H-1,I-J)
+
+    SemiDecodeTrainer(A,xᵤ,yᵤ,u,xᵥ,yᵥ,v,vi)
+end
+
+function loss(A,x,y,w)
+    # predicted source mixture given neural signature
+    @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
+    # observed source mixture given sources and mixture weightings
+    # (weightings may be unknown)
+    @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
+
+    mse(Ŷ,Y)
+end
+
+function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
+    # TODO: this false true mapping doesn't work
+    # i need randmix to track which source the relements come from
+    uis = 1:size(t.u,2)
+    vis = 1:size(t.v,2)
+    Dᵤ = Flux.Data.DataLoader(t.xᵤ,t.yᵤ,uis,batchsize=batchsize,shuffle=true)
+    Dᵥ = Flux.Data.DataLoader(t.xᵥ,t.yᵥ,vis,batchsize=batchsize,shuffle=true)
+
+    for (source,(_x,_y,wi)) in randmix(Dᵥ,Dᵤ,report_source=true)
+        known_weights = source == 1
+        if known_weights
+            # TODO: this is where we would use `cu` to convert the data
+            Δ = Flux.gradient(t.A) do A
+                loss(A,_x,_y,t.v[:,wi]) + reg(vec(A))
+            end
+            Flux.update!(optimizer,(t.A,),Δ)
+        else
+            # TODO: this is where we would use `cu` to convert the data
+            Δ = Flux.gradient(t.A,t.u[:,wi]) do (A,_u)
+                loss(A,_x,_y,tupleapply(tosimplex,_u)) + reg(vec(A))
+            end
+            Flux.update!(optimizer,(t.A,view(t.u,:,wi)),Δ)
+        end
+    end
+end
+
+function coefs(t::SemiDecodeTrainer)
+    w = Array{eltype(t.v)}(undef,size(t.v,1),size(x,3))
+    w[:,t.vi] = t.v
+    w[:,setdiff(1:end,t.vi)] = t.u
+
+    t.A, w
+end
+
+
 """
 
 - `x`: An `NxFxI` tensor of neural responses, where N is the number of time
@@ -206,68 +295,23 @@ end
 function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
         status_rate=5,optimizer,testcb = x -> nothing)
     # testy = y[sample(1:length(x),batchsize,replace=false)]
-    testx = x
-    testy = y
-
-    N,F,I = size(x)
-    N,G,H,I = size(y)
-    H,J = size(v)
-
-    xᵥ = view(x,:,:,vi)
-    xᵤ = view(x,:,:,setdiff(1:size(x,3),vi))
-    yᵥ = view(y,:,:,:,vi)
-    yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
-
-    A = randn(F,G)
-    u = reinterpret(NTuple{H,eltype(x)},rand(H-1,I-J))
-    u = reshape(u,H-1,:)
-
-    function loss(x,y,u::AbstractArray{<:Tuple})
-        w = reinterpret(eltype(x),tosimplex.(u))
-        reshape(w,H,:)
-    end
-    function loss(x,y,w::AbstractArray{<:Number})
-        # predicted mixture
-        @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
-        # source mixture for given weightings (may be unknown)
-        @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
-
-        mse(Ŷ,Y)
-    end
+    trainer = SemiDecodeTrainer(x,y,v,vi)
 
     epoch = 0
     function status()
         # TODO: change this to a select mini-batch, or something
-        testloss = loss(xᵥ,yᵥ,v) + regularize(vec(A))
-        # Δ = Flux.gradient(@λ(loss(decoder,testx,testy,v,tt) + regf(decoder)),Flux.params(decoder))
-        # @info "Decoder Gradient $(Δ[decoder.A])"
-        # @info "Weight Gradient $(Δ[decoder.u])"
+        testloss = loss(trainer.A,trainer.xᵥ,trainer.yᵥ,trainer.v) + regularize(vec(trainer.A))
         @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
         testcb(decoder)
     end
     throt_status = Flux.throttle(status,status_rate)
 
     for epoch in 1:epochs
-        Dᵤ = Flux.Data.DataLoader(xᵤ,yᵤ,u,batchsize=batchsize,shuffle=true)
-        Dᵥ = Flux.Data.DataLoader(xᵥ,yᵥ,v,batchsize=batchsize,shuffle=true)
-        for (xi,yi,wi) in Dᵥ
-            # TODO: this is where we would use `cu` to convert the data
-            Δ = gradient(() -> loss(xi,yi,wi) + regularize(vec(A)),A)
-            update!(optimizer,A,Δ)
-        end
-        for (xi,yi,ui) in Dᵤ
-            Δ = gradient(() -> loss(xi,yi,ui) + regularize(vec(A)),(A,ui))
-            update!(optimizer,(A,ui),Δ)
-        end
+        regressSS2_train!(trainer,regularize,batchsize,optimizer)
+        status()
     end
 
-    # TODO: fix this (it'sd from the old code)
-    w = Array{eltype(v)}(undef,length(x),size(v,2))
-    w[tt,:] = v
-    if length(decoder.u) > 0
-        w[setdiff(1:T,tt),:] = mapslices(zsimplex,decoder.u,dims=2)
-    end
-    decoder.A, w
+    return trainer.A,w
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)

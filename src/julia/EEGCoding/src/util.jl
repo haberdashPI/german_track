@@ -1,4 +1,4 @@
-export cachefn, cache_dir, JointEncoding, encode, folds
+export cachefn, cache_dir, JointEncoding, encode, folds, randmix
 using BSON: @save, @load
 using BSON
 using ProgressMeter
@@ -45,6 +45,48 @@ function folds(K,indices,test_indices=indices)
             (train,test)
         else
             shared_test, shared_test # empty, empty
+        end
+    end
+end
+
+struct RandMix{T,RNG}
+    rng::RNG
+    report_source::Bool
+    args::T
+end
+Base.length(x::RandMix) = sum(length,x.args)
+Base.eltype(x::RandMix) = Union{eltype.(x.args)...}
+randmix(args...;rng=Random.AbstractRNG,report_source=false) =
+    RandMix(Random.GLOBAL_RNG,report_source,args)
+
+struct FirstIterate
+end
+const firstitr = FirstIterate()
+struct LastIterate
+end
+const lastitr = LastIterate()
+myitr(x,::FirstIterate) = iterate(x)
+myitr(x,::LastIterate) = nothing
+myitr(x,state) = iterate(x,state)
+
+function Base.iterate(mix::RandMix,states = map(x -> firstitr,mix.args))
+    newstates = collect(Any,states)
+    indices = Set(1:length(mix.args))
+    i = rand(mix.rng,indices); setdiff!(indices,i)
+
+    result = myitr(mix.args[i],states[i])
+    while isnothing(result) && !isempty(indices)
+        newstates[i] = lastitr
+        i = rand(mix.rng,indices); setdiff!(indices,i)
+        result = myitr(mix.args[i],states[i])
+    end
+    if !isnothing(result)
+        val, state = result
+        newstates[i] = state
+        if mix.report_source
+            (i, val), Tuple(newstates)
+        else
+            val, Tuple(newstates)
         end
     end
 end
