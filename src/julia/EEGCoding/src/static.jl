@@ -18,7 +18,6 @@ using TransformVariables
 using Zygote: @adjoint
 using Zygote
 using StatsFuns
-using OMEinsum
 using Underscores
 using Random
 
@@ -237,6 +236,17 @@ function SemiDecodeTrainer(x,y,v,vi)
 end
 
 function loss(A,x,y,w)
+    error = 0
+    for i in 1:size(x)[end]
+        mixA = view(x,:,:,i)*A
+        mixy = sum(reshape(view(w,:,i),1,1,:).*view(y,:,:,:,i),dims=3)
+        error += sum((mixA .- mixy).^2)
+    end
+    error
+end
+
+#=
+function loss(A,x,y,w)
     # predicted source mixture given neural signature
     @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
     # observed source mixture given sources and mixture weightings
@@ -245,6 +255,7 @@ function loss(A,x,y,w)
 
     mse(Ŷ,Y)
 end
+=#
 
 function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
     # TODO: this false true mapping doesn't work
@@ -264,7 +275,7 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
             Flux.update!(optimizer,(t.A,),Δ)
         else
             # TODO: this is where we would use `cu` to convert the data
-            Δ = Flux.gradient(t.A,t.u[:,wi]) do (A,_u)
+            Δ = Flux.gradient(t.A,t.u[:,wi]) do A,_u
                 loss(A,_x,_y,tupleapply(tosimplex,_u)) + reg(vec(A))
             end
             Flux.update!(optimizer,(t.A,view(t.u,:,wi)),Δ)

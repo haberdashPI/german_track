@@ -1,8 +1,7 @@
 using DrWatson
 @quickactivate("german_track")
 
-using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP, Underscores,
-    OMEinsum
+using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP, Underscores
 
 Uniform = Distributions.Uniform
 
@@ -45,6 +44,7 @@ plotaxes(weights)
 R"quartz()"
 plotaxes(ŵ)
 =#
+
 
 Â₂,ŵ₂ = EEGCoding.regressSS2(x,envelopes,weights[:,1:200],1:200,
     regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad())
