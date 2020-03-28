@@ -20,6 +20,7 @@ using Zygote
 using StatsFuns
 using Underscores
 using Random
+using TensorCast
 
 struct CvNorm
     λ::Float64
@@ -92,24 +93,32 @@ struct SemiDecoder{N,T}
 end
 Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
-tosimplex(x::Tuple{},c) = (1-c,)
-function tosimplex(x::NTuple{N,T},c=zero(T)) where {N,T}
-    yi = (1-c)x[1]
-    (yi, tosimplex(Base.tail(x),c+yi)...)
-end
-fromsimplex(x::NTuple{1},c) = ()
-function fromsimplex(x::NTuple{N,T},c=zero(T)) where {N,T}
-    (x[1]/(1-c), fromsimplex(Base.tail(x),c+x[1])...)
+tosimplex(x::AbstractMatrix) = tosimplex_(x)[1]
+function tosimplex_(x::AbstractMatrix)
+    N,M = size(x)
+    y = similar(x,N+1,M)
+    c = similar(x,N,M)
+    c[1,:] .= y[1,:] .= x[1,:]
+    for i in 2:N
+        y[i,:] .= (1 .- c[i-1,:]).*x[i,:]
+        c[i,:] .= c[i-1,:] .+ y[i,:]
+    end
+    y[N+1,:] .= (1 .- c[N,:])
+
+    y, c
 end
 
-function tupleapply(fn,x::AbstractArray{T}) where T
-    @assert size(x,1) < 10
-    N = size(x,1)
-    @_ x |>
-        reinterpret(NTuple{N,T},__) |>
-        fn.(__) |>
-        reinterpret(T,__) |>
-        reshape(__,N+1,size(x)[2:end]...)
+@adjoint function tosimplex(x::AbstractMatrix)
+    N,M = size(x)
+    y, c = tosimplex_(x)
+    y, function(Δ)
+        Δx = similar(x)
+        Δx[1,:] .= Δ[1,:]
+        for i in 2:N
+            Δx[i,:] = Δ[i,:].*(1 .- c[i-1,:])
+        end
+        (Δx,)
+    end
 end
 
 # function tosimplex(z::AbstractArray)
@@ -238,9 +247,9 @@ end
 function loss(A,x,y,w)
     error = 0
     for i in 1:size(x)[end]
-        mixA = view(x,:,:,i)*A
-        mixy = sum(reshape(view(w,:,i),1,1,:).*view(y,:,:,:,i),dims=3)
-        error += sum((mixA .- mixy).^2)
+        @matmul xA := x[n,f,i]*A[f,g]
+        @matmul yw := y[n,g,h,i]*w[h,i]
+        error += sum((xA .- yw).^2)
     end
     error
 end
@@ -276,7 +285,7 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
         else
             # TODO: this is where we would use `cu` to convert the data
             Δ = Flux.gradient(t.A,t.u[:,wi]) do A,_u
-                loss(A,_x,_y,tupleapply(tosimplex,_u)) + reg(vec(A))
+                loss(A,_x,_y,tosimplex(_u)) + reg(vec(A))
             end
             Flux.update!(optimizer,(t.A,view(t.u,:,wi)),Δ)
         end
