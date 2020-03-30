@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates, LIBSVM, Underscores, StatsBase, Random, Printf, Lasso, GLM
+    Dates, LIBSVM, Underscores, StatsBase, Random, Printf, Lasso, GLM, StatsBase
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -283,33 +283,31 @@ classdf = @_ freqmeans |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
-function classacc(sdf,cols)
-    N = 0
-    correct = 0
-    for (train_ids,test_ids) in folds(10,unique(sdf.sid))
-        train = @_ filter(_.sid in train_ids,sdf)
-        test = @_ filter(_.sid in test_ids,sdf)
-        # model = svmtrain(Array(disallowmissing(train[:,cols]))',
-        #                  Array(train[:,:condition])) #,kernel=Kernel.Linear)
-        # labels, = svmpredict(model, Array(disallowmissing(test[:, cols]))')
-        # correct += sum(labels .== test[:, :condition])
-        X = Array(disallowmissing(train[:,cols]))
-        y = train.condition .== "global"
-        if size(X,2) == 30
-            model = fit(LassoModel,X,y,Binomial(),irls_maxiter=1000)
-        else
-            model = fit(GeneralizedLinearModel,X,y,Binomial())
-        end
-        labels = GLM.predict(model,Array(disallowmissing(test[:,cols])))
-        correct += sum((labels .> 0.5) .== (test.condition .== "global"))
-        N += size(test,1)
-    end
-    DataFrame(N=N,correct=correct)
-end
+classdf[!,:chan_freq] .= Symbol.(:channel,classdf.channel,:_,classdf.freqbin);
+classdf = unstack(classdf, [:sid, :condition, :winstart, :winlen, :salience],
+    :chan_freq, :powerdiff)
 
-classpredict = @_ by(classacc(_,[:powerdiff]),classdf,
-    [:winstart,:winlen,:channel,:salience,:freqbin])
-classpredict[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),classpredict.channel)
+disallowmissing!(classdf,r"channel[0-9]+_[a-z]+")
+
+# TOOD: use model coefficients to determine which
+# features actually contributed to the predicition
+classdf[!,:predict] .= testmodel(LassoModel,classdf,r"channel[0-9]+_[a-z]+")
+
+classpredict = @_ by(classdf,[:winstart,:winlen,:salience],
+    (:condition,:predict) => function(row)
+
+    correct = row.condition .== row.predict
+    low, high = dbootconf(correct,bootmethod=:iid)
+    (mean = mean(correct), lower95 = low, upper95 = high)
+end)
+
+classpredict = @_ by(classdf,[:winstart,:winlen,:salience],
+    (:condition,:predict) => function(row)
+
+    correct = row.condition .== row.predict
+    low, high = dbootconf(correct,bootmethod=:iid,alpha=0.25)
+    (mean = mean(correct), lower85 = low, upper85 = high)
+end)
 
 rnd = MersenneTwister(1983)
 rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]

@@ -1,14 +1,47 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
-    sample_from_ranges, timefreq_hitmiss
+    sample_from_ranges, testmodel
 
 using PaddedViews
 using StatsBase
 using Random
+using Underscores
+using StatsBase
+using Lasso
+using GLM
 
 function mat2bson(file)
     file
+end
+
+function testmodel(model,sdf,cols)
+    xs = term(0)
+    for col in names(view(sdf,:,cols))
+        xs += term(col)
+        xs += term(col) & term(:winlen)
+        xs += term(col) & term(:salience)
+        xs += term(col) & term(:winlen) & term(:salience)
+    end
+    formula = term(:condition) ~ xs
+    labels = String[]
+    for (trainids,testids) in folds(10,unique(sdf.sid))
+        train = @_ filter(_.sid in trainids,sdf)
+        test = @_ filter(_.sid in testids,sdf)
+
+        f = apply_schema(formula, schema(formula, train))
+        y,X = modelcols(f, train)
+        # @infiltrate
+        coefs = fit(model,X,Bool.(vec(y)),Binomial())#,irls_maxiter=1000)
+
+        f = apply_schema(formula, schema(formula, test))
+        y,X = modelcols(f, test)
+        level = StatsBase.predict(coefs,X)
+        _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
+        append!(labels,_labels)
+    end
+
+    labels
 end
 
 function padmeanpower(xs)
