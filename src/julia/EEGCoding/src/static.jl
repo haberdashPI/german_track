@@ -14,7 +14,6 @@ using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
 using Flux
 using Flux: mse, onehot
-using TransformVariables
 using Zygote: @adjoint
 using Zygote
 using StatsFuns
@@ -229,7 +228,7 @@ function SemiDecodeTrainer(x,y,v,vi)
     H_,J = size(v)
     @show vi[1:min(end,10)]
     @assert I == I_ "Must have the same number of neural and stimulus observations"
-    @assert N == N_ "Must have same number of time neural and stimulus time points"
+    @assert N == N_ "Must have same number of neural and stimulus time points"
     @assert H == H_ "Must have same number of stimulus sources and stimulus weights"
 
     xᵥ = view(x,:,:,vi)
@@ -247,8 +246,9 @@ end
 function loss(A,x,y,w)
     error = 0
     for i in 1:size(x)[end]
-        @matmul xA := x[n,f,i]*A[f,g]
-        @matmul yw := y[n,g,h,i]*w[h,i]
+        xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
+        xA = xi*A
+        @matmul yw[n,g] := sum(h) yi[n,g,h]*wi[h]
         error += sum((xA .- yw).^2)
     end
     error
@@ -266,6 +266,22 @@ function loss(A,x,y,w)
 end
 =#
 
+# Copied and modified from Flux.jl: src/optimise/optimisers.jl
+const ϵ = Flux.Optimise.ϵ
+function apply_byindex!(o::AMSGrad, x, ix, Δ)
+    η, β = o.eta, o.beta
+    mt, vt, v̂t = get!(o.state, x, (fill!(zero(x), ϵ), fill!(zero(x), ϵ), fill!(zero(x), ϵ)))
+    mt, vt, v̂t = view(mt,ix...), view(vt,ix...), view(v̂t,ix...)
+    @. mt = β[1] * mt + (1 - β[1]) * Δ
+    @. vt = β[2] * vt + (1 - β[2]) * Δ ^ 2
+    @. v̂t = max(v̂t, vt)
+    @. Δ = η * mt / (√v̂t + ϵ)
+end
+
+apply_byindex!(o, x, ix, Δ) = error("Unsupported optimizer type: $(typeof(o))")
+
+#### end copy
+
 function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
     # TODO: this false true mapping doesn't work
     # i need randmix to track which source the relements come from
@@ -281,21 +297,23 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
             Δ = Flux.gradient(t.A) do A
                 loss(A,_x,_y,t.v[:,wi]) + reg(vec(A))
             end
-            Flux.update!(optimizer,(t.A,),Δ)
+            Flux.update!(optimizer,t.A,Δ[1])
         else
             # TODO: this is where we would use `cu` to convert the data
             Δ = Flux.gradient(t.A,t.u[:,wi]) do A,_u
                 loss(A,_x,_y,tosimplex(_u)) + reg(vec(A))
             end
-            Flux.update!(optimizer,(t.A,view(t.u,:,wi)),Δ)
+
+            Flux.update!(optimizer,t.A,Δ[1])
+            t.u[:,wi] .-= apply_byindex!(optimizer,t.u,(:,wi),Δ[2])
         end
     end
 end
 
 function coefs(t::SemiDecodeTrainer)
-    w = Array{eltype(t.v)}(undef,size(t.v,1),size(x,3))
+    w = Array{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
     w[:,t.vi] = t.v
-    w[:,setdiff(1:end,t.vi)] = t.u
+    w[:,setdiff(1:end,t.vi)] = tosimplex(t.u)
 
     t.A, w
 end
@@ -326,12 +344,13 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     end
     throt_status = Flux.throttle(status,status_rate)
 
-    for epoch in 1:epochs
+    while epoch < epochs
         regressSS2_train!(trainer,regularize,batchsize,optimizer)
-        status()
+        throt_status()
+        epoch += 1
     end
 
-    return trainer.A,w
+    return coefs(trainer)
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
