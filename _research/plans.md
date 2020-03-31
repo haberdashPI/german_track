@@ -7,8 +7,11 @@
             (add additional columns)
 + change color (below chance, and multi colors)
 + global vs. spatial
-- try early vs. late
++ try early vs. late
 - 3-way classifier
+
+plot gamma power with select mcca components and compare different windows
+(see email)
 
 - SVM across different time points
   - different bins (???)
