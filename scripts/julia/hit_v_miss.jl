@@ -2,7 +2,10 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates, LIBSVM, Underscores, StatsBase, Random, Printf, Lasso, GLM, StatsBase
+    Dates, LIBSVM, Underscores, StatsBase, Random, Printf, Lasso, GLM, StatsBase,
+    ProgressMeter, ScikitLearn
+
+@sk_import svm: LinearSVC
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
@@ -113,16 +116,26 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
+cols = [:sid,:hit,:trial,:timing,:condition,:winstart,:winlen,:salience]
+N = length(groupby(dfhit,cols))
+progress = Progress(N, "Computing Frequency Bins: ")
+freqmeans = by(dfhit, cols) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
-    if size(signal,2) < 100
+    # ensure a minimum of 2Hz freqbin resolution
+    if size(signal,2) < 32
         empty = mapreduce(hcat,keys(freqbins)) do bin
             DataFrame(Symbol(bin) => Float64[])
         end
         empty[!,:channel] = Int[]
+        next!(progress)
         return empty
+    end
+    if size(signal,2) < 128
+        newsignal = similar(signal,size(signal,1),128)
+        newsignal[:,1:size(signal,2)] = signal
+        signal = newsignal
     end
     spect = abs.(rfft(signal, 2))
     # totalpower = mean(spect,dims = 2)
@@ -131,146 +144,12 @@ freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]
         DataFrame(Symbol(bin) => vec(mfreq))
     end
     result[!,:channel] .= channels
+    next!(progress)
     result
 end
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
-
-R"""
-
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
-bins = $(collect(keys(freqbins)))
-
-# TODO: show the varying window parameters within a single graph
-# so I can understand how things change,
-# also, think about the comparisons I care about
-# and other ways to collapse across more of the figures (e.g. colors
-# for the different frequency bands, or something)
-
-df = $(freqmeans) %>%
-    # filter(channel %in% 1:3) %>%
-    group_by(sid,winstart,winlen,hit,#target_timing, salience,
-        timing,condition) %>%
-    gather(key="freqbin", value="meanpower", delta:gamma) %>%
-    ungroup() %>%
-    mutate(timing = factor(timing,levels=c('before','after')),
-           freqbin = factor(freqbin,levels=bins, ordered=T),
-           condition = factor(condition,levels=c('global','object','spatial'))) %>%
-    arrange(timing,freqbin)
-
-group_means = df %>%
-    group_by(sid,winstart,winlen,hit,#target_timing, salience,
-        timing,condition,freqbin) %>%
-    summarize(meanpower = median(meanpower))
-
-# for(start in unique(df$winstart)){
-#     for(len in unique(df$winlen)){
-plotdf = group_means %>%
-    # filter(group_means,freqbin %in% c('delta','theta','alpha')) %>%
-    # filter(condition %in% c('global','object')) %>%
-    #filter(group_means,winstart == start,winlen == len) %>%
-    filter(hit %in% c('hit','miss')) %>%
-    group_by(sid,hit,condition) %>%
-    spread(timing,meanpower) %>%
-    mutate(diff = log(after) - log(before))
-
-pos = position_jitterdodge(dodge.width=0.1,jitter.width=0.05)
-
-p = ggplot(plotdf,aes(x=winstart,y=diff,
-    fill=interaction(hit,factor(winlen)),
-    color=interaction(hit,factor(winlen)))) +
-    stat_summary(geom='line',position=position_dodge(width=0.1),
-        size=1) +
-    stat_summary(geom='linerange',position=position_dodge(width=0.1),
-                 fun.args = list(conf.int=0.68)) +
-    # geom_point(alpha=0.1, position=pos) +
-    scale_fill_brewer(palette='Paired',direction=-1) +
-    scale_color_brewer(palette='Paired',direction=-1) +
-    facet_grid(freqbin~condition,scales='free_y') +
-    ylab("Median log power difference across channels (after - before)") +
-    # coord_cartesian(ylim=c(-0.1,0.1)) +
-    geom_abline(slope=0,intercept=0,linetype=2)
-p
-
-# name = sprintf('freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-# name = sprintf('mcca_freq_diff_summary_target_timing_%03.1f_%03.1f.pdf',start,len)
-name = 'hits_by_all_windows.pdf'
-ggsave(file.path($dir,name),plot=p,width=11,height=8)
-#     }
-# }
-
-plotdf = group_means %>%
-    filter(((winstart == 0.25) & (winlen == 0.5)) |
-           ((winstart == 0.5) & (winlen == 1.5))) %>%
-    group_by(sid,hit,condition) %>%
-    spread(timing,meanpower) %>%
-    mutate(diff = log(after) - log(before))
-
-pos = position_jitterdodge(dodge.width=0.2,jitter.width=0.1)
-
-p = ggplot(plotdf,aes(x=freqbin,y=diff,
-        fill=hit,color=hit)) +
-    # geom_point(alpha=0.4, position=pos, size=1) +
-    stat_summary(fun.data = "mean_cl_boot", geom='point',
-        position=position_dodge(width=0.4),
-        size=2,fun.args = list(conf.int=0.68)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-        position=position_dodge(width=0.4), width=0.5,
-        fun.args = list(conf.int=0.68)) +
-    # geom_text(position=pos, size=4, aes(label=sid)) +
-    scale_fill_brewer(palette='Set1',direction=-1) +
-    scale_color_brewer(palette='Set1',direction=-1) +
-    # coord_cartesian(ylim=c(-0.01,0.01)) +
-    facet_grid(.~condition+winlen,scales='free_y') +
-    theme(axis.text.x = element_text(angle=90,hjust=1)) +
-    ylab("Median log power difference across channels (after - before)") +
-    geom_abline(slope=0,intercept=0,linetype=2)
-p
-
-name = sprintf('hits_by_select_windows.pdf',0.5,1.0)
-ggsave(file.path($dir,name),plot=p,width=11,height=8)
-
-df = $(freqmeans) %>%
-    # filter(channel %in% 1:3) %>%
-    mutate(timing = factor(timing,levels=c('before','after')),
-           condition = factor(condition,levels=c('global','object','spatial'))) %>%
-    arrange(timing,condition)
-
-plotdf = df %>%
-    filter(((winstart == 0.25) & (winlen == 0.5)) |
-           ((winstart == 0.5) & (winlen == 1.5))) %>%
-    group_by(sid,hit,condition,channel,winstart,winlen) %>%
-    select(timing,alpha) %>%
-    spread(timing,alpha) %>%
-    summarize(meandiff = mean(log(after) - log(before)))
-
-p = ggplot(filter(plotdf,channel <= 5),aes(x=channel,y=meandiff,
-        fill=hit,color=hit)) +
-    # geom_point(alpha=0.4, position=pos, size=1) +
-    stat_summary(fun.data = "mean_cl_boot", geom='point',
-        position=position_dodge(width=0.4),
-        size=2,fun.args = list(conf.int=0.68)) +
-    stat_summary(fun.data = "mean_cl_boot", geom='errorbar',
-        position=position_dodge(width=0.4), width=0.5,
-        fun.args = list(conf.int=0.68)) +
-    # geom_text(position=pos, size=4, aes(label=sid)) +
-    scale_fill_brewer(palette='Set1',direction=-1) +
-    scale_color_brewer(palette='Set1',direction=-1) +
-    # coord_cartesian(ylim=c(-0.01,0.01)) +
-    facet_grid(.~condition+winlen,scales='free_y') +
-    ylab("Median power difference across channels (after - before)") +
-    xlab("MCCA Component")
-    geom_abline(slope=0,intercept=0,linetype=2)
-p
-
-name = sprintf('hits_alpha_by_channel_select_windows.pdf',0.5,1.0)
-ggsave(file.path($dir,name),plot=p,width=11,height=8)
-
-"""
 
 classdf = @_ freqmeans |>
     filter((_1.winstart == 0.25 && _1.winlen == 0.5) ||
@@ -278,19 +157,59 @@ classdf = @_ freqmeans |>
     filter(_.condition in ["global","object"],__) |>
     stack(__, [:delta,:theta,:alpha,:beta,:gamma],
         variable_name = :freqbin, value_name = :power) |>
+    filter(all(!isnan,_.power), __)
+
+ε = minimum(filter(!iszero,classdf.power))
+classdf = @_ classdf |>
     unstack(__, :timing, :power) |>
-    by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+    by(__, [:sid,:trial,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
         (:before,:after) => sdf ->
-            (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
+            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
-classdf[!,:chan_freq] .= Symbol.(:channel,classdf.channel,:_,classdf.freqbin);
-classdf = unstack(classdf, [:sid, :condition, :winstart, :winlen, :salience],
-    :chan_freq, :powerdiff)
+classdf_shape = @_ classdf |>
+    unstack(__, [:sid, :trial, :condition, :winstart, :winlen, :salience, :freqbin],
+        :channel, :powerdiff, renamecols = Symbol(:channel,_)) |>
+    filter(all(!ismissing,_[r"channel"]), __) |>
+    disallowmissing!(__,r"channel")
 
-disallowmissing!(classdf,r"channel[0-9]+_[a-z]+")
 
 # TOOD: use model coefficients to determine which
 # features actually contributed to the predicition
+
+# TODO: try more iterations, then move on to mounya request
+classpredict = @_ by(classdf_shape, [:winstart,:freqbin,:winlen,:salience]) do sdf
+    labels = testmodel(LinearSVC(penalty="l1",dual=false,C=1,max_iter=10_000),sdf,r"channel")
+    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+end
+
+subj_means = by(classpredict,[:winstart,:winlen,:salience,:sid,:freqbin],:correct => mean)
+subj_means.freqbin = string.(subj_means.freqbin)
+
+R"""
+
+library(ggplot2)
+library(dplyr)
+
+bins = $(collect(keys(freqbins)))
+
+plotdf = $subj_means %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(freqbin)
+
+pos = position_jitterdodge(jitter.width=0.1, dodge.width=0.3)
+p = ggplot(plotdf,aes(x=winlen, y=correct_mean, color=salience)) +
+    geom_point(position='jitter',alpha=0.3,size=0.5) +
+    stat_summary(fun.data='mean_cl_boot',geom='line') +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0.5,slope=0,linetype=2) +
+    facet_grid(~freqbin)
+
+ggsave(file.path($dir,'salience_object_svmL1.pdf'),p,width=11,height=8)
+
+"""
+
+# TODO: use the appropriate test method here
 classdf[!,:predict] .= testmodel(LassoModel,classdf,r"channel[0-9]+_[a-z]+")
 
 classpredict = @_ by(classdf,[:winstart,:winlen,:salience],

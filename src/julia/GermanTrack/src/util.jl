@@ -10,18 +10,16 @@ using Underscores
 using StatsBase
 using Lasso
 using GLM
+using ScikitLearn
 
 function mat2bson(file)
     file
 end
 
-function testmodel(model,sdf,cols)
+function testmodel(model,sdf,cols;kwds...)
     xs = term(0)
     for col in names(view(sdf,:,cols))
         xs += term(col)
-        xs += term(col) & term(:winlen)
-        xs += term(col) & term(:salience)
-        xs += term(col) & term(:winlen) & term(:salience)
     end
     formula = term(:condition) ~ xs
     labels = String[]
@@ -32,11 +30,11 @@ function testmodel(model,sdf,cols)
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
         # @infiltrate
-        coefs = fit(model,X,Bool.(vec(y)),Binomial())#,irls_maxiter=1000)
+        coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
 
         f = apply_schema(formula, schema(formula, test))
         y,X = modelcols(f, test)
-        level = StatsBase.predict(coefs,X)
+        level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
         append!(labels,_labels)
     end
@@ -593,7 +591,7 @@ end
 
 function sample_from_ranges(ranges)
     weights = Weights(map(x -> x[2]-x[1],ranges))
-    range = sample(ranges,weights)
+    range = StatsBase.sample(ranges,weights)
     rand(Distributions.Uniform(range...))
 end
 
