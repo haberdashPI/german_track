@@ -1,8 +1,11 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
-    sample_from_ranges, testmodel
+    sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
+    computebands
 
+using FFTW
+using DataStructures
 using PaddedViews
 using StatsBase
 using Random
@@ -41,6 +44,83 @@ function testmodel(model,sdf,cols;kwds...)
 
     labels
 end
+
+function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
+        :delta => (1,3),
+        :theta => (3,7),
+        :alpha => (7,15),
+        :beta => (15,30),
+        :gamma => (30,100)))
+
+    function freqrange(spect,(from,to))
+        freqs = range(0,fs/2,length=size(spect,2))
+        view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
+    end
+
+    if size(signal,2) < 32
+        empty = mapreduce(hcat,keys(freqbins)) do bin
+            DataFrame(Symbol(bin) => Float64[])
+        end
+        empty[!,:channel] = Int[]
+        next!(progress)
+        return empty
+    end
+    if size(signal,2) < 128
+        newsignal = similar(signal,size(signal,1),128)
+        newsignal[:,1:size(signal,2)] = signal
+        signal = newsignal
+    end
+    spect = abs.(rfft(signal, 2))
+    # totalpower = mean(spect,dims = 2)
+    result = mapreduce(hcat,keys(freqbins)) do bin
+        mfreq = mean(freqrange(spect, freqbins[bin]), dims = 2) #./ totalpower
+        DataFrame(Symbol(bin) => vec(mfreq))
+    end
+    result[!,:channel] .= channels
+end
+
+function windowtarget(trial,event,fs,from,to)
+    window = only_near(event.target_time,fs,window=(from,to))
+
+    maxlen = size(trial,2)
+    ixs = bound_indices(window,fs,maxlen)
+    view(trial,:,ixs)
+end
+
+function windowbaseline(trial,event,fs;mindist,minlen)
+    si = event.sound_index
+    times = vcat(switch_times[si], target_times[si]) |> sort!
+    ranges = far_from(times, 10, mindist=mindist, minlength=minlen)
+    if isempty(ranges)
+        error("Could not find any valid region for baseline ",
+              "'target'. Times: $(times)")
+    end
+    at = sample_from_ranges(ranges)
+    window = only_near(at,fs,window=(minlen))
+
+    maxlen = size(trial,2)
+    ixs = bound_indices(window,fs,maxlen)
+    view(trial,:,ixs)
+end
+
+function ishit(row, target_source = row.target_source, region = row.region, direction = row.direciton)
+    if row.condition == "global"
+        region == "baseline" ? "baseline" :
+            row.correct ? "hit" : "miss"
+    elseif row.condition == "object"
+        region == "baseline" ? "baseline" :
+            row.target_source == "male" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
+    else
+        @assert row.condition == "spatial"
+        region == "baseline" ? "baseline" :
+            direction == "right" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
+    end
+end
+
 
 function padmeanpower(xs)
     rows = maximum(@λ(size(_,1)), xs)

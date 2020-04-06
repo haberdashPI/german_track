@@ -79,24 +79,6 @@ end
 source_names = ["male", "female"]
 df.target_source = get.(Ref(source_names),Int.(df.target_source),missing)
 
-function ishit(row)
-    if row.condition == "global"
-        row.region == "baseline" ? "baseline" :
-            row.correct ? "hit" : "miss"
-    elseif row.condition == "object"
-        row.region == "baseline" ? "baseline" :
-            row.target_source == "male" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
-    else
-        @assert row.condition == "spatial"
-        row.region == "baseline" ? "baseline" :
-            row.direction == "right" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
-    end
-end
-
 df.hit = ishit.(eachrow(df))
 dfhit = df[in.(df.hit,Ref(("hit","miss","baseline"))),:]
 
@@ -208,9 +190,6 @@ p = ggplot(plotdf,aes(x=winlen, y=correct_mean, color=salience)) +
 ggsave(file.path($dir,'salience_object_svmL1.pdf'),p,width=11,height=8)
 
 """
-
-# TODO: use the appropriate test method here
-classdf[!,:predict] .= testmodel(LassoModel,classdf,r"channel[0-9]+_[a-z]+")
 
 classpredict = @_ by(classdf,[:winstart,:winlen,:salience],
     (:condition,:predict) => function(row)
