@@ -31,6 +31,8 @@ atexit(() -> close(stim_file))
 const speakers = stim_info.test_block_cfg.trial_target_speakers
 const directions = stim_info.test_block_cfg.trial_target_dir
 const target_times = stim_info.test_block_cfg.target_times
+const target_salience =
+    CSV.read(joinpath(stimulus_dir(), "target_salience.csv")).salience |> Array
 const switch_times = map(times -> times ./ stim_info.fs,stim_info.test_block_cfg.switch_times)
 
 function __init__()

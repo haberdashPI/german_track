@@ -2,7 +2,7 @@ import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
-    computebands
+    computebands, organize_freqbands
 
 using FFTW
 using DataStructures
@@ -19,16 +19,16 @@ function mat2bson(file)
     file
 end
 
-function testmodel(model,sdf,cols;kwds...)
+function testmodel(model,sdf,idcol,classcol,cols;kwds...)
     xs = term(0)
     for col in names(view(sdf,:,cols))
         xs += term(col)
     end
-    formula = term(:condition) ~ xs
-    labels = String[]
+    formula = term(classcol) ~ xs
+    labels = Symbol[]
     for (trainids,testids) in folds(10,unique(sdf.sid))
-        train = @_ filter(_.sid in trainids,sdf)
-        test = @_ filter(_.sid in testids,sdf)
+        train = @_ filter(_[idcol] in trainids,sdf)
+        test = @_ filter(_[idcol] in testids,sdf)
 
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
@@ -62,7 +62,6 @@ function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
             DataFrame(Symbol(bin) => Float64[])
         end
         empty[!,:channel] = Int[]
-        next!(progress)
         return empty
     end
     if size(signal,2) < 128
@@ -77,6 +76,8 @@ function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
         DataFrame(Symbol(bin) => vec(mfreq))
     end
     result[!,:channel] .= channels
+
+    result
 end
 
 function windowtarget(trial,event,fs,from,to)
@@ -87,7 +88,7 @@ function windowtarget(trial,event,fs,from,to)
     view(trial,:,ixs)
 end
 
-function windowbaseline(trial,event,fs;mindist,minlen)
+function windowbaseline(trial,event,fs,from,to;mindist,minlen)
     si = event.sound_index
     times = vcat(switch_times[si], target_times[si]) |> sort!
     ranges = far_from(times, 10, mindist=mindist, minlength=minlen)
@@ -96,31 +97,90 @@ function windowbaseline(trial,event,fs;mindist,minlen)
               "'target'. Times: $(times)")
     end
     at = sample_from_ranges(ranges)
-    window = only_near(at,fs,window=(minlen))
+    window = only_near(at,fs,window=(from,to))
 
     maxlen = size(trial,2)
     ixs = bound_indices(window,fs,maxlen)
     view(trial,:,ixs)
 end
 
-function ishit(row, target_source = row.target_source, region = row.region, direction = row.direciton)
-    if row.condition == "global"
-        region == "baseline" ? "baseline" :
-            row.correct ? "hit" : "miss"
-    elseif row.condition == "object"
-        region == "baseline" ? "baseline" :
-            row.target_source == "male" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
+function ishit(row)
+    if row.condition == :global
+        row.region == :baseline ? :baseline :
+            row.correct ? :hit : :miss
+    elseif row.condition == :object
+        row.region == :baseline ? :baseline :
+            row.target_source == :male ?
+                (row.correct ? :hit : :miss) :
+                (row.correct ? :falsep : :reject)
     else
-        @assert row.condition == "spatial"
-        region == "baseline" ? "baseline" :
-            direction == "right" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
+        @assert row.condition == :spatial
+        row.region == :baseline ? :baseline :
+            row.direction == :right ?
+                (row.correct ? :hit : :miss) :
+                (row.correct ? :falsep : :reject)
     end
 end
 
+function organize_freqbands(subjects;groups,winlens,winstarts)
+
+    fs = GermanTrack.framerate(first(values(subjects)).eeg)
+
+    regions = [:target, :baseline]
+    window_timings = [:before, :after]
+    source_names = [:male, :female]
+
+    N = reduce(*,length.((values(subjects),regions,window_timings,
+        winlens,winstarts)))
+    progress = Progress(N,desc="computing frequency bins")
+
+    med_salience = median(target_salience)
+    med_target_time = @_ filter(_ > 0,target_times) |> median
+
+    mapreduce(vcat,values(subjects)) do subject
+        events = subject.events
+        events.row = 1:size(events,1)
+        eeg = subject.eeg
+
+        mapreduce(vcat,Iterators.product(regions,window_timings,winlens,winstarts)) do vars
+            region,window_timing,winlen,winstart = vars
+
+            bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
+                    (winstart,winstart+winlen)
+
+            rowdf = @_ filter(_.target_present == 1,events)
+            si = rowdf.sound_index
+            rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
+            rowdf.salience = @. ifelse(target_salience[si] > med_salience,:high,:low)
+            rowdf.target_time = @. ifelse(target_times[si] > med_target_time,:early,:late)
+            rowdf.direction = Symbol.(directions[si])
+            rowdf[!,:region] .= region
+            rowdf[!,:window_timing] .= window_timing
+            rowdf[!,:winlen] .= winlen
+            rowdf[!,:winstart] .= winstart
+            rowdf.hit = ishit.(eachrow(rowdf))
+
+            categorical!(rowdf,[:region,:condition,:window_timing,:salience,
+                :target_time,:direction,:hit],compress=true)
+
+            cols = [:sid,:hit,:condition,:window_timing,:winlen,
+                :winstart,:region,groups...]
+            bandsdf = by(rowdf,cols) do sdf
+                signal = mapreduce(hcat,sdf.row) do row
+                    region == :target ?
+                        windowtarget(eeg[row],events[row,:],fs,bounds...) :
+                        windowbaseline(eeg[row],events[row,:],fs,bounds...,
+                            mindist=0.2,minlen=0.5)
+                end
+
+                computebands(signal,fs)
+            end
+
+            next!(progress)
+            bandsdf
+        end
+    end
+end
 
 function padmeanpower(xs)
     rows = maximum(@λ(size(_,1)), xs)
@@ -600,6 +660,7 @@ function events_for_eeg(file,stim_info)
         stim_events[!,:bad_trial] .= false
     end
     stim_events[!,:sid] .= sid
+    stim_events.condition = Symbol.(stim_events.condition)
 
     stim_events, sid
 end
