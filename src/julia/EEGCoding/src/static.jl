@@ -21,76 +21,6 @@ using Underscores
 using Random
 using TensorCast
 
-struct CvNorm
-    λ::Float64
-    norm::Int
-end
-
-regularize(A,reg::CvNorm) = reg.λ*norm(vec(A),reg.norm)
-"""
-    regressSS(x,y,v,tt,reg)
-
-"Semi-supervised" decoding of x, a multi-channel signal (EEG) to a mixture of
-sources y across a number of trials t. The values x and y index the trials
-and are of length t. Each entry of x is a multi-channel signal (EEG) of m x n
-where m is thee number of channels, n the numbe rof time points. Each entry
-of y is a tensor of h x k x n where h is the number of sources, k the number
-of features used to represent each source, and n the number of time points
-for each source. The features of y may include time lagged values (e.g. by
-using `withlags`).
-
-regressSS infers a decoding matrix A across all trials and sources, and a set
-of weighting coefficients w. For most trials the weighting coefficients are
-unknown, but in some cases, those instances where a subject provides an
-appropriate response, are labeled. This is the semi-supervised element of the
-problem. The value v sepcies the known weights of size s x n while tt (of size
-s) indicates the trial indices that have these known weights.
-
-reg specifies how the problem should be regularized (norm 1 or norm 2)
-
-"""
-function regressSS(x,y,v,tt,reg;settings...)
-    M,_ = size(x[1])
-    H,K,_ = size(y[1])
-    T = length(x)
-
-    @assert length(x) == length(y) "Stimulus and response must have same trial count."
-    @assert size(v,1) == 0 || H == size(v,2) "Number of sources must match weight dimension"
-    @assert length(tt) == size(v,1) "Number of weights must match number of weight indices"
-
-    # decoding coefficients
-    A = Variable(K,M)
-
-    # mixture weights
-    u = [Variable(H) for _ in 1:T]
-
-    # fix values for known weights
-    for (i,t) in enumerate(tt); fix!(u[t],v[i,:]); end
-
-    # solve the problem
-    trials = (sumsquares(A*x[t] - sum((u[t][h]*y[t][h,:,:]) for h in 1:H))
-        for t in 1:T)
-    objective = sum(trials) + regularize(A,reg)
-    constraints = ([u[t] > 0, u[t] < 1, sum(u[t]) == 1] for t in 1:T)
-    problem = minimize(objective,reduce(vcat,constraints))
-    solve!(problem, COSMO.Optimizer; settings...)
-
-    # return result
-    problem.status == OPTIMAL ||
-        @warn("Failed to find a solution to problem:\n $problem")
-
-    if isnothing(A.value) || any(isnothing,getproperty.(u,:value))
-        (A = nothing, w = nothing)
-    else
-        (A = A.value, w = reduce(hcat,getproperty.(u,:value)))
-    end
-end
-
-struct SemiDecoder{N,T}
-    A::Array{T,2}
-    u::Array{NTuple{N,T},2}
-end
-Flux.params(x::SemiDecoder) = Flux.params(x.A,x.u)
 
 tosimplex(x::AbstractMatrix) = tosimplex_(x)[1]
 function tosimplex_(x::AbstractMatrix)
@@ -120,96 +50,6 @@ end
     end
 end
 
-# function tosimplex(z::AbstractArray)
-#     K = length(z)+1
-#     y = Array{eltype(z)}(undef,K)
-#     c = y[1] = z[1]
-#     for k in 2:(K-1)
-#         y[k] = (1-c)z[k]
-#         c += y[k]
-#     end
-#     y[K] = (1-c)
-#     y
-# end
-
-# function fromsimplex(x)
-#     K = length(x)
-#     y = Array{eltype(x)}(undef,K-1)
-#     c = y[1] = x[1]
-#     for k in 2:(K-1)
-#         y[k] = x[k]/(1-c)
-#         c += x[k]
-#     end
-#     y
-# end
-
-# @adjoint function tosimplex(z::AbstractArray)
-#     K = length(z)+1
-#     y = zsimplex(z)
-#     y, function(Δ)
-#         Δx = Array{eltype(z)}(undef,K-1)
-#         Δx[1] = Δ[1]
-#         c = y[1]
-#         for k in 2:(K-1)
-#             Δx[k] = Δ[k]*(1 - c)
-#             c += y[k]
-#         end
-#         (Δx,)
-#     end
-# end
-
-function SemiDecoder(x,y,v,tt)
-    N,M,H,I = size(x)
-    N,K,I = size(y)
-    V = length(tt)
-
-    @assert(size(x,4) == I,
-        "Stimulus and response must have same trial count.")
-    @assert(size(x,1) == N,
-        "Stimulus and response must have number of time points.")
-    @assert(V == size(v,1),
-        "Number of weights must match number of weight indices")
-    @assert(size(v,1) == 0 || H == size(v,2),
-        "Number of sources must match weight dimension")
-
-    A = randn(M,K)
-    u = mapslices(Tuple,rand(I - V,H-1),dims=2)
-    indices = in.(1:length(x),Ref(Set(tt)))
-    SemiDecoder(A,u,indices)
-end
-
-function loss(model::SemiDecoder{T},x,y,uindex::Int) where T
-    u = model.u[uindex]
-    w = zsimplex(clamp.(u,zero(T),one(T)))
-    mse(vec(model.A*x),vec(sum(w.*y,dims=1)))
-end
-loss(model::SemiDecoder,x,y,v::Array) = mse(vec(model.A*x),vec(sum(v.*y,dims=1)))
-
-# THERE'S a bug!!! the indices of x and y do not correspond to those of tt
-# (one is for the whole data set, the other for the batch)
-function loss(model::SemiDecoder,x,y,v,tt)
-    T = length(x)
-    L = 0.0
-    ui = 0
-    vi = 0
-    for i in 1:T
-        if model.indices[i]
-            vi += 1
-            L += loss(model,x[i],y[i],vec(v[tt[vi],:]))
-        else
-            ui += 1
-            L += loss(model,x[i],y[i],ui)
-        end
-    end
-
-    # impose cost when u is outside the 0,1 boundary
-    for ui in model.u
-        dist = abs.(ui - 0.5)
-        L += sum(max.(0,dist - 0.5)^2)
-    end
-
-    L
-end
 
 struct SemiDecodeTrainer
     A::AbstractArray
@@ -226,7 +66,6 @@ function SemiDecodeTrainer(x,y,v,vi)
     N,F,I = size(x)
     N_,G,H,I_ = size(y)
     H_,J = size(v)
-    @show vi[1:min(end,10)]
     @assert I == I_ "Must have the same number of neural and stimulus observations"
     @assert N == N_ "Must have same number of neural and stimulus time points"
     @assert H == H_ "Must have same number of stimulus sources and stimulus weights"
@@ -237,10 +76,10 @@ function SemiDecodeTrainer(x,y,v,vi)
     yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
 
     # TODO: we would store A and u in the GPU
-    A = randn(F,G)
-    u = rand(H-1,I-J)
+    A = maybeGPU(randn(F,G))
+    u = maybeGPU(rand(H-1,I-J))
 
-    SemiDecodeTrainer(A,xᵤ,yᵤ,u,xᵥ,yᵥ,v,vi)
+    SemiDecodeTrainer(A,xᵤ,yᵤ,u,xᵥ,yᵥ,maybeGPU(v),vi)
 end
 
 function loss(A,x,y,w)
@@ -253,18 +92,6 @@ function loss(A,x,y,w)
     end
     error
 end
-
-#=
-function loss(A,x,y,w)
-    # predicted source mixture given neural signature
-    @ein Ŷ[n,g,i] := A[f,g]*x[n,f,i]
-    # observed source mixture given sources and mixture weightings
-    # (weightings may be unknown)
-    @ein Y[n,g,i] := w[h,i]*y[n,g,h,i]
-
-    mse(Ŷ,Y)
-end
-=#
 
 # Copied and modified from Flux.jl: src/optimise/optimisers.jl
 const ϵ = Flux.Optimise.ϵ
@@ -283,8 +110,6 @@ apply_byindex!(o, x, ix, Δ) = error("Unsupported optimizer type: $(typeof(o))")
 #### end copy
 
 function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
-    # TODO: this false true mapping doesn't work
-    # i need randmix to track which source the relements come from
     uis = 1:size(t.u,2)
     vis = 1:size(t.v,2)
     Dᵤ = Flux.Data.DataLoader(t.xᵤ,t.yᵤ,uis,batchsize=batchsize,shuffle=true)
@@ -292,20 +117,22 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
 
     for (source,(_x,_y,wi)) in randmix(Dᵥ,Dᵤ,report_source=true)
         known_weights = source == 1
+        _x = maybeGPU(_x)
+        _y = maybeGPU(_y)
+        _wi = maybeGPU(wi)
+
         if known_weights
-            # TODO: this is where we would use `cu` to convert the data
             Δ = Flux.gradient(t.A) do A
-                loss(A,_x,_y,t.v[:,wi]) + reg(vec(A))
+                loss(A,_x,_y,t.v[:,_wi]) + reg(vec(A))
             end
             Flux.update!(optimizer,t.A,Δ[1])
         else
-            # TODO: this is where we would use `cu` to convert the data
-            Δ = Flux.gradient(t.A,t.u[:,wi]) do A,_u
+            Δ = Flux.gradient(t.A,t.u[:,_wi]) do A,_u
                 loss(A,_x,_y,tosimplex(_u)) + reg(vec(A))
             end
 
             Flux.update!(optimizer,t.A,Δ[1])
-            t.u[:,wi] .-= apply_byindex!(optimizer,t.u,(:,wi),Δ[2])
+            t.u[:,_wi] .-= apply_byindex!(optimizer,t.u,(:,_wi),Δ[2])
         end
     end
 end
@@ -315,9 +142,8 @@ function coefs(t::SemiDecodeTrainer)
     w[:,t.vi] = t.v
     w[:,setdiff(1:end,t.vi)] = tosimplex(t.u)
 
-    t.A, w
+    Array(t.A), w
 end
-
 
 """
 
