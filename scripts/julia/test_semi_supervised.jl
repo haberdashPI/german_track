@@ -1,7 +1,7 @@
 using DrWatson
 @quickactivate("german_track")
 
-using EEGCoding, RCall, Distributions, PlotAxes, Flux, DSP, Underscores,
+using EEGCoding, Distributions, PlotAxes, Flux, DSP, Underscores,
     TensorCast
 
 Uniform = Distributions.Uniform
@@ -32,6 +32,7 @@ end
 @reduce x[t,f,i] := sum(s) A[f]*envelopes[t,1,s,i]*weights[s,i]
 x .+= 1e-8randn(size(x))
 
+allowscalar(false)
 Â₂,ŵ₂ = EEGCoding.regressSS2(x,envelopes,weights[:,1:200],1:200,
     regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 100)
 
