@@ -67,6 +67,7 @@ function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
     if size(signal,2) < 128
         newsignal = similar(signal,size(signal,1),128)
         newsignal[:,1:size(signal,2)] = signal
+        newsignal[:,(size(signal,2)+1):end] .= 0
         signal = newsignal
     end
     spect = abs.(rfft(signal, 2))
@@ -122,7 +123,7 @@ function ishit(row)
     end
 end
 
-function organize_freqbands(subjects;groups,winlens,winstarts)
+function organize_freqbands(subjects;groups,winlens,winstarts,hittypes)
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
@@ -145,7 +146,7 @@ function organize_freqbands(subjects;groups,winlens,winstarts)
         mapreduce(vcat,Iterators.product(regions,window_timings,winlens,winstarts)) do vars
             region,window_timing,winlen,winstart = vars
 
-            bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
+            bounds = window_timing == :before ? (-winstart-winlen,-winstart) :
                     (winstart,winstart+winlen)
 
             rowdf = @_ filter(_.target_present == 1,events)
@@ -159,6 +160,7 @@ function organize_freqbands(subjects;groups,winlens,winstarts)
             rowdf[!,:winlen] .= winlen
             rowdf[!,:winstart] .= winstart
             rowdf.hit = ishit.(eachrow(rowdf))
+            rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
 
             categorical!(rowdf,[:region,:condition,:window_timing,:salience,
                 :target_time,:direction,:hit],compress=true)
@@ -173,7 +175,18 @@ function organize_freqbands(subjects;groups,winlens,winstarts)
                             mindist=0.2,minlen=0.5)
                 end
 
-                computebands(signal,fs)
+
+                result = computebands(signal,fs)
+                if @_ all(0 ≈ _,signal)
+                    result[:,Between(:delta,:gamma)] .= 0
+                end
+
+                @infiltrate any(isinf,Array(result))
+                @infiltrate any(isnan,Array(result))
+                result
+            end
+            if size(bandsdf,1) == 0 && size(bandsdf,2) < 14
+                bandsdf = hcat(bandsdf,computebands(Float64[],fs))
             end
 
             next!(progress)

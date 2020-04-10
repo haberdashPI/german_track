@@ -14,7 +14,7 @@ include("util.jl")
 include("stimuli.jl")
 include("train_test.jl")
 
-export data_dir, raw_data_dir, stimulus_dir, raw_stim_dir
+export data_dir, raw_data_dir, stimulus_dir, raw_stim_dir, plotsdir
 
 const datefile = open(joinpath(projectdir(),"dateconfig.json"))
 const dates = JSON3.read(datefile)
