@@ -3,7 +3,7 @@ using DrWatson
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO
+    FileIO, StatsBase
 
 using ScikitLearn
 @sk_import svm: NuSVC
@@ -15,10 +15,16 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                      encoding = RawEncoding())
     for file in eeg_files)
 
-freqmeans = organize_freqbands(subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
-    winlens = 2.0 .^ range(-3,1,length=10),
-    winstarts = 2.0 .^ range(-3,1,length=10))
-alert()
+cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
+if isfile(cachefile)
+    freqmeans = organize_freqbands(subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
+        winlens = 2.0 .^ range(-3,1,length=10),
+        winstarts = 2.0 .^ range(-3,1,length=10))
+    @save cachefile freqmeans
+    alert()
+else
+    @load cachefile freqmeans
+end
 
 powerdf = @_ freqmeans |>
     filter(_.condition in [:global,:object],__) |>
@@ -33,7 +39,8 @@ powerdiff_df = @_ powerdf |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
-powerdiff_df[!,:hit_channel] .= categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit))
+powerdiff_df[!,:hit_channel] .=
+    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit))
 classdf = @_ powerdiff_df |>
     unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
         :hit_channel, :powerdiff) |>
@@ -100,3 +107,77 @@ pl = highvlow |>
              sort=[:delta,:theta,:alpha,:beta,:gamma]})
 
 save(File(format"PDF",joinpath(dir,"diff_svm_allbins.pdf")),pl)
+
+
+# TODO: why is high classification worse, early on
+# try to reproduce old plot
+
+
+powerdiff = @_ freqmeans |>
+    filter((isapprox(_1.winstart,0.23,atol=0.02) &&
+            isapprox(_1.winlen,0.58,atol=0.02)) ||
+           (isapprox(_1.winstart,0.58,atol=0.02) &&
+            isapprox(_1.winlen,1.46,atol=0.02)),__) |>
+    filter(_.condition in [:global,:object],__) |>
+    stack(__, [:delta,:theta,:alpha,:beta,:gamma],
+        variable_name = :freqbin, value_name = :power) |>
+    unstack(__, :window_timing, :power) |>
+    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+        (:before,:after) => sdf ->
+            (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
+
+powerdiff[!,:hit_channel] .=
+    categorical(Symbol.(map(x -> @sprintf("channel%02d",x),classdf.channel),
+        :_,classdf.hit))
+
+classdf = @_ powerdiff |>
+    unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
+        :hit_channel, :powerdiff) |>
+    filter(all(!ismissing,_[r"channel"]), __) |>
+    disallowmissing!(__,r"channel")
+
+classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
+    mapreduce(vcat,1:30) do channel
+        labels = testmodel(NuSVC(),sdf,:sid,:condition,Regex(@sprintf("channel%02d",channel)))
+        DataFrame(correct = sdf.condition .== labels,sid = sdf.sid,channel = channel)
+    end
+end
+
+classpredict[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),classpredict.channel)
+
+rnd = MersenneTwister(1983)
+rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
+channel_groups = OrderedDict(
+    "1-5" => 1:5,
+    "1-10" => 1:10,
+    "1-20" => 1:20,
+    "all" => 1:30,
+    (join(r,",") => r for r in rseqs)...
+)
+
+for group in keys(channel_groups)
+    channels = channel_groups[group]
+    newrows = by(classdf,[:freqbin,:winstart,:winlen,:salience]) do sdf
+        sdf = @_ sdf |>
+            filter(_.channel in channels,__) |>
+            unstack(__,:hit_channel,:powerdiff,renamecols=Symbol(:channel,_))
+        sdf[:,r"channel"] .= coalesce.(sdf[:,r"channel"],0.0)
+        disallowmissing!(sdf,r"channel")
+
+        labels = testmodel(NuSVC(),sdf,:sid,:condition,r"channel")
+        DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+    end
+    newrows[!,:channelgroup] .= group
+    newrows[!,:channel] .= maximum(classpredict.channel)+1
+    append!(classpredict,newrows)
+end
+classpredict.correct = Int.(classpredict.correct)
+
+classpredict |>
+    @vlplot(:rect,
+        x={:channel,type=:quantitative,bin={step=1}},
+        y={:freqbin,type=:ordinal,
+           sort=reverse([:delta,:theta,:alpha,:beta,:gamma])},
+        column=:salience,
+        color={"mean(correct)",type=:quantitative,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        row=:winlen) #, column=:salience,row=:winlen)

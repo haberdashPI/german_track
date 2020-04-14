@@ -32,7 +32,6 @@ function testmodel(model,sdf,idcol,classcol,cols;kwds...)
 
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
-        # @infiltrate
         coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
 
         f = apply_schema(formula, schema(formula, test))
