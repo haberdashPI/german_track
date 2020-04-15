@@ -3,10 +3,10 @@ using DrWatson
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase
+    FileIO, StatsBase, LIBSVM
 
 using ScikitLearn
-@sk_import svm: NuSVC
+@sk_import svm: (NuSVC, SVC)
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -16,7 +16,7 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
     for file in eeg_files)
 
 cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
-if isfile(cachefile)
+if !isfile(cachefile)
     freqmeans = organize_freqbands(subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
         winlens = 2.0 .^ range(-3,1,length=10),
         winstarts = 2.0 .^ range(-3,1,length=10))
@@ -126,9 +126,12 @@ powerdiff = @_ freqmeans |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
+# powerdiff[!,:hit_channel] .=
+#     categorical(Symbol.(map(x -> @sprintf("channel%02d",x),powerdiff.channel),
+#         :_,powerdiff.hit))
+
 powerdiff[!,:hit_channel] .=
-    categorical(Symbol.(map(x -> @sprintf("channel%02d",x),classdf.channel),
-        :_,classdf.hit))
+    categorical(Symbol.(map(x -> @sprintf("channel%02d",x),powerdiff.channel)))
 
 classdf = @_ powerdiff |>
     unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
@@ -138,7 +141,7 @@ classdf = @_ powerdiff |>
 
 classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
     mapreduce(vcat,1:30) do channel
-        labels = testmodel(NuSVC(),sdf,:sid,:condition,Regex(@sprintf("channel%02d",channel)))
+        labels = testmodel(LIBSVM.SVC(),sdf,:sid,:condition,Regex(@sprintf("channel%02d",channel)))
         DataFrame(correct = sdf.condition .== labels,sid = sdf.sid,channel = channel)
     end
 end
@@ -156,15 +159,10 @@ channel_groups = OrderedDict(
 )
 
 for group in keys(channel_groups)
-    channels = channel_groups[group]
+    chs = channel_groups[group]
     newrows = by(classdf,[:freqbin,:winstart,:winlen,:salience]) do sdf
-        sdf = @_ sdf |>
-            filter(_.channel in channels,__) |>
-            unstack(__,:hit_channel,:powerdiff,renamecols=Symbol(:channel,_))
-        sdf[:,r"channel"] .= coalesce.(sdf[:,r"channel"],0.0)
-        disallowmissing!(sdf,r"channel")
-
-        labels = testmodel(NuSVC(),sdf,:sid,:condition,r"channel")
+        cols = Regex("("*join((@sprintf("channel%02d",ch) for ch in chs),"|")*")")
+        labels = testmodel(LIBSVM.SVC(),sdf,:sid,:condition,cols)
         DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
     end
     newrows[!,:channelgroup] .= group
@@ -181,3 +179,14 @@ classpredict |>
         column=:salience,
         color={"mean(correct)",type=:quantitative,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         row=:winlen) #, column=:salience,row=:winlen)
+
+mean_correct = by(classpredict,[:freqbin,:salience,:winlen,:channel],:correct => mean)
+mean_correct.salience = string.(mean_correct.salience)
+mean_correct.freqbin = string.(mean_correct.freqbin)
+R"""
+
+ggplot($mean_correct,aes(x=channel,y=freqbin,fill=correct_mean)) +
+    geom_raster() + facet_grid(winlen~salience)
+# TODO: try SVC, rather than NuSVC, try LIBSVM
+# then try collapsing across hits, misses and baselines
+"""

@@ -2,12 +2,10 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
-    Dates, LIBSVM, Underscores, StatsBase, Random, Printf, Lasso, GLM, StatsBase,
-    ProgressMeter, ScikitLearn
-
-@sk_import svm: LinearSVC
+    Dates, LIBSVM, Underscores, StatsBase, Random, Printf
 
 # eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(data_dir()))
+
 eeg_files = filter(x->occursin(r".mcca$", x), readdir(data_dir()))
 # eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(data_dir()))
 eeg_encoding = RawEncoding()
@@ -21,10 +19,9 @@ target_salience =
     CSV.read(joinpath(stimulus_dir(), "target_salience.csv")).salience |> Array
 med_salience = median(target_salience)
 
-med_target_time = @_ filter(_ > 0,target_times) |> median
-
 const tindex = Dict("male" => 1, "fem" => 2)
 
+halfway = @_ filter(_ > 0,target_times) |> median
 regions = ["target", "baseline"]
 timings = ["before", "after"]
 winlens = (0.5,1,1.5)
@@ -70,7 +67,6 @@ df = mapreduce(vcat,values(subjects)) do subject
                 sid = subject.sid,
                 direction = directions[si],
                 salience = target_salience[si] > med_salience ? "high" : "low",
-                target_time = target_times[si] > med_target_time ? "early" : "late",
                 eeg = [view(subject.eeg[row],:,ixs)],
             )
         end
@@ -78,6 +74,10 @@ df = mapreduce(vcat,values(subjects)) do subject
 end
 source_names = ["male", "female"]
 df.target_source = get.(Ref(source_names),Int.(df.target_source),missing)
+str2sym(x) = x
+str2sym(x::String) = Symbol(x)
+df = str2sym.(df)
+categorical!(df)
 
 df.hit = ishit.(eachrow(df))
 dfhit = df[in.(df.hit,Ref((:hit,:miss,:baseline))),:]
@@ -98,26 +98,16 @@ function freqrange(spect,(from,to))
     view(spect,:,findall(from-step(freqs)*0.51 .≤ freqs .≤ to+step(freqs)*0.51))
 end
 
-cols = [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]
-N = length(groupby(dfhit,cols))
-progress = Progress(N, "Computing Frequency Bins: ")
-freqmeans = by(dfhit, cols) do rows
+freqmeans = by(dfhit, [:sid,:hit,:timing,:condition,:winstart,:winlen,:salience]) do rows
     # @assert size(rows,1) == 1
     # signal = rows.eeg[1]
     signal = reduce(hcat,row.eeg for row in eachrow(rows))
-    # ensure a minimum of 2Hz freqbin resolution
-    if size(signal,2) < 32
+    if size(signal,2) < 100
         empty = mapreduce(hcat,keys(freqbins)) do bin
             DataFrame(Symbol(bin) => Float64[])
         end
         empty[!,:channel] = Int[]
-        next!(progress)
         return empty
-    end
-    if size(signal,2) < 128
-        newsignal = similar(signal,size(signal,1),128)
-        newsignal[:,1:size(signal,2)] = signal
-        signal = newsignal
     end
     spect = abs.(rfft(signal, 2))
     # totalpower = mean(spect,dims = 2)
@@ -126,111 +116,42 @@ freqmeans = by(dfhit, cols) do rows
         DataFrame(Symbol(bin) => vec(mfreq))
     end
     result[!,:channel] .= channels
-    next!(progress)
     result
 end
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-classdf = @_ freqmeans |>
+svmdf = @_ freqmeans |>
     filter((_1.winstart == 0.25 && _1.winlen == 0.5) ||
            (_1.winstart == 0.5 && _1.winlen == 1.5),__) |>
     filter(_.condition in [:global,:object],__) |>
     stack(__, [:delta,:theta,:alpha,:beta,:gamma],
         variable_name = :freqbin, value_name = :power) |>
-    filter(all(!isnan,_.power), __)
-
-ε = minimum(filter(!iszero,classdf.power))
-classdf = @_ classdf |>
     unstack(__, :timing, :power) |>
     by(__, [:sid,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
         (:before,:after) => sdf ->
-            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
+            (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
-classdf_shape = @_ classdf |>
-    unstack(__, [:sid, :condition, :winstart, :winlen, :salience, :freqbin],
-        :channel, :powerdiff, renamecols = Symbol(:channel,_)) |>
-    filter(all(!ismissing,_[r"channel"]), __) |>
-    disallowmissing!(__,r"channel")
-
-
-# TOOD: use model coefficients to determine which
-# features actually contributed to the predicition
-
-# TODO: try more iterations, then move on to mounya request
-classpredict = @_ by(classdf_shape, [:winstart,:freqbin,:winlen,:salience]) do sdf
-    labels = testmodel(LinearSVC(penalty="l1",dual=false,C=1,max_iter=10_000),sdf,r"channel")
-    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
-end
-
-subj_means = by(classpredict,[:winstart,:winlen,:salience,:sid,:freqbin],:correct => mean)
-subj_means.freqbin = string.(subj_means.freqbin)
-
-R"""
-
-library(ggplot2)
-library(dplyr)
-
-bins = $(collect(keys(freqbins)))
-
-plotdf = $subj_means %>%
-    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
-    arrange(freqbin)
-
-pos = position_jitterdodge(jitter.width=0.1, dodge.width=0.3)
-p = ggplot(plotdf,aes(x=winlen, y=correct_mean, color=salience)) +
-    geom_point(position='jitter',alpha=0.3,size=0.5) +
-    stat_summary(fun.data='mean_cl_boot',geom='line') +
-    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
-    scale_color_brewer(palette='Set1') +
-    geom_abline(intercept=0.5,slope=0,linetype=2) +
-    facet_grid(~freqbin)
-
-ggsave(file.path($dir,'salience_object_svmL1.pdf'),p,width=11,height=8)
-
-"""
-
-classpredict = @_ by(classdf,[:winstart,:winlen,:salience],
-    (:condition,:predict) => function(row)
-
-    correct = row.condition .== row.predict
-    low, high = dbootconf(correct,bootmethod=:iid)
-    (mean = mean(correct), lower95 = low, upper95 = high)
-end)
-
-classpredict = @_ by(classdf,[:winstart,:winlen,:salience],
-    (:condition,:predict) => function(row)
-
-    correct = row.condition .== row.predict
-    low, high = dbootconf(correct,bootmethod=:iid,alpha=0.25)
-    (mean = mean(correct), lower85 = low, upper85 = high)
-end)
-
-function classacc(sdf,cols)
+function svmaccuracy(sdf,cols)
     N = 0
     correct = 0
     for (train_ids,test_ids) in folds(10,unique(sdf.sid))
         train = @_ filter(_.sid in train_ids,sdf)
         test = @_ filter(_.sid in test_ids,sdf)
         model = svmtrain(Array(disallowmissing(train[:,cols]))',
-                         Array(train[:,:condition])) #,kernel=Kernel.Linear)
+                         Array(train[:,:condition]))
         labels, = svmpredict(model, Array(disallowmissing(test[:, cols]))')
-        correct += sum(labels .== test[:, :condition])
-
-        # X = Array(disallowmissing(train[:,cols]))
-        # y = train.condition .== "global"
-        # if size(X,2) == 30
-        #     model = fit(LassoModel,X,y,Binomial(),irls_maxiter=1000)
-        # else
-        #     model = fit(GeneralizedLinearModel,X,y,Binomial())
-        # end
-        # labels = GLM.predict(model,Array(disallowmissing(test[:,cols])))
-        # correct += sum((labels .> 0.5) .== (test.condition .== "global"))
+        @infiltrate
         N += size(test,1)
+        correct += sum(labels .== test[:, :condition])
     end
     DataFrame(N=N,correct=correct)
 end
+
+svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
+    [:winstart,:winlen,:channel,:salience,:freqbin])
+svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
 
 rnd = MersenneTwister(1983)
 rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
@@ -238,24 +159,25 @@ channel_groups = OrderedDict(
     "1-5" => 1:5,
     "1-10" => 1:10,
     "1-20" => 1:20,
-    "all" => 1:30,
     (join(r,",") => r for r in rseqs)...
 )
 
 for group in keys(channel_groups)
     channels = channel_groups[group]
-    newrows = by(classdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
         @_ sdf |>
             filter(_.channel in channels,__) |>
             unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
-            classacc(__,All(r"channel[0-9]+"))
+            svmaccuracy(__,All(r"channel[0-9]+"))
     end
     newrows[!,:channelgroup] .= group
-    newrows[!,:channel] .= maximum(classpredict.channel)+1
-    append!(classpredict,newrows)
+    newrows[!,:channel] .= maximum(svmclass.channel)+1
+    append!(svmclass,newrows)
 end
 
-classpredict.freqbin = String.(classpredict.freqbin)
+sym2str(x) = x
+sym2str(x::Symbol) = string.(x)
+svmclass = sym2str.(svmclass)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -268,7 +190,7 @@ library(tidyr)
 
 bins = $(collect(keys(freqbins)))
 
-plotdf = $classpredict %>%
+plotdf = $svmclass %>%
     mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
     arrange(freqbin)
 
@@ -284,7 +206,7 @@ p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
 
 p
 
-ggsave(file.path($dir,"classify_freqbin_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
 
 sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
     arrange(desc(correct/N)) %>%
@@ -298,11 +220,11 @@ p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
 
 p
 
-ggsave(file.path($dir,"classify_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
 
 """
 
-classdf = @_ freqmeans |>
+svmdf = @_ freqmeans |>
     filter((_1.winstart == 0.25 && _1.winlen == 0.5) ||
            (_1.winstart == 0.5 && _1.winlen == 1.5),__) |>
     filter(_.condition in ["global","spatial"],__) |>
@@ -313,9 +235,9 @@ classdf = @_ freqmeans |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(sdf.after) .- log.(sdf.before)),))
 
-classpredict = @_ by(classacc(_,[:powerdiff]),classdf,
+svmclass = @_ by(svmaccuracy(_,[:powerdiff]),svmdf,
     [:winstart,:winlen,:channel,:salience,:freqbin])
-classpredict[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),classpredict.channel)
+svmclass[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),svmclass.channel)
 
 rnd = MersenneTwister(1983)
 rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
@@ -323,24 +245,23 @@ channel_groups = OrderedDict(
     "1-5" => 1:5,
     "1-10" => 1:10,
     "1-20" => 1:20,
-    "all" => 1:30,
     (join(r,",") => r for r in rseqs)...
 )
 
 for group in keys(channel_groups)
     channels = channel_groups[group]
-    newrows = by(classdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
+    newrows = by(svmdf,[:winstart,:winlen,:salience,:freqbin]) do sdf
         @_ sdf |>
             filter(_.channel in channels,__) |>
             unstack(__,:channel,:powerdiff,renamecols=Symbol(:channel,_)) |>
-            classacc(__,All(r"channel[0-9]+"))
+            svmaccuracy(__,All(r"channel[0-9]+"))
     end
     newrows[!,:channelgroup] .= group
-    newrows[!,:channel] .= maximum(classpredict.channel)+1
-    append!(classpredict,newrows)
+    newrows[!,:channel] .= maximum(svmclass.channel)+1
+    append!(svmclass,newrows)
 end
 
-classpredict.freqbin = String.(classpredict.freqbin)
+svmclass.freqbin = String.(svmclass.freqbin)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -353,13 +274,13 @@ library(tidyr)
 
 bins = $(collect(keys(freqbins)))
 
-plotdf = $classpredict %>%
+plotdf = $svmclass %>%
     mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
     arrange(freqbin)
 
 p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
     geom_raster() + facet_grid(winlen~salience,labeller="label_both") +
-    scale_fill_distiller(name="Label Accuracy (global v spatial)",
+    scale_fill_distiller(name="Label Accuracy (global v object)",
         na.value="gray95",palette="PuBuGn",limits=c(0.5,0.75),direction=0) +
     scale_x_continuous(breaks=c(0,10,20,30,
         31:$(30+length(keys(channel_groups)))),
@@ -369,7 +290,7 @@ p = ggplot(plotdf,aes(x=channel,y=freqbin,fill=correct/N)) +
 
 p
 
-ggsave(file.path($dir,"spatial_classify_freqbin_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"spatial_svm_freqbin_salience.pdf"),plot=p,width=11,height=6)
 
 sortdf = plotdf %>% group_by(salience,freqbin,winlen) %>%
     arrange(desc(correct/N)) %>%
@@ -383,6 +304,6 @@ p = ggplot(sortdf, aes(x=rank, y=correct/N, color=freqbin)) +
 
 p
 
-ggsave(file.path($dir,"spatial_classify_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
+ggsave(file.path($dir,"spatial_svm_freqbin_channel_rank_salience.pdf"),plot=p,width=11,height=6)
 
 """
