@@ -84,6 +84,58 @@ pl = subj_means |>
 
 save(File(format"PDF",joinpath(dir,"svm_allbins.pdf")),pl)
 
+
+freqbins = OrderedDict(
+    :delta => (1,3),
+    :theta => (3,7),
+    :alpha => (7,15),
+    :beta => (15,30),
+    :gamma => (30,100),
+)
+
+rpowerdiff = copy(powerdiff_df)
+rpowerdiff.hit = string.(rpowerdiff.hit)
+rpowerdiff.condition = string.(rpowerdiff.condition)
+rpowerdiff.salience = string.(rpowerdiff.salience)
+rpowerdiff.hit_channel = string.(rpowerdiff.hit_channel)
+rpowerdiff.powerdiff = coalesce.(rpowerdiff.powerdiff,NaN)
+disallowmissing!(rpowerdiff)
+CSV.write("temp.csv",powerdiff_df)
+# look at relevant windows
+R"""
+library(dplyr)
+library(ggplot2)
+
+bins = $(collect(keys(freqbins)))
+
+plotdf = read.csv("temp.csv") %>% filter(winlen == 2,winstart == 2) %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(freqbin)
+
+plotdf = plotdf %>% filter(hit != 'baseline')
+
+ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
+    facet_grid(condition~salience) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"powerdiff_len2_start2.pdf"))
+
+plotdf = read.csv("temp.csv") %>%
+    filter(abs(winlen - 0.42) < 0.02,abs(winstart - 0.125) < 0.02) %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T))
+
+plotdf = plotdf %>% filter(hit != 'baseline')
+
+ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
+    facet_grid(condition~salience) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"powerdiff_len0.42_start0.125.pdf"))
+"""
 highvlow = @_ subj_means |>
     unstack(__,:salience,:correct_mean) |>
     by(__, [:winstart,:winlen,:freqbin],

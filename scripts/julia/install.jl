@@ -3,6 +3,7 @@ pkg"add DrWatson"
 
 using DrWatson
 quickactivate(@__DIR__,"german_track")
+pkg"add https://github.com/JuliaLang/TOML.jl.git"
 Pkg.instantiate()
 
 using TOML

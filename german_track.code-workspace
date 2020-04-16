@@ -14,5 +14,8 @@
 			"jaydenlin.ctags-support",
 			"haberdashpi.matlab-in-julia"
 		]
+	},
+	"settings": {
+		"workbench.colorCustomizations": {}
 	}
 }

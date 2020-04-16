@@ -1350,6 +1350,14 @@ version = "0.2.3"
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
 
+[[TOML]]
+deps = ["Dates"]
+git-tree-sha1 = "cc544eef6bc464417d7fd5ad2eb385169ec26ac5"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaLang/TOML.jl.git"
+uuid = "191fdcea-f9f2-43e0-b922-d33f71e2abc3"
+version = "0.4.0"
+
 [[TSVD]]
 deps = ["Adapt", "LinearAlgebra"]
 git-tree-sha1 = "4c6caaa3d6658009a22c8c8f1e9de9e2bd7eef25"
@@ -1505,9 +1513,9 @@ version = "0.5.2"
 
 [[XML2_jll]]
 deps = ["Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "39a309feb51413d39bdf544cf2fd09357bae37d2"
+git-tree-sha1 = "987c02a43fa10a491a5f0f7c46a6d3559ed6a8e2"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.9.9+2"
+version = "2.9.9+4"
 
 [[ZipFile]]
 deps = ["Libdl", "Printf", "Zlib_jll"]
