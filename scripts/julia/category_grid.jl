@@ -93,13 +93,6 @@ freqbins = OrderedDict(
     :gamma => (30,100),
 )
 
-rpowerdiff = copy(powerdiff_df)
-rpowerdiff.hit = string.(rpowerdiff.hit)
-rpowerdiff.condition = string.(rpowerdiff.condition)
-rpowerdiff.salience = string.(rpowerdiff.salience)
-rpowerdiff.hit_channel = string.(rpowerdiff.hit_channel)
-rpowerdiff.powerdiff = coalesce.(rpowerdiff.powerdiff,NaN)
-disallowmissing!(rpowerdiff)
 CSV.write("temp.csv",powerdiff_df)
 # look at relevant windows
 R"""
@@ -136,6 +129,7 @@ ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
 
 ggsave(file.path($dir,"powerdiff_len0.42_start0.125.pdf"))
 """
+
 highvlow = @_ subj_means |>
     unstack(__,:salience,:correct_mean) |>
     by(__, [:winstart,:winlen,:freqbin],
@@ -160,6 +154,124 @@ pl = highvlow |>
 
 save(File(format"PDF",joinpath(dir,"diff_svm_allbins.pdf")),pl)
 
+powerdf = @_ freqmeans |>
+    filter(_.condition in [:global,:spatial],__) |>
+    stack(__, Between(:delta,:gamma),
+        variable_name = :freqbin, value_name = :power) |>
+    filter(all(!isnan,_.power), __)
+
+ε = max(1e-8,minimum(filter(!iszero,powerdf.power))/2)
+powerdiff_df = @_ powerdf |>
+    unstack(__, :window_timing, :power) |>
+    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+        (:before,:after) => sdf ->
+            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
+
+powerdiff_df[!,:hit_channel] .=
+    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit))
+classdf = @_ powerdiff_df |>
+    unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
+        :hit_channel, :powerdiff) |>
+    filter(all(!ismissing,_[r"channel"]), __) |>
+    disallowmissing!(__,r"channel")
+
+
+# TODO: for some reason we still have infinite values in powerdiff
+# figure that out and then create the plot
+classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
+    labels = testmodel(NuSVC(),sdf,:sid,:condition,r"channel")
+    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+end
+
+subj_means = @_ classpredict |>
+    by(__,[:winstart,:winlen,:freqbin,:salience],:correct => mean)
+
+sort!(subj_means,order(:correct_mean,rev=true))
+first(subj_means,6)
+
+dir = joinpath(plotsdir(),string("results_",Date(now())))
+isdir(dir) || mkdir(dir)
+
+subj_means.llen = log.(2,subj_means.winlen)
+subj_means.lstart = log.(2,subj_means.winstart)
+
+pl = subj_means |>
+    @vlplot(:rect,
+        x={
+            field=:lstart,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        y={
+            field=:llen,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        column=:salience,
+        row={field=:freqbin,type=:ordinal,
+             sort=[:delta,:theta,:alpha,:beta,:gamma]})
+
+save(File(format"PDF",joinpath(dir,"spatial_svm_allbins.pdf")),pl)
+
+CSV.write("temp.csv",powerdiff_df)
+# look at relevant windows
+R"""
+library(dplyr)
+library(ggplot2)
+
+bins = $(collect(keys(freqbins)))
+
+plotdf = read.csv("temp.csv") %>% filter(winlen == 2,winstart == 2) %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
+    arrange(freqbin)
+
+plotdf = plotdf %>% filter(hit != 'baseline')
+
+ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
+    facet_grid(condition~salience) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"spatial_powerdiff_len2_start2.pdf"))
+
+plotdf = read.csv("temp.csv") %>%
+    filter(abs(winlen - 0.42) < 0.02,abs(winstart - 0.125) < 0.02) %>%
+    mutate(freqbin = factor(freqbin,levels=bins, ordered=T))
+
+plotdf = plotdf %>% filter(hit != 'baseline')
+
+ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
+    facet_grid(condition~salience) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"spatial_powerdiff_len0.42_start0.125.pdf"))
+"""
+
+highvlow = @_ subj_means |>
+    unstack(__,:salience,:correct_mean) |>
+    by(__, [:winstart,:winlen,:freqbin],
+        (:low,:high) => row -> (diff = row.low - row.high,))
+
+highvlow.llen = log.(2,highvlow.winlen)
+highvlow.lstart = log.(2,highvlow.winstart)
+
+pl = highvlow |>
+    @vlplot(:rect,
+        x={
+            field=:lstart,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        y={
+            field=:llen,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        color={field=:diff,scale={domain=[-0.5,0.5], scheme="redblue"}},
+        row={field=:freqbin,type=:ordinal,
+             sort=[:delta,:theta,:alpha,:beta,:gamma]})
+
+save(File(format"PDF",joinpath(dir,"spatial_diff_svm_allbins.pdf")),pl)
 
 # TODO: why is high classification worse, early on
 # try to reproduce old plot

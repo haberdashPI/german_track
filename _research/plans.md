@@ -1,4 +1,12 @@
 
+new plans
+- still figure out reproduce old classification results
+- subject variance only (not mcca), (looks at separate mccas?)
+- can we group all frequencies (just power)
+- convert power difference (difference of hit v miss) so we
+can visually compare right next to one another, combine everyting into one plot
+- optimize window for spatial as well (different window than object)
+
 # Plans
 
 ## most recent
