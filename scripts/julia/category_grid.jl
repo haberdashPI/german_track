@@ -17,9 +17,16 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
 
 cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
 if !isfile(cachefile)
-    freqmeans = organize_freqbands(subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
+    freqmeans = organize_data_by(
+        subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
         winlens = 2.0 .^ range(-3,1,length=10),
-        winstarts = 2.0 .^ range(-3,1,length=10))
+        winstarts = 2.0 .^ range(-3,1,length=10)) do signal,fs
+            result = computebands(signal,fs)
+            if @_ all(0 ≈ _,signal)
+                result[:,Between(:delta,:gamma)] .= 0
+            end
+            result
+        end
     @save cachefile freqmeans
     alert()
 else
@@ -93,6 +100,12 @@ freqbins = OrderedDict(
     :gamma => (30,100),
 )
 
+powerdiff_df.hit = string.(powerdiff_df.hit)
+powerdiff_df.freqbin = string.(powerdiff_df.freqbin)
+powerdiff_df.condition = string.(powerdiff_df.condition)
+powerdiff_df.salience = string.(powerdiff_df.salience)
+powerdiff_df.hit_channel = string.(powerdiff_df.hit_channel)
+
 CSV.write("temp.csv",powerdiff_df)
 # look at relevant windows
 R"""
@@ -101,7 +114,7 @@ library(ggplot2)
 
 bins = $(collect(keys(freqbins)))
 
-plotdf = read.csv("temp.csv") %>% filter(winlen == 2,winstart == 2) %>%
+plotdf = $powerdiff_df %>% filter(winlen == 2,winstart == 2) %>%
     mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
     arrange(freqbin)
 

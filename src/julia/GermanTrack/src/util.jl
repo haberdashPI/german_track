@@ -2,7 +2,7 @@ import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
-    computebands, organize_freqbands
+    computebands, organize_data_by
 
 using FFTW
 using DataStructures
@@ -122,7 +122,7 @@ function ishit(row)
     end
 end
 
-function organize_freqbands(subjects;groups,winlens,winstarts,hittypes)
+function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
@@ -174,12 +174,7 @@ function organize_freqbands(subjects;groups,winlens,winstarts,hittypes)
                             mindist=0.2,minlen=0.5)
                 end
 
-
-                result = computebands(signal,fs)
-                if @_ all(0 ≈ _,signal)
-                    result[:,Between(:delta,:gamma)] .= 0
-                end
-
+                result = fn(signal,fs)
                 @infiltrate any(isinf,Array(result))
                 @infiltrate any(isnan,Array(result))
                 result
