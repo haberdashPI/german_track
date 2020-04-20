@@ -46,24 +46,24 @@ powerdiff_df = @_ powerdf |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
-powerdiff_df[!,:hit_channel] .=
-    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit))
+powerdiff_df[!,:hit_channel_bin] .=
+    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit,:_,powerdiff_df.freqbin))
 classdf = @_ powerdiff_df |>
-    unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
-        :hit_channel, :powerdiff) |>
+    unstack(__, [:sid, :condition, :winstart, :winlen, :salience],
+        :hit_channel_bin, :powerdiff) |>
     filter(all(!ismissing,_[r"channel"]), __) |>
     disallowmissing!(__,r"channel")
 
 
 # TODO: for some reason we still have infinite values in powerdiff
 # figure that out and then create the plot
-classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
+classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
     labels = testmodel(NuSVC(),sdf,:sid,:condition,r"channel")
     DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
 end
 
 subj_means = @_ classpredict |>
-    by(__,[:winstart,:winlen,:freqbin,:salience],:correct => mean)
+    by(__,[:winstart,:winlen,:salience],:correct => mean)
 
 sort!(subj_means,order(:correct_mean,rev=true))
 first(subj_means,6)
@@ -145,7 +145,7 @@ ggsave(file.path($dir,"powerdiff_len0.42_start0.125.pdf"))
 
 highvlow = @_ subj_means |>
     unstack(__,:salience,:correct_mean) |>
-    by(__, [:winstart,:winlen,:freqbin],
+    by(__, [:winstart,:winlen],
         (:low,:high) => row -> (diff = row.low - row.high,))
 
 highvlow.llen = log.(2,highvlow.winlen)
@@ -165,7 +165,7 @@ pl = highvlow |>
         row={field=:freqbin,type=:ordinal,
              sort=[:delta,:theta,:alpha,:beta,:gamma]})
 
-save(File(format"PDF",joinpath(dir,"diff_svm_allbins.pdf")),pl)
+save(File(format"PDF",joinpath(dir,"freqbin_feat_diff_svm_allbins.pdf")),pl)
 
 powerdf = @_ freqmeans |>
     filter(_.condition in [:global,:spatial],__) |>
