@@ -175,12 +175,18 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
                 end
 
                 result = fn(signal,fs)
-                @infiltrate any(isinf,Array(result))
-                @infiltrate any(isnan,Array(result))
+                if result isa DataFrame
+                    @infiltrate any(isinf,Array(result))
+                    @infiltrate any(isnan,Array(result))
+                elseif result isa NamedTuple
+                    @infiltrate any(any.(isinf,values(result)))
+                    @infiltrate any(any.(isnan,values(result)))
+                end
+                @infiltrate
                 result
             end
             if size(bandsdf,1) == 0 && size(bandsdf,2) < 14
-                bandsdf = hcat(bandsdf,computebands(Float64[],fs))
+                bandsdf = vcat(bandsdf,fn(Float64[],fs))
             end
 
             next!(progress)

@@ -15,55 +15,48 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                      encoding = RawEncoding())
     for file in eeg_files)
 
-cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
+cachefile = joinpath(cache_dir(),"..","data_cache","power.bson")
 if !isfile(cachefile)
-    freqmeans = organize_data_by(
+    meanpower = organize_data_by(
         subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
         winlens = 2.0 .^ range(-3,1,length=10),
         winstarts = 2.0 .^ range(-3,1,length=10)) do signal,fs
-            result = computebands(signal,fs)
-            if @_ all(0 ≈ _,signal)
-                result[:,Between(:delta,:gamma)] .= 0
-            end
-            result
+            (power = vec(.√mean(signal.^2, dims=2)),
+             channel = 1:size(signal,1))
         end
-    @save cachefile freqmeans
+    @save cachefile meanpower
     alert()
 else
-    @load cachefile freqmeans
+    @load cachefile meanpower
 end
 
-powerdf = @_ freqmeans |>
+powerdf = @_ meanpower |>
     filter(_.condition in [:global,:object],__) |>
-    stack(__, Between(:delta,:gamma),
-        variable_name = :freqbin, value_name = :power) |>
     filter(all(!isnan,_.power), __)
 
 ε = max(1e-8,minimum(filter(!iszero,powerdf.power))/2)
 powerdiff_df = @_ powerdf |>
     unstack(__, :window_timing, :power) |>
-    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
+    by(__, [:sid,:hit,:condition,:winstart,:winlen,:channel,:salience],
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
 powerdiff_df[!,:hit_channel] .=
     categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit))
 classdf = @_ powerdiff_df |>
-    unstack(__, [:sid, :freqbin, :condition, :winstart, :winlen, :salience],
+    unstack(__, [:sid, :condition, :winstart, :winlen, :salience],
         :hit_channel, :powerdiff) |>
     filter(all(!ismissing,_[r"channel"]), __) |>
     disallowmissing!(__,r"channel")
 
 
-# TODO: for some reason we still have infinite values in powerdiff
-# figure that out and then create the plot
-classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
+classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
     labels = testmodel(NuSVC(),sdf,:sid,:condition,r"channel")
     DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
 end
 
 subj_means = @_ classpredict |>
-    by(__,[:winstart,:winlen,:freqbin,:salience],:correct => mean)
+    by(__,[:winstart,:winlen,:salience],:correct => mean)
 
 sort!(subj_means,order(:correct_mean,rev=true))
 first(subj_means,6)
@@ -85,9 +78,7 @@ pl = subj_means |>
             bin={step=4/9,anchor=-3-2/9},
         },
         color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience,
-        row={field=:freqbin,type=:ordinal,
-             sort=[:delta,:theta,:alpha,:beta,:gamma]})
+        column=:salience)
 
 save(File(format"PDF",joinpath(dir,"svm_allbins.pdf")),pl)
 
@@ -167,7 +158,7 @@ pl = highvlow |>
 
 save(File(format"PDF",joinpath(dir,"diff_svm_allbins.pdf")),pl)
 
-powerdf = @_ freqmeans |>
+powerdf = @_ meanpower |>
     filter(_.condition in [:global,:spatial],__) |>
     stack(__, Between(:delta,:gamma),
         variable_name = :freqbin, value_name = :power) |>
