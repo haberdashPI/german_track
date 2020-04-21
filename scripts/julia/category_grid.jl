@@ -104,21 +104,23 @@ powerdiff_df.hit = string.(powerdiff_df.hit)
 powerdiff_df.freqbin = string.(powerdiff_df.freqbin)
 powerdiff_df.condition = string.(powerdiff_df.condition)
 powerdiff_df.salience = string.(powerdiff_df.salience)
-powerdiff_df.hit_channel = string.(powerdiff_df.hit_channel)
+powerdiff_df.hit_channel_bin = string.(powerdiff_df.hit_channel_bin)
 
-CSV.write("temp.csv",powerdiff_df)
 # look at relevant windows
 R"""
+library(tidyr)
 library(dplyr)
 library(ggplot2)
 
 bins = $(collect(keys(freqbins)))
 
-plotdf = $powerdiff_df %>% filter(winlen == 2,winstart == 2) %>%
+df = $powerdiff_df %>% filter(winlen == 2,winstart == 2) %>%
     mutate(freqbin = factor(freqbin,levels=bins, ordered=T)) %>%
-    arrange(freqbin)
+    arrange(freqbin) %>%
+    group_by(hit,freqbin,condition,salience,sid,channel) %>%
+    summarize(powerdiff = mean(powerdiff))
 
-plotdf = plotdf %>% filter(hit != 'baseline')
+plotdf = df %>% filter(hit != 'baseline', channel == 1)
 
 ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
     facet_grid(condition~salience) +
@@ -126,7 +128,53 @@ ggplot(plotdf,aes(x=freqbin,y=powerdiff,color=hit,group=hit)) +
     scale_color_brewer(palette='Set1') +
     geom_abline(intercept=0,slope=0,linetype=2)
 
-ggsave(file.path($dir,"powerdiff_len2_start2.pdf"))
+cond_df = df %>% group_by(hit,freqbin,salience,sid,channel) %>%
+    spread(condition, powerdiff) %>%
+    mutate(cond_diff = global - object) %>%
+    filter(hit != 'baseline', channel <= 5)
+
+hit_df = cond_df %>%
+    group_by(freqbin,salience,sid,channel) %>%
+    select(-global,-object) %>%
+    spread(hit, cond_diff) %>%
+    mutate(hit_diff = hit - miss)
+
+pos = position_dodge(width=0.2)
+ggplot(hit_df,aes(x=freqbin,y=hit_diff,color=salience,group=salience)) +
+    facet_grid(channel~.) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,
+        position=pos,
+        fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"hit_difference_all_bins.pdf"))
+
+
+cond_df2 = df %>%
+    filter(hit != 'baseline', channel <= 5) %>%
+    group_by(condition,freqbin,salience,sid,channel) %>%
+    spread(hit, powerdiff) %>%
+    mutate(hit_diff = hit - miss)
+
+
+hit_df2 = cond_df2 %>%
+    group_by(freqbin,salience,sid,channel) %>%
+    select(-hit,-miss) %>%
+    spread(condition, hit_diff) %>%
+    mutate(cond_diff = global - object)
+
+
+pos = position_dodge(width=0.2)
+ggplot(hit_df2,aes(x=freqbin,y=cond_diff,color=salience,group=salience)) +
+    facet_grid(channel~.) +
+    stat_summary(fun.data='mean_cl_boot',geom='pointrange',size=0.5,
+        position=pos,
+        fun.args=list(conf.int=0.75)) +
+    scale_color_brewer(palette='Set1') +
+    geom_abline(intercept=0,slope=0,linetype=2)
+
+ggsave(file.path($dir,"hit_difference_v2_all_bins.pdf")) # basically identical
 
 plotdf = read.csv("temp.csv") %>%
     filter(abs(winlen - 0.42) < 0.02,abs(winstart - 0.125) < 0.02) %>%
