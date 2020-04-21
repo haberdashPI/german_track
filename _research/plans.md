@@ -1,10 +1,11 @@
 
 new plans
 - still figure out reproduce old classification results
++ can we group all frequencies (just power)?
+  + no; can we treat them as different features?
+    + works a little better, probably the best approach
 - subject variance only (not mcca), (looks at separate mccas?)
   - do this for the collapsed power version (if that's good just go from there)
-- can we group all frequencies (just power)?
-  - no; can we treat them as different features?
 - convert power difference (difference of hit v miss) so we
 can visually compare right next to one another, combine everyting into one plot
 - optimize window for spatial as well (different window than object)
