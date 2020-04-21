@@ -1,6 +1,10 @@
 
 new plans
 - still figure out reproduce old classification results
+  - try optimizing parameters in new code
+  - is the difference in the old code due to differing random seeds?
+    - check LIBSVM docs
+    - check parts of the data
 + can we group all frequencies (just power)?
   + no; can we treat them as different features?
     + works a little better, probably the best approach
