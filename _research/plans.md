@@ -7,26 +7,9 @@ new plans
   + do this for the collapsed power version (if that's good just go from there)
 + convert power difference (difference of hit v miss) so we
 can visually compare right next to one another, combine everyting into one plot
-- optimize window for spatial as well (different window than object)
++ optimize window for spatial as well (different window than object)
 
 # Plans
-
-## most recent
-
-+ groups of MCCA components (e.g. top-10, top-20, or random)
-            (add additional columns)
-+ change color (below chance, and multi colors)
-+ global vs. spatial
-+ try early vs. late
-- 3-way classifier
-
-plot gamma power with select mcca components and compare different windows
-(see email)
-
-- SVM across different time points
-  - different bins (???)
-
-- check on noisiest points
 
 ## data
 

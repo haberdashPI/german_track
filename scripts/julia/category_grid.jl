@@ -38,7 +38,6 @@ else
 end
 
 powerdf = @_ freqmeans |>
-    filter(_.condition in [:global,:object],__) |>
     stack(__, Between(:delta,:gamma),
         variable_name = :freqbin, value_name = :power) |>
     filter(all(!isnan,_.power), __)
@@ -59,22 +58,35 @@ classdf = @_ powerdiff_df |>
     disallowmissing!(__,r"channel")
 
 # TODO: optimize nu and gamma
-function modelquality(row)
-    classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
-        labels = testmodel(NuSVC(nu=row.ν,gamma=row.γ),sdf,:sid,:condition,r"channel")
-        DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+function modelquality(classdf)
+    function (row)
+        classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
+            labels = testmodel(NuSVC(nu=row.ν,gamma=row.γ),sdf,:sid,:condition,r"channel")
+            DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+        end
+        mean(classpredict.correct)
     end
-    mean(classpredict.correct)
 end
 
-σ² = var(vec(Array(classdf[:,r"channel"])))
-N = size(classdf[:,r"channel"],2)
+objectdf = @_ classdf |> filter(_.condition in [:global,:object],__)
+
+σ² = var(vec(Array(objectdf[:,r"channel"])))
+N = size(objectdf[:,r"channel"],2)
 γ_base = 1/(N*σ²)
 νs = range(0,0.75,length=9)[2:end]
 γs = γ_base * 2.0.^range(-3,3,length=8)
 params = DataFrame((ν = ν, γ = γ,) for ν in νs, γ in γs)
 
-params.fitness = @showprogress(map(modelquality,eachrow(params)))
+paramdir = joinpath(datadir(),"svm_params")
+isdir(paramdir) || mkdir(paramdir)
+paramfile = joinpath(paramdir,"object_params.csv")
+
+if isfile(paramfile)
+    params = CSV.read(paramfile)
+else
+    params.fitness = @showprogress(map(modelquality(objectdf),eachrow(params)))
+    CSV.write(joinpath(datadir(),paramfile),params)
+end
 
 pl = params |>
     @vlplot(:rect,
@@ -82,7 +94,7 @@ pl = params |>
         y={ field=:γ,type=:ordinal },
         color={:fitness,scale={reverse=true,domain=[0.6,0.7],scheme="plasma"}})
 
-pl |> save(joinpath(dir,"opt-hyper-params.pdf"))
+pl |> save(joinpath(dir,"opt-object-params.pdf"))
 
 ν, γ = params[argmax(params.fitness),:]
 
@@ -91,7 +103,7 @@ pl |> save(joinpath(dir,"opt-hyper-params.pdf"))
 # TODO: eventually use a validation set not used when plotting
 # reporting the results
 
-classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
+classpredict = by(objectdf, [:winstart,:winlen,:salience]) do sdf
     labels = testmodel(NuSVC(nu=ν,gamma=γ),sdf,:sid,:condition,r"channel")
     DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
 end
@@ -121,7 +133,7 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"svm_allbins.pdf"),pl)
+save(joinpath(dir,"object_svm_allbins.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == :high,__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -141,14 +153,121 @@ best_vals = @_ classpredict |>
         (correct = μ, low = low, high = high)
     end)
 
-pl = best_vals |>
-    @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
-    @vlplot(mark={:errorbar,filled=true},
-            y={:low,scale={zero=true}, axis={title=""}}, y2=:high, color=:salience) +
-    @vlplot(mark={:point,filled=true},
+pl =
+    @vlplot() +
+    @vlplot(data=[{}], mark=:rule,
+    encoding = {
+      y = {datum = 50},
+      strokeDash = {value = [2,2]}
+    }) +
+    (best_vals |>
+     @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
+     @vlplot(mark={:errorbar,filled=true},
+            y={:low,scale={zero=true}, axis={title=""},type=:quantitative},
+            y2={:high, type=:quantitative}, color=:salience) +
+     @vlplot(mark={:point,filled=true},
             y={:correct,scale={zero=true},axis={title="% Correct Classification"}},
-            color=:salience)
+            color=:salience))
+
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "best_windows.pdf"),pl)
+save(joinpath(dir, "object_best_windows.pdf"),pl)
+
+spatialdf = @_ classdf |> filter(_.condition in [:global,:spatial],__)
+
+σ² = var(vec(Array(spatialdf[:,r"channel"])))
+N = size(spatialdf[:,r"channel"],2)
+γ_base = 1/(N*σ²)
+νs = range(0,0.75,length=9)[2:end]
+γs = γ_base * 2.0.^range(-3,3,length=8)
+params = DataFrame((ν = ν, γ = γ,) for ν in νs, γ in γs)
+
+paramdir = joinpath(datadir(),"svm_params")
+isdir(paramdir) || mkdir(paramdir)
+paramfile = joinpath(paramdir,"spatial_params.csv")
+
+if isfile(paramfile)
+    params = CSV.read(paramfile)
+else
+    params.fitness = @showprogress(map(modelquality(spatialdf),eachrow(params)))
+    CSV.write(joinpath(datadir(),paramfile),params)
+end
+
+pl = params |>
+    @vlplot(:rect,
+        x={ field=:ν,type=:ordinal },
+        y={ field=:γ,type=:ordinal },
+        color={:fitness,scale={reverse=true,domain=[0.6,0.8],scheme="plasma"}})
+
+pl |> save(joinpath(dir,"opt-spatial-params.pdf"))
+
+ν, γ = params[argmax(params.fitness),:]
+
+# TODO: do the same thing, over the full range of sensible values
+
+# TODO: eventually use a validation set not used when plotting
+# reporting the results
+
+classpredict = by(spatialdf, [:winstart,:winlen,:salience]) do sdf
+    labels = testmodel(NuSVC(nu=ν,gamma=γ),sdf,:sid,:condition,r"channel")
+    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+end
+
+subj_means = @_ classpredict |>
+    by(__,[:winstart,:winlen,:salience],:correct => mean)
+
+subj_means.llen = log.(2,subj_means.winlen)
+subj_means.lstart = log.(2,subj_means.winstart)
+
+pl = subj_means |>
+    @vlplot(:rect,
+        x={
+            field=:lstart,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        y={
+            field=:llen,
+            bin={step=4/9,anchor=-3-2/9},
+        },
+        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        column=:salience)
+
+save(joinpath(dir,"spatial_svm_allbins.pdf"),pl)
+
+best_high = @_ subj_means |> filter(_.salience == :high,__) |>
+    sort(__,:correct_mean,rev=true) |>
+    first(__,1)
+best_low = @_ subj_means |> filter(_.salience == :low,__) |>
+    sort(__,:correct_mean,rev=true) |>
+    first(__,1)
+
+best_vals = @_ classpredict |>
+    filter((_1.winstart == best_high.winstart[1] &&
+            _1.winlen == best_high.winlen[1]) ||
+           (_1.winstart == best_low.winstart[1] &&
+            _1.winlen == best_low.winlen[1]),__) |>
+    by(__,[:winlen,:salience],:correct => function(x)
+        bs = bootstrap(mean,x,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+        (correct = μ, low = low, high = high)
+    end)
+best_vals.winlen .= round.(best_vals.winlen,digits=2)
+
+pl =
+    @vlplot() +
+    @vlplot(data=[{}], mark=:rule,
+    encoding = {
+      y = {datum = 50, type=:quantitative},
+      strokeDash = {value = [2,2]}
+    }) +
+    (best_vals |>
+     @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
+     @vlplot(mark={:errorbar,filled=true},
+            y={:low,scale={zero=true}, axis={title=""},type=:quantitative},
+            y2={:high, type=:quantitative}, color={:salience, type=:nominal}) +
+     @vlplot(mark={:point,filled=true},
+            y={:correct,type=:quantitative,scale={zero=true},axis={title="% Correct Classification"}},
+            color={:salience, type=:nominal}))
+
+save(File(format"SVG",joinpath(dir, "spatial_best_windows.vegalite")),pl)
