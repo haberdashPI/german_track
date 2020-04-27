@@ -14,34 +14,75 @@ using StatsBase
 using Lasso
 using GLM
 using ScikitLearn
+using BlackBoxOptim
 
 function mat2bson(file)
     file
 end
 
-function testmodel(model,sdf,idcol,classcol,cols;kwds...)
+function apply(by::NamedTuple, vals)
+    apply_(by::Tuple{}, vals::Tuple{}) = ()
+    apply_(by::Tuple, vals::Tuple) =
+        (by[1](vals[1]), apply_(Base.tail(by),Base.tail(vals))...)
+    NamedTuple{keys(by)}(apply_(Tuple(by), Tuple(vals)))
+end
+applyer(params, by::NamedTuple) = by
+applyer(params, by::Function) = NamedTuple{keys(params)}(fill(by,length(params))...)
+
+function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,kwds...)
+    n_folds = 10
+    max_evals = 10
+    # nprog = 0
+    # progress = Progress(n_folds*max_evals)
+
+    by = applyer(param_range, by)
+
     xs = term(0)
     for col in names(view(sdf,:,cols))
         xs += term(col)
     end
     formula = term(classcol) ~ xs
-    labels = Symbol[]
-    for (trainids,testids) in folds(10,unique(sdf.sid))
+    result = DataFrame()
+
+    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(sdf.sid)))
         train = @_ filter(_[idcol] in trainids,sdf)
         test = @_ filter(_[idcol] in testids,sdf)
 
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
-        coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
+        options = (
+            SearchRange = collect(values(param_range)),
+            NumDimensions = length(param_range),
+            MaxFuncEvals = max_evals,
+            PopulationSize = 25,
+            TraceMode = :silent,
+        )
+        opt = bboptimize(;options...) do params
+            m = model(;apply(by,params)...)
+            coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
+            ŷ = ScikitLearn.predict(coefs,X)
+
+            # nprog += 1
+            # ProgressMeter.update!(progress,nprog)
+
+            mean((ŷ .- y).^2)
+        end
+
+        # nprog = i*max_evals
+        # ProgressMeter.update!(progress, nprog)
+
+        m = model(;apply(by,best_candidate(opt))...)
+        coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
 
         f = apply_schema(formula, schema(formula, test))
         y,X = modelcols(f, test)
         level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
-        append!(labels,_labels)
+
+        append!(result,DataFrame(label = _labels; apply(by,best_candidate(opt))...))
     end
 
-    labels
+    result
 end
 
 function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(

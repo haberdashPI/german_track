@@ -3,7 +3,7 @@ using DrWatson
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, LIBSVM
+    FileIO, StatsBase, RCall
 
 using ScikitLearn
 @sk_import svm: (NuSVC, SVC)
@@ -42,9 +42,11 @@ powerdf = @_ freqmeans |>
         variable_name = :freqbin, value_name = :power) |>
     filter(all(!isnan,_.power), __)
 
+# TODO: this is where we need to split out window timing in the copied code we'll make below
 ε = max(1e-8,minimum(filter(!iszero,powerdf.power))/2)
 powerdiff_df = @_ powerdf |>
     unstack(__, :window_timing, :power) |>
+    filter(_.hit != :baseline,__) |>
     by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
@@ -57,56 +59,20 @@ classdf = @_ powerdiff_df |>
     filter(all(!ismissing,_[r"channel"]), __) |>
     disallowmissing!(__,r"channel")
 
-# TODO: optimize nu and gamma
-function modelquality(classdf)
-    function (row)
-        classpredict = by(classdf, [:winstart,:winlen,:salience]) do sdf
-            labels = testmodel(NuSVC(nu=row.ν,gamma=row.γ),sdf,:sid,:condition,r"channel")
-            DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
-        end
-        mean(classpredict.correct)
-    end
-end
-
 objectdf = @_ classdf |> filter(_.condition in [:global,:object],__)
 
-σ² = var(vec(Array(objectdf[:,r"channel"])))
-N = size(objectdf[:,r"channel"],2)
-γ_base = 1/(N*σ²)
-νs = range(0,0.75,length=9)[2:end]
-γs = γ_base * 2.0.^range(-3,3,length=8)
-params = DataFrame((ν = ν, γ = γ,) for ν in νs, γ in γs)
-
-paramdir = joinpath(datadir(),"svm_params")
-isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"object_params.csv")
-
-if isfile(paramfile)
-    params = CSV.read(paramfile)
-else
-    params.fitness = @showprogress(map(modelquality(objectdf),eachrow(params)))
-    CSV.write(joinpath(datadir(),paramfile),params)
-end
-
-pl = params |>
-    @vlplot(:rect,
-        x={ field=:ν,type=:ordinal },
-        y={ field=:γ,type=:ordinal },
-        color={:fitness,scale={reverse=true,domain=[0.6,0.7],scheme="plasma"}})
-
-pl |> save(joinpath(dir,"opt-object-params.pdf"))
-
-ν, γ = params[argmax(params.fitness),:]
-
-# TODO: do the same thing, over the full range of sensible values
-
-# TODO: eventually use a validation set not used when plotting
-# reporting the results
-
+prog = Progress(length(groupby(objectdf,[:winstart,:winlen,:salience])))
 classpredict = by(objectdf, [:winstart,:winlen,:salience]) do sdf
-    labels = testmodel(NuSVC(nu=ν,gamma=γ),sdf,:sid,:condition,r"channel")
-    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+    result = testmodel(sdf,NuSVC,
+        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
+        :sid,:condition,r"channel")
+    next!(prog)
+    result.correct = sdf.condition .== result.label
+    result[!,:sid] .= sdf.sid
+    result
 end
+
+mean(classpredict.correct)
 
 subj_means = @_ classpredict |>
     by(__,[:winstart,:winlen,:salience],:correct => mean)
@@ -153,6 +119,8 @@ best_vals = @_ classpredict |>
         (correct = μ, low = low, high = high)
     end)
 
+best_vals.winlen .= round.(best_vals.winlen,digits=2)
+
 pl =
     @vlplot() +
     @vlplot(data=[{}], mark=:rule,
@@ -173,6 +141,36 @@ pl =
 # TODO: add a dotted line to chance level
 
 save(joinpath(dir, "object_best_windows.pdf"),pl)
+
+bestwindow_df = @_ powerdiff_df |>
+    filter((_1.winstart == best_high.winstart[1] &&
+            _1.winlen == best_high.winlen[1]) ||
+           (_1.winstart == best_low.winstart[1] &&
+            _1.winlen == best_low.winlen[1]),__) |>
+    filter(_.hit != :baseline,__) |>
+    by(__,[:sid,:hit,:freqbin,:condition,:winlen,:channel,:salience],:powerdiff => mean ∘ skipmissing)
+
+# TODO: compute euclidean difference
+
+bestwindow_df.hit = string.(bestwindow_df.hit)
+bestwindow_df.freqbin = string.(bestwindow_df.freqbin)
+bestwindow_df.condition = string.(bestwindow_df.condition)
+bestwindow_df.salience = string.(bestwindow_df.salience)
+
+R"""
+
+library(ggplot2)
+library(dplyr)
+
+plotdf = $bestwindow_df %>% filter(channel == 1) %>%
+    mutate(freqbin = factor(freqbin,levels=c('delta','theta','alpha','beta','gamma'),ordered=T))
+
+ggplot(plotdf,aes(x=freqbin,y=powerdiff_function,color=hit,group=hit)) +
+    facet_wrap(salience~condition) +
+    stat_summary(geom='pointrange',position=position_dodge(width=0.5)) +
+    geom_point(size=0.5,alpha=0.5,position=position_jitterdodge(dodge.width=0.3,jitter.width=0.1))
+
+"""
 
 spatialdf = @_ classdf |> filter(_.condition in [:global,:spatial],__)
 

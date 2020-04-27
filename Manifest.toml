@@ -92,6 +92,12 @@ git-tree-sha1 = "5b08ed6036d9d3f0ee6369410b830f8873d4024c"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.8"
 
+[[BlackBoxOptim]]
+deps = ["CPUTime", "Compat", "Distributed", "Distributions", "LinearAlgebra", "Printf", "Random", "SpatialIndexing", "StatsBase"]
+git-tree-sha1 = "da5cfcc08d24a43fa4e3ad67f565f17838e26fca"
+uuid = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
+version = "0.5.0"
+
 [[Bootstrap]]
 deps = ["DataFrames", "Distributions", "Random", "Statistics", "StatsBase", "StatsModels"]
 git-tree-sha1 = "f5fd761d56150b1100e44b747b9ef493ad0b6113"
@@ -114,6 +120,11 @@ deps = ["DataStructures", "LinearAlgebra", "MathOptInterface", "Pkg", "Printf", 
 git-tree-sha1 = "fc5aad86600e39916f1cdb1c2b78f0d2b9dbbdad"
 uuid = "1e616198-aa4e-51ec-90a2-23f7fbd31d8d"
 version = "0.7.1"
+
+[[CPUTime]]
+git-tree-sha1 = "2dcc50ea6a0a1ef6440d6eecd0fe3813e5671f45"
+uuid = "a9c8d775-2e2e-55fc-8582-045d282d599e"
+version = "1.0.0"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "FilePathsBase", "Mmap", "Parsers", "PooledArrays", "Tables", "Unicode", "WeakRefStrings"]
@@ -1311,6 +1322,12 @@ version = "0.3.1"
 [[SparseArrays]]
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[SpatialIndexing]]
+deps = ["Printf", "Random", "Test"]
+git-tree-sha1 = "7bc6fc5c363aae476ec2c8bc527aef104b90c779"
+uuid = "d4ead438-fe20-5cc5-a293-4fd39a41b74c"
+version = "0.1.2"
 
 [[SpecialFunctions]]
 deps = ["OpenSpecFun_jll"]
