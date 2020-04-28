@@ -1,9 +1,3 @@
-
-in progress:
-- proper param optimization
-
-NOTE: while the above is working, probably run this below (if it isn't good
- by tomorrow morning)
 - early v late for low salience
 
 todo next

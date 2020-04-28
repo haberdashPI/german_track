@@ -29,11 +29,10 @@ end
 applyer(params, by::NamedTuple) = by
 applyer(params, by::Function) = NamedTuple{keys(params)}(fill(by,length(params))...)
 
-function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,kwds...)
+function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,max_evals=10,kwds...)
     n_folds = 10
-    max_evals = 10
-    # nprog = 0
-    # progress = Progress(n_folds*max_evals)
+    nprog = 0
+    progress = Progress(n_folds*max_evals)
 
     by = applyer(param_range, by)
 
@@ -50,6 +49,7 @@ function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,kwds...
 
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
+
         options = (
             SearchRange = collect(values(param_range)),
             NumDimensions = length(param_range),
@@ -57,19 +57,20 @@ function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,kwds...
             PopulationSize = 25,
             TraceMode = :silent,
         )
+
         opt = bboptimize(;options...) do params
             m = model(;apply(by,params)...)
             coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
+
+            nprog += 1
+            ProgressMeter.update!(progress,nprog)
+
             ŷ = ScikitLearn.predict(coefs,X)
-
-            # nprog += 1
-            # ProgressMeter.update!(progress,nprog)
-
             mean((ŷ .- y).^2)
         end
 
-        # nprog = i*max_evals
-        # ProgressMeter.update!(progress, nprog)
+        nprog = i*max_evals
+        ProgressMeter.update!(progress, nprog)
 
         m = model(;apply(by,best_candidate(opt))...)
         coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
@@ -79,7 +80,13 @@ function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,kwds...
         level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
-        append!(result,DataFrame(label = _labels; apply(by,best_candidate(opt))...))
+        append!(result, DataFrame(
+            label = _labels,
+            correct = _labels .== test[:,classcol],
+            fitness = best_fitness(opt);
+            classcol => test[:,classcol],
+            apply(by,best_candidate(opt))...
+        ))
     end
 
     result

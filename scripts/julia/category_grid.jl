@@ -3,7 +3,7 @@ using DrWatson
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, RCall
+    FileIO, StatsBase, RCall, Bootstrap
 
 using ScikitLearn
 @sk_import svm: (NuSVC, SVC)
@@ -42,7 +42,6 @@ powerdf = @_ freqmeans |>
         variable_name = :freqbin, value_name = :power) |>
     filter(all(!isnan,_.power), __)
 
-# TODO: this is where we need to split out window timing in the copied code we'll make below
 ε = max(1e-8,minimum(filter(!iszero,powerdf.power))/2)
 powerdiff_df = @_ powerdf |>
     unstack(__, :window_timing, :power) |>
@@ -65,9 +64,8 @@ prog = Progress(length(groupby(objectdf,[:winstart,:winlen,:salience])))
 classpredict = by(objectdf, [:winstart,:winlen,:salience]) do sdf
     result = testmodel(sdf,NuSVC,
         (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
-        :sid,:condition,r"channel")
+        max_evals = 100,:sid,:condition,r"channel")
     next!(prog)
-    result.correct = sdf.condition .== result.label
     result[!,:sid] .= sdf.sid
     result
 end
@@ -142,6 +140,63 @@ pl =
 
 save(joinpath(dir, "object_best_windows.pdf"),pl)
 
+
+cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans_bytargettime.bson")
+if !isfile(cachefile)
+    freqmeans_bytime = organize_data_by(
+        subjects,groups=[:salience,:target_time],hittypes = [:hit,:miss,:baseline],
+        winlens = 2.0 .^ range(-3,1,length=10),
+        winstarts = 2.0 .^ range(-3,1,length=10)) do signal,fs
+            result = computebands(signal,fs)
+            if @_ all(0 ≈ _,signal)
+                result[:,Between(:delta,:gamma)] .= 0
+            end
+            result
+        end
+    @save cachefile freqmeans_bytime
+    alert()
+else
+    @load cachefile freqmeans_bytime
+end
+
+powerdf_timing = @_ freqmeans_bytime |>
+    stack(__, Between(:delta,:gamma),
+        variable_name = :freqbin, value_name = :power) |>
+    filter(all(!isnan,_.power), __)
+
+powerdiff_timing_df = @_ powerdf_timing |>
+    unstack(__, :window_timing, :power) |>
+    filter(_.hit != :baseline,__) |>
+    filter(_.salience == :low,__) |>
+    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
+        (:before,:after) => sdf ->
+            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
+
+powerdiff_timing_df[!,:hit_channel_bin] .=
+    categorical(Symbol.(:channel_,powerdiff_timing_df.channel,:_,powerdiff_timing_df.hit,:_,powerdiff_timing_df.freqbin))
+
+classdf_timing = @_ powerdiff_timing_df |>
+    unstack(__, [:sid, :condition, :winstart, :winlen, :target_time],
+        :hit_channel_bin, :powerdiff) |>
+    filter(all(!ismissing,_[r"channel"]), __) |>
+    disallowmissing!(__,r"channel")
+
+objectdf_timing = @_ classdf_timing |> filter(_.condition in [:global,:object],__)
+
+
+prog = Progress(length(groupby(objectdf_timing,[:winstart,:winlen,:target_time])))
+classpredict = by(objectdf_timing, [:winstart,:winlen,:target_time]) do sdf
+    result = testmodel(sdf,NuSVC,
+        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
+        max_evals = 100,:sid,:condition,r"channel")
+    next!(prog)
+    result[!,:sid] .= sdf.sid
+    result
+end
+
+
+
+## plot raw data
 bestwindow_df = @_ powerdiff_df |>
     filter((_1.winstart == best_high.winstart[1] &&
             _1.winlen == best_high.winlen[1]) ||
@@ -174,42 +229,15 @@ ggplot(plotdf,aes(x=freqbin,y=powerdiff_function,color=hit,group=hit)) +
 
 spatialdf = @_ classdf |> filter(_.condition in [:global,:spatial],__)
 
-σ² = var(vec(Array(spatialdf[:,r"channel"])))
-N = size(spatialdf[:,r"channel"],2)
-γ_base = 1/(N*σ²)
-νs = range(0,0.75,length=9)[2:end]
-γs = γ_base * 2.0.^range(-3,3,length=8)
-params = DataFrame((ν = ν, γ = γ,) for ν in νs, γ in γs)
 
-paramdir = joinpath(datadir(),"svm_params")
-isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"spatial_params.csv")
-
-if isfile(paramfile)
-    params = CSV.read(paramfile)
-else
-    params.fitness = @showprogress(map(modelquality(spatialdf),eachrow(params)))
-    CSV.write(joinpath(datadir(),paramfile),params)
-end
-
-pl = params |>
-    @vlplot(:rect,
-        x={ field=:ν,type=:ordinal },
-        y={ field=:γ,type=:ordinal },
-        color={:fitness,scale={reverse=true,domain=[0.6,0.8],scheme="plasma"}})
-
-pl |> save(joinpath(dir,"opt-spatial-params.pdf"))
-
-ν, γ = params[argmax(params.fitness),:]
-
-# TODO: do the same thing, over the full range of sensible values
-
-# TODO: eventually use a validation set not used when plotting
-# reporting the results
-
+prog = Progress(length(groupby(spatialdf,[:winstart,:winlen,:salience])))
 classpredict = by(spatialdf, [:winstart,:winlen,:salience]) do sdf
-    labels = testmodel(NuSVC(nu=ν,gamma=γ),sdf,:sid,:condition,r"channel")
-    DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
+    result = testmodel(sdf,NuSVC,
+        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
+        max_evals = 100,:sid,:condition,r"channel")
+    next!(prog)
+    result[!,:sid] .= sdf.sid
+    result
 end
 
 subj_means = @_ classpredict |>
@@ -268,4 +296,4 @@ pl =
             y={:correct,type=:quantitative,scale={zero=true},axis={title="% Correct Classification"}},
             color={:salience, type=:nominal}))
 
-save(File(format"SVG",joinpath(dir, "spatial_best_windows.vegalite")),pl)
+save(File(format"PDF",joinpath(dir, "spatial_best_windows.pdf")),pl)
