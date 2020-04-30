@@ -1,12 +1,11 @@
 module EEGCoding
 using SignalOperators, Requires, Infiltrator, LambdaFn, FFTW, CuArrays
 
+const use_gpu = Ref(false)
+maybeGPU(x::AbstractArray) = use_gpu[] ? CuArray(x) : x
+
 function __init__()
-    if CuArrays.functional()
-        @eval maybeGPU(x::AbstractArray) = CuArray(x)
-    else
-        @eval maybeGPU(x::AbstractArray) = x
-    end
+    use_gpu[] = CuArrays.functional()
 end
 
 include("parallel.jl")
