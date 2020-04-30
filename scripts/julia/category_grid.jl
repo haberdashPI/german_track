@@ -3,7 +3,7 @@ using DrWatson
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, RCall, Bootstrap
+    FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers
 
 using ScikitLearn
 @sk_import svm: (NuSVC, SVC)
@@ -19,58 +19,66 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
-if !isfile(cachefile)
-    freqmeans = organize_data_by(
-        subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
-        winlens = 2.0 .^ range(-3,1,length=10),
-        winstarts = 2.0 .^ range(-3,1,length=10)) do signal,fs
-            result = computebands(signal,fs)
-            if @_ all(0 ≈ _,signal)
-                result[:,Between(:delta,:gamma)] .= 0
-            end
-            result
+# TODO: try running each window separatley and storing the
+# results, rather than storing all versions of the data
+
+classdf = organize_data_by(
+    subjects,groups=[:salience,:target_time,:trial,:sound_index],
+    hittypes = ["hit"],
+    winlens = 2.0 .^ range(-1,1,length=10),
+    winstarts = [0; 2.0 .^ range(-2,1,length=9)]) do signal,fs
+
+        freqdf = computebands(signal,fs)
+        if @_ all(0 ≈ _,signal)
+            freqdf[:,Between(:delta,:gamma)] .= 0
         end
-    @save cachefile freqmeans
-    alert()
-else
-    @load cachefile freqmeans
+
+        powerdf = @_ freqdf |>
+            stack(__, Between(:delta,:gamma),
+                variable_name = :freqbin, value_name = :power) |>
+            filter(all(!isnan,_.power), __) |>
+            unstack(__, :window_timing, :power)
+
+        ε = 1e-8
+        logdiff(x,y) = log.(ε .+ x) .- log.(ε .+ y)
+        powerdf[!,:powerdiff] = logdiff(powerdf.after,powerdf.before)
+        powerdf[!,:channel_bin] .=
+            categorical(string.("channel_",powerdf.channel,"_",powerdf.freqbin))
+
+        classdf = @_ powerdf |>
+            unstack(__, [:sid, :trial, :condition, :winstart, :winlen, :salience, :target_time],
+                :channel_bin, :powerdiff) |>
+            filter(all(!ismissing,_[r"channel"]), __) |>
+            disallowmissing!(__,r"channel")
+
+        objectdf = @_ classdf |> filter(_.condition in [:global,:object],__)
+
+        # TODO: in progress, this was what was outside this
+        # inner function, we need to change it so
+        # the optimization occurs outside of this inner function
+
+        param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
+        param_by = (nu=identity,gamma=x -> 10^x)
+        groups = groupby(objectdf, [:winstart,:winlen,:salience])
+        function modelacc(sdf,params,progress)
+            result = testmodel(sdf,NuSVC(;params...),:trial,:condition,r"channel")
+            next!(progress)
+
+            # TODO: here, this result needs to be returned by
+            # the inner function
+            # and it will be used to define modelacc
+            result.correct |> sum, length(result.correct)
+        end
+
+        progress = Progress(100*length(groups))
+        best_params, fitness = optparams(param_range,by=param_by,max_evals = 100) do params
+            correct,N = foldl((x,y) -> x.+y,Map(x -> modelacc(x,params,progress)),
+                collect(groups),init=(0,0))
+            1 - correct/N
+        end
+        finish!(progress)
+    end
 end
-
-powerdf = @_ freqmeans |>
-    stack(__, Between(:delta,:gamma),
-        variable_name = :freqbin, value_name = :power) |>
-    filter(all(!isnan,_.power), __)
-
-ε = max(1e-8,minimum(filter(!iszero,powerdf.power))/2)
-powerdiff_df = @_ powerdf |>
-    unstack(__, :window_timing, :power) |>
-    filter(_.hit != :baseline,__) |>
-    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:salience],
-        (:before,:after) => sdf ->
-            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
-
-powerdiff_df[!,:hit_channel_bin] .=
-    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit,:_,powerdiff_df.freqbin))
-classdf = @_ powerdiff_df |>
-    unstack(__, [:sid, :condition, :winstart, :winlen, :salience],
-        :hit_channel_bin, :powerdiff) |>
-    filter(all(!ismissing,_[r"channel"]), __) |>
-    disallowmissing!(__,r"channel")
-
-objectdf = @_ classdf |> filter(_.condition in [:global,:object],__)
-
-prog = Progress(length(groupby(objectdf,[:winstart,:winlen,:salience])))
-classpredict = by(objectdf, [:winstart,:winlen,:salience]) do sdf
-    result = testmodel(sdf,NuSVC,
-        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
-        max_evals = 100,:sid,:condition,r"channel")
-    next!(prog)
-    result[!,:sid] .= sdf.sid
-    result
-end
-
-mean(classpredict.correct)
 
 subj_means = @_ classpredict |>
     by(__,[:winstart,:winlen,:salience],:correct => mean)
@@ -99,10 +107,10 @@ pl = subj_means |>
 
 save(joinpath(dir,"object_svm_allbins.pdf"),pl)
 
-best_high = @_ subj_means |> filter(_.salience == :high,__) |>
+best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
-best_low = @_ subj_means |> filter(_.salience == :low,__) |>
+best_low = @_ subj_means |> filter(_.salience == "low",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
 
@@ -129,8 +137,8 @@ pl =
     (best_vals |>
      @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
      @vlplot(mark={:errorbar,filled=true},
-            y={:low,scale={zero=true}, axis={title=""},type=:quantitative},
-            y2={:high, type=:quantitative}, color=:salience) +
+            y={"low",scale={zero=true}, axis={title=""},type=:quantitative},
+            y2={"high", type=:quantitative}, color=:salience) +
      @vlplot(mark={:point,filled=true},
             y={:correct,scale={zero=true},axis={title="% Correct Classification"}},
             color=:salience))
@@ -140,25 +148,7 @@ pl =
 
 save(joinpath(dir, "object_best_windows.pdf"),pl)
 
-
-cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans_bytargettime.bson")
-if !isfile(cachefile)
-    freqmeans_bytime = organize_data_by(
-        subjects,groups=[:salience,:target_time],hittypes = [:hit,:miss,:baseline],
-        winlens = 2.0 .^ range(-3,1,length=10),
-        winstarts = 2.0 .^ range(-3,1,length=10)) do signal,fs
-            result = computebands(signal,fs)
-            if @_ all(0 ≈ _,signal)
-                result[:,Between(:delta,:gamma)] .= 0
-            end
-            result
-        end
-    @save cachefile freqmeans_bytime
-    alert()
-else
-    @load cachefile freqmeans_bytime
-end
-
+# use trial based freqmeans below
 powerdf_timing = @_ freqmeans_bytime |>
     stack(__, Between(:delta,:gamma),
         variable_name = :freqbin, value_name = :power) |>
@@ -167,17 +157,17 @@ powerdf_timing = @_ freqmeans_bytime |>
 powerdiff_timing_df = @_ powerdf_timing |>
     unstack(__, :window_timing, :power) |>
     filter(_.hit != :baseline,__) |>
-    filter(_.salience == :low,__) |>
-    by(__, [:sid,:hit,:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
+    filter(_.salience == "low",__) |>
+    by(__, [:sid,"hit",:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
-powerdiff_timing_df[!,:hit_channel_bin] .=
+powerdiff_timing_df[!,"hit"_channel_bin] .=
     categorical(Symbol.(:channel_,powerdiff_timing_df.channel,:_,powerdiff_timing_df.hit,:_,powerdiff_timing_df.freqbin))
 
 classdf_timing = @_ powerdiff_timing_df |>
     unstack(__, [:sid, :condition, :winstart, :winlen, :target_time],
-        :hit_channel_bin, :powerdiff) |>
+        "hit"_channel_bin, :powerdiff) |>
     filter(all(!ismissing,_[r"channel"]), __) |>
     disallowmissing!(__,r"channel")
 
@@ -203,7 +193,7 @@ bestwindow_df = @_ powerdiff_df |>
            (_1.winstart == best_low.winstart[1] &&
             _1.winlen == best_low.winlen[1]),__) |>
     filter(_.hit != :baseline,__) |>
-    by(__,[:sid,:hit,:freqbin,:condition,:winlen,:channel,:salience],:powerdiff => mean ∘ skipmissing)
+    by(__,[:sid,"hit",:freqbin,:condition,:winlen,:channel,:salience],:powerdiff => mean ∘ skipmissing)
 
 # TODO: compute euclidean difference
 
@@ -261,10 +251,10 @@ pl = subj_means |>
 
 save(joinpath(dir,"spatial_svm_allbins.pdf"),pl)
 
-best_high = @_ subj_means |> filter(_.salience == :high,__) |>
+best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
-best_low = @_ subj_means |> filter(_.salience == :low,__) |>
+best_low = @_ subj_means |> filter(_.salience == "low",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
 
@@ -290,8 +280,8 @@ pl =
     (best_vals |>
      @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
      @vlplot(mark={:errorbar,filled=true},
-            y={:low,scale={zero=true}, axis={title=""},type=:quantitative},
-            y2={:high, type=:quantitative}, color={:salience, type=:nominal}) +
+            y={"low",scale={zero=true}, axis={title=""},type=:quantitative},
+            y2={"high", type=:quantitative}, color={:salience, type=:nominal}) +
      @vlplot(mark={:point,filled=true},
             y={:correct,type=:quantitative,scale={zero=true},axis={title="% Correct Classification"}},
             color={:salience, type=:nominal}))

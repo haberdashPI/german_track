@@ -1,7 +1,7 @@
-- early v late for low salience
-
-todo next
-- show "raw" neural response.
+- trial-by-trial (think about window length)
+- hits only
+- validate across trial, not sid
+- optimize hyper parameters across entire data set (using validation set)
 
 # Plans
 

@@ -119,6 +119,7 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
         known_weights = source == 1
         _x = maybeGPU(_x)
         _y = maybeGPU(_y)
+        # alternative: copy weights each time?
         _wi = maybeGPU(wi)
 
         if known_weights

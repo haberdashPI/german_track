@@ -17,7 +17,7 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                      encoding = RawEncoding())
     for file in eeg_files)
 
-cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
+cachefile = joinpath(cache_dir(),"data","freqmeans.bson")
 if !isfile(cachefile)
     freqmeans = organize_data_by(
         subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],

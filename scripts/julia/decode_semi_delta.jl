@@ -15,7 +15,7 @@ sources = [JointSource(false), other(JointSource(false))]
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-cachefile = joinpath(cache_dir(),"..","subject_cache","delta_subjects$(fs).bson")
+cachefile = joinpath(cache_dir(),"subject","delta_subjects$(fs).bson")
 if isfile(cachefile)
     @load cachefile subjects
 else

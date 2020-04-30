@@ -2,7 +2,7 @@ import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
-    computebands, organize_data_by
+    computebands, organize_data_by, optparams
 
 using FFTW
 using DataStructures
@@ -15,6 +15,8 @@ using Lasso
 using GLM
 using ScikitLearn
 using BlackBoxOptim
+using Transducers
+using BangBang
 
 function mat2bson(file)
     file
@@ -29,19 +31,34 @@ end
 applyer(params, by::NamedTuple) = by
 applyer(params, by::Function) = NamedTuple{keys(params)}(fill(by,length(params))...)
 
-function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,max_evals=10,kwds...)
-    n_folds = 10
-    nprog = 0
-    progress = Progress(n_folds*max_evals)
-
+function optparams(objective,param_range;by=identity,max_evals=100,pop_size=25)
     by = applyer(param_range, by)
+
+    options = (
+        SearchRange = collect(values(param_range)),
+        NumDimensions = length(param_range),
+        MaxFuncEvals = max_evals,
+        PopulationSize = pop_size,
+        TraceMode = :silent,
+    )
+
+    opt = bboptimize(;options...) do params
+        objective(apply(by,params))
+    end
+    best_candidate(opt), best_fitness(opt)
+end
+
+function testmodel(sdf,model,idcol,classcol,cols;kwds...)
+    n_folds = 10
+    # nprog = 0
+    # progress = Progress(n_folds*max_evals)
 
     xs = term(0)
     for col in names(view(sdf,:,cols))
         xs += term(col)
     end
     formula = term(classcol) ~ xs
-    result = DataFrame()
+    result = Empty(DataFrame)
 
     for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(sdf.sid)))
         train = @_ filter(_[idcol] in trainids,sdf)
@@ -50,42 +67,28 @@ function testmodel(sdf,model,param_range,idcol,classcol,cols;by=identity,max_eva
         f = apply_schema(formula, schema(formula, train))
         y,X = modelcols(f, train)
 
-        options = (
-            SearchRange = collect(values(param_range)),
-            NumDimensions = length(param_range),
-            MaxFuncEvals = max_evals,
-            PopulationSize = 25,
-            TraceMode = :silent,
-        )
+        # if @_ all(first(y) == _,y)
+        #     labels = fill(first(y),size(test,1))
+        #     append!(result, DataFrame(
+        #         label = labels,
+        #         correct = labels .== test[:,classcol],
+        #         fitness = Inf,
+        #         classcol => test[:,classcol],
+        #         apply(by,fill(NaN,length(param_range)))...
+        #     ))
+        # end
 
-        opt = bboptimize(;options...) do params
-            m = model(;apply(by,params)...)
-            coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
-
-            nprog += 1
-            ProgressMeter.update!(progress,nprog)
-
-            ŷ = ScikitLearn.predict(coefs,X)
-            mean((ŷ .- y).^2)
-        end
-
-        nprog = i*max_evals
-        ProgressMeter.update!(progress, nprog)
-
-        m = model(;apply(by,best_candidate(opt))...)
-        coefs = ScikitLearn.fit!(m,X,vec(y);kwds...)
+        coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
 
         f = apply_schema(formula, schema(formula, test))
         y,X = modelcols(f, test)
         level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
-        append!(result, DataFrame(
+        append!!(result, DataFrame(
             label = _labels,
             correct = _labels .== test[:,classcol],
-            fitness = best_fitness(opt);
             classcol => test[:,classcol],
-            apply(by,best_candidate(opt))...
         ))
     end
 
@@ -153,30 +156,31 @@ function windowbaseline(trial,event,fs,from,to;mindist,minlen)
 end
 
 function ishit(row)
-    if row.condition == :global
-        row.region == :baseline ? :baseline :
-            row.correct ? :hit : :miss
-    elseif row.condition == :object
-        row.region == :baseline ? :baseline :
-            row.target_source == :male ?
-                (row.correct ? :hit : :miss) :
-                (row.correct ? :falsep : :reject)
+    if row.condition == "global"
+        row.region == "baseline" ? "baseline" :
+            row.correct ? "hit" : "miss"
+    elseif row.condition == "object"
+        row.region == "baseline" ? "baseline" :
+            row.target_source == "male" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     else
-        @assert row.condition == :spatial
-        row.region == :baseline ? :baseline :
-            row.direction == :right ?
-                (row.correct ? :hit : :miss) :
-                (row.correct ? :falsep : :reject)
+        @assert row.condition == "spatial"
+        row.region == "baseline" ? "baseline" :
+            row.direction == "right" ?
+                (row.correct ? "hit" : "miss") :
+                (row.correct ? "falsep" : "reject")
     end
 end
 
 function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
+    @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
-    regions = [:target, :baseline]
-    window_timings = [:before, :after]
-    source_names = [:male, :female]
+    regions = ["target", "baseline"]
+    window_timings = ["before", "after"]
+    source_names = ["male", "female"]
 
     N = reduce(*,length.((values(subjects),regions,window_timings,
         winlens,winstarts)))
@@ -185,23 +189,21 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
     med_salience = median(target_salience)
     med_target_time = @_ filter(_ > 0,target_times) |> median
 
-    mapreduce(vcat,values(subjects)) do subject
+    function assemble_subject(subject)
         events = subject.events
         events.row = 1:size(events,1)
         eeg = subject.eeg
 
-        mapreduce(vcat,Iterators.product(regions,window_timings,winlens,winstarts)) do vars
-            region,window_timing,winlen,winstart = vars
-
-            bounds = window_timing == :before ? (-winstart-winlen,-winstart) :
+        function build_subject_data(region,window_timing,winlen,winstart)
+            bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
                     (winstart,winstart+winlen)
 
             rowdf = @_ filter(_.target_present == 1,events)
             si = rowdf.sound_index
             rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
-            rowdf.salience = @. ifelse(target_salience[si] > med_salience,:high,:low)
-            rowdf.target_time = @. ifelse(target_times[si] > med_target_time,:early,:late)
-            rowdf.direction = Symbol.(directions[si])
+            rowdf.salience = @. ifelse(target_salience[si] > med_salience,"high","low")
+            rowdf.target_time = @. ifelse(target_times[si] > med_target_time,"early","late")
+            rowdf.direction = directions[si]
             rowdf[!,:region] .= region
             rowdf[!,:window_timing] .= window_timing
             rowdf[!,:winlen] .= winlen
@@ -234,7 +236,11 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
             next!(progress)
             bandsdf
         end
+
+        foldl(append!!,MapSplat(build_subject_data),
+            Iterators.product(regions,window_timings,winlens,winstarts))
     end
+    foldl(append!!,Map(assemble_subject),values(subjects))
 end
 
 function padmeanpower(xs)
