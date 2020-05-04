@@ -123,16 +123,16 @@ end
 finish!(progress)
 best_params = GermanTrack.apply(param_by,best_params)
 
-@everywhere function modelresult((key,sdf))
-    result = testmodel(sdf,NuSVC(;best_params),
+@everywhere function modelresult((key,sdf),params)
+    result = testmodel(sdf,NuSVC(;params...),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
     result
 end
 testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
-classpredict = dreduce(append!!,Map(modelresult),collect(pairs(testgroups)),
-    init=Empty(DataFrame))
+classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+    collect(pairs(testgroups)),init=Empty(DataFrame))
 
 subj_means = @_ classpredict |>
     by(__,[:winstart,:winlen,:salience],:correct => mean)
@@ -202,7 +202,7 @@ pl =
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "object_by_condition_best_windows.pdf"),pl)
+save(joinpath(dir, "val_object_by_condition_best_windows.pdf"),pl)
 
 # use trial based freqmeans below
 powerdf_timing = @_ freqmeans_bytime |>

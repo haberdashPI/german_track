@@ -3,15 +3,8 @@ is it that we are now doing things per trial?
 
 + do by hit only
 + comparing trial-by-trial vs condition-by-condition
-- optimize svm hyper-params (??)
++ optimize svm hyper-params (??)
 - by stimulus validation not subject
-
-things I'm changing
-- optimize hyper parameters across entire data set (using validation set)
-- hits only
-
-- trial-by-trial (think about window length)
-- validate across trial, not sid
 
 # Plans
 
