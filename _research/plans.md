@@ -1,3 +1,7 @@
+working on:
+
+reproduce figures from 04-20
+revise to use hits only, what does that look like?
 
 new plans
 - still figure out reproduce old classification results

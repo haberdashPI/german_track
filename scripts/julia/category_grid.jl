@@ -15,7 +15,7 @@ subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                      encoding = RawEncoding())
     for file in eeg_files)
 
-cachefile = joinpath(cache_dir(),"..","data_cache","freqmeans.bson")
+cachefile = joinpath(cache_dir(),"data","freqmeans.bson")
 if !isfile(cachefile)
     freqmeans = organize_data_by(
         subjects,groups=[:salience],hittypes = [:hit,:miss,:baseline],
@@ -35,6 +35,7 @@ end
 
 powerdf = @_ freqmeans |>
     filter(_.condition in [:global,:object],__) |>
+    filter(_.hit == :hit,__) |>
     stack(__, Between(:delta,:gamma),
         variable_name = :freqbin, value_name = :power) |>
     filter(all(!isnan,_.power), __)
@@ -46,11 +47,12 @@ powerdiff_df = @_ powerdf |>
         (:before,:after) => sdf ->
             (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
 
-powerdiff_df[!,:hit_channel_bin] .=
-    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.hit,:_,powerdiff_df.freqbin))
+powerdiff_df[!,:channel_bin] .=
+    categorical(Symbol.(:channel_,powerdiff_df.channel,:_,powerdiff_df.freqbin))
+
 classdf = @_ powerdiff_df |>
     unstack(__, [:sid, :condition, :winstart, :winlen, :salience],
-        :hit_channel_bin, :powerdiff) |>
+        :channel_bin, :powerdiff) |>
     filter(all(!ismissing,_[r"channel"]), __) |>
     disallowmissing!(__,r"channel")
 
@@ -89,7 +91,7 @@ pl = subj_means |>
         row={field=:freqbin,type=:ordinal,
              sort=[:delta,:theta,:alpha,:beta,:gamma]})
 
-save(File(format"PDF",joinpath(dir,"svm_allbins.pdf")),pl)
+save(File(format"PDF",joinpath(dir,"hitonly_svm_allbins.pdf")),pl)
 
 
 freqbins = OrderedDict(
