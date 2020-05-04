@@ -2,7 +2,7 @@ import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, alert, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
-    computebands, organize_data_by, optparams
+    computebands, organize_data_by, optparams, find_powerdiff
 
 using FFTW
 using DataStructures
@@ -31,15 +31,14 @@ end
 applyer(params, by::NamedTuple) = by
 applyer(params, by::Function) = NamedTuple{keys(params)}(fill(by,length(params))...)
 
-function optparams(objective,param_range;by=identity,max_evals=100,pop_size=25)
+function optparams(objective,param_range;by=identity,kwds...)
     by = applyer(param_range, by)
 
     options = (
         SearchRange = collect(values(param_range)),
         NumDimensions = length(param_range),
-        MaxFuncEvals = max_evals,
-        PopulationSize = pop_size,
         TraceMode = :silent,
+        kwds...
     )
 
     opt = bboptimize(;options...) do params
@@ -48,8 +47,7 @@ function optparams(objective,param_range;by=identity,max_evals=100,pop_size=25)
     best_candidate(opt), best_fitness(opt)
 end
 
-function testmodel(sdf,model,idcol,classcol,cols;kwds...)
-    n_folds = 10
+function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
     # nprog = 0
     # progress = Progress(n_folds*max_evals)
 
@@ -60,11 +58,12 @@ function testmodel(sdf,model,idcol,classcol,cols;kwds...)
     formula = term(classcol) ~ xs
     result = Empty(DataFrame)
 
-    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(sdf.sid)))
+    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(sdf[:,idcol])))
+        isempty(trainids) && continue
         train = @_ filter(_[idcol] in trainids,sdf)
         test = @_ filter(_[idcol] in testids,sdf)
 
-        f = apply_schema(formula, schema(formula, train))
+        f = apply_schema(formula, schema(formula, sdf))
         y,X = modelcols(f, train)
 
         # if @_ all(first(y) == _,y)
@@ -80,14 +79,13 @@ function testmodel(sdf,model,idcol,classcol,cols;kwds...)
 
         coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
 
-        f = apply_schema(formula, schema(formula, test))
         y,X = modelcols(f, test)
         level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
-        append!!(result, DataFrame(
+        result = append!!(result, DataFrame(
             label = _labels,
-            correct = _labels .== test[:,classcol],
+            correct = _labels .== test[:,classcol];
             classcol => test[:,classcol],
         ))
     end
@@ -108,11 +106,7 @@ function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
     end
 
     if size(signal,2) < 32
-        empty = mapreduce(hcat,keys(freqbins)) do bin
-            DataFrame(Symbol(bin) => Float64[])
-        end
-        empty[!,:channel] = Int[]
-        return empty
+        Empty(DataFrame)
     end
     if size(signal,2) < 128
         newsignal = similar(signal,size(signal,1),128)
@@ -173,8 +167,40 @@ function ishit(row)
     end
 end
 
+function find_powerdiff(subjects;kwds...)
+    organize_data_by(subjects;kwds...) do windows,timings,fs
+        function windowband(signal,timing)
+            freqdf = computebands(signal,fs)
+            if @_ all(0 ≈ _,signal)
+                freqdf[:,Between(:delta,:gamma)] .= 0
+            end
+            freqdf[!,:window_timing] .= timing
+            freqdf
+        end
+        freqdf = foldl(append!!,MapSplat(windowband), zip(windows,timings))
+
+        if size(freqdf,1) > 0
+            powerdf = @_ freqdf |>
+                stack(__, Between(:delta,:gamma),
+                    variable_name = :freqbin, value_name = :power) |>
+                filter(all(!isnan,_.power), __) |>
+                unstack(__, :window_timing, :power)
+
+            ε = 1e-8
+            logdiff(x,y) = log.(ε .+ x) .- log.(ε .+ y)
+            powerdiff = logdiff(powerdf.after,powerdf.before)
+
+            chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
+            features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
+            DataFrame(;(features .=> powerdiff)...)
+        else
+            Empty(DataFrame)
+        end
+    end
+end
+
 function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
-    @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
+    # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
@@ -182,8 +208,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
     window_timings = ["before", "after"]
     source_names = ["male", "female"]
 
-    N = reduce(*,length.((values(subjects),regions,window_timings,
-        winlens,winstarts)))
+    N = reduce(*,length.((values(subjects),regions,winlens,winstarts)))
     progress = Progress(N,desc="computing frequency bins")
 
     med_salience = median(target_salience)
@@ -194,9 +219,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
         events.row = 1:size(events,1)
         eeg = subject.eeg
 
-        function build_subject_data(region,window_timing,winlen,winstart)
-            bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
-                    (winstart,winstart+winlen)
+        function build_subject_data(region,winlen,winstart)
 
             rowdf = @_ filter(_.target_present == 1,events)
             si = rowdf.sound_index
@@ -205,40 +228,45 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
             rowdf.target_time = @. ifelse(target_times[si] > med_target_time,"early","late")
             rowdf.direction = directions[si]
             rowdf[!,:region] .= region
-            rowdf[!,:window_timing] .= window_timing
             rowdf[!,:winlen] .= winlen
             rowdf[!,:winstart] .= winstart
             rowdf.hit = ishit.(eachrow(rowdf))
             rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
 
-            categorical!(rowdf,[:region,:condition,:window_timing,:salience,
+            categorical!(rowdf,[:region,:condition,:salience,
                 :target_time,:direction,:hit],compress=true)
 
-            cols = [:sid,:hit,:condition,:window_timing,:winlen,
-                :winstart,:region,groups...]
-            bandsdf = by(rowdf,cols) do sdf
-                signal = mapreduce(hcat,sdf.row) do row
-                    region == :target ?
-                        windowtarget(eeg[row],events[row,:],fs,bounds...) :
-                        windowbaseline(eeg[row],events[row,:],fs,bounds...,
-                            mindist=0.2,minlen=0.5)
+            cols = [:sid,:hit,:condition,:winlen,:winstart,:region,groups...]
+
+            resultdf = by(rowdf,cols) do sdf
+                signals = map(window_timings) do window_timing
+                    bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
+                        (winstart,winstart+winlen)
+
+                    mapreduce(hcat,sdf.row) do row
+                        region == "target" ?
+                            windowtarget(eeg[row],events[row,:],fs,bounds...) :
+                            windowbaseline(eeg[row],events[row,:],fs,bounds...,
+                                mindist=0.2,minlen=0.5)
+                    end
                 end
 
-                result = fn(signal,fs)
+                result = fn(signals,window_timings,fs)
                 @infiltrate any(isinf,Array(result))
                 @infiltrate any(isnan,Array(result))
                 result
             end
-            if size(bandsdf,1) == 0 && size(bandsdf,2) < 14
-                bandsdf = hcat(bandsdf,computebands(Float64[],fs))
-            end
 
             next!(progress)
-            bandsdf
+            if isempty(resultdf)
+                Empty(DataFrame)
+            else
+                resultdf
+            end
         end
 
         foldl(append!!,MapSplat(build_subject_data),
-            Iterators.product(regions,window_timings,winlens,winstarts))
+            Iterators.product(regions,winlens,winstarts))
     end
     foldl(append!!,Map(assemble_subject),values(subjects))
 end
@@ -721,7 +749,7 @@ function events_for_eeg(file,stim_info)
         stim_events[!,:bad_trial] .= false
     end
     stim_events[!,:sid] .= sid
-    stim_events.condition = Symbol.(stim_events.condition)
+    stim_events.condition = stim_events.condition
 
     stim_events, sid
 end

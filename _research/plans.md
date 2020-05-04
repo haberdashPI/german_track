@@ -1,7 +1,12 @@
-- trial-by-trial (think about window length)
-- hits only
-- validate across trial, not sid
+current question: why did performance change so drammatically?
+is it that we are now doing things per trial?
+
+things I'm changing
 - optimize hyper parameters across entire data set (using validation set)
+- hits only
+
+- trial-by-trial (think about window length)
+- validate across trial, not sid
 
 # Plans
 
