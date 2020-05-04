@@ -72,9 +72,9 @@ end
 
 
 @everywhere begin
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
+    # classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
     # classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
-    # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
@@ -86,7 +86,7 @@ end
         # catch those and return the worst possible fitness
         try
             result = testmodel(sdf,NuSVC(;params...),
-                :sound_index,:condition,r"channel",n_folds=3)
+                :sid,:condition,r"channel",n_folds=3)
             result.correct |> sum
         catch e
             if e isa PyCall.PyError
@@ -98,9 +98,9 @@ end
     end
 end
 
-vset = @_ objectdf.sound_index |> unique |>
+vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ objectdf |> filter(_.sound_index ∈ vset,__) |>
+valgroups = @_ objectdf |> filter(_.sid ∈ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 
 param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
@@ -124,12 +124,12 @@ finish!(progress)
 best_params = GermanTrack.apply(param_by,best_params)
 
 @everywhere function modelresult((key,sdf))
-    result = testmodel(sdf,NuSVC(nu=0.5,gamma=0.04),
+    result = testmodel(sdf,NuSVC(;best_params),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
     result
 end
-testgroups = @_ objectdf |> #filter(_.sound_index ∉ vset,__) |>
+testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 classpredict = dreduce(append!!,Map(modelresult),collect(pairs(testgroups)),
     init=Empty(DataFrame))
@@ -156,10 +156,10 @@ pl = subj_means |>
             field=:llen,
             bin={step=4/9,anchor=-3-2/9},
         },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,0.75],scheme="plasma"}},
+        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"by_trial_svm_allbins.pdf"),pl)
+save(joinpath(dir,"object_by_condition_svm_allbins.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -202,7 +202,7 @@ pl =
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "object_by_trial_best_windows.pdf"),pl)
+save(joinpath(dir, "object_by_condition_best_windows.pdf"),pl)
 
 # use trial based freqmeans below
 powerdf_timing = @_ freqmeans_bytime |>
