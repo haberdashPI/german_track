@@ -12,6 +12,9 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
     FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
 
+# local only packages
+using Formatting
+
 using ScikitLearn
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
@@ -39,40 +42,39 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
-# classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
-# if isfile(classdf_file)
-#     classdf = CSV.read(classdf_file)
-# else
-#     # NOTE: in principle this could also be run in parallel (doesn't feel worth it
-#     # since FFTW doesn't handle multi-threading yet, so we'd have to setup more
-#     # multi-process parallism)
-
-#     classdf = find_powerdiff(
-#         subjects,groups=[:salience,:target_time,:trial,:sound_index],
-#         hittypes = ["hit"],
-#         winlens = 2.0 .^ range(-1,1,length=10),
-#         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
-#     CSV.write(classdf_file,classdf)
-# end
-
-classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
+    # NOTE: in principle this could also be run in parallel (doesn't feel worth it
+    # since FFTW doesn't handle multi-threading yet, so we'd have to setup more
+    # multi-process parallism)
+
     classdf = find_powerdiff(
-        subjects,groups=[:salience],
+        subjects,groups=[:salience,:target_time,:trial,:sound_index],
         hittypes = ["hit"],
         winlens = 2.0 .^ range(-1,1,length=10),
         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
     CSV.write(classdf_file,classdf)
 end
 
+# classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+# if isfile(classdf_file)
+#     classdf = CSV.read(classdf_file)
+# else
+#     classdf = find_powerdiff(
+#         subjects,groups=[:salience],
+#         hittypes = ["hit"],
+#         winlens = 2.0 .^ range(-1,1,length=10),
+#         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
+#     CSV.write(classdf_file,classdf)
+# end
+
 
 @everywhere begin
-    # classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
-    # classdf = CSV.read(classdf_file)
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
     # classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+    # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
@@ -154,10 +156,10 @@ pl = subj_means |>
             field=:llen,
             bin={step=4/9,anchor=-3-2/9},
         },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        color={:correct_mean,scale={reverse=true,domain=[0.5,0.75],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"by_condition_svm_allbins.pdf"),pl)
+save(joinpath(dir,"by_trial_svm_allbins.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -171,13 +173,15 @@ best_vals = @_ classpredict |>
             _1.winlen == best_high.winlen[1]) ||
            (_1.winstart == best_low.winstart[1] &&
             _1.winlen == best_low.winlen[1]),__) |>
-    by(__,[:winlen,:salience],:correct => function(x)
+    by(__,[:winlen,:winstart,:salience],:correct => function(x)
         bs = bootstrap(mean,x,BasicSampling(10_000))
         μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
         (correct = μ, low = low, high = high)
     end)
 
 best_vals.winlen .= round.(best_vals.winlen,digits=2)
+best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
+    best_vals.winlen,best_vals.winstart))
 
 pl =
     @vlplot() +
@@ -187,18 +191,18 @@ pl =
       strokeDash = {value = [2,2]}
     }) +
     (best_vals |>
-     @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
+     @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
      @vlplot(mark={:errorbar,filled=true},
-            y={"low",scale={zero=true}, axis={title=""},type=:quantitative},
+            y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
             y2={"high", type=:quantitative}, color=:salience) +
      @vlplot(mark={:point,filled=true},
-            y={:correct,scale={zero=true},axis={title="% Correct Classification"}},
+            y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
             color=:salience))
 
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "object_best_windows.pdf"),pl)
+save(joinpath(dir, "object_by_trial_best_windows.pdf"),pl)
 
 # use trial based freqmeans below
 powerdf_timing = @_ freqmeans_bytime |>

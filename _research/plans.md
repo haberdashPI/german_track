@@ -1,10 +1,9 @@
 current question: why did performance change so drammatically?
 is it that we are now doing things per trial?
 
-- try to reproduce
-- do by hit only
-- miss only
-- trial-by-trial, miss and hit only
++ do by hit only
++ comparing trial-by-trial vs condition-by-condition
+- optimize svm hyper-params (??)
 - by stimulus validation not subject
 
 things I'm changing
