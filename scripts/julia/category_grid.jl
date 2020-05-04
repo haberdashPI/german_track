@@ -72,9 +72,9 @@ end
 
 
 @everywhere begin
-    # classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
     # classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+    # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
@@ -156,10 +156,10 @@ pl = subj_means |>
             field=:llen,
             bin={step=4/9,anchor=-3-2/9},
         },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        color={:correct_mean,scale={reverse=true,domain=[0.5,0.65],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"object_by_condition_all_windows.pdf"),pl)
+save(joinpath(dir,"object_by_trial_all_windows.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -202,7 +202,7 @@ pl =
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "object_by_condition_best_windows.pdf"),pl)
+save(joinpath(dir, "object_by_trial_best_windows.pdf"),pl)
 
 # use trial based freqmeans below
 powerdf_timing = @_ freqmeans_bytime |>
