@@ -4,6 +4,7 @@ is it that we are now doing things per trial?
 + do by hit only
 + comparing trial-by-trial vs condition-by-condition
 + optimize svm hyper-params (??)
+- try optimizing by maximum accuracy
 - by stimulus validation not subject
 
 # Plans
