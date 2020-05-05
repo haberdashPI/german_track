@@ -58,6 +58,23 @@ else
     CSV.write(classdf_file,classdf)
 end
 
+# classdf_file = joinpath(cache_dir(),"data","freqmeans_chunk.csv")
+# if isfile(classdf_file)
+#     classdf = CSV.read(classdf_file)
+# else
+#     # NOTE: in principle this could also be run in parallel (doesn't feel worth it
+#     # since FFTW doesn't handle multi-threading yet, so we'd have to setup more
+#     # multi-process parallism)
+
+#     classdf = find_powerdiff(
+#         subjects,groups=[:salience,:target_time,:chunk],
+#         chunk_size = 5,
+#         hittypes = ["hit"],
+#         winlens = 2.0 .^ range(-1,1,length=10),
+#         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
+#     CSV.write(classdf_file,classdf)
+# end
+
 # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
 # if isfile(classdf_file)
 #     classdf = CSV.read(classdf_file)
@@ -69,7 +86,6 @@ end
 #         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
 #     CSV.write(classdf_file,classdf)
 # end
-
 
 @everywhere begin
     classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
@@ -98,7 +114,7 @@ end
     end
 end
 
-vset = @_ objectdf.sid |> unique |>
+vset = @_ objectdf.sound_index |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
 valgroups = @_ objectdf |> filter(_.sound_index ∈ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
@@ -198,7 +214,6 @@ pl =
      @vlplot(mark={:point,filled=true},
             y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
             color=:salience))
-
 
 # TODO: add a dotted line to chance level
 

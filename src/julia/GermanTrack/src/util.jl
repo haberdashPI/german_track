@@ -199,7 +199,9 @@ function find_powerdiff(subjects;kwds...)
     end
 end
 
-function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
+function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
+    chunk_size=1)
+
     # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
@@ -230,6 +232,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes)
             rowdf[!,:region] .= region
             rowdf[!,:winlen] .= winlen
             rowdf[!,:winstart] .= winstart
+            rowdf[!,:chunk] = round.(Int,rowdf.sound_index / chunk_size)
             rowdf.hit = ishit.(eachrow(rowdf))
             rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
 
