@@ -86,7 +86,7 @@ end
         # catch those and return the worst possible fitness
         try
             result = testmodel(sdf,NuSVC(;params...),
-                :sid,:condition,r"channel",n_folds=3)
+                :sound_index,:condition,r"channel",n_folds=3)
             result.correct |> sum
         catch e
             if e isa PyCall.PyError
@@ -100,7 +100,7 @@ end
 
 vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ objectdf |> filter(_.sid ∈ vset,__) |>
+valgroups = @_ objectdf |> filter(_.sound_index ∈ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 
 param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
@@ -125,11 +125,11 @@ best_params = GermanTrack.apply(param_by,best_params)
 
 @everywhere function modelresult((key,sdf),params)
     result = testmodel(sdf,NuSVC(;params...),
-        :sid,:condition,r"channel")
+        :sound_index,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
     result
 end
-testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
+testgroups = @_ objectdf |> filter(_.sound_index ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
@@ -159,7 +159,7 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,0.65],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"object_by_trial_all_windows.pdf"),pl)
+save(joinpath(dir,"val_by_trial_object_by_trial_all_windows.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -202,144 +202,4 @@ pl =
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "object_by_trial_best_windows.pdf"),pl)
-
-# use trial based freqmeans below
-powerdf_timing = @_ freqmeans_bytime |>
-    stack(__, Between(:delta,:gamma),
-        variable_name = :freqbin, value_name = :power) |>
-    filter(all(!isnan,_.power), __)
-
-powerdiff_timing_df = @_ powerdf_timing |>
-    unstack(__, :window_timing, :power) |>
-    filter(_.hit != :baseline,__) |>
-    filter(_.salience == "low",__) |>
-    by(__, [:sid,"hit",:freqbin,:condition,:winstart,:winlen,:channel,:target_time],
-        (:before,:after) => sdf ->
-            (powerdiff = mean(log.(ε .+ sdf.after) .- log.(ε .+ sdf.before)),))
-
-powerdiff_timing_df[!,"hit"_channel_bin] .=
-    categorical(Symbol.(:channel_,powerdiff_timing_df.channel,:_,powerdiff_timing_df.hit,:_,powerdiff_timing_df.freqbin))
-
-classdf_timing = @_ powerdiff_timing_df |>
-    unstack(__, [:sid, :condition, :winstart, :winlen, :target_time],
-        "hit"_channel_bin, :powerdiff) |>
-    filter(all(!ismissing,_[r"channel"]), __) |>
-    disallowmissing!(__,r"channel")
-
-objectdf_timing = @_ classdf_timing |> filter(_.condition in [:global,:object],__)
-
-
-prog = Progress(length(groupby(objectdf_timing,[:winstart,:winlen,:target_time])))
-classpredict = by(objectdf_timing, [:winstart,:winlen,:target_time]) do sdf
-    result = testmodel(sdf,NuSVC,
-        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
-        max_evals = 100,:sid,:condition,r"channel")
-    next!(prog)
-    result[!,:sid] .= sdf.sid
-    result
-end
-
-
-
-## plot raw data
-bestwindow_df = @_ powerdiff_df |>
-    filter((_1.winstart == best_high.winstart[1] &&
-            _1.winlen == best_high.winlen[1]) ||
-           (_1.winstart == best_low.winstart[1] &&
-            _1.winlen == best_low.winlen[1]),__) |>
-    filter(_.hit != :baseline,__) |>
-    by(__,[:sid,"hit",:freqbin,:condition,:winlen,:channel,:salience],:powerdiff => mean ∘ skipmissing)
-
-# TODO: compute euclidean difference
-
-bestwindow_df.hit = string.(bestwindow_df.hit)
-bestwindow_df.freqbin = string.(bestwindow_df.freqbin)
-bestwindow_df.condition = string.(bestwindow_df.condition)
-bestwindow_df.salience = string.(bestwindow_df.salience)
-
-R"""
-
-library(ggplot2)
-library(dplyr)
-
-plotdf = $bestwindow_df %>% filter(channel == 1) %>%
-    mutate(freqbin = factor(freqbin,levels=c('delta','theta','alpha','beta','gamma'),ordered=T))
-
-ggplot(plotdf,aes(x=freqbin,y=powerdiff_function,color=hit,group=hit)) +
-    facet_wrap(salience~condition) +
-    stat_summary(geom='pointrange',position=position_dodge(width=0.5)) +
-    geom_point(size=0.5,alpha=0.5,position=position_jitterdodge(dodge.width=0.3,jitter.width=0.1))
-
-"""
-
-spatialdf = @_ classdf |> filter(_.condition in [:global,:spatial],__)
-
-
-prog = Progress(length(groupby(spatialdf,[:winstart,:winlen,:salience])))
-classpredict = by(spatialdf, [:winstart,:winlen,:salience]) do sdf
-    result = testmodel(sdf,NuSVC,
-        (nu=(0.0,0.75),gamma=(-4.0,1.0)),by=(nu=identity,gamma=x -> 10^x),
-        max_evals = 100,:sid,:condition,r"channel")
-    next!(prog)
-    result[!,:sid] .= sdf.sid
-    result
-end
-
-subj_means = @_ classpredict |>
-    by(__,[:winstart,:winlen,:salience],:correct => mean)
-
-subj_means.llen = log.(2,subj_means.winlen)
-subj_means.lstart = log.(2,subj_means.winstart)
-
-pl = subj_means |>
-    @vlplot(:rect,
-        x={
-            field=:lstart,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        y={
-            field=:llen,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience)
-
-save(joinpath(dir,"spatial_svm_allbins.pdf"),pl)
-
-best_high = @_ subj_means |> filter(_.salience == "high",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-best_low = @_ subj_means |> filter(_.salience == "low",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-
-best_vals = @_ classpredict |>
-    filter((_1.winstart == best_high.winstart[1] &&
-            _1.winlen == best_high.winlen[1]) ||
-           (_1.winstart == best_low.winstart[1] &&
-            _1.winlen == best_low.winlen[1]),__) |>
-    by(__,[:winlen,:salience],:correct => function(x)
-        bs = bootstrap(mean,x,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-        (correct = μ, low = low, high = high)
-    end)
-best_vals.winlen .= round.(best_vals.winlen,digits=2)
-
-pl =
-    @vlplot() +
-    @vlplot(data=[{}], mark=:rule,
-    encoding = {
-      y = {datum = 50, type=:quantitative},
-      strokeDash = {value = [2,2]}
-    }) +
-    (best_vals |>
-     @vlplot(x={:winlen, type=:ordinal, axis={title="Length (s)"}}) +
-     @vlplot(mark={:errorbar,filled=true},
-            y={"low",scale={zero=true}, axis={title=""},type=:quantitative},
-            y2={"high", type=:quantitative}, color={:salience, type=:nominal}) +
-     @vlplot(mark={:point,filled=true},
-            y={:correct,type=:quantitative,scale={zero=true},axis={title="% Correct Classification"}},
-            color={:salience, type=:nominal}))
-
-save(File(format"PDF",joinpath(dir, "spatial_best_windows.pdf")),pl)
+save(joinpath(dir, "val_by_trial_object_by_trial_best_windows.pdf"),pl)
