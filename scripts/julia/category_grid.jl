@@ -42,23 +42,7 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
-if isfile(classdf_file)
-    classdf = CSV.read(classdf_file)
-else
-    # NOTE: in principle this could also be run in parallel (doesn't feel worth it
-    # since FFTW doesn't handle multi-threading yet, so we'd have to setup more
-    # multi-process parallism)
-
-    classdf = find_powerdiff(
-        subjects,groups=[:salience,:target_time,:trial,:sound_index],
-        hittypes = ["hit"],
-        winlens = 2.0 .^ range(-1,1,length=10),
-        winstarts = [0; 2.0 .^ range(-2,1,length=9)])
-    CSV.write(classdf_file,classdf)
-end
-
-# classdf_file = joinpath(cache_dir(),"data","freqmeans_chunk.csv")
+# classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
 # if isfile(classdf_file)
 #     classdf = CSV.read(classdf_file)
 # else
@@ -67,13 +51,29 @@ end
 #     # multi-process parallism)
 
 #     classdf = find_powerdiff(
-#         subjects,groups=[:salience,:target_time,:chunk],
-#         chunk_size = 5,
+#         subjects,groups=[:salience,:target_time,:trial,:sound_index],
 #         hittypes = ["hit"],
 #         winlens = 2.0 .^ range(-1,1,length=10),
 #         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
 #     CSV.write(classdf_file,classdf)
 # end
+
+classdf_file = joinpath(cache_dir(),"data","freqmeans_chunk10.csv")
+if isfile(classdf_file)
+    classdf = CSV.read(classdf_file)
+else
+    # NOTE: in principle this could also be run in parallel (doesn't feel worth it
+    # since FFTW doesn't handle multi-threading yet, so we'd have to setup more
+    # multi-process parallism)
+
+    classdf = find_powerdiff(
+        subjects,groups=[:salience,:target_time,:chunk],
+        chunk_size = 10,
+        hittypes = ["hit"],
+        winlens = 2.0 .^ range(-1,1,length=10),
+        winstarts = [0; 2.0 .^ range(-2,1,length=9)])
+    CSV.write(classdf_file,classdf)
+end
 
 # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
 # if isfile(classdf_file)
@@ -88,9 +88,11 @@ end
 # end
 
 @everywhere begin
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
+    # classdf_file = joinpath(cache_dir(),"data","freqmeans_trial.csv")
     # classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
     # classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+    # classdf_file = joinpath(cache_dir(),"data","freqmeans_chunk.csv")
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_chunk10.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
@@ -102,7 +104,7 @@ end
         # catch those and return the worst possible fitness
         try
             result = testmodel(sdf,NuSVC(;params...),
-                :sound_index,:condition,r"channel",n_folds=3)
+                :sid,:condition,r"channel",n_folds=3)
             result.correct |> sum
         catch e
             if e isa PyCall.PyError
@@ -114,9 +116,9 @@ end
     end
 end
 
-vset = @_ objectdf.sound_index |> unique |>
+vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ objectdf |> filter(_.sound_index ∈ vset,__) |>
+valgroups = @_ objectdf |> filter(_.sid ∈ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 
 param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
@@ -141,11 +143,11 @@ best_params = GermanTrack.apply(param_by,best_params)
 
 @everywhere function modelresult((key,sdf),params)
     result = testmodel(sdf,NuSVC(;params...),
-        :sound_index,:condition,r"channel")
+        :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
     result
 end
-testgroups = @_ objectdf |> filter(_.sound_index ∉ vset,__) |>
+testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
@@ -175,7 +177,7 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,0.65],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"val_by_trial_object_by_trial_all_windows.pdf"),pl)
+save(joinpath(dir,"val_by_sid_object_by_chunk10_all_windows.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
