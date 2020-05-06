@@ -87,7 +87,7 @@ function loss(A,x,y,w)
     for i in 1:size(x)[end]
         xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
         xA = xi*A
-        @matmul yw[n,g] := sum(h) yi[n,g,h]*wi[h]
+        yw = reshape(reshape(yi,:,size(yi,3))*wi,size(yi)[1:2])
         error += sum((xA .- yw).^2)
     end
     error
@@ -171,6 +171,7 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     end
     throt_status = Flux.throttle(status,status_rate)
 
+    @infiltrate
     while epoch < epochs
         regressSS2_train!(trainer,regularize,batchsize,optimizer)
         throt_status()
