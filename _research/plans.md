@@ -1,3 +1,6 @@
+- question: hit v miss? (just corect not high salience or object vs. global)
+- does the before window work with a zero start (or a start behind)
+
 current question: why did performance change so drammatically?
 is it that we are now doing things per trial?
 
