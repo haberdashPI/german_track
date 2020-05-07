@@ -139,9 +139,9 @@ version = "1.0.0"
 
 [[CSV]]
 deps = ["CategoricalArrays", "DataFrames", "Dates", "FilePathsBase", "Mmap", "Parsers", "PooledArrays", "Tables", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "8fe77a5478781d59a9ba17f0ac47dda2be5f8ae7"
+git-tree-sha1 = "52a8e60c7822f53d57e4403b7f2811e7e1bdd32b"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.6.1"
+version = "0.6.2"
 
 [[CUDAapi]]
 deps = ["Libdl", "Logging"]
@@ -168,10 +168,10 @@ uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
 
 [[CategoricalArrays]]
-deps = ["Compat", "DataAPI", "Future", "JSON", "Missings", "Printf", "Reexport", "Statistics", "Unicode"]
-git-tree-sha1 = "23d7324164c89638c18f6d7f90d972fa9c4fa9fb"
+deps = ["DataAPI", "Future", "JSON", "Missings", "Printf", "Statistics", "Unicode"]
+git-tree-sha1 = "df774d7e905ca391178f0abc67f4fa5d3ff4ef12"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "0.7.7"
+version = "0.8.0"
 
 [[ClusterManagers]]
 deps = ["Distributed", "Sockets"]
@@ -287,9 +287,9 @@ version = "2.1.0"
 
 [[DSP]]
 deps = ["FFTW", "IterTools", "LinearAlgebra", "Polynomials", "Random", "Reexport", "SpecialFunctions", "Statistics"]
-git-tree-sha1 = "302ad2e27750367ccd17515810d322fa3d42d9f8"
+git-tree-sha1 = "6f55a056cbe5b8cae9d71e28535394d45747fd3f"
 uuid = "717857b8-e6f2-59f4-9121-6e50c889abd2"
-version = "0.6.5"
+version = "0.6.6"
 
 [[DataAPI]]
 git-tree-sha1 = "176e23402d80e7743fc26c19c681bfb11246af32"
@@ -298,9 +298,9 @@ version = "1.3.0"
 
 [[DataFrames]]
 deps = ["CategoricalArrays", "Compat", "DataAPI", "Future", "InvertedIndices", "IteratorInterfaceExtensions", "Missings", "PooledArrays", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "7d5bf815cc0b30253e3486e8ce2b93bf9d0faff6"
+git-tree-sha1 = "1b4d832288e2d919eeaccdf1d9af7a8a57d773d6"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "0.20.2"
+version = "0.21.0"
 
 [[DataFramesMeta]]
 deps = ["DataFrames", "Tables"]
@@ -310,9 +310,9 @@ version = "0.5.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "9faa13be79557bf4c5713fb912b0e3c5aa33d046"
+git-tree-sha1 = "6166ecfaf2b8bbf2b68d791bc1d54501f345d314"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.13"
+version = "0.17.15"
 
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -405,12 +405,12 @@ version = "1.1.9"
 
 [[DrWatson]]
 deps = ["FileIO", "LibGit2", "Pkg", "Random", "Requires"]
-git-tree-sha1 = "088ce4bce400017097f0f94039e0d5026ffef1d4"
+git-tree-sha1 = "11dbc5272234476e463468d301dd096fb9aa527e"
 uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
-version = "1.10.2"
+version = "1.10.3"
 
 [[EEGCoding]]
-deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "CuArrays", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "PlotAxes", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Random", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StatsFuns", "StructuredOptimization", "Tables", "TensorCast", "Underscores", "Unitful", "Zygote"]
+deps = ["AbstractFFTs", "AxisArrays", "BSON", "COSMO", "CSV", "Convex", "CorticalSpectralTemporalResponses", "CuArrays", "DSP", "DataFrames", "DataStructures", "Distributed", "Distributions", "FFTW", "Flux", "Infiltrator", "JuMP", "LambdaFn", "LinearAlgebra", "Match", "MathOptInterface", "MetaArrays", "Printf", "ProgressMeter", "ProximalAlgorithms", "ProximalOperators", "Random", "Requires", "SCS", "SampledSignals", "SharedArrays", "SignalOperators", "Statistics", "StatsBase", "StatsFuns", "StructuredOptimization", "Tables", "TensorCast", "Underscores", "Unitful", "Zygote"]
 path = "src/julia/EEGCoding"
 uuid = "a3ac80cb-4849-5e7e-ba5e-ae4fcff51f26"
 version = "0.1.1"
@@ -451,9 +451,9 @@ version = "1.1.0"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "IntelOpenMP_jll", "Libdl", "LinearAlgebra", "MKL_jll", "Reexport"]
-git-tree-sha1 = "109d82fa4b00429f9afcce873e9f746f11f018d3"
+git-tree-sha1 = "b6a74f6dfd9e9d16b765397dc90df03e5a00532e"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-version = "1.2.0"
+version = "1.2.1"
 
 [[FFTW_jll]]
 deps = ["Libdl", "Pkg"]
@@ -469,15 +469,15 @@ version = "0.4.2"
 
 [[Feather]]
 deps = ["Arrow", "CategoricalArrays", "DataFrames", "Dates", "FlatBuffers", "Mmap", "Tables"]
-git-tree-sha1 = "bccb9825b129604bf6282681391ac1cdd4340fb5"
+git-tree-sha1 = "846701282ceaf20440394a36e00ff9d1b9aa195e"
 uuid = "becb17da-46f6-5d3c-ad1b-1c5fe96bc73c"
-version = "0.5.5"
+version = "0.5.6"
 
 [[FileIO]]
 deps = ["Pkg"]
-git-tree-sha1 = "3d7cb2c4c850439f19c4d6d3fbe1dce6481cddb1"
+git-tree-sha1 = "202335fd24c2776493e198d6c66a6d910400a895"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.2.4"
+version = "1.3.0"
 
 [[FilePaths]]
 deps = ["FilePathsBase", "MacroTools", "Reexport", "URIParser"]
@@ -640,9 +640,9 @@ version = "0.4.3"
 
 [[ImageMagick]]
 deps = ["FileIO", "ImageCore", "ImageMagick_jll", "InteractiveUtils", "Libdl", "Pkg", "Random"]
-git-tree-sha1 = "cfd7109dbcffb0b3cb46b5697863ae4e2065bbb3"
+git-tree-sha1 = "318342a5099a9c952b4de087344a2db831458c87"
 uuid = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
-version = "1.1.4"
+version = "1.1.5"
 
 [[ImageMagick_jll]]
 deps = ["JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pkg", "Zlib_jll", "libpng_jll"]
@@ -1086,19 +1086,19 @@ version = "0.12.0"
 
 [[Parsers]]
 deps = ["Dates", "Test"]
-git-tree-sha1 = "f8f5d2d4b4b07342e5811d2b6428e45524e241df"
+git-tree-sha1 = "72c3451932513427caffbd8bab15643ad693804b"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "1.0.2"
+version = "1.0.3"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotAxes]]
-deps = ["AxisArrays", "Compat", "DataFrames", "Dates", "Pkg", "Requires", "Statistics"]
-git-tree-sha1 = "54fa66e196fc332ad6942a5fe556abd3cecc8362"
+deps = ["AxisArrays", "DataFrames", "Dates", "Pkg", "Requires", "Statistics"]
+git-tree-sha1 = "4bce3c5acbf1aa6e65c1635ef954f41b4aff512d"
 uuid = "8b6f5f00-d239-11e8-3a24-33314b00f6b0"
-version = "0.2.6"
+version = "0.2.7"
 
 [[Polynomials]]
 deps = ["Intervals", "LinearAlgebra", "RecipesBase"]
@@ -1199,9 +1199,9 @@ version = "0.9.1"
 
 [[RCall]]
 deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Missings", "REPL", "Random", "Requires", "StatsModels", "WinReg"]
-git-tree-sha1 = "21f8375424fa7050595080bf53b4b4f854449eb9"
+git-tree-sha1 = "1acaf90c681a9eeb0bb145d512f377007b7a10de"
 uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
-version = "0.13.4"
+version = "0.13.7"
 
 [[RData]]
 deps = ["CategoricalArrays", "CodecZlib", "DataFrames", "Dates", "FileIO", "Requires", "TimeZones"]
@@ -1210,10 +1210,10 @@ uuid = "df47a6cb-8c03-5eed-afd8-b6050d6c41da"
 version = "0.6.3"
 
 [[RDatasets]]
-deps = ["CSV", "CodecZlib", "DataFrames", "FileIO", "Printf", "RData", "Reexport"]
-git-tree-sha1 = "4b5416052f975404c65faada929cb5b571ddca12"
+deps = ["CSV", "CodecZlib", "DataFrames", "FileIO", "Printf", "RData", "Reexport", "Test"]
+git-tree-sha1 = "4d93a52b94397bf0a9477d04e7a151a688672695"
 uuid = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
-version = "0.6.7"
+version = "0.6.1"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
@@ -1504,9 +1504,9 @@ version = "0.9.5"
 
 [[Transducers]]
 deps = ["ArgCheck", "BangBang", "Distributed", "InitialValues", "Logging", "Markdown", "Requires", "Setfield", "SplittablesBase", "Tables"]
-git-tree-sha1 = "e206161819ce8ffbf4e775530d5c87a33de0b185"
+git-tree-sha1 = "cdbefb90997962d9c93f75b970a129a87d5ffab4"
 uuid = "28d57a85-8fef-5791-bfe6-a80928e7c999"
-version = "0.4.25"
+version = "0.4.26"
 
 [[TreeViews]]
 deps = ["Test"]

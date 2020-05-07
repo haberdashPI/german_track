@@ -52,7 +52,7 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
     # progress = Progress(n_folds*max_evals)
 
     xs = term(0)
-    for col in names(view(sdf,:,cols))
+    for col in propertynames(view(sdf,:,cols))
         xs += term(col)
     end
     formula = term(classcol) ~ xs
@@ -241,7 +241,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
 
             cols = [:sid,:hit,:condition,:winlen,:winstart,:region,groups...]
 
-            resultdf = by(rowdf,cols) do sdf
+            resultdf = combine(groupby(rowdf,cols)) do sdf
                 signals = map(window_timings) do window_timing
                     bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
                         (winstart,winstart+winlen)
@@ -573,11 +573,11 @@ function plotatten(method,results,raw,bounds)
 end
 
 
-combine(x,y) =
+plotcombine(x,y) =
     isnothing(x) ? y :
     isnothing(y) ? x :
     x + y
-combine(x,y,z,more...) = reduce(combine,(x,y,z,more...))
+plotcombine(x,y,z,more...) = reduce(plotcombine,(x,y,z,more...))
 
 inbound(x,::AllIndices) = true
 inbound(x,(lo,hi)::Tuple) = lo <= x <= hi
@@ -613,7 +613,7 @@ function plottrial(method,results,stim_info,file;raw=false,bounds=all_indices)
         spacing = 15,bounds = "flush") +
     [
         plotswitches(trial,bounds,stim_events);
-        combine(
+        plotcombine(
             plotresponse(method,results,bounds,stim_events,trial),
             plottarget(stim_events,trial,stim_info),
             attenplot
@@ -624,7 +624,7 @@ end
 function channelattend(rows,stim_events,stim_info,fs)
     trial = single(unique(rows.trial),"Expected single trial number")
     sources = ["left","right","left_other"]
-    @assert :source in names(rows)
+    @assert :source in propertynames(rows)
     @assert all(rows.source .∈ Ref(sources))
 
     target_len = stim_info["target_len"]
@@ -654,7 +654,7 @@ end
 function speakerattend(rows,stim_events,stim_info,fs)
     trial = single(unique(rows.trial),"Expected single trial number")
     sources = ["male","fem1","fem2","male_other"]
-    @assert :source in names(rows)
+    @assert :source in propertynames(rows)
     @assert all(rows.source .∈ Ref(sources))
 
     target_len = stim_info["target_len"]
@@ -745,7 +745,7 @@ function events_for_eeg(file,stim_info)
     stim_events[!,:target_present] .= target_times .> 0
     stim_events[!,:correct] .= stim_events.target_present .==
         (stim_events.response .== 2)
-    if :bad_trial ∈ names(stim_events)
+    if :bad_trial ∈ propertynames(stim_events)
         stim_events[!,:bad_trial] = convert.(Bool,stim_events.bad_trial)
     else
         @warn "Could not find `bad_trial` column in file '$event_file'."
