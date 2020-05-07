@@ -32,15 +32,12 @@ end
 @reduce x[t,f,i] := sum(s) A[f]*envelopes[t,1,s,i]*weights[s,i]
 x .+= 1e-8randn(size(x))
 
-using CuArrays
-CuArrays.allowscalar(false)
-Â₂,ŵ₂ = EEGCoding.regressSS2(x,envelopes,weights[:,1:200],1:200,
-    regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 100)
+# using CuArrays
+# CuArrays.allowscalar(false)
+Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+    regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
 
-plotaxes(A)
-R"quartz()"; plotaxes(vec(Â₂))
-R"quartz()"; plotaxes(weights)
-R"quartz()"; plotaxes(ŵ₂)
+# TOOD: print debug memory output to file and then search through it
 
 # TODO: try a larger problem, a little more to scale with eeg data
 # (use GPU)

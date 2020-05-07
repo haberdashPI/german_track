@@ -1,4 +1,4 @@
-export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex
+export withlags, testdecode, decoder, withlags, regressSS, regressSS2, onehot, CvNorm, decode, tosimplex, regressSS2
 
 using MetaArrays
 using Printf
@@ -20,6 +20,7 @@ using StatsFuns
 using Underscores
 using Random
 using TensorCast
+using CuArrays
 
 
 tosimplex(x::AbstractMatrix) = tosimplex_(x)[1]
@@ -76,10 +77,10 @@ function SemiDecodeTrainer(x,y,v,vi)
     yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
 
     # TODO: we would store A and u in the GPU
-    A = maybeGPU(randn(F,G))
-    u = maybeGPU(rand(H-1,I-J))
+    A = gpu(randn(F,G))
+    u = gpu(rand(H-1,I-J))
 
-    SemiDecodeTrainer(A,xᵤ,yᵤ,u,xᵥ,yᵥ,maybeGPU(v),vi)
+    SemiDecodeTrainer(A,xᵤ,yᵤ,u,xᵥ,yᵥ,gpu(v),vi)
 end
 
 function loss(A,x,y,w)
@@ -117,31 +118,37 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
 
     for (source,(_x,_y,wi)) in randmix(Dᵥ,Dᵤ,report_source=true)
         known_weights = source == 1
-        _x = maybeGPU(_x)
-        _y = maybeGPU(_y)
+        _x = gpu(_x)
+        _y = gpu(_y)
         # alternative: copy weights each time?
-        _wi = maybeGPU(wi)
 
         if known_weights
+            v = t.v[:,wi]
             Δ = Flux.gradient(t.A) do A
-                loss(A,_x,_y,t.v[:,_wi]) + reg(vec(A))
+                loss(A,_x,_y,v) + reg(vec(A))
             end
             Flux.update!(optimizer,t.A,Δ[1])
+            unsafe_gpu_free!(v)
         else
-            Δ = Flux.gradient(t.A,t.u[:,_wi]) do A,_u
+            u = t.u[:,wi]
+            Δ = Flux.gradient(t.A,u) do A,_u
                 loss(A,_x,_y,tosimplex(_u)) + reg(vec(A))
             end
 
             Flux.update!(optimizer,t.A,Δ[1])
-            t.u[:,_wi] .-= apply_byindex!(optimizer,t.u,(:,_wi),Δ[2])
+            t.u[:,wi] .-= apply_byindex!(optimizer,t.u,(:,wi),Δ[2])
+            unsafe_gpu_free!(u)
         end
+        unsafe_gpu_free!(_x)
+        unsafe_gpu_free!(_y)
     end
 end
 
 function coefs(t::SemiDecodeTrainer)
     w = Array{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
-    w[:,t.vi] = t.v
-    w[:,setdiff(1:end,t.vi)] = tosimplex(t.u)
+    @infiltrate
+    w[:,t.vi] = Array(t.v)
+    w[:,setdiff(1:end,t.vi)] = Array(tosimplex(t.u))
 
     Array(t.A), w
 end
@@ -163,15 +170,17 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     trainer = SemiDecodeTrainer(x,y,v,vi)
 
     epoch = 0
+    testx, testy = gpu.((trainer.xᵥ,trainer.yᵥ))
     function status()
-        # TODO: change this to a select mini-batch, or something
-        testloss = loss(trainer.A,trainer.xᵥ,trainer.yᵥ,trainer.v) + regularize(vec(trainer.A))
-        @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
+        # TODO: change this to use a validation set
+        # testloss = loss(trainer.A,testx,testy,trainer.v) + regularize(vec(trainer.A))
+        # @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
+        @info "Training, on epoch $epoch."
+        CuArrays.memory_status()
         testcb(decoder)
     end
     throt_status = Flux.throttle(status,status_rate)
 
-    @infiltrate
     while epoch < epochs
         regressSS2_train!(trainer,regularize,batchsize,optimizer)
         throt_status()
