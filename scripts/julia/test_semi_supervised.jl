@@ -88,23 +88,37 @@ per subject
 using StatsBase
 A = zeros(2,510);
 A[StatsBase.sample(1:end,40,replace=false)] .= randn(40);
-weights = tosimplex(rand(2,300))
+weights = tosimplex(rand(2,750))
 
-envelopes = Array{Float64}(undef,640,2,3,300)
-for I in CartesianIndices((3,300))
-    envelopes[:,1,I] = randenvelope(10,64)
-    envelopes[:,2,I] = randenvelope(10,64)
+envelopes = Array{Float64}(undef,128,2,3,750)
+for I in CartesianIndices((3,750))
+    envelopes[:,1,I] = randenvelope(2,64)
+    envelopes[:,2,I] = randenvelope(2,64)
 end
 
-@reduce x[t,e,f,i] := sum(s) A[e,f]*envelopes[t,e,s,i]*weights[s,i]
+@reduce x[t,f,i] := sum(s,e) A[e,f]*envelopes[t,e,s,i]*weights[s,i]
 x .+= 1e-8randn(size(x))
 
-EEGCoding.use_gpu[] = false
+# EEGCoding.use_gpu[] = false
 
-Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+# Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:150],1:150,
+#     regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+# @info "Timing without GPU:"
+# @time begin
+#     Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:150],1:150,
+#         regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+# end
+
+# using CuArrays
+# CuArrays.allowscalar(false)
+# EEGCoding.use_gpu[] = true
+
+Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:150],1:150,
     regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
-@info "Timing without GPU:"
+
+@info "Timing with GPU:"
 @time begin
-    Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
-        regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+    Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:150],1:150,
+        regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 500)
 end
+
