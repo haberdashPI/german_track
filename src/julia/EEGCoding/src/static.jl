@@ -14,8 +14,6 @@ using JuMP, Convex, COSMO, SCS
 using MathOptInterface: OPTIMAL
 using Flux
 using Flux: mse, onehot
-using Zygote: @adjoint
-using Zygote
 using StatsFuns
 using Underscores
 using Random
@@ -76,7 +74,6 @@ function SemiDecodeTrainer(x,y,v,vi)
     yᵥ = view(y,:,:,:,vi)
     yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
 
-    # TODO: we would store A and u in the GPU
     A = gpu(randn(F,G))
     u = gpu(rand(H-1,I-J))
 
@@ -89,7 +86,11 @@ function loss(A,x,y,w)
         xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
         xA = xi*A
         yw = reshape(reshape(yi,:,size(yi,3))*wi,size(yi)[1:2])
-        error += sum((xA .- yw).^2)
+        diff = (xA .- yw).^2
+        error += sum(diff)
+        unsafe_gpu_free!(xA)
+        unsafe_gpu_free!(yw)
+        unsafe_gpu_free!(diff)
     end
     error
 end
@@ -146,7 +147,6 @@ end
 
 function coefs(t::SemiDecodeTrainer)
     w = Array{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
-    @infiltrate
     w[:,t.vi] = Array(t.v)
     w[:,setdiff(1:end,t.vi)] = Array(tosimplex(t.u))
 

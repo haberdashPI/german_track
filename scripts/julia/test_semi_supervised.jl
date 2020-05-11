@@ -1,4 +1,7 @@
+# call JULIA_CUDA_MEMORY_POOL=split /opt/julia/bin/julia --project=.
+# to properly run this script
 using DrWatson
+using BenchmarkTools
 @quickactivate("german_track")
 
 using EEGCoding, Distributions, PlotAxes, Flux, DSP, Underscores,
@@ -35,9 +38,25 @@ x .+= 1e-8randn(size(x))
 # using CuArrays
 # CuArrays.allowscalar(false)
 Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
-    regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
 
-# TOOD: print debug memory output to file and then search through it
+@info "Timing with GPU:"
+@time begin
+    Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+        regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+end
 
-# TODO: try a larger problem, a little more to scale with eeg data
-# (use GPU)
+EEGCoding.use_gpu[] = false
+
+Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+@info "Timing without GPU:"
+@time begin
+    Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+        regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+end
+
+# NOTE: with this basic problem, GPU did not add anything
+# the next step is to scale the problem up to what we think we'll
+# have for the EEG
+
