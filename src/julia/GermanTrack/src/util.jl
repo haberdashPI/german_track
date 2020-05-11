@@ -199,7 +199,7 @@ function find_powerdiff(subjects;kwds...)
     end
 end
 
-function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
+function organize_data_by(fn,subjects;groups,windows,hittypes,
     chunk_size=1,before_reflect=true)
 
     # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
@@ -210,7 +210,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
     window_timings = ["before", "after"]
     source_names = ["male", "female"]
 
-    N = reduce(*,length.((values(subjects),regions,winlens,winstarts)))
+    N = reduce(*,length.((values(subjects),regions,windows)))
     progress = Progress(N,desc="computing frequency bins")
 
     med_salience = median(target_salience)
@@ -221,7 +221,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
         events.row = 1:size(events,1)
         eeg = subject.eeg
 
-        function build_subject_data(region,winlen,winstart)
+        function build_subject_data(region,window)
 
             rowdf = @_ filter(_.target_present == 1,events)
             si = rowdf.sound_index
@@ -230,8 +230,9 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
             rowdf.target_time = @. ifelse(target_times[si] > med_target_time,"early","late")
             rowdf.direction = directions[si]
             rowdf[!,:region] .= region
-            rowdf[!,:winlen] .= winlen
-            rowdf[!,:winstart] .= winstart
+            rowdf[!,:winlen] .= window.len
+            rowdf[!,:winstart] .= window.start
+            rowdf[!,:winbefore] .= window.before
             rowdf[!,:chunk] = round.(Int,rowdf.sound_index / chunk_size)
             rowdf.hit = ishit.(eachrow(rowdf))
             rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
@@ -244,9 +245,8 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
             resultdf = combine(groupby(rowdf,cols)) do sdf
                 signals = map(window_timings) do window_timing
                     bounds = window_timing != "after" ?
-                        (winstart,winstart+winlen) :
-                        before_reflect ? (-winstart-winlen,-winstart) :
-                        (winstart-winlen,winstart)
+                        (window.start,window.start+window.len) :
+                        (window.before,window.before+window.len)
 
                     mapreduce(hcat,sdf.row) do row
                         region == "target" ?
@@ -271,7 +271,7 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
         end
 
         foldl(append!!,MapSplat(build_subject_data),
-            Iterators.product(regions,winlens,winstarts))
+            Iterators.product(regions,windows))
     end
     foldl(append!!,Map(assemble_subject),values(subjects))
 end
