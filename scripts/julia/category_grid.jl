@@ -42,7 +42,7 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_rightbefore.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -50,6 +50,7 @@ else
         subjects,groups=[:salience],
         hittypes = ["hit"],
         winlens = 2.0 .^ range(-1,1,length=10),
+        before_reflect=false,
         winstarts = [0; 2.0 .^ range(-2,1,length=9)])
     CSV.write(classdf_file,classdf)
 end
@@ -94,7 +95,7 @@ opts = (
 
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"object_salience.csv")
+paramfile = joinpath(paramdir,"object_salience_rightbefore.csv")
 if !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     best_params, fitness = optparams(param_range;opts...) do params
@@ -149,7 +150,7 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"object_salience.pdf"),pl)
+save(joinpath(dir,"object_salience_rightbefore.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -190,10 +191,7 @@ pl =
             y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
             color=:salience))
 
-# TODO: add a dotted line to chance level
-
-
-save(joinpath(dir, "object_salience_best.pdf"),pl)
+save(joinpath(dir, "object_salience_best_rightbefore.pdf"),pl)
 
 @everywhere begin
     spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
@@ -206,7 +204,7 @@ valgroups = @_ spatialdf |> filter(_.sid ∈ vset,__) |>
 
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"subject_salience.csv")
+paramfile = joinpath(paramdir,"subject_salience_rightbefore.csv")
 if !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     best_params, fitness = optparams(param_range;opts...) do params
@@ -261,7 +259,7 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         column=:salience)
 
-save(joinpath(dir,"spatial_salience.pdf"),pl)
+save(joinpath(dir,"spatial_salience_rightbefore.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -304,7 +302,7 @@ pl =
 
 # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "spatial_salience_best.pdf"),pl)
+save(joinpath(dir, "spatial_salience_best_rightbefore.pdf"),pl)
 
 all_subj_means = @_ insertcols!(spatial_classpredict,:comparison => "spatial") |>
     vcat(__,insertcols!(object_classpredict,:comparison => "object")) |>
@@ -343,6 +341,6 @@ ggplot($best_vals,aes(x=window,y=correct,color=salience,group=salience)) +
     geom_pointrange(aes(ymin = low, ymax = high),position=position_dodge(width=0.3)) +
     facet_grid(~comparison) + geom_abline(intercept=50,slope=0,linetype=2) +
     ylim(50,100)
-ggsave(file.path($dir,"best_object_and_spatial.pdf"))
+ggsave(file.path($dir,"best_object_and_spatial_rightbefore.pdf"))
 
 """

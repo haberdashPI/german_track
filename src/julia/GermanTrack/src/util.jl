@@ -200,7 +200,7 @@ function find_powerdiff(subjects;kwds...)
 end
 
 function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
-    chunk_size=1)
+    chunk_size=1,before_reflect=true)
 
     # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
 
@@ -243,8 +243,10 @@ function organize_data_by(fn,subjects;groups,winlens,winstarts,hittypes,
 
             resultdf = combine(groupby(rowdf,cols)) do sdf
                 signals = map(window_timings) do window_timing
-                    bounds = window_timing == "before" ? (-winstart-winlen,-winstart) :
-                        (winstart,winstart+winlen)
+                    bounds = window_timing != "after" ?
+                        (winstart,winstart+winlen) :
+                        before_reflect ? (-winstart-winlen,-winstart) :
+                        (winstart-winlen,winstart)
 
                     mapreduce(hcat,sdf.row) do row
                         region == "target" ?
