@@ -24,6 +24,7 @@ end
 # TODO: start with an even simpler version of this regression problem
 # to troubleshoot the Flux code
 
+#=
 A = vcat(randn(3),zeros(7))
 weights = tosimplex(rand(2,1000))
 
@@ -49,14 +50,61 @@ end
 EEGCoding.use_gpu[] = false
 
 Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
-regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+    regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
 @info "Timing without GPU:"
 @time begin
     Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
         regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
 end
+=#
 
 # NOTE: with this basic problem, GPU did not add anything
 # the next step is to scale the problem up to what we think we'll
 # have for the EEG
 
+# more to the point, is it fast enough withou the GPU???
+
+# how much data do we have...
+# steps:
+# find a straightforward multiple of the EEG data (e.g.
+# two subjects), and figure out timing for this subset
+
+#=
+
+150 trials per subj,
+30 channels
+~1900 samples per trial at 256 Hz
+down sample to 64 Hz 970 samples per trial
+17 time lags gives us 30x17 = 510 features
+about 3/4 of samples used per trial = 727 samples
+
+300 trials
+727 time samples
+510 features
+
+per subject
+=#
+
+using StatsBase
+A = zeros(2,510);
+A[StatsBase.sample(1:end,40,replace=false)] .= randn(40);
+weights = tosimplex(rand(2,300))
+
+envelopes = Array{Float64}(undef,640,2,3,300)
+for I in CartesianIndices((3,300))
+    envelopes[:,1,I] = randenvelope(10,64)
+    envelopes[:,2,I] = randenvelope(10,64)
+end
+
+@reduce x[t,e,f,i] := sum(s) A[e,f]*envelopes[t,e,s,i]*weights[s,i]
+x .+= 1e-8randn(size(x))
+
+EEGCoding.use_gpu[] = false
+
+Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+    regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+@info "Timing without GPU:"
+@time begin
+    Â₂,ŵ₂ = regressSS2(x,envelopes,weights[:,1:200],1:200,
+        regularize=x -> 0.5sum(abs,x),optimizer=AMSGrad(),epochs = 30)
+end
