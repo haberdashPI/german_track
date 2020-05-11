@@ -80,8 +80,10 @@ object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 subj_means = @_ object_classpredict |>
-    groupby(__,[:winstart,:salience]) |>
+    groupby(__,[:winstart,:salience,:sid]) |>
     combine(__,:correct => mean)
+
+# TODO: left off here - find error band and plot
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)

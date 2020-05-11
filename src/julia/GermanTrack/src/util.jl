@@ -86,6 +86,7 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
         result = append!!(result, DataFrame(
             label = _labels,
             correct = _labels .== test[:,classcol];
+            idcol => test[:,idcol],
             classcol => test[:,classcol],
         ))
     end
