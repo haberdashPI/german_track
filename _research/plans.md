@@ -1,14 +1,14 @@
 - question: hit v miss? (just corect not high salience or object vs. global)
-- does the before window work with a zero start (or a start behind)
 
-current question: why did performance change so drammatically?
-is it that we are now doing things per trial?
+NOTE: changing to using before window starting at 0, which seems to work
+just as well and is easier to explain and interpret
 
-+ do by hit only
-+ comparing trial-by-trial vs condition-by-condition
-+ optimize svm hyper-params (??)
-+ try optimizing by maximum accuracy
-+ by stimulus validation not subject
+note quite convinced that the spatial conditions are right, re-create
+freqmeans.csv with the right before timing, just to make sure
+
+next step: pick a window size, probably separate for object and spatial
+(and for the individual conditions? or show both? or some intermediate width?
+how do we pick it?)
 
 # Plans
 

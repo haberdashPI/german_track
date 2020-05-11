@@ -42,21 +42,21 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
-        windows = [(len=len,start=start,before=0-len)
+        windows = [(len=len,start=start,before=-len)
             for len in 2.0 .^ range(-1,1,length=10),
                 start in [0; 2.0 .^ range(-2,1,length=9)]])
     CSV.write(classdf_file,classdf)
 end
 
 @everywhere begin
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal.csv")
+    classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
@@ -150,7 +150,13 @@ pl = subj_means |>
         color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
         column=:salience)
 
+
 save(joinpath(dir,"object_salience.pdf"),pl)
+
+winlen_means = @_ object_classpredict |>
+    groupby(__,:winlen) |>
+    combine(:correct => mean => :correct,__) |>
+    sort(__,:correct,rev=true)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -303,6 +309,11 @@ pl =
 # TODO: add a dotted line to chance level
 
 save(joinpath(dir, "spatial_salience_best.pdf"),pl)
+
+winlen_means = @_ spatial_classpredict |>
+    groupby(__,:winlen) |>
+    combine(:correct => mean => :correct,__) |>
+    sort(__,:correct,rev=true)
 
 all_subj_means = @_ insertcols!(spatial_classpredict,:comparison => "spatial") |>
     vcat(__,insertcols!(object_classpredict,:comparison => "object")) |>
