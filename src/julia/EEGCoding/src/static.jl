@@ -88,6 +88,12 @@ function loss(A,x,y,w)
         yw = reshape(reshape(yi,:,size(yi,3))*wi,size(yi)[1:2])
         diff = (xA .- yw).^2
         error += sum(diff)
+
+        # NOTE: potentially better than freeing these intermediate computations
+        # from the GPU would be doing in place operations but then i'd have to
+        # manually write the adjoint... worth considering if the model is too slow
+        # as is (which I don't think it is)
+
         unsafe_gpu_free!(xA)
         unsafe_gpu_free!(yw)
         unsafe_gpu_free!(diff)
