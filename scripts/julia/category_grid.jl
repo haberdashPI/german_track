@@ -107,7 +107,6 @@ if !isfile(paramfile)
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
-
     CSV.write(paramfile, [best_params])
 else
     best_params = NamedTuple(first(CSV.read(paramfile)))
@@ -164,6 +163,11 @@ best_high = @_ subj_means |> filter(_.salience == "high",__) |>
 best_low = @_ subj_means |> filter(_.salience == "low",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
+
+best_windows = DataFrame([
+    (winlen=best_high.winlen[1],condition=:object,salience=:high),
+    (winlen=best_low.winlen[1],condition=:object,salience=:low)
+])
 
 best_vals = @_ object_classpredict |>
     filter((_1.winstart == best_high.winstart[1] &&
@@ -273,6 +277,14 @@ best_high = @_ subj_means |> filter(_.salience == "high",__) |>
 best_low = @_ subj_means |> filter(_.salience == "low",__) |>
     sort(__,:correct_mean,rev=true) |>
     first(__,1)
+
+
+best_windows = vcat(best_windows,DataFrame([
+    (winlen=best_high.winlen[1],condition=:salience,salience=:high),
+    (winlen=best_low.winlen[1],condition=:salience,salience=:low)
+]))
+
+CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
 
 best_vals = @_ spatial_classpredict |>
     filter((_1.winstart == best_high.winstart[1] &&

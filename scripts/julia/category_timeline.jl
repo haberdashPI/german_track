@@ -42,6 +42,8 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
+best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+
 classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -50,17 +52,26 @@ else
         subjects,groups=[:salience],
         hittypes = ["hit"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=40), len in [1.08, 2]])
+            for start in range(0,4,length=40), len in best_windows.winlen |> unique])
     CSV.write(classdf_file,classdf)
 end
 
+winlens = groupby(best_windows,[:condition,:salience])
+objectdf = @_ classdf |>
+    filter(_.condition in ["global","object"],__) |>
+    filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
+
 @everywhere begin
+    using DrWatson
     classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
     classdf = CSV.read(classdf_file)
 
+    best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+
+    winlens = groupby(best_windows,[:condition,:salience])
     objectdf = @_ classdf |>
         filter(_.condition in ["global","object"],__) |>
-        filter(_.winlen == 2,__)
+        filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 end
 
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
