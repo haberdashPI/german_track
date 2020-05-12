@@ -88,13 +88,20 @@ subj_means = @_ object_classpredict |>
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-pl = subj_means |>
-    @vlplot(:line,
-        x=:winstart,
-        y=:correct_mean,
-        color=:salience)
+band = @_ subj_means |>
+    groupby(__,[:winstart,:salience]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+        (correct = μ, low = low, high = high)
+    end,__)
 
-save(joinpath(dir,"object_salience_timeline.pdf"),pl)
+pl = band |>
+    @vlplot() +
+    @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
+    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
+
+save(joinpath(dir,"object_salience_timeline_shared_window.pdf"),pl)
 
 @everywhere begin
     spatialdf = @_ classdf |>
@@ -139,14 +146,22 @@ spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 subj_means = @_ spatial_classpredict |>
-    groupby(__,[:winstart,:salience]) |>
+    groupby(__,[:winstart,:salience,:sid]) |>
     combine(__,:correct => mean)
 
-pl = subj_means |>
-    @vlplot(:line,
-        x=:winstart,
-        y={:correct_mean, scale={domain=[0,1]}},
-        color=:salience)
 
-save(joinpath(dir,"spatial_salience_timeline.pdf"),pl)
+band = @_ subj_means |>
+    groupby(__,[:winstart,:salience]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+        (correct = μ, low = low, high = high)
+    end,__)
+
+pl = band |>
+    @vlplot() +
+    @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
+    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
+
+save(joinpath(dir,"spatial_salience_timeline_shared_window.pdf"),pl)
 
