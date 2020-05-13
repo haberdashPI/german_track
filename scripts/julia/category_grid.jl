@@ -1,9 +1,11 @@
 using DrWatson
 @quickactivate("german_track")
+use_cache = false
+seed = 110983
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
+    Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
+    StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
 
 # local only packages
 using Formatting
@@ -20,9 +22,12 @@ using Distributed
 addprocs(6,exeflags="--project=.")
 
 @everywhere begin
+    seed = 110983
+
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-        FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
+        FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
+        PyCall
 
     using ScikitLearn
 
@@ -42,8 +47,10 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
+# is freq means always the same?
+
 classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
-if isfile(classdf_file)
+if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     classdf = find_powerdiff(
@@ -61,12 +68,15 @@ end
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 end
-
+np = pyimport("numpy")
 @everywhere begin
+    np = pyimport("numpy")
+
     function modelacc(sdf,params)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
+            np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
             result.correct |> sum
@@ -89,15 +99,19 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    MaxFuncEvals = 100,
-    PopulationSize = 25,
+    MaxFuncEvals = 10_000,
+    # PopulationSize = 25,
 )
+
+# so the main problem is likely to be this optimization approach
+# which has yet to converge, let's try running it for longer
 
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
-if !isfile(paramfile)
+if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
+    Random.seed!(seed)
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
         correct = dreduce(max,Map(i -> modelacc(valgroups[i],params)),1:length(gr))
@@ -113,6 +127,7 @@ else
 end
 
 @everywhere function modelresult((key,sdf),params)
+    np.random.seed(typemax(UInt32) & hash((seed,key)))
     result = testmodel(sdf,NuSVC(;params...),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
@@ -215,7 +230,7 @@ valgroups = @_ spatialdf |> filter(_.sid ∈ vset,__) |>
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
-if !isfile(paramfile)
+if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
@@ -321,49 +336,3 @@ pl =
 # TODO: add a dotted line to chance level
 
 save(joinpath(dir, "spatial_salience_best.pdf"),pl)
-
-winlen_means = @_ spatial_classpredict |>
-    groupby(__,:winlen) |>
-    combine(:correct => mean => :correct,__) |>
-    sort(__,:correct,rev=true)
-
-all_subj_means = @_ insertcols!(spatial_classpredict,:comparison => "spatial") |>
-    vcat(__,insertcols!(object_classpredict,:comparison => "object")) |>
-    groupby(__,[:comparison,:winstart,:winlen,:salience]) |>
-    combine(__,:correct => mean => :correct) |>
-    groupby(__,[:winstart,:winlen,:salience]) |>
-    combine(__,:correct => mean => :correct)
-
-best_high = @_ all_subj_means |> filter(_.salience == "high",__) |>
-    sort(__,:correct,rev=true) |>
-    first(__,1)
-best_low = @_ all_subj_means |> filter(_.salience == "low",__) |>
-    sort(__,:correct,rev=true) |>
-    first(__,1)
-
-best_vals = @_ vcat(spatial_classpredict,object_classpredict) |>
-    filter((_1.winstart == best_high.winstart[1] &&
-                _1.winlen == best_high.winlen[1]) ||
-           (_1.winstart == best_low.winstart[1] &&
-            _1.winlen == best_low.winlen[1]),__) |>
-    groupby(__,[:winlen,:winstart,:salience,:comparison]) |>
-    combine(:correct => function(x)
-        bs = bootstrap(mean,x,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-        (correct = μ, low = low, high = high)
-    end,__)
-
-best_vals.winlen .= round.(best_vals.winlen,digits=2)
-best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
-    best_vals.winlen,best_vals.winstart))
-
-R"""
-
-library(ggplot2)
-ggplot($best_vals,aes(x=window,y=correct,color=salience,group=salience)) +
-    geom_pointrange(aes(ymin = low, ymax = high),position=position_dodge(width=0.3)) +
-    facet_grid(~comparison) + geom_abline(intercept=50,slope=0,linetype=2) +
-    ylim(50,100)
-ggsave(file.path($dir,"best_object_and_spatial_rightbefore.pdf"))
-
-"""
