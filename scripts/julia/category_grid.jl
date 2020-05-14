@@ -69,15 +69,15 @@ else
 end
 
 @everywhere begin
+    np = pyimport("numpy")
+
     classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
     classdf = CSV.read(classdf_file)
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 end
-np = pyimport("numpy")
-@everywhere begin
-    np = pyimport("numpy")
 
+@everywhere begin
     function modelacc(sdf,params)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
