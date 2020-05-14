@@ -106,8 +106,8 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    # MaxFuncEvals = 10_000,
-    MaxFuncEvals = 25,
+    MaxFuncEvals = 10_000,
+    # MaxFuncEvals = 25,
     FitnessTolerance = 1e-2,
     TargetFitness = 0.0,
     # PopulationSize = 25,
