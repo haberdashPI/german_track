@@ -6,9 +6,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
 
 # local only packages
-using Formatting
-
-using ScikitLearn
+using Formatting, ScikitLearn
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -20,6 +18,8 @@ using Distributed
 addprocs(6,exeflags="--project=.")
 
 @everywhere begin
+    seed = 110983
+
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
         FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
@@ -52,7 +52,7 @@ else
         subjects,groups=[:salience],
         hittypes = ["hit"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=40), len in best_windows.winlen |> unique])
+            for start in range(0,8,length=40), len in best_windows.winlen |> unique])
     CSV.write(classdf_file,classdf)
 end
 
@@ -63,6 +63,8 @@ objectdf = @_ classdf |>
 
 @everywhere begin
     using DrWatson
+    np = pyimport("numpy")
+
     classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
     classdf = CSV.read(classdf_file)
 
@@ -78,6 +80,7 @@ paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
 best_params = NamedTuple(first(CSV.read(paramfile)))
 
 @everywhere function modelresult((key,sdf),params)
+    np.random.seed(typemax(UInt32) & hash((params,seed)))
     result = testmodel(sdf,NuSVC(;params...),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
@@ -125,27 +128,11 @@ vset = @_ spatialdf.sid |> unique |>
 valgroups = @_ spatialdf |> filter(_.sid ∈ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 
-paramdir = joinpath(datadir(),"svm_params")
-isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"spatial_salience.csv")
-if !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    best_params, fitness = optparams(param_range;opts...) do params
-        gr = collect(valgroups)
-        correct = dreduce(max,Map(i -> modelacc(valgroups[i],params)),1:length(gr))
-        next!(progress)
-        N = sum(g -> size(g,1),gr)
-        return 1 - correct/N
-    end
-    finish!(progress)
-    best_params = GermanTrack.apply(param_by,best_params)
-
-    CSV.write(paramfile, [best_params])
-else
-    best_params = NamedTuple(first(CSV.read(paramfile)))
-end
+paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
+best_params = NamedTuple(first(CSV.read(paramfile)))
 
 @everywhere function modelresult((key,sdf),params)
+    np.random.seed(typemax(UInt32) & hash((params,seed)))
     result = testmodel(sdf,NuSVC(;params...),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
