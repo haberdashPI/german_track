@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = false
 seed = 110983
+use_slurm = false
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
@@ -17,9 +18,14 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 # we parallelize model parameter optimization with multi-process
 # computing; I'd love to use multi-threading, but the current model
 # is a python implementaiton and PyCall doesn't support multi-threading
-# it's not even clear that'st technically feasible given the python GIL
+# it's not even clear that it is technically feasible given the python GIL
 using Distributed
-addprocs(6,exeflags="--project=.")
+@static if use_slurm
+    using ClusterManagers
+    addprocs(SlurmManager(24), partition="cpu", t="00:4:00", exeflags="--projejct=.")
+else
+    addprocs(6,exeflags="--project=.")
+end
 
 @everywhere begin
     seed = 110983
@@ -79,7 +85,8 @@ np = pyimport("numpy")
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            result.correct |> sum
+
+            [result.correct |> mean]
         catch e
             if e isa PyCall.PyError
                 return 0
@@ -99,7 +106,10 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    MaxFuncEvals = 10_000,
+    # MaxFuncEvals = 10_000,
+    MaxFuncEvals = 25,
+    FitnessTolerance = 1e-2,
+    TargetFitness = 0.0,
     # PopulationSize = 25,
 )
 
@@ -111,13 +121,14 @@ isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
 if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    Random.seed!(seed)
+    Random.seed!(hash((seed,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
-        correct = dreduce(max,Map(i -> modelacc(valgroups[i],params)),1:length(gr))
+        accuracies = dreduce(append!!,Map(i -> modelacc(valgroups[i],params)),
+            1:length(gr),init=Empty(Vector))
         next!(progress)
-        N = sum(g -> size(g,1),gr)
-        return 1 - correct/N
+        N = mapreduce(g -> size(g,1),max,gr)
+        return 1 - quantile(accuracies, 0.95)
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
