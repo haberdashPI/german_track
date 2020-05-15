@@ -24,8 +24,21 @@ xf = MapSplat((x...) -> find_decoder_training_trials(x...;
     target_samples = target_samples
 ))
 
-trial_definitions = reduce(append!!,xf,
+trial_definitions = foldl(append!!,xf,
     [(subject,trial) for (_,subject) in subjects for trial in subject.events.trial])
 
-# TODO: figure out how big the data set is, is it big enough to fit in memory?
-# TODO: build up the actual data set and then run the actual problem
+seglen = floor(Int,quantile(trial_definitions.len,0.95))
+
+# break up any segments longer than len
+for row in 1:size(trial_definitions,1)
+    entry = trial_definitions[row,:]
+    if entry.len > seglen
+        push!!(trial_definitions,
+            DataFrame(start = entry.start + seglen,))
+
+# TODO: load the eeg data into memory
+x = Array{Float64}()
+
+# TODO: load the evenlop and pitch data into memory
+
+# run the training

@@ -32,40 +32,24 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
     condition = subject.events.condition[trial]
     target_source = subject.events.target_source[trial]
     if target_time > 0
-        # TODO: separate outt his functionality
-        weights =
-            if condition == "global"
-                [1/3, 1/3, 1/3]
-            elseif condition == "object"
-                [1.0, 0.0, 0.0]
-            elseif condition == "spatial"
-                if target_source == 1.0
-                    [1.0, 0.0, 0.0]
-                elseif target_source == 2.0
-                    [0.0, 1.0, 0.0]
-                else
-                    error("Unexpected target source: ",
-                        target_source)
-                end
-            else
-                error("Unexpected condition: ",condition)
-            end
 
-        append!!(result, DataFrame(
-            weights = weights,
+        result = append!!(result, DataFrame(
             start = round(Int,target_time*final_sr),
-            len = target_samples,
+            len = target_samples;
+            (subject.events[trial,[:condition,:sid]])...
         ))
     end
 
     si = subject.events.sound_index[trial]
     n = size(subject.eeg[trial],2)
-    for (start,stop) in far_from([target_times[si]; switch_times[si]],n/eeg_sr)
+    segments = far_from(sort([target_times[si]; switch_times[si]]),n/eeg_sr,
+        mindist=0.2,minlength=0.3)
+    for (start,stop) in segments
         start_sample = round(Int,start*final_sr)
-        append!!(result, DataFrame(
-            weights = missing,
+        result = append!!(result, DataFrame(
             start = start_sample,
-            len = min(n,round(Int,stop * final_sr) - start_sample + 1)
+            len = min(n,round(Int,stop * final_sr) - start_sample + 1);
+            (subject.events[trial,[:condition,:sid]])...
         ))
     end
 
