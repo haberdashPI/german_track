@@ -1,17 +1,15 @@
 using DrWatson
 @quickactivate("german_track")
-use_cache = false
+use_cache = true
 seed = 110983
-use_slurm = false
+use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
+    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn
 
 # local only packages
 using Formatting
-
-using ScikitLearn
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -22,7 +20,8 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 using Distributed
 @static if use_slurm
     using ClusterManagers
-    addprocs(SlurmManager(24), partition="cpu", t="00:4:00", exeflags="--projejct=.")
+    addprocs(SlurmManager(16), partition="CPU", t="04:00:00", mem="32G",
+        exeflags="--project=.")
 else
     addprocs(6,exeflags="--project=.")
 end
@@ -32,20 +31,13 @@ end
 
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-        FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
-        PyCall
-
-    using ScikitLearn
+        FileIO, StatsBase, Bootstrap, BangBang, Transducers, PyCall,
+        PyCall, ScikitLearn
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 end
 
 @everywhere( @sk_import svm: (NuSVC, SVC) )
-
-eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
-                                    encoding = RawEncoding())
-    for file in eeg_files)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -59,6 +51,11 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
+    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                        encoding = RawEncoding())
+        for file in eeg_files)
+
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
@@ -85,10 +82,12 @@ end
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
+            @info "found result: $(result.correct)"
 
-            [result.correct |> mean]
+            result.correct |> mean
         catch e
             if e isa PyCall.PyError
+                @info "Error while evaluting function: $(e)"
                 return 0
             else
                 rethrow(e)
@@ -113,9 +112,6 @@ opts = (
     # PopulationSize = 25,
 )
 
-# so the main problem is likely to be this optimization approach
-# which has yet to converge, let's try running it for longer
-
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
@@ -124,11 +120,10 @@ if !use_cache || !isfile(paramfile)
     Random.seed!(hash((seed,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
-        accuracies = dreduce(append!!,Map(i -> modelacc(valgroups[i],params)),
-            1:length(gr),init=Empty(Vector))
+        result = dreduce(max,Map(i -> modelacc(valgroups[i],params)),
+            1:length(gr))
         next!(progress)
-        N = mapreduce(g -> size(g,1),max,gr)
-        return 1 - quantile(accuracies, 0.95)
+        return 1 - result #/length(gr)
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
@@ -138,7 +133,7 @@ else
 end
 
 @everywhere function modelresult((key,sdf),params)
-    np.random.seed(typemax(UInt32) & hash((seed,key)))
+    np.random.seed(typemax(UInt32) & hash((params,seed)))
     result = testmodel(sdf,NuSVC(;params...),
         :sid,:condition,r"channel")
     foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
@@ -245,10 +240,10 @@ if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
-        correct = dreduce(max,Map(i -> modelacc(valgroups[i],params)),1:length(gr))
+        result = dreduce(max,Map(i -> [modelacc(valgroups[i],params)]),
+            1:length(gr))
         next!(progress)
-        N = sum(g -> size(g,1),gr)
-        return 1 - correct/N
+        return 1 - result
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
@@ -258,12 +253,6 @@ else
     best_params = NamedTuple(first(CSV.read(paramfile)))
 end
 
-@everywhere function modelresult((key,sdf),params)
-    result = testmodel(sdf,NuSVC(;params...),
-        :sid,:condition,r"channel")
-    foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
-    result
-end
 testgroups = @_ spatialdf |> filter(_.sid ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
 spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
