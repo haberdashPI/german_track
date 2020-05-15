@@ -1,5 +1,6 @@
 using DrWatson
 @quickactivate("german_track")
+use_cache = true
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
@@ -45,7 +46,7 @@ isdir(dir) || mkdir(dir)
 best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
 classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
-if isfile(classdf_file)
+if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     classdf = find_powerdiff(

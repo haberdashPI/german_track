@@ -82,8 +82,6 @@ end
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            @info "found result: $(result.correct)"
-
             result.correct |> mean
         catch e
             if e isa PyCall.PyError
@@ -238,9 +236,10 @@ isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
 if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
+    Random.seed!(hash((seed,:spatial)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(valgroups)
-        result = dreduce(max,Map(i -> [modelacc(valgroups[i],params)]),
+        result = dreduce(max,Map(i -> modelacc(valgroups[i],params)),
             1:length(gr))
         next!(progress)
         return 1 - result
