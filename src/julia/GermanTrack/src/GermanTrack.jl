@@ -2,7 +2,7 @@ module GermanTrack
 
 using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
-    Unitful, DependentBootstrap, Distributions, LambdaFn, RCall, VegaLite, CSV,
+    Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
     JSON3
 
