@@ -6,7 +6,7 @@ use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn
+    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux
 
 # local only packages
 using Formatting
@@ -32,7 +32,7 @@ end
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
         FileIO, StatsBase, Bootstrap, BangBang, Transducers, PyCall,
-        PyCall, ScikitLearn
+        PyCall, ScikitLearn, Flux
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 end
@@ -109,6 +109,8 @@ opts = (
     # PopulationSize = 25,
 )
 
+softmax_C = 0.1
+
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
@@ -152,27 +154,29 @@ subj_means = @_ object_classpredict |>
 sort!(subj_means,order(:correct_mean,rev=true))
 first(subj_means,6)
 
-dir = joinpath(plotsdir(),string("results_",Date(now())))
-isdir(dir) || mkdir(dir)
+if !use_slurm
+    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    isdir(dir) || mkdir(dir)
 
-subj_means.llen = log.(2,subj_means.winlen)
-subj_means.lstart = log.(2,subj_means.winstart)
+    subj_means.llen = log.(2,subj_means.winlen)
+    subj_means.lstart = log.(2,subj_means.winstart)
 
-pl = subj_means |>
-    @vlplot(:rect,
-        x={
-            field=:lstart,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        y={
-            field=:llen,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience)
+    pl = subj_means |>
+        @vlplot(:rect,
+            x={
+                field=:lstart,
+                bin={step=4/9,anchor=-3-2/9},
+            },
+            y={
+                field=:llen,
+                bin={step=4/9,anchor=-3-2/9},
+            },
+            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+            column=:salience)
 
 
-save(joinpath(dir,"object_salience.pdf"),pl)
+    save(joinpath(dir,"object_salience.pdf"),pl)
+end
 
 winlen_means = @_ object_classpredict |>
     groupby(__,:winlen) |>
@@ -207,23 +211,25 @@ best_vals.winlen .= round.(best_vals.winlen,digits=2)
 best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
     best_vals.winlen,best_vals.winstart))
 
-pl =
-    @vlplot() +
-    @vlplot(data=[{}], mark=:rule,
-    encoding = {
-      y = {datum = 50},
-      strokeDash = {value = [2,2]}
-    }) +
-    (best_vals |>
-     @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
-     @vlplot(mark={:errorbar,filled=true},
-            y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
-            y2={"high", type=:quantitative}, color=:salience) +
-     @vlplot(mark={:point,filled=true},
-            y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
-            color=:salience))
+if !use_slurm
+    pl =
+        @vlplot() +
+        @vlplot(data=[{}], mark=:rule,
+        encoding = {
+        y = {datum = 50},
+        strokeDash = {value = [2,2]}
+        }) +
+        (best_vals |>
+        @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
+        @vlplot(mark={:errorbar,filled=true},
+                y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
+                y2={"high", type=:quantitative}, color=:salience) +
+        @vlplot(mark={:point,filled=true},
+                y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
+                color=:salience))
 
-save(joinpath(dir, "object_salience_best.pdf"),pl)
+    save(joinpath(dir, "object_salience_best.pdf"),pl)
+end
 
 @everywhere begin
     spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
@@ -275,20 +281,22 @@ isdir(dir) || mkdir(dir)
 subj_means.llen = log.(2,subj_means.winlen)
 subj_means.lstart = log.(2,subj_means.winstart)
 
-pl = subj_means |>
-    @vlplot(:rect,
-        x={
-            field=:lstart,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        y={
-            field=:llen,
-            bin={step=4/9,anchor=-3-2/9},
-        },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience)
+if !use_slurm
+    pl = subj_means |>
+        @vlplot(:rect,
+            x={
+                field=:lstart,
+                bin={step=4/9,anchor=-3-2/9},
+            },
+            y={
+                field=:llen,
+                bin={step=4/9,anchor=-3-2/9},
+            },
+            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+            column=:salience)
 
-save(joinpath(dir,"spatial_salience.pdf"),pl)
+    save(joinpath(dir,"spatial_salience.pdf"),pl)
+end
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -321,22 +329,24 @@ best_vals.winlen .= round.(best_vals.winlen,digits=2)
 best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
     best_vals.winlen,best_vals.winstart))
 
-pl =
-    @vlplot() +
-    @vlplot(data=[{}], mark=:rule,
-    encoding = {
-      y = {datum = 50},
-      strokeDash = {value = [2,2]}
-    }) +
-    (best_vals |>
-     @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
-     @vlplot(mark={:errorbar,filled=true},
-            y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
-            y2={"high", type=:quantitative}, color=:salience) +
-     @vlplot(mark={:point,filled=true},
-            y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
-            color=:salience))
+if !use_slurm
+    pl =
+        @vlplot() +
+        @vlplot(data=[{}], mark=:rule,
+        encoding = {
+        y = {datum = 50},
+        strokeDash = {value = [2,2]}
+        }) +
+        (best_vals |>
+        @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
+        @vlplot(mark={:errorbar,filled=true},
+                y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
+                y2={"high", type=:quantitative}, color=:salience) +
+        @vlplot(mark={:point,filled=true},
+                y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
+                color=:salience))
 
-# TODO: add a dotted line to chance level
+    # TODO: add a dotted line to chance level
 
-save(joinpath(dir, "spatial_salience_best.pdf"),pl)
+    save(joinpath(dir, "spatial_salience_best.pdf"),pl)
+end
