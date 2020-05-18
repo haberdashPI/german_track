@@ -1,7 +1,7 @@
 using DrWatson
 @quickactivate("german_track")
 use_cache = false
-seed = 110983
+seed = 072189
 use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -27,7 +27,7 @@ else
 end
 
 @everywhere begin
-    seed = 110983
+    seed = 072189
 
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
