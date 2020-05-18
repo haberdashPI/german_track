@@ -23,7 +23,7 @@ using Distributed
     addprocs(SlurmManager(16), partition="CPU", t="04:00:00", mem="32G",
         exeflags="--project=.")
 else
-    addprocs(6,exeflags="--project=.")
+    # addprocs(6,exeflags="--project=.")
 end
 
 @everywhere begin
@@ -55,7 +55,6 @@ else
     subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                         encoding = RawEncoding())
         for file in eeg_files)
-
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
@@ -75,14 +74,14 @@ end
 end
 
 @everywhere begin
-    function modelacc(sdf,params)
+    function modelacc((key,sdf),params)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            result.correct |> mean
+            return (mean = mean(result.correct), NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"
@@ -103,8 +102,8 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    MaxFuncEvals = 10_000,
-    # MaxFuncEvals = 25,
+    # MaxFuncEvals = 10_000,
+    MaxFuncEvals = 25,
     FitnessTolerance = 1e-2,
     TargetFitness = 0.0,
     # PopulationSize = 25,
@@ -117,11 +116,15 @@ if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     Random.seed!(hash((seed,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
-        gr = collect(valgroups)
-        result = dreduce(max,Map(i -> modelacc(valgroups[i],params)),
-            1:length(gr))
+        gr = collect(pairs(valgroups))
+        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
+            1:length(gr),init=Empty(Vector))
         next!(progress)
-        return 1 - result #/length(gr)
+        maxacc = @_ DataFrame(result) |>
+            groupby(__,:salience) |>
+            combine(:mean => maximum => :max,__)
+
+        return 1 - mean(maxacc.max)#/length(gr)
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
@@ -238,15 +241,17 @@ if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
     Random.seed!(hash((seed,:spatial)))
     best_params, fitness = optparams(param_range;opts...) do params
-        gr = collect(valgroups)
-        result = dreduce(max,Map(i -> modelacc(valgroups[i],params)),
-            1:length(gr))
+        gr = collect(pairs(valgroups))
+        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
+            1:length(gr),init=Empty(Vector))
         next!(progress)
-        return 1 - result
+        maxacc = @_ DataFrame(result) |>
+            groupby(__,:salience) |>
+            combine(:mean => maximum => :max,__)
+        return 1 - mean(maxacc.max)#/length(gr)
     end
     finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
-
     CSV.write(paramfile, [best_params])
 else
     best_params = NamedTuple(first(CSV.read(paramfile)))
