@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate("german_track")
-use_cache = true
+use_cache = false
 seed = 110983
 use_slurm = gethostname() == "lcap.cluster"
 
@@ -23,7 +23,7 @@ using Distributed
     addprocs(SlurmManager(16), partition="CPU", t="04:00:00", mem="32G",
         exeflags="--project=.")
 else
-    # addprocs(6,exeflags="--project=.")
+    addprocs(8,exeflags="--project=.")
 end
 
 @everywhere begin
@@ -60,7 +60,7 @@ else
         hittypes = ["hit"],
         windows = [(len=len,start=start,before=-len)
             for len in 2.0 .^ range(-1,1,length=10),
-                start in [0; 2.0 .^ range(-2,1,length=9)]])
+                start in [0; 2.0 .^ range(-2,log(2,6),length=9)]])
     CSV.write(classdf_file,classdf)
 end
 
@@ -102,8 +102,8 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    # MaxFuncEvals = 10_000,
-    MaxFuncEvals = 25,
+    MaxFuncEvals = 10_000,
+    # MaxFuncEvals = 25,
     FitnessTolerance = 1e-2,
     TargetFitness = 0.0,
     # PopulationSize = 25,
@@ -125,7 +125,6 @@ if !use_cache || !isfile(paramfile)
         maxacc = @_ DataFrame(result) |>
             groupby(__,:salience) |>
             combine(:mean => maximum => :max,__)
-
         return 1 - mean(maxacc.max)#/length(gr)
     end
     finish!(progress)
@@ -161,18 +160,18 @@ if !use_slurm
     subj_means.llen = log.(2,subj_means.winlen)
     subj_means.lstart = log.(2,subj_means.winstart)
 
-    pl = subj_means |>
-        @vlplot(:rect,
-            x={
-                field=:lstart,
-                bin={step=4/9,anchor=-3-2/9},
-            },
-            y={
-                field=:llen,
-                bin={step=4/9,anchor=-3-2/9},
-            },
-            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience)
+pl = subj_means |>
+    @vlplot(:rect,
+        x={
+            field=:lstart,
+            bin={step=0.573},
+        },
+        y={
+            field=:llen,
+            bin={step=2/9},
+        },
+        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        column=:salience)
 
 
     save(joinpath(dir,"object_salience.pdf"),pl)
@@ -281,22 +280,20 @@ isdir(dir) || mkdir(dir)
 subj_means.llen = log.(2,subj_means.winlen)
 subj_means.lstart = log.(2,subj_means.winstart)
 
-if !use_slurm
-    pl = subj_means |>
-        @vlplot(:rect,
-            x={
-                field=:lstart,
-                bin={step=4/9,anchor=-3-2/9},
-            },
-            y={
-                field=:llen,
-                bin={step=4/9,anchor=-3-2/9},
-            },
-            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience)
+pl = subj_means |>
+    @vlplot(:rect,
+        x={
+            field=:lstart,
+            bin={step=0.573},
+        },
+        y={
+            field=:llen,
+            bin={step=2/9},
+        },
+        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+        column=:salience)
 
-    save(joinpath(dir,"spatial_salience.pdf"),pl)
-end
+save(joinpath(dir,"spatial_salience.pdf"),pl)
 
 best_high = @_ subj_means |> filter(_.salience == "high",__) |>
     sort(__,:correct_mean,rev=true) |>
@@ -307,8 +304,8 @@ best_low = @_ subj_means |> filter(_.salience == "low",__) |>
 
 
 best_windows = vcat(best_windows,DataFrame([
-    (winlen=best_high.winlen[1],condition=:salience,salience=:high),
-    (winlen=best_low.winlen[1],condition=:salience,salience=:low)
+    (winlen=best_high.winlen[1],condition=:spatial,salience=:high),
+    (winlen=best_low.winlen[1],condition=:spatial,salience=:low)
 ]))
 
 CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)

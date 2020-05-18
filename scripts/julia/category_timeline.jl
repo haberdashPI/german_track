@@ -53,7 +53,7 @@ else
         subjects,groups=[:salience],
         hittypes = ["hit"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,8,length=40), len in best_windows.winlen |> unique])
+            for start in range(0,8,length=80), len in best_windows.winlen |> unique])
     CSV.write(classdf_file,classdf)
 end
 
@@ -116,12 +116,14 @@ pl = band |>
     @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
     @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
 
-save(joinpath(dir,"object_salience_timeline_shared_window.pdf"),pl)
+save(joinpath(dir,"object_salience_timeline.pdf"),pl)
 
 @everywhere begin
+    best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+    winlens = groupby(best_windows,[:condition,:salience])
     spatialdf = @_ classdf |>
         filter(_.condition in ["global","spatial"],__) |>
-        filter(_.winlen == 2,__)
+        filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
 end
 
 vset = @_ spatialdf.sid |> unique |>
@@ -162,5 +164,5 @@ pl = band |>
     @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
     @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
 
-save(joinpath(dir,"spatial_salience_timeline_shared_window.pdf"),pl)
+save(joinpath(dir,"spatial_salience_timeline.pdf"),pl)
 
