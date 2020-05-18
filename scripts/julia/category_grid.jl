@@ -109,8 +109,6 @@ opts = (
     # PopulationSize = 25,
 )
 
-softmax_C = 0.1
-
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
