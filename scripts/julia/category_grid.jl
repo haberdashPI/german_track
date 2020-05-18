@@ -20,7 +20,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 using Distributed
 @static if use_slurm
     using ClusterManagers
-    addprocs(SlurmManager(16), partition="CPU", t="04:00:00", mem="32G",
+    addprocs(SlurmManager(8), partition="CPU", t="04:00:00", mem="32G",
         exeflags="--project=.")
 else
     addprocs(8,exeflags="--project=.")
@@ -117,7 +117,7 @@ if !use_cache || !isfile(paramfile)
     Random.seed!(hash((seed,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(pairs(valgroups))
-        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
+        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
             1:length(gr),init=Empty(Vector))
         next!(progress)
         maxacc = @_ DataFrame(result) |>
@@ -245,7 +245,7 @@ if !use_cache || !isfile(paramfile)
     Random.seed!(hash((seed,:spatial)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(pairs(valgroups))
-        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
+        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
             1:length(gr),init=Empty(Vector))
         next!(progress)
         maxacc = @_ DataFrame(result) |>
