@@ -169,7 +169,7 @@ function ishit(row)
 end
 
 function find_powerdiff(subjects;kwds...)
-    organize_data_by(subjects;kwds...) do windows,timings,fs
+    organize_data_by(subjects;kwds...) do windows,timings,count,fs
         function windowband(signal,timing)
             freqdf = computebands(signal,fs)
             if @_ all(0 ≈ _,signal)
@@ -193,12 +193,15 @@ function find_powerdiff(subjects;kwds...)
 
             chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
             features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
-            DataFrame(;(features .=> powerdiff)...)
+            DataFrame(weight=count;(features .=> powerdiff)...)
         else
             Empty(DataFrame)
         end
     end
 end
+
+resolvetime(target,x::Number) = x
+resolvetime(target,fn::Function) = fn(target)
 
 function organize_data_by(fn,subjects;groups,windows,hittypes,
     chunk_size=1,before_reflect=true)
@@ -233,7 +236,7 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
             rowdf[!,:region] .= region
             rowdf[!,:winlen] .= window.len
             rowdf[!,:winstart] .= window.start
-            rowdf[!,:winbefore] .= window.before
+            rowdf[!,:winbefore] .= resolvetime.(target_times[si],window.before)
             rowdf[!,:chunk] = round.(Int,rowdf.sound_index / chunk_size)
             rowdf.hit = ishit.(eachrow(rowdf))
             rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
@@ -245,19 +248,20 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
 
             resultdf = combine(groupby(rowdf,cols)) do sdf
                 signals = map(window_timings) do window_timing
-                    bounds = window_timing != "after" ?
-                        (window.start,window.start+window.len) :
-                        (window.before,window.before+window.len)
+                    mapreduce(hcat,eachrow(sdf)) do row
+                        bounds = window_timing != "after" ?
+                            (row.winstart, row.winstart + row.winlen) :
+                            (row.winbefore, row.winbefore + row.winlen)
 
-                    mapreduce(hcat,sdf.row) do row
+                        rindex = row.row
                         region == "target" ?
-                            windowtarget(eeg[row],events[row,:],fs,bounds...) :
-                            windowbaseline(eeg[row],events[row,:],fs,bounds...,
+                            windowtarget(eeg[rindex],events[rindex,:],fs,bounds...) :
+                            windowbaseline(eeg[rindex],events[rindex,:],fs,bounds...,
                                 mindist=0.2,minlen=0.5)
                     end
                 end
 
-                result = fn(signals,window_timings,fs)
+                result = fn(signals,window_timings,size(sdf,1),fs)
                 @infiltrate any(isinf,Array(result))
                 @infiltrate any(isnan,Array(result))
                 result

@@ -1,13 +1,14 @@
 using DrWatson
 @quickactivate("german_track")
 use_cache = true
+seed = 072189
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
     FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
 
 # local only packages
-using Formatting, ScikitLearn
+using Formatting, ScikitLearn, Distributions
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -19,7 +20,7 @@ using Distributed
 addprocs(6,exeflags="--project=.")
 
 @everywhere begin
-    seed = 110983
+    seed = 072189
 
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
@@ -57,8 +58,27 @@ else
     CSV.write(classdf_file,classdf)
 end
 
+classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
+if use_cache && isfile(classdf_rand_file)
+    classdf_rand = CSV.read(classdf_rand_file)
+else
+    Random.seed!(hash((:freqmeans,seed)))
+    classdf_rand = find_powerdiff(
+        subjects,groups=[:salience],
+        hittypes = ["hit"],
+        windows = [(len = len, start = start,
+                    before = t -> t > len ? rand(Uniform(-t,-len-(t-len)/2)) : -len)
+            for start in range(0,8,length=80),
+                len in best_windows.winlen |> unique])
+    CSV.write(classdf_rand_file,classdf_rand)
+end
+
+classdf_all = @_ select!(classdf_rand,Not(:weight)) |>
+    insertcols!(__,:before => "random") |>
+    vcat(__,insertcols!(classdf,:before => "zero"))
+
 winlens = groupby(best_windows,[:condition,:salience])
-objectdf = @_ classdf |>
+objectdf = @_ classdf_all |>
     filter(_.condition in ["global","object"],__) |>
     filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 
@@ -68,11 +88,17 @@ objectdf = @_ classdf |>
 
     classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
     classdf = CSV.read(classdf_file)
+    classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
+    classdf_rand = CSV.read(classdf_rand_file)
+
+    classdf_all = @_ select!(classdf_rand,Not(:weight)) |>
+        insertcols!(__,:before => "random") |>
+        vcat(__,insertcols!(classdf,:before => "zero"))
 
     best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
     winlens = groupby(best_windows,[:condition,:salience])
-    objectdf = @_ classdf |>
+    objectdf = @_ classdf_all |>
         filter(_.condition in ["global","object"],__) |>
         filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 end
@@ -90,12 +116,12 @@ end
 vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
 testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
+    groupby(__, [:winstart,:winlen,:salience,:before])
 object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 subj_means = @_ object_classpredict |>
-    groupby(__,[:winstart,:salience,:sid]) |>
+    groupby(__,[:winstart,:salience,:sid,:before]) |>
     combine(__,:correct => mean)
 
 # TODO: left off here - find error band and plot
@@ -104,17 +130,20 @@ dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 band = @_ subj_means |>
-    groupby(__,[:winstart,:salience]) |>
+    # filter(_.before == "zero",__) |>
+    groupby(__,[:winstart,:salience,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
         μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
         (correct = μ, low = low, high = high)
-    end,__)
+    end,__) |>
+    transform!(__,[:salience,:before] =>
+        ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 pl = band |>
     @vlplot() +
-    @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
-    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
+    @vlplot(:line, x=:winstart, y=:correct, color=:salience_for) +
+    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience_for)
 
 save(joinpath(dir,"object_salience_timeline.pdf"),pl)
 

@@ -23,7 +23,7 @@ using Distributed
     addprocs(SlurmManager(8), partition="CPU", t="04:00:00", mem="32G",
         exeflags="--project=.")
 else
-    addprocs(8,exeflags="--project=.")
+    # addprocs(8,exeflags="--project=.")
 end
 
 @everywhere begin
@@ -64,6 +64,8 @@ else
     CSV.write(classdf_file,classdf)
 end
 
+# TODO: work on incorporate the weight when computing classification accuracy
+
 @everywhere begin
     np = pyimport("numpy")
 
@@ -72,6 +74,7 @@ end
 
     objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 end
+maxweight = classdf.weight |> maximum
 
 @everywhere begin
     function modelacc((key,sdf),params)
@@ -81,7 +84,9 @@ end
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            return (mean = mean(result.correct), NamedTuple(key)...)
+            N = length(result.correct)
+            μ = (result.weight*mean(result.correct) + 1) / (result.weight + 2)
+            return (mean = μ, NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"

@@ -1,3 +1,8 @@
+- run svm 10x with different estimates, pick new hyper-params
+- increase time resolution
+- split out the frequency bands, classify be each seperately
+  with the above selected hyper-params
+
 - question: hit v miss? (just corect not high salience or object vs. global)
 
 NOTE: changing to using before window starting at 0, which seems to work
