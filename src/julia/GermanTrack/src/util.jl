@@ -83,11 +83,11 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
         level = ScikitLearn.predict(coefs,X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
+        keepcols = propertynames(view(sdf,:,Not(cols)))
         result = append!!(result, DataFrame(
             label = _labels,
             correct = _labels .== test[:,classcol];
-            idcol => test[:,idcol],
-            classcol => test[:,classcol],
+            (keepcols .=> eachcol(test[:,keepcols]))...
         ))
     end
 

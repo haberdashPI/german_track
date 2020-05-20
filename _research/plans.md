@@ -1,3 +1,4 @@
+- fix issue with trial weighting
 - run svm 10x with different estimates, pick new hyper-params
 - increase time resolution
 - split out the frequency bands, classify be each seperately

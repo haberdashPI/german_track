@@ -1,6 +1,6 @@
 using DrWatson
 @quickactivate("german_track")
-use_cache = false
+use_cache = true
 seed = 072189
 use_slurm = gethostname() == "lcap.cluster"
 
@@ -84,8 +84,7 @@ maxweight = classdf.weight |> maximum
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            N = length(result.correct)
-            μ = (result.weight*mean(result.correct) + 1) / (result.weight + 2)
+            μ = (sum(result.correct.*result.weight) + 1) / (sum(result.weight) + 2)
             return (mean = μ, NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
@@ -122,7 +121,7 @@ if !use_cache || !isfile(paramfile)
     Random.seed!(hash((seed,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(pairs(valgroups))
-        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
+        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
             1:length(gr),init=Empty(Vector))
         next!(progress)
         maxacc = @_ DataFrame(result) |>
