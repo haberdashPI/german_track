@@ -18,6 +18,7 @@ using ScikitLearn
 using BlackBoxOptim
 using Transducers
 using BangBang
+using IntervalSets
 
 function mat2bson(file)
     file
@@ -29,13 +30,16 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
 
     # the labeled segment
     target_time = target_times[si]
+    target_stop = target_time + target_samples/final_sr
     condition = subject.events.condition[trial]
     target_source = subject.events.target_source[trial]
     if target_time > 0
 
         result = append!!(result, DataFrame(
-            start = round(Int,target_time*final_sr),
+            start = max(1,round(Int,target_time*final_sr)),
+            target = true,
             len = target_samples;
+            trial = trial,
             (subject.events[trial,[:condition,:sid]])...
         ))
     end
@@ -43,14 +47,18 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
     si = subject.events.sound_index[trial]
     n = size(subject.eeg[trial],2)
     segments = far_from(sort([target_times[si]; switch_times[si]]),n/eeg_sr,
-        mindist=0.2,minlength=0.3)
+        mindist=0.25,minlength=0.3)
     for (start,stop) in segments
-        start_sample = round(Int,start*final_sr)
-        result = append!!(result, DataFrame(
-            start = start_sample,
-            len = min(n,round(Int,stop * final_sr) - start_sample + 1);
-            (subject.events[trial,[:condition,:sid]])...
-        ))
+        if target_time == 0 || isempty(intersect(start..stop,target_time..target_stop))
+            start_sample = max(1,round(Int,start*final_sr))
+            result = append!!(result, DataFrame(
+                start = start_sample,
+                target = false,
+                len = min(n,round(Int,stop * final_sr) - start_sample + 1);
+                trial = trial,
+                (subject.events[trial,[:condition,:sid]])...
+            ))
+        end
     end
 
     result
