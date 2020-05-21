@@ -72,7 +72,7 @@ for (i,segdef) in enumerate(eachrow(segment_definitions))
         stim,stim_id = load_stimulus(source,event,stim_encoding,fs,stim_info)
         start = segdef.start
         stop = min(size(stim,2),segdef.start + segdef.len - 1)
-        if stop > start
+        if stop => start
             len = stop - start + 1
             y[1:len,:,h,i] = @view(stim[start:stop,:])
             y[(len+1):end,:,h,i] .= 0.0
