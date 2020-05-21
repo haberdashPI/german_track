@@ -53,7 +53,7 @@ for (i,segdef) in enumerate(eachrow(segment_definitions))
     stop = min(size(trial,2),segdef.start + segdef.len - 1)
     if stop > start
         len = stop - start + 1
-        x[1:len,:,i] = @view(trial[:,start:stop])'
+            x[1:len,:,i] = @view(trial[:,start:stop])'
         x[(len+1):end,:,i] .= 0.0
     else
         x[:,:,i] .= 0.0
@@ -62,10 +62,10 @@ end
 
 # load the envelope and pitch data into memory
 sources = [male_source,fem1_source,fem2_source]
-nenv = 2
-nsources = length(sources)
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
-y = Array{Float64}(undef,ntimes,nenv,nsources,nsegments)
+nenc = length(stim_encoding.children)
+nsources = length(sources)
+y = Array{Float64}(undef,ntimes,nenc,nsources,nsegments)
 for (i,segdef) in enumerate(eachrow(segment_definitions))
     for (h,source) in enumerate(sources)
         event = subjects[segdef.sid].events[segdef.trial,:]
