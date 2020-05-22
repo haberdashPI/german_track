@@ -171,9 +171,9 @@ end
 function windowtarget(trial,event,fs,from,to)
     window = only_near(event.target_time,fs,window=(from,to))
 
-    maxlen = size(trial,2)
-    ixs = bound_indices(window,fs,maxlen)
-    view(trial,:,ixs)
+    start = max(1,round(Int,window[1]*fs))
+    stop = min(round(Int,window[2]*fs),size(trial,2))
+    view(trial,:,start:stop)
 end
 
 function windowbaseline(trial,event,fs,from,to;mindist,minlen)
