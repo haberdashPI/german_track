@@ -211,7 +211,7 @@ function ishit(row)
 end
 
 function find_powerdiff(subjects;kwds...)
-    organize_data_by(subjects;kwds...) do windows,timings,count,fs
+    organize_data_by(subjects;kwds...) do windows,timings,counts,fs
         function windowband(signal,timing)
             freqdf = computebands(signal,fs)
             if @_ all(0 ≈ _,signal)
@@ -235,7 +235,7 @@ function find_powerdiff(subjects;kwds...)
 
             chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
             features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
-            DataFrame(weight=count;(features .=> powerdiff)...)
+            DataFrame(weight=minimum(counts);(features .=> powerdiff)...)
         else
             Empty(DataFrame)
         end
@@ -291,8 +291,8 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
             cols = [:sid,:hit,:condition,:winlen,:winstart,:region,groups...]
 
             resultdf = combine(groupby(rowdf,cols)) do sdf
-                signals = map(window_timings) do window_timing
-                    mapreduce(hcat,eachrow(sdf)) do row
+                signals_and_counts = map(window_timings) do window_timing
+                    ws = map(eachrow(sdf)) do row
                         bounds = window_timing != "after" ?
                             (row.winstart, row.winstart + row.winlen) :
                             (row.winbefore, row.winbefore + row.winlen)
@@ -303,9 +303,12 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
                             windowbaseline(eeg[rindex],events[rindex,:],fs,bounds...,
                                 mindist=0.2,minlen=0.5)
                     end
+                    reduce(hcat,ws), sum(!isempty,ws)
                 end
+                signals = getindex.(signals_and_counts,1)
+                counts = getindex.(signals_and_counts,2)
 
-                result = fn(signals,window_timings,size(sdf,1),fs)
+                result = fn(signals,window_timings,counts,fs)
                 @infiltrate any(isinf,Array(result))
                 @infiltrate any(isnan,Array(result))
                 result
