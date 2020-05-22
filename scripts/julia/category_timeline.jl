@@ -17,7 +17,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 # is a python implementaiton and PyCall doesn't support multi-threading
 # it's not even clear that'st technically feasible given the python GIL
 using Distributed
-addprocs(6,exeflags="--project=.")
+# addprocs(6,exeflags="--project=.")
 
 @everywhere begin
     seed = 072189
@@ -53,6 +53,7 @@ else
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
+        regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for start in range(0,8,length=80), len in best_windows.winlen |> unique])
     CSV.write(classdf_file,classdf)
@@ -66,6 +67,7 @@ else
     classdf_rand = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
+        regions = ["target"],
         windows = [(len = len, start = start,
                     before = t -> t > len ? rand(Uniform(-t,-len-(t-len)/2)) : -len)
             for start in range(0,8,length=80),
@@ -73,9 +75,8 @@ else
     CSV.write(classdf_rand_file,classdf_rand)
 end
 
-classdf_all = @_ select!(classdf_rand,Not(:weight)) |>
-    insertcols!(__,:before => "random") |>
-    vcat(__,insertcols!(classdf,:before => "zero"))
+classdf_all = @_ insertcols!(classdf,:before => "zero") |>
+    vcat(__,insertcols!(classdf_rand,:before => "random"))
 
 winlens = groupby(best_windows,[:condition,:salience])
 objectdf = @_ classdf_all |>
@@ -91,9 +92,8 @@ objectdf = @_ classdf_all |>
     classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
     classdf_rand = CSV.read(classdf_rand_file)
 
-    classdf_all = @_ select!(classdf_rand,Not(:weight)) |>
-        insertcols!(__,:before => "random") |>
-        vcat(__,insertcols!(classdf,:before => "zero"))
+    classdf_all = @_ insertcols!(classdf,:before => "zero") |>
+        vcat(__,insertcols!(classdf_rand,:before => "random"))
 
     best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
@@ -108,10 +108,7 @@ best_params = NamedTuple(first(CSV.read(paramfile)))
 
 @everywhere function modelresult((key,sdf),params)
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    result = testmodel(sdf,NuSVC(;params...),
-        :sid,:condition,r"channel")
-    foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
-    result
+    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
@@ -120,9 +117,10 @@ testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
 object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
+_wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 subj_means = @_ object_classpredict |>
     groupby(__,[:winstart,:salience,:sid,:before]) |>
-    combine(__,:correct => mean)
+    combine(__,[:correct,:weight] => _wmean => :correct_mean)
 
 # TODO: left off here - find error band and plot
 
