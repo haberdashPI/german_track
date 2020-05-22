@@ -64,7 +64,6 @@ else
                 start in [0; 2.0 .^ range(-2,log(2,6),length=9)]])
     CSV.write(classdf_file,classdf)
 end
-
 # TODO: work on incorporate the weight when computing classification accuracy
 
 @everywhere begin
@@ -77,6 +76,7 @@ end
 end
 maxweight = classdf.weight |> maximum
 
+_wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 @everywhere begin
     function modelacc((key,sdf),params)
         # some values of nu may be infeasible, so we have to
@@ -85,7 +85,7 @@ maxweight = classdf.weight |> maximum
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            μ = (sum(result.correct.*result.weight) + 1) / (sum(result.weight) + 2)
+            μ = _wmean(result.correct,result.weight)
             return (mean = μ, NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
@@ -107,9 +107,9 @@ param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    MaxFuncEvals = 10_000,
+    MaxFuncEvals = 1_500,
     # MaxFuncEvals = 25,
-    FitnessTolerance = 1e-2,
+    FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
 )
@@ -130,7 +130,7 @@ if !use_cache || !isfile(paramfile)
             combine(:mean => maximum => :max,__)
         return 1 - mean(maxacc.max)#/length(gr)
     end
-    finish!(progress)
+    Progress.finish!(progress)
     best_params = GermanTrack.apply(param_by,best_params)
     CSV.write(paramfile, [best_params])
 else
@@ -139,10 +139,7 @@ end
 
 @everywhere function modelresult((key,sdf),params)
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    result = testmodel(sdf,NuSVC(;params...),
-        :sid,:condition,r"channel")
-    foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
-    result
+    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
     groupby(__, [:winstart,:winlen,:salience])
@@ -163,19 +160,15 @@ if !use_slurm
     subj_means.llen = log.(2,subj_means.winlen)
     subj_means.lstart = log.(2,subj_means.winstart)
 
-pl = subj_means |>
-    @vlplot(:rect,
-        x={
-            field=:lstart,
-            bin={step=0.573},
-        },
-        y={
-            field=:llen,
-            bin={step=2/9},
-        },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience)
-
+    pl = subj_means |>
+        @vlplot(:rect,
+            x={ field=:lstart, bin={step=0.573}, },
+            y={ field=:llen, bin={step=2/9}, },
+            color={
+                :correct_mean,
+                scale={reverse=true,domain=[0.5,1],scheme="plasma"}
+            },
+            column=:salience)
 
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
