@@ -246,13 +246,15 @@ resolvetime(target,x::Number) = x
 resolvetime(target,fn::Function) = fn(target)
 
 function organize_data_by(fn,subjects;groups,windows,hittypes,
-    chunk_size=1,before_reflect=true)
+    chunk_size=1,before_reflect=true,regions = ["target", "baseline"])
 
     # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
+    if @_ any(_  ∉ ["target", "baseline"],regions)
+        error("Only allowed regions are 'target' and 'baseline'.")
+    end
 
     fs = GermanTrack.framerate(first(values(subjects)).eeg)
 
-    regions = ["target", "baseline"]
     window_timings = ["before", "after"]
     source_names = ["male", "female"]
 

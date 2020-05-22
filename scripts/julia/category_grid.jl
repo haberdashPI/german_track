@@ -58,6 +58,7 @@ else
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
+        regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for len in 2.0 .^ range(-1,1,length=10),
                 start in [0; 2.0 .^ range(-2,log(2,6),length=9)]])
