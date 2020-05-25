@@ -1,7 +1,9 @@
 using DrWatson
 @quickactivate("german_track")
+const SVM_REPEATS = 10
+const SEED = 072189
+
 use_cache = true
-seed = 072189
 use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -27,7 +29,8 @@ else
 end
 
 @everywhere begin
-    seed = 072189
+    const SVM_REPEATS = 10
+    const SEED = 072189
 
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
@@ -78,15 +81,24 @@ maxweight = classdf.weight |> maximum
 
 _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 @everywhere begin
-    function modelacc((key,sdf),params)
+    function modelacc((key,sdf),params,repeats)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            np.random.seed(typemax(UInt32) & hash((params,seed)))
-            result = testmodel(sdf,NuSVC(;params...),
-                :sid,:condition,r"channel",n_folds=3)
-            μ = _wmean(result.correct,result.weight)
-            return (mean = μ, NamedTuple(key)...)
+            xw = 0.0
+            w = 0.0
+            println("-------")
+            for repeat in 1:repeats
+                np.random.seed(typemax(UInt32) & hash((params,SEED,repeat)))
+                result = testmodel(sdf,NuSVC(;params...),
+                    :sid,:condition,r"channel",n_folds=3)
+                xw += @show sum(result.correct.*result.weight)
+                w += @show sum(result.weight)
+            end
+            println("-------")
+            xw /= SVM_REPEATS
+            w /= SVM_REPEATS
+            return (mean = (xw + 1) / (w + 2), NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"
@@ -119,10 +131,10 @@ isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
 if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    Random.seed!(hash((seed,:object)))
+    Random.seed!(hash((SEED,:object)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(pairs(valgroups))
-        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
+        result = foldl(append!!,Map(i -> [modelacc(gr[i],params,2)]),
             1:length(gr),init=Empty(Vector))
         next!(progress)
         maxacc = @_ DataFrame(result) |>
@@ -138,7 +150,7 @@ else
 end
 
 @everywhere function modelresult((key,sdf),params)
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
+    np.random.seed(typemax(UInt32) & hash((params,SEED)))
     testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
@@ -148,7 +160,10 @@ object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
 
 subj_means = @_ object_classpredict |>
     groupby(__,[:winstart,:winlen,:salience]) |>
-    combine(__,:correct => mean)
+    # combine(__,:correct => mean)
+    combine(__,[:correct,:weight] => _wmean => :correct_mean)
+
+# TODO: plot the timeline see if it goes down sooner (it should...)
 
 sort!(subj_means,order(:correct_mean,rev=true))
 first(subj_means,6)
@@ -211,8 +226,8 @@ if !use_slurm
         @vlplot() +
         @vlplot(data=[{}], mark=:rule,
         encoding = {
-        y = {datum = 50},
-        strokeDash = {value = [2,2]}
+            y = {datum = 50},
+            strokeDash = {value = [2,2]}
         }) +
         (best_vals |>
         @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
@@ -240,10 +255,10 @@ isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
 if !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    Random.seed!(hash((seed,:spatial)))
+    Random.seed!(hash((SEED,:spatial)))
     best_params, fitness = optparams(param_range;opts...) do params
         gr = collect(pairs(valgroups))
-        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
+        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params,SVM_REPEATS)]),
             1:length(gr),init=Empty(Vector))
         next!(progress)
         maxacc = @_ DataFrame(result) |>
