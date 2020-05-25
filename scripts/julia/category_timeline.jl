@@ -55,31 +55,31 @@ else
         hittypes = ["hit"],
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,8,length=80), len in best_windows.winlen |> unique])
+            for start in range(0,4,length=128), len in best_windows.winlen |> unique])
     CSV.write(classdf_file,classdf)
 end
 
-classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
-if use_cache && isfile(classdf_rand_file)
-    classdf_rand = CSV.read(classdf_rand_file)
-else
-    Random.seed!(hash((:freqmeans,seed)))
-    classdf_rand = find_powerdiff(
-        subjects,groups=[:salience],
-        hittypes = ["hit"],
-        regions = ["target"],
-        windows = [(len = len, start = start,
-                    before = t -> t > len ? rand(Uniform(-t,-len-(t-len)/2)) : -len)
-            for start in range(0,8,length=80),
-                len in best_windows.winlen |> unique])
-    CSV.write(classdf_rand_file,classdf_rand)
-end
+# classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
+# if use_cache && isfile(classdf_rand_file)
+#     classdf_rand = CSV.read(classdf_rand_file)
+# else
+#     Random.seed!(hash((:freqmeans,seed)))
+#     classdf_rand = find_powerdiff(
+#         subjects,groups=[:salience],
+#         hittypes = ["hit"],
+#         regions = ["target"],
+#         windows = [(len = len, start = start,
+#                     before = t -> t > len ? rand(Uniform(-t,-len-(t-len)/2)) : -len)
+#             for start in range(0,4,length=160),
+#                 len in best_windows.winlen |> unique])
+#     CSV.write(classdf_rand_file,classdf_rand)
+# end
 
-classdf_all = @_ insertcols!(classdf,:before => "zero") |>
-    vcat(__,insertcols!(classdf_rand,:before => "random"))
+# classdf_all = @_ insertcols!(classdf,:before => "zero") |>
+#     vcat(__,insertcols!(classdf_rand,:before => "random"))
 
 winlens = groupby(best_windows,[:condition,:salience])
-objectdf = @_ classdf_all |>
+objectdf = @_ classdf |>
     filter(_.condition in ["global","object"],__) |>
     filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 
@@ -89,16 +89,17 @@ objectdf = @_ classdf_all |>
 
     classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
     classdf = CSV.read(classdf_file)
-    classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
-    classdf_rand = CSV.read(classdf_rand_file)
 
-    classdf_all = @_ insertcols!(classdf,:before => "zero") |>
-        vcat(__,insertcols!(classdf_rand,:before => "random"))
+    # classdf_rand_file = joinpath(cache_dir(),"data","freqmeans_timeline_randbefore.csv")
+    # classdf_rand = CSV.read(classdf_rand_file)
+
+    # classdf_all = @_ insertcols!(classdf,:before => "zero") |>
+    #     vcat(__,insertcols!(classdf_rand,:before => "random"))
 
     best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
     winlens = groupby(best_windows,[:condition,:salience])
-    objectdf = @_ classdf_all |>
+    objectdf = @_ classdf |>
         filter(_.condition in ["global","object"],__) |>
         filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 end
@@ -108,20 +109,23 @@ best_params = NamedTuple(first(CSV.read(paramfile)))
 
 @everywhere function modelresult((key,sdf),params)
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    result = testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 vset = @_ objectdf.sid |> unique |>
     StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
 testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience,:before])
+    groupby(__, [:winstart,:winlen,:salience]) #,:before])
 object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 subj_means = @_ object_classpredict |>
-    groupby(__,[:winstart,:salience,:sid,:before]) |>
+    groupby(__,[:winstart,:salience,:sid]) |> #,:before]) |>
     combine(__,[:correct,:weight] => _wmean => :correct_mean)
 
+subj_counts = @_ object_classpredict |>
+    groupby(__,[:winstart,:salience,:sid]) |> #,:before]) |>
+    combine(__,:correct => length)
 # TODO: left off here - find error band and plot
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -129,21 +133,25 @@ isdir(dir) || mkdir(dir)
 
 band = @_ subj_means |>
     # filter(_.before == "zero",__) |>
-    groupby(__,[:winstart,:salience,:before]) |>
+    groupby(__,[:winstart,:salience]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.95))[1]
         (correct = μ, low = low, high = high)
-    end,__) |>
-    transform!(__,[:salience,:before] =>
-        ((x,y) -> string.(x,"_",y)) => :salience_for)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
-pl = band |>
-    @vlplot() +
-    @vlplot(:line, x=:winstart, y=:correct, color=:salience_for) +
-    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience_for)
+R"""
 
-save(joinpath(dir,"object_salience_timeline.pdf"),pl)
+library(ggplot2)
+
+ggplot($band,aes(x=winstart,y=correct,color=salience)) +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
+    geom_line() +
+    geom_abline(slope=0,intercept=50,linetype=2)
+
+"""
 
 @everywhere begin
     best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))

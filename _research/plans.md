@@ -1,5 +1,5 @@
-- fix issue with trial weighting
 - run svm 10x with different estimates, pick new hyper-params
+  - run the validation as cross-validation to see how that goes
 - increase time resolution
 - split out the frequency bands, classify be each seperately
   with the above selected hyper-params

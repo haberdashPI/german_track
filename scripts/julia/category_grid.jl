@@ -1,3 +1,5 @@
+# ----------------------------------- Setup ---------------------------------- #
+
 using DrWatson
 @quickactivate("german_track")
 use_cache = true
@@ -23,7 +25,7 @@ using Distributed
     addprocs(SlurmManager(8), partition="CPU", t="04:00:00", mem="32G",
         exeflags="--project=.")
 else
-    # addprocs(8,exeflags="--project=.")
+    addprocs(4,exeflags="--project=.")
 end
 
 @everywhere begin
@@ -47,6 +49,8 @@ isdir(dir) || mkdir(dir)
 
 # is freq means always the same?
 
+# ------------------------ Mean Frequency Bin Analysis ----------------------- #
+
 classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -66,18 +70,13 @@ else
 end
 # TODO: work on incorporate the weight when computing classification accuracy
 
+# --------------- Hyper-parameter Optimization: Global v Object -------------- #
+
+objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
+
 @everywhere begin
-    np = pyimport("numpy")
+    _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
-    classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
-    classdf = CSV.read(classdf_file)
-
-    objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
-end
-maxweight = classdf.weight |> maximum
-
-_wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
-@everywhere begin
     function modelacc((key,sdf),params)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
@@ -98,17 +97,12 @@ _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
     end
 end
 
-vset = @_ objectdf.sid |> unique |>
-    StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ objectdf |> filter(_.sid ∈ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
-
-param_range = (nu=(0.0,0.75),gamma=(-4.0,1.0))
+param_range = (nu=(0.0,0.95),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    MaxFuncEvals = 1_500,
-    # MaxFuncEvals = 25,
+    # MaxFuncEvals = 1_500,
+    MaxFuncEvals = 6,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
@@ -117,43 +111,63 @@ opts = (
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
+n_folds = 5
 if !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    Random.seed!(hash((seed,:object)))
-    best_params, fitness = optparams(param_range;opts...) do params
-        gr = collect(pairs(valgroups))
-        result = foldl(append!!,Map(i -> [modelacc(gr[i],params)]),
-            1:length(gr),init=Empty(Vector))
-        next!(progress)
-        maxacc = @_ DataFrame(result) |>
-            groupby(__,:salience) |>
-            combine(:mean => maximum => :max,__)
-        return 1 - mean(maxacc.max)#/length(gr)
+    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
+    let result = Empty(DataFrame)
+        for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
+            Random.seed!(hash((seed,:object,i)))
+            fold_params, fitness = optparams(param_range;opts...) do params
+                gr = @_ objectdf |> filter(_.sid ∈ train,__) |>
+                    groupby(__, [:winstart,:winlen,:salience]) |>
+                    pairs |> collect
+
+                subresult = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
+                    1:length(gr),init=Empty(Vector))
+
+                next!(progress)
+
+                if subresult isa Vector{<:NamedTuple}
+                    maxacc = @_ DataFrame(subresult) |>
+                        groupby(__,:salience) |>
+                        combine(:mean => maximum => :max,__)
+                    return 1 - mean(maxacc.max)#/length(gr)
+                else
+                    @info "Exception: $subresult"
+                    return 1.0
+                end
+            end
+            fold_params = GermanTrack.apply(param_by,fold_params)
+            result = append!!(result,DataFrame(subjects = test; fold_params...))
+        end
+
+        ProgressMeter.finish!(progress)
+        CSV.write(paramfile, result)
+        global best_params = result
     end
-    Progress.finish!(progress)
-    best_params = GermanTrack.apply(param_by,best_params)
-    CSV.write(paramfile, [best_params])
 else
-    best_params = NamedTuple(first(CSV.read(paramfile)))
+    best_params = @_ CSV.read(paramfile)
 end
 
-@everywhere function modelresult((key,sdf),params)
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
-end
-testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
-object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
-    collect(pairs(testgroups)),init=Empty(DataFrame))
-
-subj_means = @_ object_classpredict |>
-    groupby(__,[:winstart,:winlen,:salience]) |>
-    combine(__,:correct => mean)
-
-sort!(subj_means,order(:correct_mean,rev=true))
-first(subj_means,6)
+# -------------------------- Classification Results -------------------------- #
 
 if !use_slurm
+    @everywhere function modelresult((key,sdf),params)
+        np.random.seed(typemax(UInt32) & hash((params,seed)))
+        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    end
+    testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
+        groupby(__, [:winstart,:winlen,:salience])
+    object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+        collect(pairs(testgroups)),init=Empty(DataFrame))
+
+    subj_means = @_ object_classpredict |>
+        groupby(__,[:winstart,:winlen,:salience]) |>
+        combine(__,:correct => mean)
+
+    sort!(subj_means,order(:correct_mean,rev=true))
+    first(subj_means,6)
+
     dir = joinpath(plotsdir(),string("results_",Date(now())))
     isdir(dir) || mkdir(dir)
 
@@ -173,40 +187,42 @@ if !use_slurm
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
 
-winlen_means = @_ object_classpredict |>
-    groupby(__,:winlen) |>
-    combine(:correct => mean => :correct,__) |>
-    sort(__,:correct,rev=true)
-
-best_high = @_ subj_means |> filter(_.salience == "high",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-best_low = @_ subj_means |> filter(_.salience == "low",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-
-best_windows = DataFrame([
-    (winlen=best_high.winlen[1],condition=:object,salience=:high),
-    (winlen=best_low.winlen[1],condition=:object,salience=:low)
-])
-
-best_vals = @_ object_classpredict |>
-    filter((_1.winstart == best_high.winstart[1] &&
-            _1.winlen == best_high.winlen[1]) ||
-           (_1.winstart == best_low.winstart[1] &&
-            _1.winlen == best_low.winlen[1]),__) |>
-    groupby(__,[:winlen,:winstart,:salience]) |>
-    combine(:correct => function(x)
-        bs = bootstrap(mean,x,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-        (correct = μ, low = low, high = high)
-    end,__)
-
-best_vals.winlen .= round.(best_vals.winlen,digits=2)
-best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
-    best_vals.winlen,best_vals.winstart))
+# -------------------- Best-window Classification Results -------------------- #
 
 if !use_slurm
+    winlen_means = @_ object_classpredict |>
+        groupby(__,:winlen) |>
+        combine(:correct => mean => :correct,__) |>
+        sort(__,:correct,rev=true)
+
+    best_high = @_ subj_means |> filter(_.salience == "high",__) |>
+        sort(__,:correct_mean,rev=true) |>
+        first(__,1)
+    best_low = @_ subj_means |> filter(_.salience == "low",__) |>
+        sort(__,:correct_mean,rev=true) |>
+        first(__,1)
+
+    best_windows = DataFrame([
+        (winlen=best_high.winlen[1],condition=:object,salience=:high),
+        (winlen=best_low.winlen[1],condition=:object,salience=:low)
+    ])
+
+    best_vals = @_ object_classpredict |>
+        filter((_1.winstart == best_high.winstart[1] &&
+                _1.winlen == best_high.winlen[1]) ||
+            (_1.winstart == best_low.winstart[1] &&
+                _1.winlen == best_low.winlen[1]),__) |>
+        groupby(__,[:winlen,:winstart,:salience]) |>
+        combine(:correct => function(x)
+            bs = bootstrap(mean,x,BasicSampling(10_000))
+            μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+            (correct = μ, low = low, high = high)
+        end,__)
+
+    best_vals.winlen .= round.(best_vals.winlen,digits=2)
+    best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
+        best_vals.winlen,best_vals.winstart))
+
     pl =
         @vlplot() +
         @vlplot(data=[{}], mark=:rule,
@@ -226,103 +242,124 @@ if !use_slurm
     save(joinpath(dir, "object_salience_best.pdf"),pl)
 end
 
-@everywhere begin
-    spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
-end
+# -------------- Hyper-parameter Optimization: Global v Spatial -------------- #
 
-vset = @_ spatialdf.sid |> unique |>
-    StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ spatialdf |> filter(_.sid ∈ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
+spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 
 paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
+n_folds = 5
 if !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals,"Optimizing params...")
-    Random.seed!(hash((seed,:spatial)))
-    best_params, fitness = optparams(param_range;opts...) do params
-        gr = collect(pairs(valgroups))
-        result = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
-            1:length(gr),init=Empty(Vector))
-        next!(progress)
-        maxacc = @_ DataFrame(result) |>
-            groupby(__,:salience) |>
-            combine(:mean => maximum => :max,__)
-        return 1 - mean(maxacc.max)#/length(gr)
+    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
+    let result = Empty(DataFrame)
+        for (i,(train,test)) in enumerate(folds(n_folds,spatialdf.sid |> unique))
+            Random.seed!(hash((seed,:spatial,i)))
+            fold_params, fitness = optparams(param_range;opts...) do params
+                gr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
+                    groupby(__, [:winstart,:winlen,:salience]) |>
+                    pairs |> collect
+
+                subresult = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
+                    1:length(gr),init=Empty(Vector))
+
+                next!(progress)
+
+                if subresult isa Vector{<:NamedTuple}
+                    maxacc = @_ DataFrame(subresult) |>
+                        groupby(__,:salience) |>
+                        combine(:mean => maximum => :max,__)
+                    return 1 - mean(maxacc.max)#/length(gr)
+                else
+                    @info "Exception: $subresult"
+                    return 1.0
+                end
+            end
+            fold_params = GermanTrack.apply(param_by,fold_params)
+            result = append!!(result,DataFrame(subjects = test; fold_params...))
+        end
+
+        ProgressMeter.finish!(progress)
+        CSV.write(paramfile, result)
+        global best_params = result
     end
-    finish!(progress)
-    best_params = GermanTrack.apply(param_by,best_params)
-    CSV.write(paramfile, [best_params])
 else
-    best_params = NamedTuple(first(CSV.read(paramfile)))
+    best_params = @_ CSV.read(paramfile)
 end
 
-testgroups = @_ spatialdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
-spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
-    collect(pairs(testgroups)),init=Empty(DataFrame))
-
-subj_means = @_ spatial_classpredict |>
-    groupby(__,[:winstart,:winlen,:salience]) |>
-    combine(__,:correct => mean)
-
-sort!(subj_means,order(:correct_mean,rev=true))
-first(subj_means,6)
-
-dir = joinpath(plotsdir(),string("results_",Date(now())))
-isdir(dir) || mkdir(dir)
-
-subj_means.llen = log.(2,subj_means.winlen)
-subj_means.lstart = log.(2,subj_means.winstart)
-
-pl = subj_means |>
-    @vlplot(:rect,
-        x={
-            field=:lstart,
-            bin={step=0.573},
-        },
-        y={
-            field=:llen,
-            bin={step=2/9},
-        },
-        color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-        column=:salience)
-
-save(joinpath(dir,"spatial_salience.pdf"),pl)
-
-best_high = @_ subj_means |> filter(_.salience == "high",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-best_low = @_ subj_means |> filter(_.salience == "low",__) |>
-    sort(__,:correct_mean,rev=true) |>
-    first(__,1)
-
-
-best_windows = vcat(best_windows,DataFrame([
-    (winlen=best_high.winlen[1],condition=:spatial,salience=:high),
-    (winlen=best_low.winlen[1],condition=:spatial,salience=:low)
-]))
-
-CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
-
-best_vals = @_ spatial_classpredict |>
-    filter((_1.winstart == best_high.winstart[1] &&
-            _1.winlen == best_high.winlen[1]) ||
-           (_1.winstart == best_low.winstart[1] &&
-            _1.winlen == best_low.winlen[1]),__) |>
-    groupby(__,[:winlen,:winstart,:salience]) |>
-    combine(:correct => function(x)
-        bs = bootstrap(mean,x,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-        (correct = μ, low = low, high = high)
-    end,__)
-
-best_vals.winlen .= round.(best_vals.winlen,digits=2)
-best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
-    best_vals.winlen,best_vals.winstart))
+# ----------------- Classifciation Results: Global v Spattial ---------------- #
 
 if !use_slurm
+    testgroups = @_ spatialdf |> filter(_.sid ∉ vset,__) |>
+        groupby(__, [:winstart,:winlen,:salience])
+    spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+        collect(pairs(testgroups)),init=Empty(DataFrame))
+
+    subj_means = @_ spatial_classpredict |>
+        groupby(__,[:winstart,:winlen,:salience]) |>
+        combine(__,:correct => mean)
+
+    sort!(subj_means,order(:correct_mean,rev=true))
+    first(subj_means,6)
+
+    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    isdir(dir) || mkdir(dir)
+
+    subj_means.llen = log.(2,subj_means.winlen)
+    subj_means.lstart = log.(2,subj_means.winstart)
+
+    pl = subj_means |>
+        @vlplot(:rect,
+            x={
+                field=:lstart,
+                bin={step=0.573},
+            },
+            y={
+                field=:llen,
+                bin={step=2/9},
+            },
+            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
+            column=:salience)
+
+    save(joinpath(dir,"spatial_salience.pdf"),pl)
+
+    best_high = @_ subj_means |> filter(_.salience == "high",__) |>
+        sort(__,:correct_mean,rev=true) |>
+        first(__,1)
+    best_low = @_ subj_means |> filter(_.salience == "low",__) |>
+        sort(__,:correct_mean,rev=true) |>
+        first(__,1)
+
+
+    best_windows = vcat(best_windows,DataFrame([
+        (winlen=best_high.winlen[1],condition=:spatial,salience=:high),
+        (winlen=best_low.winlen[1],condition=:spatial,salience=:low)
+    ]))
+
+    CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
+
+end
+
+# --------------- Best-window Classificationo: Global v Spatial -------------- #
+
+if !use_slurm
+
+    best_vals = @_ spatial_classpredict |>
+        filter((_1.winstart == best_high.winstart[1] &&
+                _1.winlen == best_high.winlen[1]) ||
+            (_1.winstart == best_low.winstart[1] &&
+                _1.winlen == best_low.winlen[1]),__) |>
+        groupby(__,[:winlen,:winstart,:salience]) |>
+        combine(:correct => function(x)
+            bs = bootstrap(mean,x,BasicSampling(10_000))
+            μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+            (correct = μ, low = low, high = high)
+        end,__)
+
+    best_vals.winlen .= round.(best_vals.winlen,digits=2)
+    best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
+        best_vals.winlen,best_vals.winstart))
+
     pl =
         @vlplot() +
         @vlplot(data=[{}], mark=:rule,
