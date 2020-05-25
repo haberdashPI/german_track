@@ -22,7 +22,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 using Distributed
 @static if use_slurm
     using ClusterManagers
-    addprocs(SlurmManager(8), partition="CPU", t="04:00:00", mem="32G",
+    addprocs(SlurmManager(16), partition="CPU", t="06:00:00", mem="32G",
         exeflags="--project=.")
 else
     addprocs(4,exeflags="--project=.")
@@ -112,8 +112,8 @@ paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"object_salience.csv")
 n_folds = 5
-if !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
+if use_slurm || !use_cache || !isfile(paramfile)
+    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing object params...")
     let result = Empty(DataFrame)
         for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
             Random.seed!(hash((seed,:object,i)))
@@ -250,8 +250,8 @@ paramdir = joinpath(datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
 n_folds = 5
-if !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
+if use_slurm || !use_cache || !isfile(paramfile)
+    progress = Progress(opts.MaxFuncEvals,"Optimizing spatial params...")
     let result = Empty(DataFrame)
         for (i,(train,test)) in enumerate(folds(n_folds,spatialdf.sid |> unique))
             Random.seed!(hash((seed,:spatial,i)))
