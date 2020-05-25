@@ -22,10 +22,14 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 using Distributed
 @static if use_slurm
     using ClusterManagers
-    addprocs(SlurmManager(16), partition="CPU", t="06:00:00", mem="32G",
-        exeflags="--project=.")
+    if !(nprocs() > 1)
+        addprocs(SlurmManager(16), partition="CPU", t="06:00:00", mem="32G",
+            exeflags="--project=.")
+    end
 else
-    addprocs(4,exeflags="--project=.")
+    if !(nprocs() > 1)
+        addprocs(4,exeflags="--project=.")
+    end
 end
 
 @everywhere begin
@@ -41,8 +45,10 @@ end
 
 @everywhere( @sk_import svm: (NuSVC, SVC) )
 
-dir = joinpath(plotsdir(),string("results_",Date(now())))
-isdir(dir) || mkdir(dir)
+if !use_slurm
+    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    isdir(dir) || mkdir(dir)
+end
 
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
@@ -75,6 +81,7 @@ end
 objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 
 @everywhere begin
+    np = pyimport("numpy")
     _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
     function modelacc((key,sdf),params)
@@ -89,7 +96,7 @@ objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"
-                return 0
+                return (mean = 0, NamedTuple(key)...)
             else
                 rethrow(e)
             end
@@ -101,8 +108,8 @@ param_range = (nu=(0.0,0.95),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
-    # MaxFuncEvals = 1_500,
-    MaxFuncEvals = 6,
+    MaxFuncEvals = 1_500,
+    # MaxFuncEvals = 6,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
