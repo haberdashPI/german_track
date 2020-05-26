@@ -23,7 +23,7 @@ using Distributed
 @static if use_slurm
     using ClusterManagers
     if !(nprocs() > 1)
-        addprocs(SlurmManager(16), partition="CPU", t="06:00:00", mem="32G",
+        addprocs(SlurmManager(16), partition="CPU", t="16:00:00", mem="32G",
             exeflags="--project=.")
     end
 else
