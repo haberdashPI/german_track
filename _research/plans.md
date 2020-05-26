@@ -1,9 +1,11 @@
-- run svm 10x with different estimates, pick new hyper-params
-  - run the validation as cross-validation to see how that goes
-- increase time resolution
++ increase time resolution
+THOUGHTS:
+  - why did the spatial results switch? (look at params)
+  - double check the weightings
+  - what to do about high 6-sec classifications?
+
 - split out the frequency bands, classify be each seperately
   with the above selected hyper-params
-
 - question: hit v miss? (just corect not high salience or object vs. global)
 
 NOTE: changing to using before window starting at 0, which seems to work

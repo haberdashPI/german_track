@@ -159,18 +159,22 @@ end
 # -------------------------- Classification Results -------------------------- #
 
 if !use_slurm
-    @everywhere function modelresult((key,sdf),params)
+
+    @everywhere function modelresult((key,sdf))
+        params = (nu = key[:nu], gamma = key[:gamma])
         np.random.seed(typemax(UInt32) & hash((params,seed)))
         testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     end
-    testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
-        groupby(__, [:winstart,:winlen,:salience])
-    object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+    rename!(best_params,:subjects => :sid)
+    testgroups = @_ objectdf |>
+        innerjoin(__,best_params,on=:sid) |>
+        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+    object_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience]) |>
-        combine(__,:correct => mean)
+        combine(__,[:correct,:weight] => _wmean => :correct_mean)
 
     sort!(subj_means,order(:correct_mean,rev=true))
     first(subj_means,6)
@@ -197,11 +201,6 @@ end
 # -------------------- Best-window Classification Results -------------------- #
 
 if !use_slurm
-    winlen_means = @_ object_classpredict |>
-        groupby(__,:winlen) |>
-        combine(:correct => mean => :correct,__) |>
-        sort(__,:correct,rev=true)
-
     best_high = @_ subj_means |> filter(_.salience == "high",__) |>
         sort(__,:correct_mean,rev=true) |>
         first(__,1)
@@ -220,8 +219,9 @@ if !use_slurm
             (_1.winstart == best_low.winstart[1] &&
                 _1.winlen == best_low.winlen[1]),__) |>
         groupby(__,[:winlen,:winstart,:salience]) |>
-        combine(:correct => function(x)
-            bs = bootstrap(mean,x,BasicSampling(10_000))
+        combine([:correct,:weight] => function(c,w)
+            bs = bootstrap(x -> _wmean(getindex.(x,1),getindex.(x,2)),
+                collect(zip(c,w)),BasicSampling(10_000))
             μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
             (correct = μ, low = low, high = high)
         end,__)
@@ -291,20 +291,28 @@ if use_slurm || !use_cache || !isfile(paramfile)
         global best_params = result
     end
 else
-    best_params = @_ CSV.read(paramfile)
+    best_params = CSV.read(paramfile)
 end
 
 # ----------------- Classifciation Results: Global v Spattial ---------------- #
 
 if !use_slurm
-    testgroups = @_ spatialdf |> filter(_.sid ∉ vset,__) |>
-        groupby(__, [:winstart,:winlen,:salience])
-    spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+
+    @everywhere function modelresult((key,sdf))
+        params = (nu = key[:nu], gamma = key[:gamma])
+        np.random.seed(typemax(UInt32) & hash((params,seed)))
+        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    end
+    rename!(best_params,:subjects => :sid)
+    testgroups = @_ spatialdf |>
+        innerjoin(__,best_params,on=:sid) |>
+        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+    spatial_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience]) |>
-        combine(__,:correct => mean)
+        combine(__,[:correct,:weight] => _wmean => :correct_mean)
 
     sort!(subj_means,order(:correct_mean,rev=true))
     first(subj_means,6)
@@ -330,13 +338,18 @@ if !use_slurm
 
     save(joinpath(dir,"spatial_salience.pdf"),pl)
 
+end
+
+# --------------- Best-window Classificationo: Global v Spatial -------------- #
+
+if !use_slurm
+
     best_high = @_ subj_means |> filter(_.salience == "high",__) |>
         sort(__,:correct_mean,rev=true) |>
         first(__,1)
     best_low = @_ subj_means |> filter(_.salience == "low",__) |>
         sort(__,:correct_mean,rev=true) |>
         first(__,1)
-
 
     best_windows = vcat(best_windows,DataFrame([
         (winlen=best_high.winlen[1],condition=:spatial,salience=:high),
@@ -345,20 +358,15 @@ if !use_slurm
 
     CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
 
-end
-
-# --------------- Best-window Classificationo: Global v Spatial -------------- #
-
-if !use_slurm
-
     best_vals = @_ spatial_classpredict |>
         filter((_1.winstart == best_high.winstart[1] &&
                 _1.winlen == best_high.winlen[1]) ||
             (_1.winstart == best_low.winstart[1] &&
                 _1.winlen == best_low.winlen[1]),__) |>
         groupby(__,[:winlen,:winstart,:salience]) |>
-        combine(:correct => function(x)
-            bs = bootstrap(mean,x,BasicSampling(10_000))
+        combine([:correct,:weight] => function(c,w)
+            bs = bootstrap(x -> _wmean(getindex.(x,1),getindex.(x,2)),
+                collect(zip(c,w)),BasicSampling(10_000))
             μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
             (correct = μ, low = low, high = high)
         end,__)

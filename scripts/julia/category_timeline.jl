@@ -1,3 +1,5 @@
+# ----------------------------------- Setup ---------------------------------- #
+
 using DrWatson
 @quickactivate("german_track")
 use_cache = true
@@ -33,16 +35,13 @@ end
 
 @everywhere( @sk_import svm: (NuSVC, SVC) )
 
-eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
-                                    encoding = RawEncoding())
-    for file in eeg_files)
-
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
+
+# ----------------------------- Fremeans Analysis ---------------------------- #
 
 best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
@@ -50,12 +49,19 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
+    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                            encoding = RawEncoding())
+        for file in eeg_files)
+
     classdf = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=128), len in best_windows.winlen |> unique])
+            for start in range(0,4,length=256),
+                len in best_windows.winlen |> unique])
+
     CSV.write(classdf_file,classdf)
 end
 
@@ -77,6 +83,8 @@ end
 
 # classdf_all = @_ insertcols!(classdf,:before => "zero") |>
 #     vcat(__,insertcols!(classdf_rand,:before => "random"))
+
+# ------------------------------ Object Timeline ----------------------------- #
 
 winlens = groupby(best_windows,[:condition,:salience])
 objectdf = @_ classdf |>
@@ -105,17 +113,18 @@ objectdf = @_ classdf |>
 end
 
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
-best_params = NamedTuple(first(CSV.read(paramfile)))
+best_params = CSV.read(paramfile)
 
-@everywhere function modelresult((key,sdf),params)
+@everywhere function modelresult((key,sdf))
+    params = (nu = key[:nu], gamma = key[:gamma])
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    result = testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
-vset = @_ objectdf.sid |> unique |>
-    StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-testgroups = @_ objectdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience]) #,:before])
-object_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+rename!(best_params,:subjects => :sid)
+testgroups = @_ objectdf |>
+    innerjoin(__,best_params,on=:sid) |>
+    groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+object_classpredict = dreduce(append!!,Map(modelresult),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
@@ -136,7 +145,7 @@ band = @_ subj_means |>
     groupby(__,[:winstart,:salience]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.95))[1]
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
         (correct = μ, low = low, high = high)
     end,__) #|>
     # transform!(__,[:salience,:before] =>
@@ -146,12 +155,16 @@ R"""
 
 library(ggplot2)
 
-ggplot($band,aes(x=winstart,y=correct,color=salience)) +
+pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
     geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
     geom_line() +
     geom_abline(slope=0,intercept=50,linetype=2)
 
+ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
+
 """
+
+# ----------------------------- Spatial Timeline ----------------------------- #
 
 @everywhere begin
     best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
@@ -161,29 +174,24 @@ ggplot($band,aes(x=winstart,y=correct,color=salience)) +
         filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
 end
 
-vset = @_ spatialdf.sid |> unique |>
-    StatsBase.sample(MersenneTwister(111820),__1,round(Int,0.2length(__1)))
-valgroups = @_ spatialdf |> filter(_.sid ∈ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
-
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
-best_params = NamedTuple(first(CSV.read(paramfile)))
+best_params = CSV.read(paramfile)
 
-@everywhere function modelresult((key,sdf),params)
+@everywhere function modelresult((key,sdf))
+    params = (nu = key[:nu], gamma = key[:gamma])
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    result = testmodel(sdf,NuSVC(;params...),
-        :sid,:condition,r"channel")
-    foreach(kv -> result[!,kv[1]] .= kv[2],pairs(key))
-    result
+    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
-testgroups = @_ spatialdf |> filter(_.sid ∉ vset,__) |>
-    groupby(__, [:winstart,:winlen,:salience])
-spatial_classpredict = dreduce(append!!,Map(x -> modelresult(x,best_params)),
+rename!(best_params,:subjects => :sid)
+testgroups = @_ spatialdf |>
+    innerjoin(__,best_params,on=:sid) |>
+    groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+spatial_classpredict = dreduce(append!!,Map(modelresult),
     collect(pairs(testgroups)),init=Empty(DataFrame))
 
 subj_means = @_ spatial_classpredict |>
     groupby(__,[:winstart,:salience,:sid]) |>
-    combine(__,:correct => mean)
+    combine(__,[:correct,:weight] => _wmean => :correct_mean)
 
 
 band = @_ subj_means |>
@@ -194,10 +202,16 @@ band = @_ subj_means |>
         (correct = μ, low = low, high = high)
     end,__)
 
-pl = band |>
-    @vlplot() +
-    @vlplot(:line, x=:winstart, y=:correct, color=:salience) +
-    @vlplot(:errorband, x=:winstart, y=:low, y2=:high, color=:salience)
+R"""
 
-save(joinpath(dir,"spatial_salience_timeline.pdf"),pl)
+library(ggplot2)
 
+pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
+    geom_line() +
+    geom_abline(slope=0,intercept=50,linetype=2)
+pl
+
+ggsave(file.path($dir,"spatial_salience_timeline.pdf"),pl,width=11,height=8)
+
+"""
