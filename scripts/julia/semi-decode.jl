@@ -98,8 +98,8 @@ for (i,segdef) in enumerate(eachrow(hits))
     end
 end
 
-# validate progress using a subset of the known labels
-# don't include them as part of thet raining
+# validate the training using a subset of the known labels;
+# don't include them as part of the training
 N = size(weights,2)
 testsize = round(Int,0.2N)
 testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
@@ -117,7 +117,7 @@ end
 
 # run decoding
 result = regressSS2(
-    x,y,weights,ii,
+    x,y,trainweights,trainii,
     regularize = x -> 0.5sum(abs,x),
     optimizer=AMSGrad(),
     epochs = 250,
