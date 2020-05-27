@@ -258,7 +258,7 @@ isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,"spatial_salience.csv")
 n_folds = 5
 if use_slurm || !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals,"Optimizing spatial params...")
+    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing spatial params...")
     let result = Empty(DataFrame)
         for (i,(train,test)) in enumerate(folds(n_folds,spatialdf.sid |> unique))
             Random.seed!(hash((seed,:spatial,i)))
