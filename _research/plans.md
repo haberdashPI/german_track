@@ -1,20 +1,10 @@
-+ increase time resolution
-THOUGHTS:
-  - what to do about high 6-sec classifications?
-    at the moment I'm just going to focus on earlier time points,
-    but what is up with that??
-
 - split out the frequency bands, classify bin each separately
   with the above selected hyper-parameters
 + question: hit v miss? (just correct not high salience or object vs. global)
 
-- when I look at hit vs miss, the strong implication is that
-on a hit, you hold that result in mind, and this is reflected in
-the ability to classify the reading, suggesting, potentially
-that it requires active maintenance given all of the distracting
-sounds present in the task (could stop trials short at
-random points interspersed with actual target points, to eliminate
-this memory load)
+  - what to do about high 6-sec classifications?
+    at the moment I'm just going to focus on earlier time points,
+    but what is up with that??
 
 NOTE: changing to using before window starting at 0, which seems to work
 just as well and is easier to explain and interpret
