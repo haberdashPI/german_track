@@ -69,10 +69,10 @@ function SemiDecodeTrainer(x,y,v,vi)
     @assert N == N_ "Must have same number of neural and stimulus time points"
     @assert H == H_ "Must have same number of stimulus sources and stimulus weights"
 
-    xᵥ = view(x,:,:,vi)
-    xᵤ = view(x,:,:,setdiff(1:size(x,3),vi))
-    yᵥ = view(y,:,:,:,vi)
-    yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
+    xᵥ = gpu(view(x,:,:,vi))
+    xᵤ = gpu(view(x,:,:,setdiff(1:size(x,3),vi)))
+    yᵥ = gpu(view(y,:,:,:,vi))
+    yᵤ = gpu(view(y,:,:,:,setdiff(1:size(y,4),vi)))
 
     A = gpu(randn(F,G))
     u = gpu(rand(H-1,I-J))
@@ -125,10 +125,6 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
 
     for (source,(_x,_y,wi)) in randmix(Dᵥ,Dᵤ,report_source=true)
         known_weights = source == 1
-        _x = gpu(_x)
-        _y = gpu(_y)
-        # alternative: copy weights each time?
-
         if known_weights
             v = t.v[:,wi]
             Δ = Flux.gradient(t.A) do A
@@ -151,12 +147,14 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
     end
 end
 
-function coefs(t::SemiDecodeTrainer)
-    w = Array{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
-    w[:,t.vi] = Array(t.v)
-    w[:,setdiff(1:end,t.vi)] = Array(tosimplex(t.u))
-
-    Array(t.A), w
+function weights(t::SemiDecodeTrainer,ArrayType=Array)
+    w = ArrayType{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
+    w[:,t.vi] = t.v
+    w[:,setdiff(1:end,t.vi)] = tosimplex(t.u)
+    w
+end
+function coefs(t::SemiDecodeTrainer,ArrayType=Array)
+    ArrayType(t.A)
 end
 
 """
@@ -178,9 +176,6 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     epoch = 0
     testx, testy = gpu.((trainer.xᵥ,trainer.yᵥ))
     function status()
-        # TODO: change this to use a validation set
-        # testloss = loss(trainer.A,testx,testy,trainer.v) + regularize(vec(trainer.A))
-        # @info "Current test loss (epoch $epoch): $(@sprintf("%5.5e",testloss)) "
         @info "Training, on epoch $epoch."
         CuArrays.memory_status()
         testcb(decoder)
@@ -193,7 +188,7 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
         epoch += 1
     end
 
-    return coefs(trainer)
+    trainer
 end
 
 cleanstring(i::Int) = @sprintf("%03d",i)

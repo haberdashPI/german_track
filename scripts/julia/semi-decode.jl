@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang
+    BangBang, ProgressMeter, Random, Formatting
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -46,14 +46,14 @@ end
 # load the eeg data into memory
 nsegments = size(segment_definitions,1)
 nfeatures = size(first(values(subjects)).eeg[1],1)
-x = Array{Float64}(undef,ntimes,nfeatures,nsegments);
+x = Array{Float32}(undef,ntimes,nfeatures,nsegments);
 for (i,segdef) in enumerate(eachrow(segment_definitions))
     trial = subjects[segdef.sid].eeg[segdef.trial]
     start = segdef.start
     stop = min(size(trial,2),segdef.start + segdef.len - 1)
-    if stop > start
+    if stop >= start
         len = stop - start + 1
-            x[1:len,:,i] = @view(trial[:,start:stop])'
+        x[1:len,:,i] = @view(trial[:,start:stop])'
         x[(len+1):end,:,i] .= 0.0
     else
         x[:,:,i] .= 0.0
@@ -65,14 +65,14 @@ sources = [male_source,fem1_source,fem2_source]
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 nenc = length(stim_encoding.children)
 nsources = length(sources)
-y = Array{Float64}(undef,ntimes,nenc,nsources,nsegments)
-for (i,segdef) in enumerate(eachrow(segment_definitions))
+y = Array{Float32}(undef,ntimes,nenc,nsources,nsegments)
+@showprogress for (i,segdef) in enumerate(eachrow(segment_definitions))
     for (h,source) in enumerate(sources)
         event = subjects[segdef.sid].events[segdef.trial,:]
         stim,stim_id = load_stimulus(source,event,stim_encoding,fs,stim_info)
         start = segdef.start
-        stop = min(size(stim,2),segdef.start + segdef.len - 1)
-        if stop => start
+        stop = min(size(stim,1),segdef.start + segdef.len - 1)
+        if stop >= start
             len = stop - start + 1
             y[1:len,:,h,i] = @view(stim[start:stop,:])
             y[(len+1):end,:,h,i] .= 0.0
@@ -82,8 +82,44 @@ for (i,segdef) in enumerate(eachrow(segment_definitions))
     end
 end
 
-# TODO: setup the labels
-# remember that we need to know that the segment has a target and that
-# the segment is on a correct trial to give the segment known weights
+hits = @_ segment_definitions |>
+    filter(_.target && subjects[_.sid].events[_.trial,:correct],__)
+weights = Array{Float32}(undef,nsources,size(hits,1))
+ii = @_ segment_definitions |> eachrow |>
+    findall(_.target && subjects[_.sid].events[_.trial,:correct],__)
+for (i,segdef) in enumerate(eachrow(hits))
+    label = subjects[segdef.sid].events[segdef.trial,:target_source]
+    if label == 1.0
+        weights[:,i] = [1.0,0.0,0.0]
+    elseif label == 2.0
+        weights[:,i] = [0.0,1.0,0.0]
+    else
+        error("Unexpected label: $label")
+    end
+end
 
-# run the training
+# validate progress using a subset of the known labels
+# don't include them as part of thet raining
+N = size(weights,2)
+testsize = round(Int,0.2N)
+testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
+    sort!
+
+testweights = weights[:,testset]
+testii = ii[testset]
+trainweights = weights[:,setdiff(1:end,testset)]
+trainii = ii[setdiff(1:end,testset)]
+
+function onvalidate(decoder)
+    err = sum((weights(decoder)[testset] .- testweights).^2)
+    @info "Test weights have an average error of $(fmt("2.3f",err))"
+end
+
+# run decoding
+result = regressSS2(
+    x,y,weights,ii,
+    regularize = x -> 0.5sum(abs,x),
+    optimizer=AMSGrad(),
+    epochs = 250,
+    testcb = onvalidate,
+)
