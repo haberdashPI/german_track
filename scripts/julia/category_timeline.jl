@@ -158,7 +158,8 @@ library(ggplot2)
 pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
     geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
     geom_line() +
-    geom_abline(slope=0,intercept=50,linetype=2)
+    geom_abline(slope=0,intercept=50,linetype=2) +
+    coord_cartesian(ylim=c(40,100))
 
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
 
@@ -209,9 +210,12 @@ library(ggplot2)
 pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
     geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
     geom_line() +
-    geom_abline(slope=0,intercept=50,linetype=2)
+    geom_abline(slope=0,intercept=50,linetype=2) +
+    coord_cartesian(ylim=c(40,100))
 pl
 
 ggsave(file.path($dir,"spatial_salience_timeline.pdf"),pl,width=11,height=8)
 
 """
+
+# ------------------------------------ End ----------------------------------- #

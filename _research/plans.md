@@ -1,12 +1,10 @@
 + increase time resolution
 THOUGHTS:
-  - why did the spatial results switch? (look at params)
-  - double check the weightings
   - what to do about high 6-sec classifications?
 
-- split out the frequency bands, classify be each seperately
-  with the above selected hyper-params
-- question: hit v miss? (just corect not high salience or object vs. global)
+- split out the frequency bands, classify bin each separately
+  with the above selected hyper-parameters
+- question: hit v miss? (just correct not high salience or object vs. global)
 
 NOTE: changing to using before window starting at 0, which seems to work
 just as well and is easier to explain and interpret
