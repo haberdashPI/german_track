@@ -41,7 +41,7 @@ isdir(dir) || mkdir(dir)
 # TODO: try running each window separatley and storing the
 # results, rather than storing all versions of the data
 
-# ----------------------------- Fremeans Analysis ---------------------------- #
+# ---------------------------- Freqmeans Analysis ---------------------------- #
 
 best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
