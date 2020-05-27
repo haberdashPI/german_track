@@ -71,7 +71,7 @@ else
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for len in 2.0 .^ range(-1,1,length=10),
-                start in [0; 2.0 .^ range(-2,log(2,6),length=9)]])
+                start in [0; 2.0 .^ range(-2,2,length=9)]])
     CSV.write(classdf_file,classdf)
 end
 # TODO: work on incorporate the weight when computing classification accuracy
