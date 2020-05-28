@@ -881,14 +881,3 @@ function sample_from_ranges(ranges)
     range = StatsBase.sample(ranges,weights)
     rand(Distributions.Uniform(range...))
 end
-
-function alert(message="Done!")
-    if Sys.isapple()
-        run(`osascript -e 'display notification "'$message'" with title "Julia"'`)
-    elseif Sys.islinux()
-        run(`notify-send $message`)
-    else
-        # TODO: use Toast Notifications on windows
-        @info message
-    end
-end
