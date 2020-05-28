@@ -1,3 +1,11 @@
+- how to finalize...
+- double check chance performance
+- why are the timeline graphs lower in accuracy?
+- for the best windows, using the more detailed set of bins
+- plot a smooth version? (filter for visualization) or coarser grid
+- generate random windows to compare the results with
+- early vs. late (start with no lo v hi, then do)
+
 - split out the frequency bands, classify bin each separately
   with the above selected hyper-parameters
 + question: hit v miss? (just correct not high salience or object vs. global)
@@ -5,16 +13,6 @@
   - what to do about high 6-sec classifications?
     at the moment I'm just going to focus on earlier time points,
     but what is up with that??
-
-NOTE: changing to using before window starting at 0, which seems to work
-just as well and is easier to explain and interpret
-
-note quite convinced that the spatial conditions are right, re-create
-freqmeans.csv with the right before timing, just to make sure
-
-next step: pick a window size, probably separate for object and spatial
-(and for the individual conditions? or show both? or some intermediate width?
-how do we pick it?)
 
 # Plans
 

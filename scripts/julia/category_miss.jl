@@ -38,7 +38,27 @@ else
     CSV.write(classdf_file,classdf_miss)
 end
 
-classdf_hit = CSV.read(joinpath(cache_dir(),"data","freqmeans_timeline.csv"))
+best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+
+classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
+if use_cache && isfile(classdf_file)
+    classdf_hit = CSV.read(classdf_file)
+else
+    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                            encoding = RawEncoding())
+        for file in eeg_files)
+
+    classdf_hit = find_powerdiff(
+        subjects,groups=[:salience],
+        hittypes = ["hit"],
+        regions = ["target"],
+        windows = [(len=len,start=start,before=-len)
+            for start in range(0,4,length=256),
+                len in best_windows.winlen |> unique])
+
+    CSV.write(classdf_file,classdf_hit)
+end
 
 classdf = vcat(classdf_miss,classdf_hit)
 
@@ -122,6 +142,7 @@ paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
+best_params.nu = min.(0.7,best_params.nu)
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])

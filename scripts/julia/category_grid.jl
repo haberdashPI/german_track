@@ -27,9 +27,9 @@ using Distributed
             exeflags="--project=.")
     end
 else
-    if !(nprocs() > 1)
-        addprocs(4,exeflags="--project=.")
-    end
+    # if !(nprocs() > 1)
+    #     addprocs(4,exeflags="--project=.")
+    # end
 end
 
 @everywhere begin
