@@ -123,6 +123,15 @@ result = regressSS2(
     x,y,trainweights,trainii,
     regularize = x -> 0.5sum(abs,x),
     optimizer=AMSGrad(),
-    epochs = 250,
+    epochs = 1,
     testcb = onvalidate,
+)
+
+# store the results
+resultfile = joinpath(data_dir(),savename("semi-decode-result",
+    (nlags=nlags,fs=fs),"bson"))
+@tagsave resultfile Dict(
+    :weights => weights(result),
+    :coefs => EEGCoding.coefs(result),
+    :testii => testii
 )
