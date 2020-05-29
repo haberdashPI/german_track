@@ -45,15 +45,18 @@ end
 
 # load the eeg data into memory
 nsegments = size(segment_definitions,1)
+nlags = 17
 nfeatures = size(first(values(subjects)).eeg[1],1)
-x = Array{Float32}(undef,ntimes,nfeatures,nsegments);
-for (i,segdef) in enumerate(eachrow(segment_definitions))
-    trial = subjects[segdef.sid].eeg[segdef.trial]
+x = Array{Float32}(undef,ntimes,nfeatures*nlags,nsegments);
+@showprogress "Organizing EEG data..." for (i,segdef) in enumerate(eachrow(segment_definitions))
+    # QUESTION: do we do the lags here or inside regress train just before
+    # computing the loss?
+    trial = withlags(subjects[segdef.sid].eeg[segdef.trial]',-(nlags-1):0)
     start = segdef.start
-    stop = min(size(trial,2),segdef.start + segdef.len - 1)
+    stop = min(size(trial,1),segdef.start + segdef.len - 1)
     if stop >= start
         len = stop - start + 1
-        x[1:len,:,i] = @view(trial[:,start:stop])'
+        x[1:len,:,i] = @view(trial[start:stop,:])
         x[(len+1):end,:,i] .= 0.0
     else
         x[:,:,i] .= 0.0
@@ -65,8 +68,8 @@ sources = [male_source,fem1_source,fem2_source]
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 nenc = length(stim_encoding.children)
 nsources = length(sources)
-y = Array{Float32}(undef,ntimes,nenc,nsources,nsegments)
-@showprogress for (i,segdef) in enumerate(eachrow(segment_definitions))
+y = Array{Float32}(undef,ntimes,nenc,nsources,nsegments);
+@showprogress "Organizing Speech data..." for (i,segdef) in enumerate(eachrow(segment_definitions))
     for (h,source) in enumerate(sources)
         event = subjects[segdef.sid].events[segdef.trial,:]
         stim,stim_id = load_stimulus(source,event,stim_encoding,fs,stim_info)
