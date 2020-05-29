@@ -18,7 +18,7 @@ using StatsFuns
 using Underscores
 using Random
 using TensorCast
-using CuArrays
+using CUDA
 
 
 tosimplex(x::AbstractMatrix) = tosimplex_(x)[1]
@@ -69,10 +69,10 @@ function SemiDecodeTrainer(x,y,v,vi)
     @assert N == N_ "Must have same number of neural and stimulus time points"
     @assert H == H_ "Must have same number of stimulus sources and stimulus weights"
 
-    xᵥ = gpu(view(x,:,:,vi))
-    xᵤ = gpu(view(x,:,:,setdiff(1:size(x,3),vi)))
-    yᵥ = gpu(view(y,:,:,:,vi))
-    yᵤ = gpu(view(y,:,:,:,setdiff(1:size(y,4),vi)))
+    xᵥ = view(x,:,:,vi)
+    xᵤ = view(x,:,:,setdiff(1:size(x,3),vi))
+    yᵥ = view(y,:,:,:,vi)
+    yᵤ = view(y,:,:,:,setdiff(1:size(y,4),vi))
 
     A = gpu(randn(F,G))
     u = gpu(rand(H-1,I-J))
@@ -81,7 +81,7 @@ function SemiDecodeTrainer(x,y,v,vi)
 end
 
 function loss(A,x,y,w)
-    error = 0
+    error = zero(eltype(A))
     for i in 1:size(x)[end]
         xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
         xA = xi*A
@@ -125,6 +125,9 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
 
     for (source,(_x,_y,wi)) in randmix(Dᵥ,Dᵤ,report_source=true)
         known_weights = source == 1
+        _x = gpu(_x)
+        _y = gpu(_y)
+
         if known_weights
             v = t.v[:,wi]
             Δ = Flux.gradient(t.A) do A
@@ -177,7 +180,7 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     testx, testy = gpu.((trainer.xᵥ,trainer.yᵥ))
     function status()
         @info "Training, on epoch $epoch."
-        CuArrays.memory_status()
+        CUDA.memory_status()
         testcb(decoder)
     end
     throt_status = Flux.throttle(status,status_rate)

@@ -82,7 +82,7 @@ function code_init(gpu::Val{false},y,X)
 end
 
 function code_init(gpu,y,X)
-    error("GPU backend not loaded. Call `using CuArrays`.")
+    error("GPU backend not loaded. Call `using CUDA`.")
 end
 
 function code(y,X,state=nothing;gpu=false,λ=(1-1/30),γ=1e-3,kwds...)

@@ -456,10 +456,13 @@ function read_eeg_binary(filename)
 end
 
 function read_mcca_proj(filename)
-    # @info "Reading projected components"
+    @info "Reading projected components"
     open(filename) do file
         # number of channels
         nchan = read(file,Int32)
+        if nchan > 4096
+            error("Unexpected number of channels: $(nchan)")
+        end
         # channels names
         channels = Vector{String}(undef,nchan)
         for i in 1:nchan
