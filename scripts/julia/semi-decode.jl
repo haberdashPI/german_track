@@ -17,7 +17,7 @@ subjects = Dict(
 xf = MapSplat((x...) -> find_decoder_training_trials(x...;
     eeg_sr = fs,
     final_sr = fs,
-    target_samples = target_samples
+    target_samples = 1fs,
 ))
 
 segment_definitions = foldl(append!!,xf,
