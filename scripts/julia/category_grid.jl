@@ -171,8 +171,8 @@ if !use_slurm
     subj_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:sid]) |>
         combine(__,[:correct,:weight] => _wmean => :correct)
-        wimeans = @_ subj_means |>
-            groupby(__,[:winstart,:winlen,:salience]) |>
+    wimeans = @_ subj_means |>
+        groupby(__,[:winstart,:winlen,:salience]) |>
         combine(__,:correct => mean)
 
     sort!(wimeans,order(:correct_mean,rev=true))
@@ -218,13 +218,14 @@ if !use_slurm
                 _1.winlen == best_high.winlen[1]) ||
             (_1.winstart == best_low.winstart[1] &&
                 _1.winlen == best_low.winlen[1]),__) |>
+        groupby(__,[:winlen,:winstart,:salience,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
         groupby(__,[:winlen,:winstart,:salience]) |>
-        combine([:correct,:weight] => function(c,w)
-            bs = bootstrap(x -> _wmean(getindex.(x,1),getindex.(x,2)),
-                collect(zip(c,w)),BasicSampling(10_000))
-            μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
+        combine(:correct_mean => function(correct)
+            bs = bootstrap(mean,correct,BasicSampling(10_000))
+            μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
             (correct = μ, low = low, high = high)
-        end,__)
+        end,__) #|>
 
     best_vals.winlen .= round.(best_vals.winlen,digits=2)
     best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
