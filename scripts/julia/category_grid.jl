@@ -314,6 +314,7 @@ if !use_slurm
     subj_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience]) |>
         combine(__,[:correct,:weight] => _wmean => :correct_mean)
+    # TODO: use wimeans from above
 
     sort!(subj_means,order(:correct_mean,rev=true))
     first(subj_means,6)
@@ -359,6 +360,7 @@ if !use_slurm
 
     CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
 
+    # TODO: copy behavior from Object condition, above
     best_vals = @_ spatial_classpredict |>
         filter((_1.winstart == best_high.winstart[1] &&
                 _1.winlen == best_high.winlen[1]) ||

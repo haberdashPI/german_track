@@ -176,6 +176,7 @@ function windowtarget(trial,event,fs,from,to)
     view(trial,:,start:stop)
 end
 
+const baseline_seed = 2017_09_16
 function windowbaseline(trial,event,fs,from,to;mindist,minlen)
     si = event.sound_index
     times = vcat(switch_times[si], target_times[si]) |> sort!
@@ -184,7 +185,7 @@ function windowbaseline(trial,event,fs,from,to;mindist,minlen)
         error("Could not find any valid region for baseline ",
               "'target'. Times: $(times)")
     end
-    at = sample_from_ranges(ranges)
+    at = sample_from_ranges(MerseneTwister((baseline_seed,trial,si)),ranges)
     window = only_near(at,fs,window=(from,to))
 
     maxlen = size(trial,2)
@@ -298,6 +299,7 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
                             (row.winbefore, row.winbefore + row.winlen)
 
                         rindex = row.row
+                        # TODO: generate baseline using sid for hash (location should differ by subject)
                         region == "target" ?
                             windowtarget(eeg[rindex],events[rindex,:],fs,bounds...) :
                             windowbaseline(eeg[rindex],events[rindex,:],fs,bounds...,
@@ -879,8 +881,8 @@ function far_from(times,max_time;mindist=0.5,minlength=0.5)
     view(result,1:i)
 end
 
-function sample_from_ranges(ranges)
+function sample_from_ranges(rng,ranges)
     weights = Weights(map(x -> x[2]-x[1],ranges))
-    range = StatsBase.sample(ranges,weights)
+    range = StatsBase.sample(rng,ranges,weights)
     rand(Distributions.Uniform(range...))
 end
