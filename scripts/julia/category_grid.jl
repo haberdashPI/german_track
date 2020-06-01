@@ -50,9 +50,6 @@ if !use_slurm
     isdir(dir) || mkdir(dir)
 end
 
-# TODO: try running each window separatley and storing the
-# results, rather than storing all versions of the data
-
 # is freq means always the same?
 
 # ------------------------ Mean Frequency Bin Analysis ----------------------- #
@@ -74,7 +71,6 @@ else
                 start in [0; 2.0 .^ range(-2,2,length=9)]])
     CSV.write(classdf_file,classdf)
 end
-# TODO: work on incorporate the weight when computing classification accuracy
 
 # --------------- Hyper-parameter Optimization: Global v Object -------------- #
 
@@ -154,18 +150,18 @@ if use_slurm || !use_cache || !isfile(paramfile)
     end
 else
     best_params = @_ CSV.read(paramfile)
+    rename!(best_params,:subjects => :sid)
 end
 
-# -------------------------- Classification Results -------------------------- #
+# ----------------------- Object Classification Results ---------------------- #
 
 if !use_slurm
-
     @everywhere function modelresult((key,sdf))
         params = (nu = key[:nu], gamma = key[:gamma])
         np.random.seed(typemax(UInt32) & hash((params,seed)))
         testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     end
-    rename!(best_params,:subjects => :sid)
+
     testgroups = @_ objectdf |>
         innerjoin(__,best_params,on=:sid) |>
         groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
@@ -173,19 +169,22 @@ if !use_slurm
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct_mean)
+        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct)
+        wimeans = @_ subj_means |>
+            groupby(__,[:winstart,:winlen,:salience]) |>
+        combine(__,:correct => mean)
 
-    sort!(subj_means,order(:correct_mean,rev=true))
-    first(subj_means,6)
+    sort!(wimeans,order(:correct_mean,rev=true))
+    first(wimeans,6)
 
     dir = joinpath(plotsdir(),string("results_",Date(now())))
     isdir(dir) || mkdir(dir)
 
-    subj_means.llen = log.(2,subj_means.winlen)
-    subj_means.lstart = log.(2,subj_means.winstart)
+    wimeans.llen = log.(2,wimeans.winlen)
+    wimeans.lstart = log.(2,wimeans.winstart)
 
-    pl = subj_means |>
+    pl = wimeans |>
         @vlplot(:rect,
             x={ field=:lstart, bin={step=0.573}, },
             y={ field=:llen, bin={step=2/9}, },
@@ -198,13 +197,14 @@ if !use_slurm
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
 
-# -------------------- Best-window Classification Results -------------------- #
+# ---------------- Object, Best-window Classification Results ---------------- #
 
 if !use_slurm
-    best_high = @_ subj_means |> filter(_.salience == "high",__) |>
+
+    best_high = @_ wimeans |> filter(_.salience == "high",__) |>
         sort(__,:correct_mean,rev=true) |>
         first(__,1)
-    best_low = @_ subj_means |> filter(_.salience == "low",__) |>
+    best_low = @_ wimeans |> filter(_.salience == "low",__) |>
         sort(__,:correct_mean,rev=true) |>
         first(__,1)
 
@@ -234,8 +234,8 @@ if !use_slurm
         @vlplot() +
         @vlplot(data=[{}], mark=:rule,
         encoding = {
-        y = {datum = 50},
-        strokeDash = {value = [2,2]}
+            y = {datum = 50},
+            strokeDash = {value = [2,2]}
         }) +
         (best_vals |>
         @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
@@ -394,4 +394,49 @@ if !use_slurm
     # TODO: add a dotted line to chance level
 
     save(joinpath(dir, "spatial_salience_best.pdf"),pl)
+end
+
+# ---------------------------------- Scratch --------------------------------- #
+
+@static if !use_slurm
+    using RCall
+    R"library(ggplot2)"
+
+    compare = @_ objectdf |>
+        filter(_.salience == "low",__) |>
+        filter(_.winstart == best_low.winstart[1] &&
+            _.winlen == best_low.winlen[1],__)
+
+    image = @_ compare |>
+        select(__,:sid,All(r"channel")) |>
+        stack(__,All(r"channel"),:sid,variable_name=:channel_freqbin) |>
+        transform!(__,:channel_freqbin =>
+            (x -> parse.(Int,getindex.(split.(string.(x),"_"),2))) => :channel) |>
+        transform!(__,:channel_freqbin =>
+            (x -> getindex.(split.(string.(x),"_"),3)) => :freqbin)
+
+    R"""
+    ggplot($image, aes(x=channel,y=freqbin,fill=value)) + geom_raster() +
+        facet_wrap(~sid)
+    """
+
+    comparegroups = @_ compare |>
+        innerjoin(__,best_params,on=:sid) |>
+        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+    compare_classpredict = dreduce(append!!,Map(modelresult),
+        collect(pairs(comparegroups)),init=Empty(DataFrame))
+
+    compare_subj_means = @_ compare_classpredict |>
+        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
+        sort!(__,:sid)
+
+    R"""
+    ggplot($compare_subj_means,aes(x=sid,y=correct_mean)) +
+        geom_point(position='jitter')
+    """
+
+    x = compare_subj_means.correct_mean
+    confint(bootstrap(mean,x,BasicSampling(10_000)),BasicConfInt(0.682))
+
 end

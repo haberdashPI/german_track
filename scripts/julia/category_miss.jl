@@ -3,12 +3,14 @@
 using DrWatson
 @quickactivate("greman_track")
 use_cache = true
+seed = 072189
 
 using CSV, GermanTrack, EEGCoding, Underscores, DataFrames, Transducers,
-    BangBang, ScikitLearn, RCall, Bootstrap, Statistics, Dates
+    BangBang, ScikitLearn, RCall, Bootstrap, Statistics, Dates, PyCall
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 @sk_import svm: (NuSVC, SVC)
+np = pyimport("numpy")
 R"library(ggplot2)"
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -70,7 +72,7 @@ objectdf = @_ classdf |>
     filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
-    best_params = CSV.read(paramfile)
+best_params = CSV.read(paramfile)
 
 
 # How do we do this; train on hits, test on misses?
@@ -85,6 +87,7 @@ rename!(best_params,:subjects => :sid)
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
+    np.random.seed(typemax(UInt32) & hash((params,seed)))
     testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ objectdf |>
@@ -184,3 +187,59 @@ ggsave(file.path($dir,"spatial_with_miss_salience_timeline.pdf"),pl,width=11,hei
 """
 
 # ------------------------------------ End ----------------------------------- #
+
+# ---------------------------------- Scratch --------------------------------- #
+
+compare = @_ objectdf |>
+    filter(isapprox(_.winstart,2.01,atol=0.01),__) |>
+    filter(_.salience == "low",__) |>
+    filter(_.hit == "hit",__)
+
+image = @_ compare |>
+    select(__,:sid,All(r"channel")) |>
+    stack(__,All(r"channel"),:sid,variable_name=:channel_freqbin) |>
+    transform!(__,:channel_freqbin =>
+        (x -> parse.(Int,getindex.(split.(string.(x),"_"),2))) => :channel) |>
+    transform!(__,:channel_freqbin =>
+        (x -> getindex.(split.(string.(x),"_"),3)) => :freqbin)
+
+R"""
+ggplot($image, aes(x=channel,y=freqbin,fill=value)) + geom_raster() +
+    facet_wrap(~sid)
+"""
+
+function modelresult((key,sdf))
+    params = (nu = key[:nu], gamma = key[:gamma])
+    np.random.seed(typemax(UInt32) & hash((params,seed)))
+    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+end
+
+comparegroups = @_ compare |>
+    innerjoin(__,best_params,on=:sid) |>
+    groupby(__, [:winstart,:hit,:winlen,:salience,:nu,:gamma])
+compare_classpredict = foldl(append!!,Map(modelresult),
+    collect(pairs(comparegroups)),init=Empty(DataFrame))
+
+_wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
+compare_subj_means = @_ compare_classpredict |>
+    groupby(__,[:winstart,:salience,:sid,:hit]) |> #,:before]) |>
+    combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
+    sort!(__,:sid)
+
+R"""
+ggplot($compare_subj_means,aes(x=sid,y=correct_mean)) +
+    geom_point(position='jitter')
+"""
+
+
+band = @_ compare_subj_means |>
+    # filter(_.before == "zero",__) |>
+    groupby(__,[:winstart,:salience,:hit]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        @show correct
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)

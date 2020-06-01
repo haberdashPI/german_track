@@ -1,9 +1,12 @@
 - how to finalize...
 - double check chance performance
 - why are the timeline graphs lower in accuracy?
+  - the timeline graphs appear to be accurate, I need
+    to incorporate those steps into the older scripts
+    to ensure they are accurate
 - for the best windows, using the more detailed set of bins
 - plot a smooth version? (filter for visualization) or coarser grid
-- generate random windows to compare the results with
+- baseline: generate random windows to compare the results with
 - early vs. late (start with no lo v hi, then do)
 
 - split out the frequency bands, classify bin each separately
