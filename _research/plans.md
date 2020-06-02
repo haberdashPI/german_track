@@ -1,4 +1,13 @@
 - how to finalize...
+- summarize trend
+  - remove the smaller bins, try average across columns?
+  - some low pass filter (interpolation)?
+  - maybe some gaussian fit, pick the mass
+  - or clustering, k-means
+- don't have to break high low (just compare hit v miss as average, sanity check)
+- check main effects first
+- then interactions
+
 - double check chance performance
 + why are the timeline graphs lower in accuracy?
   + the timeline graphs appear to be accurate, I need

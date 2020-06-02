@@ -197,6 +197,36 @@ if !use_slurm
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
 
+using RCall
+R"library(ggplot2)"
+
+winlen_means = @_ subj_means |>
+    groupby(__,[:winlen,:salience,:sid]) |>
+    combine(__,:correct => mean)
+
+R"""
+ggplot($winlen_means,aes(x=winlen,y=correct_mean,color=salience)) +
+    stat_summary(fun.data='mean_cl_boot')
+"""
+
+meanlen = @_ subj_means |>
+    groupby(__,[:winstart,:salience,:sid]) |>
+    combine(__,:correct => maximum) |>
+    groupby(__,[:winstart,:salience]) |>
+    combine(:correct_maximum => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__)
+
+R"""
+ggplot($meanlen, aes(x=winstart,y=correct,color=salience)) +
+    geom_line() +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
+    geom_abline(slope=0,intercept=50,linetype=2) +
+    coord_cartesian(ylim=c(40,100))
+"""
+
 # ---------------- Object, Best-window Classification Results ---------------- #
 
 if !use_slurm
