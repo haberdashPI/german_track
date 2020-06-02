@@ -19,6 +19,7 @@ using BlackBoxOptim
 using Transducers
 using BangBang
 using IntervalSets
+using Random
 
 function mat2bson(file)
     file
@@ -177,7 +178,7 @@ function windowtarget(trial,event,fs,from,to)
 end
 
 const baseline_seed = 2017_09_16
-function windowbaseline(trial,event,fs,from,to;mindist,minlen)
+function windowbaseline(trial,event,sid,trialnum,fs,from,to;mindist,minlen)
     si = event.sound_index
     times = vcat(switch_times[si], target_times[si]) |> sort!
     ranges = far_from(times, 10, mindist=mindist, minlength=minlen)
@@ -185,7 +186,7 @@ function windowbaseline(trial,event,fs,from,to;mindist,minlen)
         error("Could not find any valid region for baseline ",
               "'target'. Times: $(times)")
     end
-    at = sample_from_ranges(MerseneTwister((baseline_seed,trial,si)),ranges)
+    at = sample_from_ranges(MersenneTwister(hash((baseline_seed,sid,trialnum))),ranges)
     window = only_near(at,fs,window=(from,to))
 
     maxlen = size(trial,2)
@@ -271,7 +272,6 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
         eeg = subject.eeg
 
         function build_subject_data(region,window)
-
             rowdf = @_ filter(_.target_present == 1,events)
             si = rowdf.sound_index
             rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
@@ -299,11 +299,10 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
                             (row.winbefore, row.winbefore + row.winlen)
 
                         rindex = row.row
-                        # TODO: generate baseline using sid for hash (location should differ by subject)
                         region == "target" ?
                             windowtarget(eeg[rindex],events[rindex,:],fs,bounds...) :
-                            windowbaseline(eeg[rindex],events[rindex,:],fs,bounds...,
-                                mindist=0.2,minlen=0.5)
+                            windowbaseline(eeg[rindex],events[rindex,:],
+                                sdf.sid[1],row.trial,fs,bounds...,mindist=0.2,minlen=0.5)
                     end
                     reduce(hcat,ws), sum(!isempty,ws)
                 end
@@ -881,6 +880,7 @@ function far_from(times,max_time;mindist=0.5,minlength=0.5)
     view(result,1:i)
 end
 
+sample_from_ranges(ranges) = sample_from_ranges(Random.GLOBAL_RNG,ranges)
 function sample_from_ranges(rng,ranges)
     weights = Weights(map(x -> x[2]-x[1],ranges))
     range = StatsBase.sample(rng,ranges,weights)

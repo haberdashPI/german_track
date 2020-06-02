@@ -20,49 +20,25 @@ isdir(dir) || mkdir(dir)
 
 best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_miss.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans_baseline.csv")
 if use_cache && isfile(classdf_file)
-    classdf_miss = CSV.read(classdf_file)
+    classdf = CSV.read(classdf_file)
 else
     eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
     subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 
-    classdf_miss = find_powerdiff(
+    classdf = find_powerdiff(
         subjects,groups=[:salience],
-        hittypes = ["miss"],
-        regions = ["target"],
+        hittypes = ["miss","hit", "baseline"],
+        regions = ["target", "baseline"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=256),
+            for start in range(0,4,length=64),
                 len in best_windows.winlen |> unique])
 
-    CSV.write(classdf_file,classdf_miss)
+    CSV.write(classdf_file,classdf)
 end
-
-best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
-
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
-if use_cache && isfile(classdf_file)
-    classdf_hit = CSV.read(classdf_file)
-else
-    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
-                                            encoding = RawEncoding())
-        for file in eeg_files)
-
-    classdf_hit = find_powerdiff(
-        subjects,groups=[:salience],
-        hittypes = ["hit"],
-        regions = ["target"],
-        windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=256),
-                len in best_windows.winlen |> unique])
-
-    CSV.write(classdf_file,classdf_hit)
-end
-
-classdf = vcat(classdf_miss,classdf_hit)
 
 # ------------------------------ Object Timeline ----------------------------- #
 
@@ -113,16 +89,16 @@ band = @_ subj_means |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-
 pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
     geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
     geom_line() +
     facet_grid(~hit) +
     geom_abline(slope=0,intercept=50,linetype=2) +
     coord_cartesian(ylim=c(40,100))
+"""
 
+R"""
 ggsave(file.path($dir,"object_with_miss_salience_timeline.pdf"),pl,width=11,height=8)
-
 """
 
 # ----------------------------- Spatial Timeline ----------------------------- #

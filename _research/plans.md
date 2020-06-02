@@ -5,9 +5,11 @@
     to incorporate those steps into the older scripts
     to ensure they are accurate
   - fix other instances of this (under spatial, but wait until other bullet poitns are done)
-- baseline: generate random windows to compare the results with
++ baseline: generate random windows to compare the results with
+
 - for the best windows, using the more detailed set of bins
 - plot a smooth version? (filter for visualization) or coarser grid
+
 - early vs. late (start with no lo v hi, then do)
 
 - split out the frequency bands, classify bin each separately
