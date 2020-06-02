@@ -1,5 +1,6 @@
 - how to finalize...
 - summarize trend
+  - use the len with the best average performance; that seems to work well
   - remove the smaller bins, try average across columns?
   - some low pass filter (interpolation)?
   - maybe some gaussian fit, pick the mass

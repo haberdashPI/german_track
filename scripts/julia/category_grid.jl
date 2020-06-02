@@ -201,8 +201,13 @@ using RCall
 R"library(ggplot2)"
 
 winlen_means = @_ subj_means |>
-    groupby(__,[:winlen,:salience,:sid]) |>
+    groupby(__,[:winlen,:salience]) |>
     combine(__,:correct => mean)
+
+best_windows = @_ winlen_means |>
+    groupby(__,:salience) |>
+    combine(__,[:winlen,:correct_mean] =>
+        ((len,val) -> len[argmax(val)]) => :best_len)
 
 R"""
 ggplot($winlen_means,aes(x=winlen,y=correct_mean,color=salience)) +
