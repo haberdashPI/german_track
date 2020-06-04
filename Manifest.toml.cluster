@@ -180,10 +180,10 @@ uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 version = "0.8.1"
 
 [[ClusterManagers]]
-deps = ["Distributed", "Sockets"]
-git-tree-sha1 = "60a1c6dc3278910716fcf87eb602968fdf72e44d"
+deps = ["Dates", "Distributed", "Logging", "Sockets"]
+path = "/home/davidlittle/.julia/dev/ClusterManagers"
 uuid = "34f1f09b-3a8b-5176-ab39-66d58a4d544e"
-version = "0.3.2"
+version = "0.4.0"
 
 [[CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
