@@ -10,6 +10,9 @@
 - then interactions
 
 - double check chance performance
+  - yes: it's 50%, the key is that you have to average correct
+    across the four conditions (matching 0, 0.5 0.5 and 1.0 correct across
+      the four conditions), this is verified if I randomize the labels
 + why are the timeline graphs lower in accuracy?
   + the timeline graphs appear to be accurate, I need
     to incorporate those steps into the older scripts

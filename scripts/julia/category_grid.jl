@@ -197,94 +197,6 @@ if !use_slurm
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
 
-using RCall
-R"library(ggplot2)"
-
-winlen_means = @_ subj_means |>
-    groupby(__,[:winlen,:salience]) |>
-    combine(__,:correct => mean)
-
-best_windows = @_ winlen_means |>
-    groupby(__,:salience) |>
-    combine(__,[:winlen,:correct_mean] =>
-        ((len,val) -> len[argmax(val)]) => :best_len)
-
-R"""
-ggplot($winlen_means,aes(x=winlen,y=correct_mean,color=salience)) +
-    stat_summary(fun.data='mean_cl_boot')
-"""
-
-meanlen = @_ subj_means |>
-    groupby(__,[:winstart,:salience,:sid]) |>
-    combine(__,:correct => maximum) |>
-    groupby(__,[:winstart,:salience]) |>
-    combine(:correct_maximum => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__)
-
-R"""
-ggplot($meanlen, aes(x=winstart,y=correct,color=salience)) +
-    geom_line() +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
-    geom_abline(slope=0,intercept=50,linetype=2) +
-    coord_cartesian(ylim=c(40,100))
-"""
-
-# ---------------- Object, Best-window Classification Results ---------------- #
-
-if !use_slurm
-
-    best_high = @_ wimeans |> filter(_.salience == "high",__) |>
-        sort(__,:correct_mean,rev=true) |>
-        first(__,1)
-    best_low = @_ wimeans |> filter(_.salience == "low",__) |>
-        sort(__,:correct_mean,rev=true) |>
-        first(__,1)
-
-    best_windows = DataFrame([
-        (winlen=best_high.winlen[1],condition=:object,salience=:high),
-        (winlen=best_low.winlen[1],condition=:object,salience=:low)
-    ])
-
-    best_vals = @_ object_classpredict |>
-        filter((_1.winstart == best_high.winstart[1] &&
-                _1.winlen == best_high.winlen[1]) ||
-            (_1.winstart == best_low.winstart[1] &&
-                _1.winlen == best_low.winlen[1]),__) |>
-        groupby(__,[:winlen,:winstart,:salience,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
-        groupby(__,[:winlen,:winstart,:salience]) |>
-        combine(:correct_mean => function(correct)
-            bs = bootstrap(mean,correct,BasicSampling(10_000))
-            μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-            (correct = μ, low = low, high = high)
-        end,__) #|>
-
-    best_vals.winlen .= round.(best_vals.winlen,digits=2)
-    best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
-        best_vals.winlen,best_vals.winstart))
-
-    pl =
-        @vlplot() +
-        @vlplot(data=[{}], mark=:rule,
-        encoding = {
-            y = {datum = 50},
-            strokeDash = {value = [2,2]}
-        }) +
-        (best_vals |>
-        @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
-        @vlplot(mark={:errorbar,filled=true},
-                y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
-                y2={"high", type=:quantitative}, color=:salience) +
-        @vlplot(mark={:point,filled=true},
-                y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
-                color=:salience))
-
-    save(joinpath(dir, "object_salience_best.pdf"),pl)
-end
-
 # -------------- Hyper-parameter Optimization: Global v Spatial -------------- #
 
 spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
@@ -377,104 +289,28 @@ if !use_slurm
 
 end
 
-# --------------- Best-window Classificationo: Global v Spatial -------------- #
-
-if !use_slurm
-
-    best_high = @_ subj_means |> filter(_.salience == "high",__) |>
-        sort(__,:correct_mean,rev=true) |>
-        first(__,1)
-    best_low = @_ subj_means |> filter(_.salience == "low",__) |>
-        sort(__,:correct_mean,rev=true) |>
-        first(__,1)
-
-    best_windows = vcat(best_windows,DataFrame([
-        (winlen=best_high.winlen[1],condition=:spatial,salience=:high),
-        (winlen=best_low.winlen[1],condition=:spatial,salience=:low)
-    ]))
-
-    CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
-
-    # TODO: copy behavior from Object condition, above
-    best_vals = @_ spatial_classpredict |>
-        filter((_1.winstart == best_high.winstart[1] &&
-                _1.winlen == best_high.winlen[1]) ||
-            (_1.winstart == best_low.winstart[1] &&
-                _1.winlen == best_low.winlen[1]),__) |>
-        groupby(__,[:winlen,:winstart,:salience]) |>
-        combine([:correct,:weight] => function(c,w)
-            bs = bootstrap(x -> _wmean(getindex.(x,1),getindex.(x,2)),
-                collect(zip(c,w)),BasicSampling(10_000))
-            μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-            (correct = μ, low = low, high = high)
-        end,__)
-
-    best_vals.winlen .= round.(best_vals.winlen,digits=2)
-    best_vals[!,:window] .= (format.("width = {:1.2f}s, start = {:1.2f}s",
-        best_vals.winlen,best_vals.winstart))
-
-    pl =
-        @vlplot() +
-        @vlplot(data=[{}], mark=:rule,
-        encoding = {
-        y = {datum = 50},
-        strokeDash = {value = [2,2]}
-        }) +
-        (best_vals |>
-        @vlplot(x={:window, type=:ordinal, axis={title="Window"}}) +
-        @vlplot(mark={:errorbar,filled=true},
-                y={"low",scale={zero=false}, axis={title=""},type=:quantitative},
-                y2={"high", type=:quantitative}, color=:salience) +
-        @vlplot(mark={:point,filled=true},
-                y={:correct,scale={zero=false},axis={title="% Correct Classification"}},
-                color=:salience))
-
-    # TODO: add a dotted line to chance level
-
-    save(joinpath(dir, "spatial_salience_best.pdf"),pl)
-end
-
 # ---------------------------------- Scratch --------------------------------- #
 
 @static if !use_slurm
-    using RCall
-    R"library(ggplot2)"
 
-    compare = @_ objectdf |>
-        filter(_.salience == "low",__) |>
-        filter(_.winstart == best_low.winstart[1] &&
-            _.winlen == best_low.winlen[1],__)
-
-    image = @_ compare |>
-        select(__,:sid,All(r"channel")) |>
-        stack(__,All(r"channel"),:sid,variable_name=:channel_freqbin) |>
-        transform!(__,:channel_freqbin =>
-            (x -> parse.(Int,getindex.(split.(string.(x),"_"),2))) => :channel) |>
-        transform!(__,:channel_freqbin =>
-            (x -> getindex.(split.(string.(x),"_"),3)) => :freqbin)
-
-    R"""
-    ggplot($image, aes(x=channel,y=freqbin,fill=value)) + geom_raster() +
-        facet_wrap(~sid)
-    """
-
-    comparegroups = @_ compare |>
-        innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
-    compare_classpredict = dreduce(append!!,Map(modelresult),
-        collect(pairs(comparegroups)),init=Empty(DataFrame))
-
-    compare_subj_means = @_ compare_classpredict |>
+    object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
-        sort!(__,:sid)
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:salience]) |>
+        combine(__,:correct => mean) |>
+        insertcols!(__,:condition => "object")
 
-    R"""
-    ggplot($compare_subj_means,aes(x=sid,y=correct_mean)) +
-        geom_point(position='jitter')
-    """
+    spatial_winlen_means = @_ spatial_classpredict |>
+        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:salience]) |>
+        combine(__,:correct => mean) |>
+        insertcols!(__,:condition => "spatial")
 
-    x = compare_subj_means.correct_mean
-    confint(bootstrap(mean,x,BasicSampling(10_000)),BasicConfInt(0.682))
+    best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
+        groupby(__,[:salience,:condition]) |>
+        combine(__,[:winlen,:correct_mean] =>
+            ((len,val) -> len[argmax(val)]) => :winlen)
 
+    CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
 end
