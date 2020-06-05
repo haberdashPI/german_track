@@ -31,18 +31,19 @@ library(dplyr)
 
 # ---------------------------- Freqmeans Analysis ---------------------------- #
 
-best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+best_windows_sal = CSV.read(joinpath(datadir(),"svm_params","best_windows_salience.csv"))
+best_windows_tim = CSV.read(joinpath(datadir(),"svm_params","best_windows_target_time.csv"))
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
-if use_cache && isfile(classdf_file)
-    classdf = CSV.read(classdf_file)
+classdf_sal_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
+if use_cache && isfile(classdf_sal_file)
+    classdf_sal = CSV.read(classdf_sal_file)
 else
     eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
     subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 
-    classdf = find_powerdiff(
+    classdf_sal = find_powerdiff(
         subjects,groups=[:salience],
         hittypes = ["hit"],
         regions = ["target"],
@@ -50,7 +51,27 @@ else
             for start in range(0,4,length=64),
                 len in best_windows.winlen |> unique])
 
-    CSV.write(classdf_file,classdf)
+    CSV.write(classdf_sal_file,classdf_sal)
+end
+
+classdf_tim_file = joinpath(cache_dir(),"data","freqmeans_timeline_target_time.csv")
+if use_cache && isfile(classdf_tim_file)
+    classdf_tim = CSV.read(classdf_tim_file)
+else
+    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                            encoding = RawEncoding())
+        for file in eeg_files)
+
+    classdf_tim = find_powerdiff(
+        subjects,groups=[:target_time],
+        hittypes = ["hit"],
+        regions = ["target"],
+        windows = [(len=len,start=start,before=-len)
+            for start in range(0,4,length=64),
+                len in best_windows.winlen |> unique])
+
+    CSV.write(classdf_tim_file,classdf_tim)
 end
 
 # ------------------------------ Timeline ----------------------------- #
@@ -76,9 +97,9 @@ function classpredict(df,params,condition)
         insertcols!(__,:condition => condition)
 end
 
-winlens = groupby(best_windows,[:condition,:salience])
+winlens = groupby(best_windows_sal,[:condition,:salience])
 
-objectdf = @_ classdf |>
+objectdf = @_ classdf_sal |>
     filter(_.condition in ["global","object"],__) |>
     filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
@@ -86,7 +107,7 @@ best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
 object_predict = classpredict(objectdf, best_params, "object")
 
-spatialdf = @_ classdf |>
+spatialdf = @_ classdf_sal |>
     filter(_.condition in ["global","spatial"],__) |>
     filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
@@ -178,59 +199,6 @@ pl = plot_grid(
 
 R"""
 ggsave(file.path($dir,"salience_classify_summary.pdf"),pl,width=8,height=3)
-"""
-
-# ----------------------------- Spatial Timeline ----------------------------- #
-
-@everywhere begin
-    best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
-    winlens = groupby(best_windows,[:condition,:salience])
-    spatialdf = @_ classdf |>
-        filter(_.condition in ["global","spatial"],__) |>
-        filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
-end
-
-paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
-best_params = CSV.read(paramfile)
-
-@everywhere function modelresult((key,sdf))
-    params = (nu = key[:nu], gamma = key[:gamma])
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
-end
-rename!(best_params,:subjects => :sid)
-testgroups = @_ spatialdf |>
-    innerjoin(__,best_params,on=:sid) |>
-    groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
-spatial_classpredict = dreduce(append!!,Map(modelresult),
-    collect(pairs(testgroups)),init=Empty(DataFrame))
-
-subj_means = @_ spatial_classpredict |>
-    groupby(__,[:winstart,:salience,:sid]) |>
-    combine(__,[:correct,:weight] => _wmean => :correct_mean)
-
-
-band = @_ subj_means |>
-    groupby(__,[:winstart,:salience]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.683))[1]
-        (correct = μ, low = low, high = high)
-    end,__)
-
-R"""
-
-library(ggplot2)
-
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
-    geom_line() +
-    geom_abline(slope=0,intercept=50,linetype=2) +
-    coord_cartesian(ylim=c(40,100))
-pl
-
-ggsave(file.path($dir,"spatial_salience_timeline.pdf"),pl,width=11,height=8)
-
 """
 
 # ------------------------------------ End ----------------------------------- #

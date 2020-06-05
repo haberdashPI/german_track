@@ -289,7 +289,7 @@ if !use_slurm
 
 end
 
-# ---------------------------------- Scratch --------------------------------- #
+# -------------------------- Find Best Window Length ------------------------- #
 
 @static if !use_slurm
 
@@ -312,5 +312,7 @@ end
         combine(__,[:winlen,:correct_mean] =>
             ((len,val) -> len[argmax(val)]) => :winlen)
 
-    CSV.write(joinpath(datadir(),"svm_params","best_windows.csv"),best_windows)
+    CSV.write(joinpath(datadir(),"svm_params","best_windows_salience.csv"),best_windows)
 end
+
+# ------------------------------------ End ----------------------------------- #

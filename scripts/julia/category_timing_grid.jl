@@ -151,6 +151,50 @@ else
     rename!(best_params,:subjects => :sid)
 end
 
+# ----------------------- Object Classification Results ---------------------- #
+
+if !use_slurm
+    @everywhere function modelresult((key,sdf))
+        params = (nu = key[:nu], gamma = key[:gamma])
+        np.random.seed(typemax(UInt32) & hash((params,seed)))
+        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    end
+
+    testgroups = @_ objectdf |>
+        innerjoin(__,best_params,on=:sid) |>
+        groupby(__, [:winstart,:winlen,:target_time,:nu,:gamma])
+    object_classpredict = dreduce(append!!,Map(modelresult),
+        collect(pairs(testgroups)),init=Empty(DataFrame))
+
+    subj_means = @_ object_classpredict |>
+        groupby(__,[:winstart,:winlen,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct)
+    wimeans = @_ subj_means |>
+        groupby(__,[:winstart,:winlen,:target_time]) |>
+        combine(__,:correct => mean)
+
+    sort!(wimeans,order(:correct_mean,rev=true))
+    first(wimeans,6)
+
+    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    isdir(dir) || mkdir(dir)
+
+    wimeans.llen = log.(2,wimeans.winlen)
+    wimeans.lstart = log.(2,wimeans.winstart)
+
+    pl = wimeans |>
+        @vlplot(:rect,
+            x={ field=:lstart, bin={step=0.573}, },
+            y={ field=:llen, bin={step=2/9}, },
+            color={
+                :correct_mean,
+                scale={reverse=true,domain=[0.5,1],scheme="plasma"}
+            },
+            column=:target_time)
+
+    save(joinpath(dir,"object_target_time.pdf"),pl)
+end
+
 # -------------- Hyper-parameter Optimization: Global v Spatial -------------- #
 
 spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
@@ -194,6 +238,77 @@ if use_slurm || !use_cache || !isfile(paramfile)
     end
 else
     best_params = CSV.read(paramfile)
+    rename!(best_params,:subjects => :sid)
+end
+
+# ----------------------- Object Classification Results ---------------------- #
+
+if !use_slurm
+    @everywhere function modelresult((key,sdf))
+        params = (nu = key[:nu], gamma = key[:gamma])
+        np.random.seed(typemax(UInt32) & hash((params,seed)))
+        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    end
+
+    testgroups = @_ spatialdf |>
+        innerjoin(__,best_params,on=:sid) |>
+        groupby(__, [:winstart,:winlen,:target_time,:nu,:gamma])
+    spatial_classpredict = dreduce(append!!,Map(modelresult),
+        collect(pairs(testgroups)),init=Empty(DataFrame))
+
+    subj_means = @_ spatial_classpredict |>
+        groupby(__,[:winstart,:winlen,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct)
+    wimeans = @_ subj_means |>
+        groupby(__,[:winstart,:winlen,:target_time]) |>
+        combine(__,:correct => mean)
+
+    sort!(wimeans,order(:correct_mean,rev=true))
+    first(wimeans,6)
+
+    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    isdir(dir) || mkdir(dir)
+
+    wimeans.llen = log.(2,wimeans.winlen)
+    wimeans.lstart = log.(2,wimeans.winstart)
+
+    pl = wimeans |>
+        @vlplot(:rect,
+            x={ field=:lstart, bin={step=0.573}, },
+            y={ field=:llen, bin={step=2/9}, },
+            color={
+                :correct_mean,
+                scale={reverse=true,domain=[0.5,1],scheme="plasma"}
+            },
+            column=:target_time)
+
+    save(joinpath(dir,"spatial_target_time.pdf"),pl)
+end
+
+# -------------------------- Find Best Window Length ------------------------- #
+
+@static if !use_slurm
+
+    object_winlen_means = @_ object_classpredict |>
+        groupby(__,[:winstart,:winlen,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:target_time]) |>
+        combine(__,:correct => mean) |>
+        insertcols!(__,:condition => "object")
+
+    spatial_winlen_means = @_ spatial_classpredict |>
+        groupby(__,[:winstart,:winlen,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:target_time]) |>
+        combine(__,:correct => mean) |>
+        insertcols!(__,:condition => "spatial")
+
+    best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
+        groupby(__,[:target_time,:condition]) |>
+        combine(__,[:winlen,:correct_mean] =>
+            ((len,val) -> len[argmax(val)]) => :winlen)
+
+    CSV.write(joinpath(datadir(),"svm_params","best_windows_target_time.csv"),best_windows)
 end
 
 # ------------------------------------ End ----------------------------------- #
