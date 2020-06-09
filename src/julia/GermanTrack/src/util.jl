@@ -264,7 +264,14 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
     progress = Progress(N,desc="computing frequency bins")
 
     med_salience = median(target_salience)
-    med_target_time = @_ filter(_ > 0,target_times) |> median
+    early_targets =
+        @_ DataFrame(
+            time = target_times,
+            switches = switch_times,
+            row = 1:length(target_times)) |>
+        filter(_.time > 0,__) |>
+        filter(sum(_1.time .> _1.switches) <= 2,__) |>
+        __.row
 
     function assemble_subject(subject)
         events = subject.events
@@ -276,7 +283,7 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
             si = rowdf.sound_index
             rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
             rowdf.salience = @. ifelse(target_salience[si] > med_salience,"high","low")
-            rowdf.target_time = @. ifelse(target_times[si] > med_target_time,"early","late")
+            rowdf.target_time = @. ifelse(si ∈ early_targets,"early","late")
             rowdf.direction = directions[si]
             rowdf[!,:region] .= region
             rowdf[!,:winlen] .= window.len
