@@ -2,6 +2,7 @@
   + plot of miss and baseline vs overall
   + average across multiple window lengths (smoother timelines?)
   + how to pick summary for target timing (base on smoother timelines?)
+
   - consider merve's definition of targets (check on small percentage)
 
   - try early late timing
