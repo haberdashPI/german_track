@@ -1,7 +1,16 @@
 - for tuesday:
   + plot of miss and baseline vs overall
-  - average across multiple window lengths
-  - how to pick summary for target timing
+  + average across multiple window lengths (smoother timelines?)
+  + how to pick summary for target timing (base on smoother timelines?)
+  - consider merve's definition of targets (check on small percentage)
+
+  - try early late timing
+  - 2x2 for salinece / target-timing
+  - fremeans getting long (parallelize data)
+
+  - try some raw analysis (look at spectrograms, spectrum, some view of bands???),
+    global condition (focus?)
+  - try decoder with different lags (pick some best times)
 
 - next steps:
   semi-supervised decoding?

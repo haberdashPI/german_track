@@ -8,7 +8,7 @@ seed = 072189
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
     FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
-    Distributions
+    Distributions, Alert
 
 # local only packages
 using Formatting, ScikitLearn, Distributions
@@ -35,6 +35,7 @@ library(dplyr)
 best_windows_sal = CSV.read(joinpath(datadir(),"svm_params","best_windows_salience.csv"))
 best_windows_tim = CSV.read(joinpath(datadir(),"svm_params","best_windows_target_time.csv"))
 
+spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
 classdf_sal_file = joinpath(cache_dir(),"data","freqmeans_timeline_spread.csv")
@@ -52,9 +53,10 @@ else
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for start in range(0,4,length=64),
-                len in spread.(unique(best_windows_sal.winlen),0.5,6)])
+                len in copy(MapCat(spread(0.5,6)),unique(best_windows_sal.winlen))])
 
     CSV.write(classdf_sal_file,classdf_sal)
+    alert("Salience Freqmeans Complete!")
 end
 
 classdf_tim_file = joinpath(cache_dir(),"data","freqmeans_timeline_target_time_spread.csv")
@@ -72,9 +74,10 @@ else
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for start in range(0,4,length=64),
-                len in spread.(unique(best_windows_sal.winlen),0.5,6)])
+                len in copy(MapCat(spread(0.5,6)),unique(best_windows_tim.winlen))])
 
     CSV.write(classdf_tim_file,classdf_tim)
+    alert("Target Time Freqmeans Complete")
 end
 
 # ----------------------------- Salience Timeline ---------------------------- #
@@ -104,7 +107,7 @@ winlens = groupby(best_windows_sal,[:condition,:salience])
 
 objectdf = @_ classdf_sal |>
     filter(_.condition in ["global","object"],__) |>
-    filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
+    filter(_1.winlen in spread(winlens[(condition = "object", salience = _1.salience)].winlen[1],0.5,6),__)
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
@@ -112,7 +115,7 @@ object_predict = classpredict(objectdf, best_params, "object", :salience)
 
 spatialdf = @_ classdf_sal |>
     filter(_.condition in ["global","spatial"],__) |>
-    filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
+    filter(_1.winlen in spread(winlens[(condition = "spatial", salience = _1.salience)].winlen[1],0.5,6),__)
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
@@ -140,7 +143,9 @@ pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
     geom_line() + facet_grid(~condition) +
     geom_abline(slope=0,intercept=50,linetype=2) +
     coord_cartesian(ylim=c(40,100))
+pl
 """
+
 
 R"""
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
@@ -155,7 +160,7 @@ best_wins = @_ predict |>
     groupby(__,:condition)
 
 subj_sum = @_ predict |>
-    filter(_.winstart ∈ best_wins[(condition = _.condition,)].winstart, __) |>
+    filter(_.winstart in best_wins[(condition = _.condition,)].winstart, __) |>
     groupby(__,[:winstart,:salience,:condition]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
@@ -311,7 +316,7 @@ winlens = groupby(best_windows_tim,[:condition,:target_time])
 
 objectdf = @_ classdf_tim |>
     filter(_.condition in ["global","object"],__) |>
-    filter(_1.winlen == winlens[(condition = "object", target_time = _1.target_time)].winlen[1],__)
+    filter(_1.winlen in spread(winlens[(condition = "object", target_time = _1.target_time)].winlen[1],0.5,6),__)
 paramfile = joinpath(datadir(),"svm_params","object_target_time.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
@@ -319,7 +324,7 @@ object_predict = classpredict(objectdf, best_params, "object", :target_time)
 
 spatialdf = @_ classdf_tim |>
     filter(_.condition in ["global","spatial"],__) |>
-    filter(_1.winlen == winlens[(condition = "spatial", target_time = _1.target_time)].winlen[1],__)
+    filter(_1.winlen in spread(winlens[(condition = "spatial", target_time = _1.target_time)].winlen[1],0.5,6),__)
 paramfile = joinpath(datadir(),"svm_params","spatial_target_time.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
@@ -362,7 +367,7 @@ best_wins = @_ predict |>
     groupby(__,:condition)
 
 subj_sum = @_ predict |>
-    filter(_.winstart ∈ best_wins[(condition = _.condition,)].winstart, __) |>
+    filter(_.winstart in best_wins[(condition = _.condition,)].winstart, __) |>
     groupby(__,[:winstart,:target_time,:condition]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
