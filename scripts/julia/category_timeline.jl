@@ -7,7 +7,8 @@ seed = 072189
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall
+    FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
+    Distributions
 
 # local only packages
 using Formatting, ScikitLearn, Distributions
@@ -34,7 +35,9 @@ library(dplyr)
 best_windows_sal = CSV.read(joinpath(datadir(),"svm_params","best_windows_salience.csv"))
 best_windows_tim = CSV.read(joinpath(datadir(),"svm_params","best_windows_target_time.csv"))
 
-classdf_sal_file = joinpath(cache_dir(),"data","freqmeans_timeline.csv")
+spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+
+classdf_sal_file = joinpath(cache_dir(),"data","freqmeans_timeline_spread.csv")
 if use_cache && isfile(classdf_sal_file)
     classdf_sal = CSV.read(classdf_sal_file)
 else
@@ -49,12 +52,12 @@ else
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for start in range(0,4,length=64),
-                len in best_windows_sal.winlen |> unique])
+                len in spread.(unique(best_windows_sal.winlen),0.5,6)])
 
     CSV.write(classdf_sal_file,classdf_sal)
 end
 
-classdf_tim_file = joinpath(cache_dir(),"data","freqmeans_timeline_target_time.csv")
+classdf_tim_file = joinpath(cache_dir(),"data","freqmeans_timeline_target_time_spread.csv")
 if use_cache && isfile(classdf_tim_file)
     classdf_tim = CSV.read(classdf_tim_file)
 else
@@ -69,7 +72,7 @@ else
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
             for start in range(0,4,length=64),
-                len in best_windows_tim.winlen |> unique])
+                len in spread.(unique(best_windows_sal.winlen),0.5,6)])
 
     CSV.write(classdf_tim_file,classdf_tim)
 end
@@ -84,15 +87,15 @@ end
 
 _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
-function classpredict(df,params,variable,condition)
+function classpredict(df,params,condition,variables...)
     testgroups = @_ df |>
         innerjoin(__,params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,variable,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,variables...,:nu,:gamma])
     predictions = foldl(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     @_ predictions |>
-        groupby(__,[:winstart,variable,:sid]) |> #,:before]) |>
+        groupby(__,[:winstart,variables...,:sid]) |> #,:before]) |>
         combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
         insertcols!(__,:condition => condition)
 end
@@ -105,7 +108,7 @@ objectdf = @_ classdf_sal |>
 paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
-object_predict = classpredict(objectdf, best_params, :salience, "object")
+object_predict = classpredict(objectdf, best_params, "object", :salience)
 
 spatialdf = @_ classdf_sal |>
     filter(_.condition in ["global","spatial"],__) |>
@@ -113,7 +116,7 @@ spatialdf = @_ classdf_sal |>
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
-spatial_predict = classpredict(spatialdf, best_params, :salience, "spatial")
+spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience)
 
 predict = vcat(object_predict,spatial_predict)
 
@@ -201,6 +204,107 @@ R"""
 ggsave(file.path($dir,"salience_classify_summary.pdf"),pl,width=8,height=3)
 """
 
+# ------------------------------ Overall vs Miss ----------------------------- #
+
+classdf_file = joinpath(cache_dir(),"data","freqmeans_miss_baseline.csv")
+if use_cache && isfile(classdf_file)
+    classdf_missbase = CSV.read(classdf_file)
+else
+    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+                                            encoding = RawEncoding())
+        for file in eeg_files)
+
+    classdf_missbase = find_powerdiff(
+        subjects,groups=[:salience],
+        hittypes = ["miss","hit", "baseline"],
+        regions = ["target", "baseline"],
+        windows = [(len=len,start=start,before=-len)
+            for start in range(0,4,length=64),
+                len in best_windows_sal.winlen |> unique])
+
+    CSV.write(classdf_file,classdf)
+end
+
+objectdf = @_ classdf_missbase |>
+    filter(_.condition in ["global","object"],__) |>
+    filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
+paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
+best_params = CSV.read(paramfile)
+rename!(best_params,:subjects => :sid)
+object_predict = classpredict(objectdf, best_params, "object", :salience, :hit)
+
+spatialdf = @_ classdf_missbase |>
+    filter(_.condition in ["global","spatial"],__) |>
+    filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
+paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
+best_params = CSV.read(paramfile)
+rename!(best_params,:subjects => :sid)
+best_params = @_ best_params |>
+    transform!(__,:nu => (nu -> clamp.(nu,0,0.7)) => :nu)
+spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience, :hit)
+
+function bestonly(var,measure,df)
+    means = combine(groupby(df,var),measure => mean => measure)
+    bestvar = means[var][argmax(means[measure])]
+
+    @_ filter(_[var] == bestvar,df)
+end
+
+hit_compare = @_ vcat(object_predict,spatial_predict) |>
+    groupby(__,[:salience,:hit,:condition]) |>
+    combine(bestonly(:winstart,:correct_mean,_),__) |>
+    groupby(__,[:salience,:condition,:sid,:hit]) |>
+    combine(__,:correct_mean => mean => :correct_mean) |>
+    groupby(__,:hit) |>
+    combine(:correct_mean => function(x)
+        bs = bootstrap(mean,x,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__)
+
+R"""
+pl = ggplot($hit_compare,aes(x=factor(hit,order=T,levels=c('hit','miss','baseline')),
+        y=correct,fill=hit)) +
+    geom_bar(stat='identity',width=0.7) +
+    geom_linerange(aes(ymin=low,ymax=high)) +
+    coord_cartesian(ylim=c(40,100)) +
+    geom_abline(intercept=50,slope=0,linetype=2) +
+    guides(color=F,fill=F) +
+    ylab('% Correct') + xlab('')
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"hit_v_miss_v_baseline_beststart.pdf"),pl,width=11,height=8)
+"""
+
+hit_compare2 = @_ vcat(object_predict,spatial_predict) |>
+    groupby(__,[:salience,:condition,:sid,:hit]) |>
+    combine(__,:correct_mean => mean => :correct_mean) |>
+    groupby(__,:hit) |>
+    combine(:correct_mean => function(x)
+        bs = bootstrap(mean,x,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__)
+
+R"""
+pl = ggplot($hit_compare2,aes(x=factor(hit,order=T,levels=c('hit','miss','baseline')),
+        y=correct,fill=hit)) +
+    geom_bar(stat='identity',width=0.7) +
+    geom_linerange(aes(ymin=low,ymax=high)) +
+    coord_cartesian(ylim=c(40,100)) +
+    geom_abline(intercept=50,slope=0,linetype=2) +
+    guides(color=F,fill=F) +
+    ylab('% Correct') + xlab('')
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"hit_v_miss_v_baseline_grouopavg.pdf"),pl,width=11,height=8)
+"""
+
 # -------------------------- Target Timing Timeline -------------------------- #
 
 winlens = groupby(best_windows_tim,[:condition,:target_time])
@@ -211,7 +315,7 @@ objectdf = @_ classdf_tim |>
 paramfile = joinpath(datadir(),"svm_params","object_target_time.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
-object_predict = classpredict(objectdf, best_params, :target_time, "object")
+object_predict = classpredict(objectdf, best_params, "object", :target_time)
 
 spatialdf = @_ classdf_tim |>
     filter(_.condition in ["global","spatial"],__) |>
@@ -219,7 +323,7 @@ spatialdf = @_ classdf_tim |>
 paramfile = joinpath(datadir(),"svm_params","spatial_target_time.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
-spatial_predict = classpredict(spatialdf, best_params, :target_time, "spatial")
+spatial_predict = classpredict(spatialdf, best_params, "spatial", :target_time)
 
 predict = vcat(object_predict,spatial_predict)
 

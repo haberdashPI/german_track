@@ -1,3 +1,12 @@
+- for tuesday:
+  + plot of miss and baseline vs overall
+  - average across multiple window lengths
+  - how to pick summary for target timing
+
+- next steps:
+  semi-supervised decoding?
+  decoding with different number of delays across salience conditions?
+
 - how to finalize...
 - summarize trend
   - use the len with the best average performance; that seems to work well
@@ -9,9 +18,8 @@
 - check main effects first
 - then interactions
 
-- double check chance performance
-  - yes: it's 50%, the key is that you have to average correct
-    across the four conditions (matching 0, 0.5 0.5 and 1.0 correct across
++ double check chance performance
+  + yes: it's 50%, the key is that you have to average correct across the four conditions (matching 0, 0.5 0.5 and 1.0 correct across
       the four conditions), this is verified if I randomize the labels
 + why are the timeline graphs lower in accuracy?
   + the timeline graphs appear to be accurate, I need
