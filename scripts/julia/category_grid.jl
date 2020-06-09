@@ -54,7 +54,7 @@ end
 
 # ------------------------ Mean Frequency Bin Analysis ----------------------- #
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -63,7 +63,7 @@ else
                                         encoding = RawEncoding())
         for file in eeg_files)
     classdf = find_powerdiff(
-        subjects,groups=[:salience],
+        subjects,groups=[:salience,:target_time],
         hittypes = ["hit"],
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
