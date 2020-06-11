@@ -283,7 +283,7 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
             si = rowdf.sound_index
             rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
             rowdf.salience = @. ifelse(target_salience[si] > med_salience,"high","low")
-            rowdf.target_time = @. ifelse(si ∈ early_targets,"early","late")
+            rowdf.target_time = ifelse.(in.(si,Ref(Set(early_targets))),"early","late")
             rowdf.direction = directions[si]
             rowdf[!,:region] .= region
             rowdf[!,:winlen] .= window.len

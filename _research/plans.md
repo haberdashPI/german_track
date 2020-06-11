@@ -1,8 +1,4 @@
-- for tuesday:
-  + plot of miss and baseline vs overall
-  + average across multiple window lengths (smoother timelines?)
-  + how to pick summary for target timing (base on smoother timelines?)
-
+  - is our nested x-validation fair? yes, train groups are determiend by selected params which differe by fold (so no one sees the same subject twice)
   - consider merve's definition of targets (check on small percentage)
 
   - try early late timing

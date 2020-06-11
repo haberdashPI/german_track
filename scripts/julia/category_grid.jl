@@ -4,13 +4,18 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 072189
+num_local_procs = 1
+num_cluster_procs = 16
 use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux
+    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
+    JSON3, JSONTables, Tables, Infiltrator, FileIO
 
-# local only packages
+DrWatson._wsave(file,data::Dict) = open(io -> JSON3.write(io,data), file, "w")
+
+# local only pac kages
 using Formatting
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
@@ -23,13 +28,13 @@ using Distributed
 @static if use_slurm
     using ClusterManagers
     if !(nprocs() > 1)
-        addprocs(SlurmManager(16), partition="CPU", t="16:00:00", mem="32G",
+        addprocs(SlurmManager(num_cluster_procs), partition="CPU", t="16:00:00", mem="32G",
             exeflags="--project=.")
     end
 else
-    # if !(nprocs() > 1)
-    #     addprocs(4,exeflags="--project=.")
-    # end
+    if !(nprocs() > 1) && num_local_procs > 1
+        addprocs(num_local_procs,exeflags="--project=.")
+    end
 end
 
 @everywhere begin
@@ -75,10 +80,23 @@ end
 # --------------- Hyper-parameter Optimization: Global v Object -------------- #
 
 objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
+spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 
 @everywhere begin
     np = pyimport("numpy")
     _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
+
+    function resultmax(result,conditions...)
+        if result isa Vector{<:NamedTuple}
+            maxacc = @_ DataFrame(result) |>
+                groupby(__,collect(conditions)) |>
+                combine(__,:mean => maximum => :max)
+            return mean(maxacc.max)#/length(gr)
+        else
+            @info "Exception: $result"
+            return 0.0
+        end
+    end
 
     function modelacc((key,sdf),params)
         # some values of nu may be infeasible, so we have to
@@ -87,12 +105,13 @@ objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
             np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testmodel(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
-            μ = _wmean(result.correct,result.weight)
-            return (mean = μ, NamedTuple(key)...)
+            return (mean = mean(result.correct,weights(result.weight)),
+                weight = sum(result.weight),
+                NamedTuple(key)...)
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"
-                return (mean = 0, NamedTuple(key)...)
+                return (mean = 0, weight = 0, NamedTuple(key)...)
             else
                 rethrow(e)
             end
@@ -100,7 +119,7 @@ objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
     end
 end
 
-param_range = (nu=(0.0,0.95),gamma=(-4.0,1.0))
+param_range = (nu=(0.0,0.5),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
     by=param_by,
@@ -111,9 +130,12 @@ opts = (
     # PopulationSize = 25,
 )
 
-paramdir = joinpath(datadir(),"svm_params")
+# type piracy: awaiting PR acceptance to remove
+JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.StructTypes.StringType()
+
+paramdir = joinpath(data_dir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"object_salience.csv")
+paramfile = joinpath(paramdir,savename("all-conds-salience-and-target","json"))
 n_folds = 5
 if use_slurm || !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing object params...")
@@ -121,36 +143,53 @@ if use_slurm || !use_cache || !isfile(paramfile)
         for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
             Random.seed!(hash((seed,:object,i)))
             fold_params, fitness = optparams(param_range;opts...) do params
-                gr = @_ objectdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience]) |>
+
+                objectgr = @_ objectdf |> filter(_.sid ∈ train,__) |>
+                    groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
                     pairs |> collect
 
-                subresult = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
-                    1:length(gr),init=Empty(Vector))
+                objectresult = dreduce(append!!,
+                    Map(i -> [modelacc(objectgr[i],params)]),
+                    1:length(objectgr),init=Empty(Vector))
+
+                spatialgr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
+                    groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
+                    pairs |> collect
+
+                spatialresult = foldl(append!!,
+                    Map(i -> [modelacc(spatialgr[i],params)]),
+                    1:length(spatialgr),init=Empty(Vector))
+
+                # spatialresult = dreduce(append!!,
+                #     Map(i -> [modelacc(spatialgr[i],params)]),
+                #     1:length(spatialgr),init=Empty(Vector))
 
                 next!(progress)
 
-                if subresult isa Vector{<:NamedTuple}
-                    maxacc = @_ DataFrame(subresult) |>
-                        groupby(__,:salience) |>
-                        combine(:mean => maximum => :max,__)
-                    return 1 - mean(maxacc.max)#/length(gr)
-                else
-                    @info "Exception: $subresult"
-                    return 1.0
-                end
+                maxacc = max(
+                    resultmax(objectresult,:salience,:target_time),
+                    resultmax(spatialresult,:salience,:target_time)
+                )
+
+                return 1.0 - maxacc
             end
             fold_params = GermanTrack.apply(param_by,fold_params)
             result = append!!(result,DataFrame(subjects = test; fold_params...))
         end
 
         ProgressMeter.finish!(progress)
-        CSV.write(paramfile, result)
         global best_params = result
+
+        # save a reproducible record of the results
+        @tagsave paramfile Dict(
+            :data => JSONTables.ObjectTable(Tables.columns(result)),
+            :seed => seed,
+            :param_range => param_range,
+            :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
+        )
     end
 else
-    best_params = @_ CSV.read(paramfile)
-    rename!(best_params,:subjects => :sid)
+    best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 end
 
 # ----------------------- Object Classification Results ---------------------- #
@@ -195,51 +234,6 @@ if !use_slurm
             column=:salience)
 
     save(joinpath(dir,"object_salience.pdf"),pl)
-end
-
-# -------------- Hyper-parameter Optimization: Global v Spatial -------------- #
-
-spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
-
-paramdir = joinpath(datadir(),"svm_params")
-isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,"spatial_salience.csv")
-n_folds = 5
-if use_slurm || !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing spatial params...")
-    let result = Empty(DataFrame)
-        for (i,(train,test)) in enumerate(folds(n_folds,spatialdf.sid |> unique))
-            Random.seed!(hash((seed,:spatial,i)))
-            fold_params, fitness = optparams(param_range;opts...) do params
-                gr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience]) |>
-                    pairs |> collect
-
-                subresult = dreduce(append!!,Map(i -> [modelacc(gr[i],params)]),
-                    1:length(gr),init=Empty(Vector))
-
-                next!(progress)
-
-                if subresult isa Vector{<:NamedTuple}
-                    maxacc = @_ DataFrame(subresult) |>
-                        groupby(__,:salience) |>
-                        combine(:mean => maximum => :max,__)
-                    return 1 - mean(maxacc.max)#/length(gr)
-                else
-                    @info "Exception: $subresult"
-                    return 1.0
-                end
-            end
-            fold_params = GermanTrack.apply(param_by,fold_params)
-            result = append!!(result,DataFrame(subjects = test; fold_params...))
-        end
-
-        ProgressMeter.finish!(progress)
-        CSV.write(paramfile, result)
-        global best_params = result
-    end
-else
-    best_params = CSV.read(paramfile)
 end
 
 # ----------------- Classifciation Results: Global v Spattial ---------------- #
