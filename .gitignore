@@ -4,6 +4,7 @@ timefreq_windows.feather
 .tags
 tags
 .undo/*
+*.zip
 
 semi-supervised-test.bson
 
