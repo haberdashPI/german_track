@@ -28,7 +28,7 @@ using Distributed
 @static if use_slurm
     using ClusterManagers
     if !(nprocs() > 1)
-        addprocs(SlurmManager(num_cluster_procs), partition="CPU", t="16:00:00", mem="32G",
+        addprocs(SlurmManager(num_cluster_procs), partition="CPU", t="24:00:00", mem="32G",
             exeflags="--project=.")
     end
 else
@@ -84,7 +84,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 
 @everywhere begin
     np = pyimport("numpy")
-    _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
+    # _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
     function resultmax(result,conditions...)
         if result isa Vector{<:NamedTuple}
@@ -135,10 +135,10 @@ JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.Struc
 
 paramdir = joinpath(data_dir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,savename("all-conds-salience-and-target","json"))
+paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
 n_folds = 5
 if use_slurm || !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing object params...")
+    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
     let result = Empty(DataFrame)
         for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
             Random.seed!(hash((seed,:object,i)))
@@ -156,7 +156,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
                     groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
                     pairs |> collect
 
-                spatialresult = foldl(append!!,
+                spatialresult = dreduce(append!!,
                     Map(i -> [modelacc(spatialgr[i],params)]),
                     1:length(spatialgr),init=Empty(Vector))
 
