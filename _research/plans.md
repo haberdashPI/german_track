@@ -1,9 +1,6 @@
-  - is our nested x-validation fair? yes, train groups are determiend by selected params which differe by fold (so no one sees the same subject twice)
-  - consider merve's definition of targets (check on small percentage)
-
-  - try early late timing
   - 2x2 for salinece / target-timing
-  - fremeans getting long (parallelize data)
+  - try early late timing (for data summary, some way to split across all conditions)
+  - freqmeans getting long (parallelize data?)
 
   - try some raw analysis (look at spectrograms, spectrum, some view of bands???),
     global condition (focus?)
