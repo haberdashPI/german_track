@@ -308,5 +308,3 @@ end
 
     CSV.write(joinpath(datadir(),"svm_params","best_windows_salience.csv"),best_windows)
 end
-
-# ------------------------------------ End ----------------------------------- #
