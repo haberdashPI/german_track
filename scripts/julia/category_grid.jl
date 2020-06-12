@@ -174,7 +174,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
                 return 1.0 - maxacc
             end
             fold_params = GermanTrack.apply(param_by,fold_params)
-            result = append!!(result,DataFrame(subjects = test; fold_params...))
+            result = append!!(result,DataFrame(sid = test; fold_params...))
         end
 
         ProgressMeter.finish!(progress)
@@ -190,6 +190,9 @@ if use_slurm || !use_cache || !isfile(paramfile)
     end
 else
     best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
+    if :subjects in propertynames(best_params) # some old files misnamed the sid column
+        rename!(best_params,:subjects => :sid)
+    end
 end
 
 # ----------------------- Object Classification Results ---------------------- #
@@ -203,15 +206,15 @@ if !use_slurm
 
     testgroups = @_ objectdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience,:target_time,:nu,:gamma])
     object_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct)
+        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct)
     wimeans = @_ subj_means |>
-        groupby(__,[:winstart,:winlen,:salience]) |>
+        groupby(__,[:winstart,:winlen,:salience,:target_time]) |>
         combine(__,:correct => mean)
 
     sort!(wimeans,order(:correct_mean,rev=true))
@@ -231,7 +234,8 @@ if !use_slurm
                 :correct_mean,
                 scale={reverse=true,domain=[0.5,1],scheme="plasma"}
             },
-            column=:salience)
+            column=:salience,
+            row=:target_time)
 
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
@@ -245,28 +249,30 @@ if !use_slurm
         np.random.seed(typemax(UInt32) & hash((params,seed)))
         testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     end
-    rename!(best_params,:subjects => :sid)
+
     testgroups = @_ spatialdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience, :target_time,:nu,:gamma])
     spatial_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct_mean)
-    # TODO: use wimeans from above
+        groupby(__,[:winstart,:winlen,:salience, :target_time,:sid]) |>
+        combine(__,[:correct,:weight] => ((x,w) -> wmean(x,weights(w).+1)) => :correct)
+    wimeans = @_ subj_means |>
+        groupby(__,[:winstart,:winlen,:salience,:target_time]) |>
+        combine(__,:correct => mean)
 
-    sort!(subj_means,order(:correct_mean,rev=true))
-    first(subj_means,6)
+    sort!(wimeans,order(:correct_mean,rev=true))
+    first(wimeans,6)
 
     dir = joinpath(plotsdir(),string("results_",Date(now())))
     isdir(dir) || mkdir(dir)
 
-    subj_means.llen = log.(2,subj_means.winlen)
-    subj_means.lstart = log.(2,subj_means.winstart)
+    wimeans.llen = log.(2,wimeans.winlen)
+    wimeans.lstart = log.(2,wimeans.winstart)
 
-    pl = subj_means |>
+    pl = wimeans |>
         @vlplot(:rect,
             x={
                 field=:lstart,
@@ -277,7 +283,7 @@ if !use_slurm
                 bin={step=2/9},
             },
             color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience)
+            column=:salience,row=:target_time)
 
     save(joinpath(dir,"spatial_salience.pdf"),pl)
 
@@ -288,23 +294,22 @@ end
 @static if !use_slurm
 
     object_winlen_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct) |>
-        groupby(__,[:winlen,:salience]) |>
-        combine(__,:correct => mean) |>
+        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
+        groupby(__,:winlen) |> combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct) |>
-        groupby(__,[:winlen,:salience]) |>
+        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
+        groupby(__,[:winlen]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")
 
     best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
-        groupby(__,[:salience,:condition]) |>
-        combine(__,[:winlen,:correct_mean] =>
-            ((len,val) -> len[argmax(val)]) => :winlen)
+        groupby(__,:winlen) |>
+        combine(__,:correct_mean => mean => :correct_mean)
 
-    CSV.write(joinpath(datadir(),"svm_params","best_windows_salience.csv"),best_windows)
+    best = argmax(best_windows.correct_mean)
+    CSV.write(joinpath(data_dir(),"svm_params","best_windows.csv"),best_windows[best:best,:])
 end
