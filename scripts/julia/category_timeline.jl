@@ -8,7 +8,7 @@ seed = 072189
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
     FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
-    Distributions, Alert
+    Distributions, Alert, JSON3, JSONTables
 
 # local only packages
 using Formatting, ScikitLearn, Distributions
@@ -27,68 +27,41 @@ library(cowplot)
 library(dplyr)
 """
 
-# TODO: try running each window separatley and storing the
-# results, rather than storing all versions of the data
-
 # ---------------------------- Freqmeans Analysis ---------------------------- #
 
-best_windows_sal = CSV.read(joinpath(datadir(),"svm_params","best_windows_salience.csv"))
-best_windows_tim = CSV.read(joinpath(datadir(),"svm_params","best_windows_target_time.csv"))
+best_windows = CSV.read(joinpath(data_dir(),"svm_params","best_windows.csv"))
 
 spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-classdf_sal_file = joinpath(cache_dir(),"data","freqmeans_timeline_spread.csv")
-if use_cache && isfile(classdf_sal_file)
-    classdf_sal = CSV.read(classdf_sal_file)
+classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time.csv")
+if use_cache && isfile(classdf_file)
+    classdf = CSV.read(classdf_file)
 else
     eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
     subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 
-    classdf_sal = find_powerdiff(
-        subjects,groups=[:salience],
+    classdf = find_powerdiff(
+        subjects,groups=[:salience,:target_time],
         hittypes = ["hit"],
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=64),
-                len in copy(MapCat(spread(0.5,6)),unique(best_windows_sal.winlen))])
+            for start in range(0,4,length=4),
+                len in copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))])
 
-    CSV.write(classdf_sal_file,classdf_sal)
+    # CSV.write(classdf_file,classdf)
     alert("Salience Freqmeans Complete!")
 end
 
-classdf_tim_file = joinpath(cache_dir(),"data","freqmeans_timeline_target_time_spread.csv")
-if use_cache && isfile(classdf_tim_file)
-    classdf_tim = CSV.read(classdf_tim_file)
-else
-    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
-                                            encoding = RawEncoding())
-        for file in eeg_files)
-
-    classdf_tim = find_powerdiff(
-        subjects,groups=[:target_time],
-        hittypes = ["hit"],
-        regions = ["target"],
-        windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=64),
-                len in copy(MapCat(spread(0.5,6)),unique(best_windows_tim.winlen))])
-
-    CSV.write(classdf_tim_file,classdf_tim)
-    alert("Target Time Freqmeans Complete")
-end
-
-# ----------------------------- Salience Timeline ---------------------------- #
+# --------------------------------- Timeline --------------------------------- #
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
     np.random.seed(typemax(UInt32) & hash((params,seed)))
     testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
-
-_wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
 function classpredict(df,params,condition,variables...)
     testgroups = @_ df |>
@@ -99,27 +72,18 @@ function classpredict(df,params,condition,variables...)
 
     @_ predictions |>
         groupby(__,[:winstart,variables...,:sid]) |> #,:before]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct_mean) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct_mean) |>
         insertcols!(__,:condition => condition)
 end
 
-winlens = groupby(best_windows_sal,[:condition,:salience])
+# TODO: get best_params from master branch
+objectdf = @_ classdf |>
+    filter(_.condition in ["global","object"],__)
+object_predict = classpredict(objectdf, best_params, "object", :salience, :target_time)
 
-objectdf = @_ classdf_sal |>
-    filter(_.condition in ["global","object"],__) |>
-    filter(_1.winlen in spread(winlens[(condition = "object", salience = _1.salience)].winlen[1],0.5,6),__)
-paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
-best_params = CSV.read(paramfile)
-rename!(best_params,:subjects => :sid)
-object_predict = classpredict(objectdf, best_params, "object", :salience)
-
-spatialdf = @_ classdf_sal |>
-    filter(_.condition in ["global","spatial"],__) |>
-    filter(_1.winlen in spread(winlens[(condition = "spatial", salience = _1.salience)].winlen[1],0.5,6),__)
-paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
-best_params = CSV.read(paramfile)
-rename!(best_params,:subjects => :sid)
-spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience)
+spatialdf = @_ classdf |>
+    filter(_.condition in ["global","spatial"],__)
+spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience, :target_time)
 
 predict = vcat(object_predict,spatial_predict)
 
@@ -128,7 +92,7 @@ isdir(dir) || mkdir(dir)
 
 band = @_ predict |>
     # filter(_.before == "zero",__) |>
-    groupby(__,[:winstart,:salience,:condition]) |> #,:before]) |>
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
         μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
@@ -138,9 +102,9 @@ band = @_ predict |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
+pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(target_time_label~condition) +
     geom_abline(slope=0,intercept=50,linetype=2) +
     coord_cartesian(ylim=c(40,100))
 pl
