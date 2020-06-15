@@ -1,9 +1,9 @@
 import EEGCoding: AllIndices
-export clear_cache!, plottrial, events_for_eeg, alert, only_near,
+export clear_cache!, plottrial, events_for_eeg, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
     computebands, organize_data_by, optparams, find_powerdiff,
-    find_decoder_training_trials
+    find_decoder_training_trials, compute_powerdiff_features
 
 using FFTW
 using DataStructures
@@ -137,7 +137,49 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
     result
 end
 
-function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
+function compute_powerdiff_features(eeg,data,region,window)
+    fs = framerate(eeg)
+
+    freqdf = mapreduce(append!!,[:before,:after]) do timing
+        windows = map(eachrow(data)) do row
+            bounds = timing == :before ?
+                (window.before, window.before + window.len) :
+                (window.start, window.start + window.len)
+            region == "target" ?
+                windowtarget(eeg[row.trial_index],row,fs,bounds...) :
+                windowbaseline(eeg[row.trial_index],row,fs,bounds...)
+        end
+        signal = reduce(hcat,windows)
+        weight = sum(!isempty,windows)
+        freqdf = computebands(signal,fs)
+        freqdf[!,:window_timing] .= string(timing)
+        freqdf[!,:weight] .= weight
+
+        freqdf
+    end
+
+    if size(freqdf,1) > 0
+        powerdf = @_ freqdf |>
+            stack(__, Between(:delta,:gamma),
+                variable_name = :freqbin, value_name = :power) |>
+            groupby(__,:channel) |>
+            transform!(__,:weight => minimum => :weight) |>
+            filter(all(!isnan,_.power), __) |>
+            unstack(__, :window_timing, :power)
+
+        ε = 1e-8
+        logdiff(x,y) = log.(ε .+ x) .- log.(ε .+ y)
+        powerdiff = logdiff(powerdf.after,powerdf.before)
+
+        chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
+        features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
+        DataFrame(weight=powerdf.weight;(features .=> powerdiff)...)
+    else
+        Empty(DataFrame)
+    end
+end
+
+function computebands(signal,fs;freqbins=OrderedDict(
         :delta => (1,3),
         :theta => (3,7),
         :alpha => (7,15),
@@ -164,7 +206,11 @@ function computebands(signal,fs;channels=1:30,freqbins=OrderedDict(
         mfreq = mean(freqrange(spect, freqbins[bin]), dims = 2) #./ totalpower
         DataFrame(Symbol(bin) => vec(mfreq))
     end
-    result[!,:channel] .= channels
+    result[!,:channel] .= 1:size(result,1)
+
+    if @_ all(0 ≈ _,signal)
+        result[!,Between(:delta,:gamma)] .= 0.0
+    end
 
     result
 end
@@ -211,6 +257,7 @@ function ishit(row)
                 (row.correct ? "falsep" : "reject")
     end
 end
+
 
 function find_powerdiff(subjects;kwds...)
     organize_data_by(subjects;kwds...) do windows,timings,counts,fs
@@ -410,7 +457,7 @@ end
 const eventcache = Dict{Int,DataFrame}()
 function sound_index(sid,trial)
     events = get!(eventcache,sid) do
-        events_for_eeg(sidfile(sid),stim_info)[1]
+        events_for_eeg(sidfile(sid),stim_info)
     end
     events.sound_index[trial]
 end
@@ -503,12 +550,17 @@ function read_mcca_proj(filename)
 end
 
 const subject_cache = Dict()
+Base.@kwdef struct SubjectData
+    eeg::EEGData
+    events::DataFrame
+end
+
 function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
     if !isfile(file)
         error("File '$file' does not exist.")
     end
 
-    stim_events, sid = events_for_eeg(file,stim_info)
+    stim_events = events_for_eeg(file,stim_info)
 
     data = get!(subject_cache,(file,encoding,framerate)) do
         # data = if endswith(file,".mat")
@@ -534,7 +586,7 @@ function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
         encode(data,framerate,encoding)
     end
 
-    (eeg=data, events=stim_events, sid=sid)
+    SubjectData(eeg=data, events=stim_events)
 end
 
 function single(x,message="Expected a single element.")
@@ -800,14 +852,18 @@ function events_for_eeg(file,stim_info)
     event_file = joinpath(data_dir(),@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(CSV.File(event_file))
 
-    target_times = convert(Array{Float64},
-        stim_info["test_block_cfg"]["target_times"][stim_events.sound_index])
+    target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
+    source_indices = convert(Array{Float64},
+        stim_info["test_block_cfg"]["trial_target_speakers"])
+    source_names = ["male","fem1","fem2"]
 
-    # derrived columns
-    stim_events[!,:target_source] = convert(Array{Float64},
-        stim_info["test_block_cfg"]["trial_target_speakers"][stim_events.sound_index])
-    stim_events[!,:target_time] = target_times
-    stim_events[!,:target_present] .= target_times .> 0
+    # columns that are determined by the stimulus (and thus derived using the index of the
+    # stimulus: sound_index)
+    si = stim_events.sound_index
+    stim_events[!,:target_source] = get.(Ref(source_names), Int.(source_indices[si]),
+        missing)
+    stim_events[!,:target_time] = target_times[si]
+    stim_events[!,:target_present] .= target_times[si] .> 0
     stim_events[!,:correct] .= stim_events.target_present .==
         (stim_events.response .== 2)
     if :bad_trial ∈ propertynames(stim_events)
@@ -816,10 +872,14 @@ function events_for_eeg(file,stim_info)
         @warn "Could not find `bad_trial` column in file '$event_file'."
         stim_events[!,:bad_trial] .= false
     end
-    stim_events[!,:sid] .= sid
-    stim_events.condition = stim_events.condition
+    stim_events.sid = sid
+    stim_events.trial_index = 1:size(stim_events,1)
+    stim_events.salience = get.(Ref(target_salience),si,missing)
+    stim_events.direction = get.(Ref(directions),si,missing)
+    stim_events.salience_label = get.(Ref(salience_label),si,missing)
+    stim_events.target_time_label = get.(Ref(target_time_label),si,missing)
 
-    stim_events, sid
+    stim_events
 end
 
 

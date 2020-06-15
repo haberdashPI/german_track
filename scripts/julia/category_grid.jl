@@ -295,21 +295,22 @@ end
 
     object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
-        groupby(__,:winlen) |> combine(__,:correct => mean) |>
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:salience,:target_time]) |>
+        combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
-        groupby(__,[:winlen]) |>
+        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        groupby(__,[:winlen,:salience,:target_time]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")
 
     best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
-        groupby(__,:winlen) |>
-        combine(__,:correct_mean => mean => :correct_mean)
+        groupby(__,[:salience,:target_time,:condition]) |>
+        combine(__,[:winlen,:correct_mean] =>
+            ((len,val) -> len[argmax(val)]) => :winlen)
 
-    best = argmax(best_windows.correct_mean)
-    CSV.write(joinpath(data_dir(),"svm_params","best_windows.csv"),best_windows[best:best,:])
+    CSV.write(joinpath(datadir(),"svm_params","best_windows_sal_target_tim.csv"),best_windows)
 end

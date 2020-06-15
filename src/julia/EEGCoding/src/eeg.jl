@@ -88,7 +88,9 @@ struct RawEncoding <: Encoding
 end
 Base.string(::RawEncoding) = "raw"
 function encode(x::EEGData,tofs,::RawEncoding)
-    @info "Resample EEG to $tofs Hz."
+    if !ismissing(tofs)
+        @info "Resample EEG to $tofs Hz."
+    end
     resample!(x,tofs)
 end
 
