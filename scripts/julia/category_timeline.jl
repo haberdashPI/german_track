@@ -34,7 +34,7 @@ best_windows = CSV.read(joinpath(data_dir(),"svm_params","best_windows.csv"))
 spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time.csv")
+classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_old.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -51,8 +51,15 @@ else
             for start in range(0,4,length=4),
                 len in copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))])
 
-    # CSV.write(classdf_file,classdf)
+    CSV.write(classdf_file,classdf)
     alert("Salience Freqmeans Complete!")
+end
+
+paramdir = joinpath(data_dir(),"svm_params")
+paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
+best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
+if :subjects in propertynames(best_params) # some old files misnamed the sid column
+    rename!(best_params,:subjects => :sid)
 end
 
 # --------------------------------- Timeline --------------------------------- #
@@ -92,7 +99,7 @@ isdir(dir) || mkdir(dir)
 
 band = @_ predict |>
     # filter(_.before == "zero",__) |>
-    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
+    groupby(__,[:winstart,:salience,:target_time,:condition]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
         μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
@@ -102,9 +109,9 @@ band = @_ predict |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(target_time_label~condition) +
+pl = ggplot($band,aes(x=winstart,y=correct,color=salience)) +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience,color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(target_time~condition) +
     geom_abline(slope=0,intercept=50,linetype=2) +
     coord_cartesian(ylim=c(40,100))
 pl
