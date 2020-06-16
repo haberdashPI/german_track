@@ -34,7 +34,12 @@ best_windows = CSV.read(joinpath(data_dir(),"svm_params","best_windows.csv"))
 spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time.csv")
+winlens = copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))
+winstarts = range(0,4,length=4)
+windows = Iterators.product(winstarts,winlens)
+
+classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_new.csv")
+classdf_file_old = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_old.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -49,16 +54,16 @@ else
         groupby(__,[:salience_label,:target_time_label,:sid,:condition]) |>
         combine(function(sdf)
             # TODO: set length to 64 when testing finished
-            mapreduce(append!!,range(0,4,length=4)) do start
+            mapreduce(append!!,windows) do (start,len)
                 result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
-                    (len = best_windows.winlen[1], start = start, before = -best_windows.winlen[1]))
-                result.winstart = start
-                result.winlen = best_windows.winlen[1]
+                    (len = len, start = start, before = -len))
+                result[!,:winstart] .= start
+                result[!,:winlen] .= len
                 result
             end
         end,__)
 
-    # CSV.write(classdf_file,classdf)
+    CSV.write(classdf_file,classdf)
     alert("Salience Freqmeans Complete!")
 end
 

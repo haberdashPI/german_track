@@ -173,7 +173,7 @@ function compute_powerdiff_features(eeg,data,region,window)
 
         chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
         features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
-        DataFrame(weight=powerdf.weight;(features .=> powerdiff)...)
+        DataFrame(weight=minimum(powerdf.weight);(features .=> powerdiff)...)
     else
         Empty(DataFrame)
     end
