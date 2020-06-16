@@ -1,4 +1,5 @@
   - 2x2 for salinece / target-timing
+    - figure out issues with new freqmeans approach
   - try early late timing (for data summary, some way to split across all conditions)
   - freqmeans getting long (parallelize data?)
 

@@ -48,7 +48,7 @@ else
         hittypes = ["hit"],
         regions = ["target"],
         windows = [(len=len,start=start,before=-len)
-            for start in range(0,4,length=4),
+            for start in range(0,4,length=64),
                 len in copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))])
 
     CSV.write(classdf_file,classdf)
