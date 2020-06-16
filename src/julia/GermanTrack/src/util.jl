@@ -106,6 +106,7 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
         train = @_ filter(_[idcol] in trainids,sdf)
         test = @_ filter(_[idcol] in testids,sdf)
 
+        @infiltrate length(unique(sdf[:,classcol])) < 2
         f = apply_schema(formula, schema(formula, sdf))
         y,X = modelcols(f, train)
 
@@ -240,21 +241,22 @@ function windowbaseline(trial,event,sid,trialnum,fs,from,to;mindist,minlen)
     view(trial,:,ixs)
 end
 
-function ishit(row)
-    if row.condition == "global"
-        row.region == "baseline" ? "baseline" :
-            row.correct ? "hit" : "miss"
-    elseif row.condition == "object"
-        row.region == "baseline" ? "baseline" :
-            row.target_source == "male" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
+function ishit(row; kwds...)
+    vals = merge(row,kwds)
+    if vals.condition == "global"
+        vals.region == "baseline" ? "baseline" :
+            vals.correct ? "hit" : "miss"
+    elseif vals.condition == "object"
+        vals.region == "baseline" ? "baseline" :
+            vals.target_source == "male" ?
+                (vals.correct ? "hit" : "miss") :
+                (vals.correct ? "falsep" : "reject")
     else
-        @assert row.condition == "spatial"
-        row.region == "baseline" ? "baseline" :
-            row.direction == "right" ?
-                (row.correct ? "hit" : "miss") :
-                (row.correct ? "falsep" : "reject")
+        @assert vals.condition == "spatial"
+        vals.region == "baseline" ? "baseline" :
+            vals.direction == "right" ?
+                (vals.correct ? "hit" : "miss") :
+                (vals.correct ? "falsep" : "reject")
     end
 end
 
@@ -310,16 +312,6 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
     N = reduce(*,length.((values(subjects),regions,windows)))
     progress = Progress(N,desc="computing frequency bins")
 
-    med_salience = median(target_salience)
-    early_targets =
-        @_ DataFrame(
-            time = target_times,
-            switches = switch_times,
-            row = 1:length(target_times)) |>
-        filter(_.time > 0,__) |>
-        filter(sum(_1.time .> _1.switches) <= 2,__) |>
-        __.row
-
     function assemble_subject(subject)
         events = subject.events
         events.row = 1:size(events,1)
@@ -328,10 +320,6 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
         function build_subject_data(region,window)
             rowdf = @_ filter(_.target_present == 1,events)
             si = rowdf.sound_index
-            rowdf.target_source = get.(Ref(source_names),Int.(rowdf.target_source),missing)
-            rowdf.salience = @. ifelse(target_salience[si] > med_salience,"high","low")
-            rowdf.target_time = ifelse.(in.(si,Ref(Set(early_targets))),"early","late")
-            rowdf.direction = directions[si]
             rowdf[!,:region] .= region
             rowdf[!,:winlen] .= window.len
             rowdf[!,:winstart] .= window.start
@@ -340,8 +328,8 @@ function organize_data_by(fn,subjects;groups,windows,hittypes,
             rowdf.hit = ishit.(eachrow(rowdf))
             rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
 
-            categorical!(rowdf,[:region,:condition,:salience,
-                :target_time,:direction,:hit],compress=true)
+            categorical!(rowdf,[:region,:condition,:salience_label,
+                :target_time_label,:direction,:hit],compress=true)
 
             cols = [:sid,:hit,:condition,:winlen,:winstart,:region,groups...]
 

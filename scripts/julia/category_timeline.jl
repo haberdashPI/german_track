@@ -35,7 +35,7 @@ spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
 winlens = copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))
-winstarts = range(0,4,length=4)
+winstarts = range(0,4,length=64)
 windows = Iterators.product(winstarts,winlens)
 
 classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_new.csv")
@@ -49,19 +49,28 @@ else
         for file in eeg_files)
 
     events = @_ mapreduce(_.events,append!!,values(subjects))
-    classdf = @_ events |>
-        filter(_.target_present && _.correct,__) |> # hits only
-        groupby(__,[:salience_label,:target_time_label,:sid,:condition]) |>
+    classdf_groups = @_ events |>
+        filter(_.target_present,__) |>
+        filter(ishit(_,region = "target") == "hit",__) |> # hits only
+        groupby(__,[:salience_label,:target_time_label,:sid,:condition])
+
+    # next step, check that the old function still yields
+    # the old result, and then work from there
+
+    progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
+    classdf = @_ classdf_groups |>
         combine(function(sdf)
-            # TODO: set length to 64 when testing finished
-            mapreduce(append!!,windows) do (start,len)
+            x = mapreduce(append!!,windows) do (start,len)
                 result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
                     (len = len, start = start, before = -len))
                 result[!,:winstart] .= start
                 result[!,:winlen] .= len
                 result
             end
+            next!(progress)
+            x
         end,__)
+    ProgressMeter.finish!(progress)
 
     CSV.write(classdf_file,classdf)
     alert("Salience Freqmeans Complete!")
@@ -129,7 +138,6 @@ pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
     coord_cartesian(ylim=c(40,100))
 pl
 """
-
 
 R"""
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
