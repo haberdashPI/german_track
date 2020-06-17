@@ -11,6 +11,7 @@ export CSV, @save, @load
 
 include("analyses.jl")
 include("util.jl")
+include("features.jl")
 include("classifier.jl")
 include("stimuli.jl")
 include("train_test.jl")
