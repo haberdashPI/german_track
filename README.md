@@ -26,8 +26,8 @@ Run `scripts/julia/install.jl` in julia.
 
 - `scripts` The top-level scripts called to analyze the data.
 - `src` all supporting code called from the top-level scripts
-- `data` all of the raw and processed experimental data
-- `plots` the code to generate plots, and their resulting pdfs (mostly in R)
+- `data` all of the raw and processed experimental data (stored separately fromo git repository)
+- `plots` the code to generate plots, and their resulting pdfs
 - `_research` contains various temporary files
 - `notebooks` will contain any notebooks with plots / analyses in them
 - `papers` will contain research papers on this project
