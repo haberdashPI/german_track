@@ -1,9 +1,9 @@
 run(fullfile('..','..','src','matlab','util','setup.m'));
 
 % setup a new, dated folder for a new pass at reading in the eeg data
-data_dir = redatedir(data_dir);
+processed_datadir = redatedir(processed_datadir);
 
-eeg_files = dir(fullfile(raw_data_dir,'*.bdf'));
+eeg_files = dir(fullfile(raw_datadir,'*.bdf'));
 for i = 1:length(eeg_files)
 
     % TODO: skip already generated files and
@@ -11,7 +11,7 @@ for i = 1:length(eeg_files)
     eegfile = eeg_files(i).name;
     numstr = regexp(eegfile,'([0-9]+)_','tokens');
     sid = str2double(numstr{1}{1});
-    result_file = fullfile(data_dir,sprintf('eeg_events_%03d.csv',sid));
+    result_file = fullfile(processed_datadir,sprintf('eeg_events_%03d.csv',sid));
 
     if exist(result_file,'file')
         warning('The file %s already exists. Skipping...',result_file);
@@ -20,7 +20,7 @@ for i = 1:length(eeg_files)
 
     fprintf('reading events for %s\n',eegfile);
     fprintf('Found SID = %d\n',sid);
-    event = ft_read_event(fullfile(raw_data_dir,eegfile));
+    event = ft_read_event(fullfile(raw_datadir,eegfile));
 
     type = {event.type};
     status_types = zeros(length(type),1);
@@ -38,6 +38,6 @@ for i = 1:length(eeg_files)
 
     writetable(df,result_file);
 
-    head = ft_read_header(fullfile(raw_data_dir,eegfile));
+    head = ft_read_header(fullfile(raw_datadir,eegfile));
     fprintf('File sample rate: %d\n',head.Fs);
 end

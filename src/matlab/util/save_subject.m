@@ -1,6 +1,6 @@
 function save_subject(dat,file)
-    global data_dir
+    global processed_datadir
 
-    eegfile = fullfile(data_dir,file);
+    eegfile = fullfile(processed_datadir,file);
     save(eegfile,'dat')
 end

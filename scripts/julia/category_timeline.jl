@@ -29,7 +29,7 @@ library(dplyr)
 
 # ---------------------------- Freqmeans Analysis ---------------------------- #
 
-best_windows = CSV.read(joinpath(data_dir(),"svm_params","best_windows.csv"))
+best_windows = CSV.read(joinpath(processed_datadir(),"svm_params","best_windows_sal_target_tim.csv"))
 
 spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
@@ -43,8 +43,8 @@ classdf_file_old = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_ti
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(sidfor(file) => load_subject(joinpath(data_dir(), file), stim_info,
+    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 
@@ -76,7 +76,7 @@ else
     alert("Salience Freqmeans Complete!")
 end
 
-paramdir = joinpath(data_dir(),"svm_params")
+paramdir = joinpath(processed_datadir(),"svm_params")
 paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
@@ -207,8 +207,8 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans_miss_baseline.csv")
 if use_cache && isfile(classdf_file)
     classdf_missbase = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 

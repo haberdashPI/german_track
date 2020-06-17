@@ -35,13 +35,13 @@ config.train_block_cfg = train_block_cfg;
 
 % setup and save a new mixture configuration (as config.json); each call
 % creates a new set of mixtures, as this relies on a number of RNG results
-stim_data_dir = redatedir(stim_data_dir);
-config = configure_mixtures(stim_data_dir,config);
+stim_datadir = redatedir(stim_datadir);
+config = configure_mixtures(stim_datadir,config);
 
 % This actually generates the audio, based on config.json. You can generate the
 % same exact audio again by using the same config.json file. (Just re-run this
 % line alone)
 hrtf_file = fullfile(base_dir,'data','exp_raw','stimuli','hrtf_b_nh172.sofa');
-create_mixtures(stim_data_dir,hrtf_file);
+create_mixtures(stim_datadir,hrtf_file);
 
 % TODO: auto generate description for the location of the target

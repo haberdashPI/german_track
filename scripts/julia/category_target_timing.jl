@@ -24,8 +24,8 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans_target_time.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(data_dir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(data_dir(), file), stim_info,
+    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 

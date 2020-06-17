@@ -1,6 +1,6 @@
 function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
     global cache_dir;
-    global data_dir;
+    global processed_datadir;
 
     nchans = length(channels);
     nsubj = length(files);
@@ -29,7 +29,7 @@ function C = gt_mcca_C(files,maxlen,conds,stimuli,channels)
                 sid = str2num(numstr{1}{1});
 
                 %% read in the events
-                event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
+                event_file = fullfile(processed_datadir,sprintf('sound_events_%03d.csv',sid));
                 stim_events = readtable(event_file);
 
                 %% find the index for this stimulus index and condition

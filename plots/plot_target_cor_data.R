@@ -16,7 +16,7 @@ for(file in cor_files){
 
 dfstim = NULL
 for(sid in unique(df$sid)){
-  dff = read.csv(file.path(data_dir,sprintf('sound_events_%03d.csv',sid)));
+  dff = read.csv(file.path(processed_datadir,sprintf('sound_events_%03d.csv',sid)));
   dfstim = rbind(dfstim,dff)
 }
 

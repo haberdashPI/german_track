@@ -16,7 +16,7 @@ library(forcats)
 for(sid in c(8:14,16:19, 21:22, 24:25, 27:35)){
 
 cat(paste0('Sid: ',sid,'\n'))
-efraw = read.csv(file.path(data_dir,sprintf("eeg_events_%03d.csv",sid)))
+efraw = read.csv(file.path(processed_datadir,sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
 sr = 2048
 for(bit in 0:7){
@@ -32,12 +32,12 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
     xlab("minutes")
 
 
-presfiles = list.files(file.path(raw_data_dir),sprintf("%04d.*log",sid))
+presfiles = list.files(file.path(raw_datadir),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
     msg = sprintf("Multiple files matching pattern for sid = %d:",sid)
     stop(do.call(paste,c(list(msg), as.list(presfiles),list(sep="\n"))))
 }
-presfile = file.path(raw_data_dir,presfiles)
+presfile = file.path(raw_datadir,presfiles)
 
 raw_pf = read.table(presfile,header=TRUE,skip=3,sep="\t",
     blank.lines.skip=TRUE,fill=TRUE)
@@ -109,13 +109,13 @@ if(any(diff(pf$trial) != 1)){
 
 pf %>%
     select(trial,sample,time,condition,response,sound_index) %>%
-    write.csv(file.path(data_dir,sprintf("sound_events_%03d.csv",sid)),
+    write.csv(file.path(processed_datadir,sprintf("sound_events_%03d.csv",sid)),
         row.names=FALSE)
 
 
 pf %>%
     mutate(index = as.numeric(condition)) %>%
     select(trial,time,index,sound_index) %>%
-    write.table(file.path(data_dir,sprintf("sound_events_%03d.txt",sid)),
+    write.table(file.path(processed_datadir,sprintf("sound_events_%03d.txt",sid)),
                 quote=FALSE,sep="\t",row.names=FALSE)
 }

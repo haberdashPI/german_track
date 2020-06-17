@@ -4,12 +4,12 @@ addpath(fullfile(base_dir,'src','matlab','salience'));
 addpath(stimulus_dir);
 
 % read in the location of the targets
-config_file = fullfile(stim_data_dir,'config.json');
+config_file = fullfile(stim_datadir,'config.json');
 config = read_json(config_file);
 target_locs = config.test_block_cfg.target_times(1:length(features));
 
 % compute features for each stimulus
-stimdir = fullfile(stim_data_dir,'mixtures','testing','target_component');
+stimdir = fullfile(stim_datadir,'mixtures','testing','target_component');
 files = dir(fullfile(stimdir,'*.wav'));
 
 features = cell(1,length(files));
@@ -62,5 +62,5 @@ scatter(randn(length(target_salience),1),target_salience);
 stimulus_index = (1:length(target_salience))';
 salience = target_salience;
 writetable(table(stimulus_index,salience),...
-    fullfile(stim_data_dir,'target_salience.csv'));
+    fullfile(stim_datadir,'target_salience.csv'));
 

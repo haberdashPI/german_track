@@ -19,23 +19,23 @@ website.
 %}
 clear
 
-datadir='/data/meg/spm/EEG/';
+processed_datadir='/data/meg/spm/EEG/';
 savedir=[];%'./PP/'; % directory to save results
 
 fname='faces_run2.bdf';
-if ~exist([datadir,fname]);
+if ~exist([processed_datadir,fname]);
     error('download data from http://www.fil.ion.ucl.ac.uk/spm/download/data/mmfaces/multimodal_eeg.zip');
 end
 
 % read data
-h=ft_read_header([datadir,fname]);
-x=ft_read_data([datadir,fname]);
+h=ft_read_header([processed_datadir,fname]);
+x=ft_read_data([processed_datadir,fname]);
 x=x';
 trig=x(:,144);
 x=x(:,1:128);
 sr=h.Fs;
 
-% [p,x]=nt_read_data([datadir,fname]);
+% [p,x]=nt_read_data([processed_datadir,fname]);
 % trig=x(:,144);
 % x=x(:,1:128);
 % sr=p.sr;
@@ -50,7 +50,7 @@ figure(1); clf
 plot(x); title('raw, demeaned');
 
 % read electrode position info file
-fid = fopen([datadir,'electrode_locations_and_headshape.sfp'], 'r');
+fid = fopen([processed_datadir,'electrode_locations_and_headshape.sfp'], 'r');
 coordinates=textscan(fid, '%s %f %f %f ');
 coordinates=cell2mat(coordinates(2:end));
 coordinates=coordinates(4:131,:);

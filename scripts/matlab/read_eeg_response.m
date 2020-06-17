@@ -9,7 +9,7 @@ usecache = 1;
 % one at a time, using the plots to verify the results
 interactive = false;
 
-eegfiles = dir(fullfile(raw_data_dir,'*.bdf'));
+eegfiles = dir(fullfile(raw_datadir,'*.bdf'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % plot configuration
@@ -24,7 +24,7 @@ plot_cfg.preproc.demean = 'no';
 plot_cfg.blocksize = 10;
 
 % topographic alyout
-elec = ft_read_sens(fullfile(raw_data_dir,'biosemi64.txt'));
+elec = ft_read_sens(fullfile(raw_datadir,'biosemi64.txt'));
 cfg = [];
 cfg.elec = elec;
 lay = ft_prepare_layout(cfg);
@@ -37,7 +37,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find the length of all stimuli
 
-soundsdir = fullfile(stim_data_dir,'mixtures','testing');
+soundsdir = fullfile(stim_datadir,'mixtures','testing');
 sounds = sort({dir(fullfile(soundsdir,'*.wav')).name});
 sound_lengths = zeros(length(sounds),1);
 for i = 1:length(sounds)
@@ -147,7 +147,7 @@ for i = 1:length(eegfiles)
 
     %% file information
     filename = eegfiles(i).name;
-    filepath = fullfile(raw_data_dir,filename);
+    filepath = fullfile(raw_datadir,filename);
     sid = gt_sidforfile(filename);
     if subject(i).sid ~= sid
         error('Wrong subject id (%d) specified for index %d, expected sid %d',...
@@ -167,7 +167,7 @@ for i = 1:length(eegfiles)
     end
 
     %% read in the events
-    event_file = fullfile(data_dir,sprintf('sound_events_%03d.csv',sid));
+    event_file = fullfile(processed_datadir,sprintf('sound_events_%03d.csv',sid));
     stim_events = readtable(event_file);
 
     %% read in eeg data header
@@ -411,7 +411,7 @@ for i = 1:length(cleaned_files)
     mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
     savename = regexprep(cleaned_files(i).name,'.eeg$','.mcca');
-    mccafile = fullfile(data_dir,savename);
+    mccafile = fullfile(processed_datadir,savename);
 
     save_subject_components(mcca,mccafile)
 end

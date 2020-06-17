@@ -2,7 +2,7 @@ using DrWatson; quickactivate(@__DIR__, "german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(data_dir()))
+eeg_files = filter(x -> occursin(r"_mcca34\.mcca_proj$",x),readdir(processed_datadir()))
 
 eeg_files = filter(@λ(!occursin("11",_)),eeg_files)
 

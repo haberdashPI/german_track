@@ -13,6 +13,6 @@ dates = fromJSON(file = file.path(base_dir,'dateconfig.json'))
 
 analysis_dir = file.path(base_dir,'scripts','R')
 cache_dir = file.path(base_dir,'_research','cache','cache')
-data_dir = file.path(base_dir,'data','exp_pro','eeg',dates$data_dir)
-raw_data_dir = file.path(base_dir,'data','exp_raw','eeg')
+processed_datadir = file.path(base_dir,'data','exp_pro','eeg',dates$processed_datadir)
+raw_datadir = file.path(base_dir,'data','exp_raw','eeg')
 plot_dir = file.path(base_dir,'plots')

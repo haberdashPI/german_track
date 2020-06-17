@@ -13,9 +13,9 @@ cd(base_dir)
 global base_dir;
 global analysis_dir;
 global cache_dir;
-global data_dir;
-global raw_data_dir;
-global stim_data_dir;
+global processed_datadir;
+global raw_datadir;
+global stim_datadir;
 global stimulus_dir;
 global raw_stim_dir;
 
@@ -32,8 +32,8 @@ dates = read_json(fullfile(base_dir,'dateconfig.json'));
 
 analysis_dir = fullfile(base_dir,'scripts','matlab');
 cache_dir = fullfile(base_dir,'_research','cache');
-data_dir = fullfile(base_dir,'data','exp_pro','eeg',dates.data_dir);
+processed_datadir = fullfile(base_dir,'data','exp_pro','eeg',dates.processed_datadir);
 raw_stim_dir = fullfile(base_dir,'data','exp_raw','stimuli');
-stim_data_dir = fullfile(base_dir,'data','exp_pro','stimuli',dates.stim_data_dir);
+stim_datadir = fullfile(base_dir,'data','exp_pro','stimuli',dates.stim_datadir);
 stimulus_dir = fullfile(base_dir,'src','matlab','stimuli');
-raw_data_dir = fullfile(base_dir,'data','exp_raw','eeg');
+raw_datadir = fullfile(base_dir,'data','exp_raw','eeg');

@@ -14,15 +14,15 @@ include("util.jl")
 include("stimuli.jl")
 include("train_test.jl")
 
-export data_dir, raw_data_dir, stimulus_dir, raw_stim_dir, plotsdir
+export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
 
 const datefile = open(joinpath(projectdir(),"dateconfig.json"))
 const dates = JSON3.read(datefile)
 atexit(() -> close(datefile))
 
-data_dir() = joinpath(datadir(),"exp_pro","eeg",dates.data_dir)
-raw_data_dir() = joinpath(datadir(),"exp_raw","eeg")
-stimulus_dir() = joinpath(datadir(),"exp_pro","stimuli",dates.stim_data_dir)
+processed_datadir() = joinpath(datadir(),"exp_pro","eeg",dates.processed_datadir)
+raw_datadir() = joinpath(datadir(),"exp_raw","eeg")
+stimulus_dir() = joinpath(datadir(),"exp_pro","stimuli",dates.stim_datadir)
 raw_stim_dir() = joinpath(datadir(),"exp_raw","stimuli")
 
 # load and organize data about the stimuli
