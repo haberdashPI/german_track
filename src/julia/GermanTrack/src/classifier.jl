@@ -1,4 +1,18 @@
-export testclassifier
+export testclassifier, optparams
+
+function optparams(objective,param_range;kwds...)
+    options = (
+        SearchRange = collect(values(param_range)),
+        NumDimensions = length(param_range),
+        TraceMode = :silent,
+        kwds...
+    )
+
+    opt = bboptimize(;options...) do params
+        objective(params)
+    end
+    best_candidate(opt), best_fitness(opt)
+end
 
 function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
     if !isnothing(seed)

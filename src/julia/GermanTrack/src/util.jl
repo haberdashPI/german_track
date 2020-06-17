@@ -65,21 +65,6 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
     result
 end
 
-
-function optparams(objective,param_range;kwds...)
-    options = (
-        SearchRange = collect(values(param_range)),
-        NumDimensions = length(param_range),
-        TraceMode = :silent,
-        kwds...
-    )
-
-    opt = bboptimize(;options...) do params
-        objective(params)
-    end
-    best_candidate(opt), best_fitness(opt)
-end
-
 function compute_powerdiff_features(eeg,data,region,window)
     fs = framerate(eeg)
 
