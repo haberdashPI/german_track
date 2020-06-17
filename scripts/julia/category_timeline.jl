@@ -20,7 +20,6 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-np = pyimport("numpy")
 R"""
 library(ggplot2)
 library(cowplot)
@@ -80,6 +79,7 @@ else
     classdf = @_ classdf_groups |>
         combine(function(sdf)
             # setup the windows
+            windows = best_windows_for(sdf)
             # compute features in each window
             x = mapreduce(append!!,windows) do (start,len)
                 result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
@@ -109,8 +109,8 @@ end
 function modelresult((key,sdf))
     if length(unique(sdf.condition)) >= 2
         params = (nu = key[:nu], gamma = key[:gamma])
-        np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        testclassifier(NuSVC(;params...),data=sdf,y=:condition,X=r"channel",
+            crossval=:sid, seed=hash((params,seed)))
     else
         # in the case where there is one condition, this means that the selected window
         # length has a condition for global but not the second category (object or spatial)
