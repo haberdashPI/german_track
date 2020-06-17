@@ -14,6 +14,7 @@ include("util.jl")
 include("features.jl")
 include("classifier.jl")
 include("stimuli.jl")
+include("files.jl")
 include("train_test.jl")
 
 export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
