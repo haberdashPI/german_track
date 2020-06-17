@@ -90,40 +90,49 @@ function optparams(objective,param_range;by=identity,kwds...)
     best_candidate(opt), best_fitness(opt)
 end
 
-function testclassifier(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
-    # nprog = 0
-    # progress = Progress(n_folds*max_evals)
+function testclassifier(model;data,y,X,crossval,n_folds=10,kwds...)
+    # model formula (starts empty)
+    formula = term(0)
 
-    xs = term(0)
-    for col in propertynames(view(sdf,:,cols))
-        xs += term(col)
+    # include all columns `X` as features of the classification
+    for col in propertynames(view(data,:,X))
+        formula += term(col)
     end
-    formula = term(classcol) ~ xs
+    # include `y` as the dependent variable (the class to be learned)
+    formula = term(y) ~ formula
+
+    # the results of classification (starts empty)
     result = Empty(DataFrame)
 
-    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(sdf[:,idcol])))
+    # cross validation loop
+    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(data[:,crossval])))
+        # select train and test sets
         isempty(trainids) && continue
-        train = @_ filter(_[idcol] in trainids,sdf)
-        test = @_ filter(_[idcol] in testids,sdf)
+        train = @_ filter(_[crossval] in trainids,data)
+        test = @_ filter(_[crossval] in testids,data)
 
-        if length(unique(sdf[:,classcol])) < 2
+        # check for at least 2 classes
+        if length(unique(data[:,y])) < 2
             error("Something is wrong, there is only one class in this classification ",
                   "task.")
         end
-        f = apply_schema(formula, schema(formula, sdf))
-        y,X = modelcols(f, train)
 
-        coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
+        # setup the model and fit it
+        f = apply_schema(formula, schema(formula, data))
+        _y,_X = modelcols(f, train)
+        coefs = ScikitLearn.fit!(model,_X,vec(_y);kwds...)
 
-        y,X = modelcols(f, test)
-        level = ScikitLearn.predict(coefs,X)
+        # test the model
+        _y,_X = modelcols(f, test)
+        level = ScikitLearn.predict(coefs,_X)
         _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
-        keepcols = propertynames(view(sdf,:,Not(cols)))
+        # add to the results
+        keepvars = propertynames(view(data,:,Not(X)))
         result = append!!(result, DataFrame(
             label = _labels,
-            correct = _labels .== test[:,classcol];
-            (keepcols .=> eachcol(test[:,keepcols]))...
+            correct = _labels .== test[:,y];
+            (keepvars .=> eachcol(test[:,keepvars]))...
         ))
     end
 
