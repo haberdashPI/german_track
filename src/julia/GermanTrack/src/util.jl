@@ -65,18 +65,8 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
     result
 end
 
-function apply(by::NamedTuple, vals)
-    apply_(by::Tuple{}, vals::Tuple{}) = ()
-    apply_(by::Tuple, vals::Tuple) =
-        (by[1](vals[1]), apply_(Base.tail(by),Base.tail(vals))...)
-    NamedTuple{keys(by)}(apply_(Tuple(by), Tuple(vals)))
-end
-applyer(params, by::NamedTuple) = by
-applyer(params, by::Function) = NamedTuple{keys(params)}(fill(by,length(params))...)
 
-function optparams(objective,param_range;by=identity,kwds...)
-    by = applyer(param_range, by)
-
+function optparams(objective,param_range;kwds...)
     options = (
         SearchRange = collect(values(param_range)),
         NumDimensions = length(param_range),
@@ -85,7 +75,7 @@ function optparams(objective,param_range;by=identity,kwds...)
     )
 
     opt = bboptimize(;options...) do params
-        objective(apply(by,params))
+        objective(params)
     end
     best_candidate(opt), best_fitness(opt)
 end

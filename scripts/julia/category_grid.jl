@@ -122,7 +122,6 @@ end
 param_range = (nu=(0.0,0.5),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
 opts = (
-    by=param_by,
     MaxFuncEvals = 1_500,
     # MaxFuncEvals = 6,
     FitnessTolerance = 0.03,
@@ -144,12 +143,14 @@ if use_slurm || !use_cache || !isfile(paramfile)
             Random.seed!(hash((seed,:object,i)))
             fold_params, fitness = optparams(param_range;opts...) do params
 
+                transformed_params = @_ map(_1(_2), by, params)
+
                 objectgr = @_ objectdf |> filter(_.sid ∈ train,__) |>
                     groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
                     pairs |> collect
 
                 objectresult = dreduce(append!!,
-                    Map(i -> [modelacc(objectgr[i],params)]),
+                    Map(i -> [modelacc(objectgr[i],transformed_params)]),
                     1:length(objectgr),init=Empty(Vector))
 
                 spatialgr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
@@ -157,7 +158,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
                     pairs |> collect
 
                 spatialresult = dreduce(append!!,
-                    Map(i -> [modelacc(spatialgr[i],params)]),
+                    Map(i -> [modelacc(spatialgr[i],transformed_params)]),
                     1:length(spatialgr),init=Empty(Vector))
 
                 # spatialresult = dreduce(append!!,
@@ -173,7 +174,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
 
                 return 1.0 - maxacc
             end
-            fold_params = GermanTrack.apply(param_by,fold_params)
+            fold_params = @_ map(_1(_2), by, fold_params)
             result = append!!(result,DataFrame(sid = test; fold_params...))
         end
 
