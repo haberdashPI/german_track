@@ -2,8 +2,7 @@ import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
     sample_from_ranges, ishit, windowtarget, windowbaseline,
-    organize_data_by, optparams, find_powerdiff,
-    find_decoder_training_trials, compute_powerdiff_features
+    optparams, find_decoder_training_trials, compute_powerdiff_features
 
 using FFTW
 using DataStructures
@@ -110,115 +109,8 @@ function ishit(row; kwds...)
 end
 
 
-function find_powerdiff(subjects;kwds...)
-    organize_data_by(subjects;kwds...) do windows,timings,counts,fs
-        function windowband(signal,timing)
-            freqdf = computebands(signal,fs)
-            if @_ all(0 ≈ _,signal)
-                freqdf[:,Between(:delta,:gamma)] .= 0
-            end
-            freqdf[!,:window_timing] .= timing
-            freqdf
-        end
-        freqdf = foldl(append!!,MapSplat(windowband), zip(windows,timings))
-
-        if size(freqdf,1) > 0
-            powerdf = @_ freqdf |>
-                stack(__, Between(:delta,:gamma),
-                    variable_name = :freqbin, value_name = :power) |>
-                filter(all(!isnan,_.power), __) |>
-                unstack(__, :window_timing, :power)
-
-            ε = 1e-8
-            logdiff(x,y) = log.(ε .+ x) .- log.(ε .+ y)
-            powerdiff = logdiff(powerdf.after,powerdf.before)
-
-            chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
-            features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
-            DataFrame(weight=minimum(counts);(features .=> powerdiff)...)
-        else
-            Empty(DataFrame)
-        end
-    end
-end
-
 resolvetime(target,x::Number) = x
 resolvetime(target,fn::Function) = fn(target)
-
-function organize_data_by(fn,subjects;groups,windows,hittypes,
-    chunk_size=1,before_reflect=true,regions = ["target", "baseline"])
-
-    # @assert Threads.nthreads() > 1 "Run this method with JULIA_NUM_THREADS>1"
-    if @_ any(_  ∉ ["target", "baseline"],regions)
-        error("Only allowed regions are 'target' and 'baseline'.")
-    end
-
-    fs = GermanTrack.framerate(first(values(subjects)).eeg)
-
-    window_timings = ["before", "after"]
-    source_names = ["male", "female"]
-
-    N = reduce(*,length.((values(subjects),regions,windows)))
-    progress = Progress(N,desc="computing frequency bins")
-
-    function assemble_subject(subject)
-        events = subject.events
-        events.row = 1:size(events,1)
-        eeg = subject.eeg
-
-        function build_subject_data(region,window)
-            rowdf = @_ filter(_.target_present == 1,events)
-            si = rowdf.sound_index
-            rowdf[!,:region] .= region
-            rowdf[!,:winlen] .= window.len
-            rowdf[!,:winstart] .= window.start
-            rowdf[!,:winbefore] .= resolvetime.(target_times[si],window.before)
-            rowdf[!,:chunk] = round.(Int,rowdf.sound_index / chunk_size)
-            rowdf.hit = ishit.(eachrow(rowdf))
-            rowdf = @_ filter(_.hit ∈ hittypes,rowdf)
-
-            categorical!(rowdf,[:region,:condition,:salience_label,
-                :target_time_label,:direction,:hit],compress=true)
-
-            cols = [:sid,:hit,:condition,:winlen,:winstart,:region,groups...]
-
-            resultdf = combine(groupby(rowdf,cols)) do sdf
-                signals_and_counts = map(window_timings) do window_timing
-                    ws = map(eachrow(sdf)) do row
-                        bounds = window_timing != "after" ?
-                            (row.winstart, row.winstart + row.winlen) :
-                            (row.winbefore, row.winbefore + row.winlen)
-
-                        rindex = row.row
-                        region == "target" ?
-                            windowtarget(eeg[rindex],events[rindex,:],fs,bounds...) :
-                            windowbaseline(eeg[rindex],events[rindex,:],
-                                sdf.sid[1],row.trial,fs,bounds...,mindist=0.2,minlen=0.5)
-                    end
-                    reduce(hcat,ws), sum(!isempty,ws)
-                end
-                signals = getindex.(signals_and_counts,1)
-                counts = getindex.(signals_and_counts,2)
-
-                result = fn(signals,window_timings,counts,fs)
-                @infiltrate any(isinf,Array(result))
-                @infiltrate any(isnan,Array(result))
-                result
-            end
-
-            next!(progress)
-            if isempty(resultdf)
-                Empty(DataFrame)
-            else
-                resultdf
-            end
-        end
-
-        foldl(append!!,MapSplat(build_subject_data),
-            Iterators.product(regions,windows))
-    end
-    foldl(append!!,Map(assemble_subject),values(subjects))
-end
 
 function padmeanpower(xs)
     rows = maximum(@λ(size(_,1)), xs)
