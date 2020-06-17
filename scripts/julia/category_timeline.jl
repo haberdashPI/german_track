@@ -110,7 +110,7 @@ function modelresult((key,sdf))
     if length(unique(sdf.condition)) >= 2
         params = (nu = key[:nu], gamma = key[:gamma])
         np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     else
         # in the case where there is one condition, this means that the selected window
         # length has a condition for global but not the second category (object or spatial)

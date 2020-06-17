@@ -64,7 +64,7 @@ rename!(best_params,:subjects => :sid)
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ objectdf |>
     innerjoin(__,best_params,on=:sid) |>
@@ -125,7 +125,7 @@ best_params.nu = min.(0.7,best_params.nu)
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ spatialdf |>
     innerjoin(__,best_params,on=:sid) |>
@@ -187,7 +187,7 @@ ggplot($image, aes(x=channel,y=freqbin,fill=value)) + geom_raster() +
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
     np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 
 comparegroups = @_ compare |>

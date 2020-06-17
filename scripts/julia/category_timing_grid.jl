@@ -83,7 +83,7 @@ objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
         # catch those and return the worst possible fitness
         try
             np.random.seed(typemax(UInt32) & hash((params,seed)))
-            result = testmodel(sdf,NuSVC(;params...),
+            result = testclassifier(sdf,NuSVC(;params...),
                 :sid,:condition,r"channel",n_folds=3)
             μ = _wmean(result.correct,result.weight)
             return (mean = μ, NamedTuple(key)...)
@@ -157,7 +157,7 @@ if !use_slurm
     @everywhere function modelresult((key,sdf))
         params = (nu = key[:nu], gamma = key[:gamma])
         np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     end
 
     testgroups = @_ objectdf |>
@@ -247,7 +247,7 @@ if !use_slurm
     @everywhere function modelresult((key,sdf))
         params = (nu = key[:nu], gamma = key[:gamma])
         np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
     end
 
     testgroups = @_ spatialdf |>

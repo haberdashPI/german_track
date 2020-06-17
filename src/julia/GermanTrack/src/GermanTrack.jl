@@ -25,7 +25,7 @@ raw_datadir() = joinpath(datadir(),"exp_raw","eeg")
 stimulus_dir() = joinpath(datadir(),"exp_pro","stimuli",dates.stim_datadir)
 raw_stim_dir() = joinpath(datadir(),"exp_raw","stimuli")
 
-# load and organize data about the stimuli
+# load and organize metadata about the stimuli
 const stim_file = open(joinpath(stimulus_dir(), "config.json"))
 const stim_info = JSON3.read(stim_file)
 atexit(() -> close(stim_file))

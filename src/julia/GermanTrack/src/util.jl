@@ -1,7 +1,7 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, events_for_eeg, only_near,
     not_near, bound, sidfor, subdict, padmeanpower, far_from,
-    sample_from_ranges, testmodel, ishit, windowtarget, windowbaseline,
+    sample_from_ranges, testclassifier, ishit, windowtarget, windowbaseline,
     computebands, organize_data_by, optparams, find_powerdiff,
     find_decoder_training_trials, compute_powerdiff_features
 
@@ -90,7 +90,7 @@ function optparams(objective,param_range;by=identity,kwds...)
     best_candidate(opt), best_fitness(opt)
 end
 
-function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
+function testclassifier(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
     # nprog = 0
     # progress = Progress(n_folds*max_evals)
 
@@ -112,17 +112,6 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
         end
         f = apply_schema(formula, schema(formula, sdf))
         y,X = modelcols(f, train)
-
-        # if @_ all(first(y) == _,y)
-        #     labels = fill(first(y),size(test,1))
-        #     append!(result, DataFrame(
-        #         label = labels,
-        #         correct = labels .== test[:,classcol],
-        #         fitness = Inf,
-        #         classcol => test[:,classcol],
-        #         apply(by,fill(NaN,length(param_range)))...
-        #     ))
-        # end
 
         coefs = ScikitLearn.fit!(model,X,vec(y);kwds...)
 

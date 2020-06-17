@@ -160,7 +160,7 @@ classdf_shape = @_ classdf |>
 
 # TODO: try more iterations, then move on to mounya request
 classpredict = @_ by(classdf_shape, [:winstart,:freqbin,:winlen,:salience]) do sdf
-    labels = testmodel(LinearSVC(penalty="l1",dual=false,C=1,max_iter=10_000),sdf,r"channel")
+    labels = testclassifier(LinearSVC(penalty="l1",dual=false,C=1,max_iter=10_000),sdf,r"channel")
     DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
 end
 

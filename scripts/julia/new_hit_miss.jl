@@ -63,7 +63,7 @@ classdf = @_ powerdiff |>
 
 classpredict = by(classdf, [:freqbin,:winstart,:winlen,:salience]) do sdf
     mapreduce(vcat,1:30) do channel
-        labels = testmodel(NuSVC(),sdf,:sid,:condition,Regex(@sprintf("channel%02d",channel)))
+        labels = testclassifier(NuSVC(),sdf,:sid,:condition,Regex(@sprintf("channel%02d",channel)))
         DataFrame(correct = sdf.condition .== labels,sid = sdf.sid,channel = channel)
     end
 end
@@ -84,7 +84,7 @@ for group in keys(channel_groups)
     chs = channel_groups[group]
     newrows = by(classdf,[:freqbin,:winstart,:winlen,:salience]) do sdf
         cols = Regex("("*join((@sprintf("channel%02d",ch) for ch in chs),"|")*")")
-        labels = testmodel(NuSVC(),sdf,:sid,:condition,cols)
+        labels = testclassifier(NuSVC(),sdf,:sid,:condition,cols)
         DataFrame(correct = sdf.condition .== labels,sid = sdf.sid)
     end
     newrows[!,:channelgroup] .= group
