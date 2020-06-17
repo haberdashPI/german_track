@@ -29,17 +29,39 @@ library(dplyr)
 
 # ---------------------------- Freqmeans Analysis ---------------------------- #
 
-best_windows = CSV.read(joinpath(processed_datadir(),"svm_params","best_windows_sal_target_tim.csv"))
+best_windows = CSV.read(joinpath(processed_datadir(),"svm_params",
+    "best_windows_sal_target_tim.csv"))
 
 spread(scale,npoints) = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-winlens = copy(MapCat(spread(0.5,6)),unique(best_windows.winlen))
-winstarts = range(0,4,length=64)
-windows = Iterators.product(winstarts,winlens)
+grouped_winlens = groupby(best_windows,[:salience,:target_time,:condition])
+function best_windows_for(df)
+    best_winlen = if df.condition[1] == "global"
+        vcat(grouped_winlens[(
+            salience    = df.salience_label[1],
+            target_time = df.target_time_label[1],
+            condition   = "object"
+        )].winlen,
+        grouped_winlens[(
+            salience    = df.salience_label[1],
+            target_time = df.target_time_label[1],
+            condition   = "spatial"
+        )].winlen)
+    else
+        grouped_winlens[(
+            salience    = df.salience_label[1],
+            target_time = df.target_time_label[1],
+            condition   = df.condition[1]
+        )].winlen
+    end
+    winlens = reduce(vcat,spread.(best_winlen,0.5,6))
+    winstarts = range(0,4,length=64)
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_new.csv")
-classdf_file_old = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_old.csv")
+    Iterators.product(winstarts,winlens)
+end
+
+classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time.csv")
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -54,12 +76,11 @@ else
         filter(ishit(_,region = "target") == "hit",__) |> # hits only
         groupby(__,[:salience_label,:target_time_label,:sid,:condition])
 
-    # next step, check that the old function still yields
-    # the old result, and then work from there
-
     progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
     classdf = @_ classdf_groups |>
         combine(function(sdf)
+            # setup the windows
+            # compute features in each window
             x = mapreduce(append!!,windows) do (start,len)
                 result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
                     (len = len, start = start, before = -len))
@@ -86,9 +107,18 @@ end
 # --------------------------------- Timeline --------------------------------- #
 
 function modelresult((key,sdf))
-    params = (nu = key[:nu], gamma = key[:gamma])
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
-    testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    if length(unique(sdf.condition)) >= 2
+        params = (nu = key[:nu], gamma = key[:gamma])
+        np.random.seed(typemax(UInt32) & hash((params,seed)))
+        testmodel(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+    else
+        # in the case where there is one condition, this means that the selected window
+        # length has a condition for global but not the second category (object or spatial)
+        # this is an indication that the window length is present for use with a category
+        # other than the one currently being evaluated and can safely be ignored
+
+        Empty(DataFrame)
+    end
 end
 
 function classpredict(df,params,condition,variables...)
@@ -198,7 +228,7 @@ pl = plot_grid(
 """
 
 R"""
-ggsave(file.path($dir,"salience_classify_summary.pdf"),pl,width=8,height=3)
+ggsave(file.path($dir,"salience_classify_summary.pdf"),pl,width=8,height=6)
 """
 
 # ------------------------------ Overall vs Miss ----------------------------- #

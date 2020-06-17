@@ -295,14 +295,14 @@ end
 
     object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
         groupby(__,[:winlen,:salience,:target_time]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
-        combine(__,[:correct,:weight] => _wmean => :correct) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
         groupby(__,[:winlen,:salience,:target_time]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")
@@ -312,5 +312,6 @@ end
         combine(__,[:winlen,:correct_mean] =>
             ((len,val) -> len[argmax(val)]) => :winlen)
 
-    CSV.write(joinpath(datadir(),"svm_params","best_windows_sal_target_tim.csv"),best_windows)
+    CSV.write(joinpath(processed_datadir(),"svm_params",
+        "best_windows_sal_target_tim.csv"),best_windows)
 end

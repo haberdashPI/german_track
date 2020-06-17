@@ -106,7 +106,10 @@ function testmodel(sdf,model,idcol,classcol,cols;n_folds=10,kwds...)
         train = @_ filter(_[idcol] in trainids,sdf)
         test = @_ filter(_[idcol] in testids,sdf)
 
-        @infiltrate length(unique(sdf[:,classcol])) < 2
+        if length(unique(sdf[:,classcol])) < 2
+            error("Something is wrong, there is only one class in this classification ",
+                  "task.")
+        end
         f = apply_schema(formula, schema(formula, sdf))
         y,X = modelcols(f, train)
 
