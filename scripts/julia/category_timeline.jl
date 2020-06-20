@@ -1,4 +1,5 @@
-# ----------------------------------- Setup ---------------------------------- #
+# Setup
+# =================================================================
 
 using DrWatson
 @quickactivate("german_track")
@@ -26,7 +27,8 @@ library(cowplot)
 library(dplyr)
 """
 
-# ---------------------------- Freqmeans Analysis ---------------------------- #
+# Freqmeans Analysis
+# =================================================================
 
 best_windows = CSV.read(joinpath(processed_datadir(),"svm_params",
     "best_windows_sal_target_tim.csv"))
@@ -104,7 +106,8 @@ if :subjects in propertynames(best_params) # some old files misnamed the sid col
     rename!(best_params,:subjects => :sid)
 end
 
-# --------------------------------- Timeline --------------------------------- #
+# Timeline
+# =================================================================
 
 function modelresult((key,sdf))
     if length(unique(sdf.condition)) >= 2
@@ -231,7 +234,8 @@ R"""
 ggsave(file.path($dir,"salience_classify_summary.pdf"),pl,width=8,height=6)
 """
 
-# ------------------------------ Overall vs Miss ----------------------------- #
+# Overall vs Miss
+# =================================================================
 
 classdf_file = joinpath(cache_dir(),"data","freqmeans_miss_baseline.csv")
 if use_cache && isfile(classdf_file)
@@ -332,7 +336,8 @@ R"""
 ggsave(file.path($dir,"hit_v_miss_v_baseline_grouopavg.pdf"),pl,width=11,height=8)
 """
 
-# -------------------------- Target Timing Timeline -------------------------- #
+# Target Timing Timeline
+# =================================================================
 
 winlens = groupby(best_windows_tim,[:condition,:target_time])
 
@@ -437,5 +442,3 @@ pl = plot_grid(
 R"""
 ggsave(file.path($dir,"target_time_classify_summary.pdf"),pl,width=8,height=3)
 """
-
-# ------------------------------------ End ----------------------------------- #
