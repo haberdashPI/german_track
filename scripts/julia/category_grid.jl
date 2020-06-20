@@ -85,6 +85,9 @@ end
 objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 
+# Function Definitions
+# -----------------------------------------------------------------
+
 @everywhere begin
     np = pyimport("numpy")
     # _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
@@ -121,6 +124,9 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         end
     end
 end
+
+# Optimization
+# -----------------------------------------------------------------
 
 param_range = (nu=(0.0,0.5),gamma=(-4.0,1.0))
 param_by = (nu=identity,gamma=x -> 10^x)
