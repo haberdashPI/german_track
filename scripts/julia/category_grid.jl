@@ -1,4 +1,5 @@
-# ----------------------------------- Setup ---------------------------------- #
+# Setup
+# =================================================================
 
 using DrWatson
 @quickactivate("german_track")
@@ -57,7 +58,8 @@ end
 
 # is freq means always the same?
 
-# ------------------------ Mean Frequency Bin Analysis ----------------------- #
+# Mean Frequency Bin Analysis
+# =================================================================
 
 classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time.csv")
 if use_cache && isfile(classdf_file)
@@ -77,7 +79,8 @@ else
     CSV.write(classdf_file,classdf)
 end
 
-# --------------- Hyper-parameter Optimization: Global v Object -------------- #
+# Hyper-parameter Optimization: Global v Object
+# =================================================================
 
 objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
 spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
@@ -196,7 +199,8 @@ else
     end
 end
 
-# ----------------------- Object Classification Results ---------------------- #
+# Object Classification Results
+# =================================================================
 
 if !use_slurm
     @everywhere function modelresult((key,sdf))
@@ -241,7 +245,8 @@ if !use_slurm
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
 
-# ----------------- Classifciation Results: Global v Spattial ---------------- #
+# Classifciation Results: Global v Spattial
+# =================================================================
 
 if !use_slurm
 
@@ -290,7 +295,8 @@ if !use_slurm
 
 end
 
-# -------------------------- Find Best Window Length ------------------------- #
+# Find Best Window Length
+# =================================================================
 
 @static if !use_slurm
 
