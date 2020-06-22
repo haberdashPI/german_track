@@ -168,16 +168,42 @@ band = @_ predict |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(target_time_label~condition) +
+pl = ggplot($band,aes(x=winstart,y=correct,
+        color=interaction(salience_label,target_time_label))) +
+    geom_ribbon(aes(ymin=low,ymax=high,
+        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(~condition) +
     geom_abline(slope=0,intercept=50,linetype=2) +
+    guides(fill = guide_legend(title="Salience x Target time"),
+            color = guide_legend(title="Salience x Target time")) +
+    scale_fill_brewer(palette='Paired') +
+    scale_color_brewer(palette='Paired') +
     coord_cartesian(ylim=c(40,100))
 pl
 """
 
 R"""
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
+"""
+
+# Individual-data timeline
+# -----------------------------------------------------------------
+
+R"""
+pl = ggplot(filter($predict,hit == 'hit'),aes(x=winstart,y=correct_mean*100,
+        color=interaction(salience_label,target_time_label))) +
+    geom_line() + facet_grid(sid~condition) +
+    geom_abline(slope=0,intercept=50,linetype=2) +
+    guides(fill = guide_legend(title="Salience x Target time"),
+            color = guide_legend(title="Salience x Target time")) +
+    scale_fill_brewer(palette='Paired') +
+    scale_color_brewer(palette='Paired') +
+    coord_cartesian(ylim=c(0,100))
+# pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_timeline_ind.pdf"),pl,width=11,height=32)
 """
 
 # Timeline across salience x target time (for miss trials)
@@ -195,10 +221,16 @@ band = @_ predict |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(target_time_label~condition) +
+pl = ggplot($band,aes(x=winstart,y=correct,
+        color=interaction(salience_label,target_time_label))) +
+    geom_ribbon(aes(ymin=low,ymax=high,
+        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(~condition) +
     geom_abline(slope=0,intercept=50,linetype=2) +
+    guides(fill = guide_legend(title="Salience x Target time"),
+           color = guide_legend(title="Salience x Target time")) +
+    scale_fill_brewer(palette='Paired') +
+    scale_color_brewer(palette='Paired') +
     coord_cartesian(ylim=c(40,100))
 pl
 """
@@ -263,11 +295,41 @@ R"""
 ggsave(file.path($dir,"object_target_time.pdf"),pl,width=11,height=8)
 """
 
+# Compute early/late window timings
+# -----------------------------------------------------------------
+
+# TODO: new proposal for early/late distinction
+#=
+Reduce each individual listener to two (3-4?) time points, minimizing variance
+within those timepoints. Use a validation set of time points, exclude those
+from the final computed graph
+=#
+
+function cluster_times(sdf)
+    boundary = 2
+    times = unique(sdf.winstart) |> sort!
+    best_time_ind = map(times[(1+boundary):(end-boundary)]) do border
+        @_ sdf |>
+            DataFrames.transform(__,:winstart => (x -> ifelse.(x .< border,"early","late")) =>
+                :winstart_label) |>
+            groupby(__,:winstart_label) |>
+            combine(__,:correct_mean => std => :correct_sd) |>
+            mean(__.correct_sd)
+    end |> argmin
+    border = times[best_time_ind+boundary]
+    @_ sdf |>
+        DataFrames.transform(__,:winstart => (x -> ifelse.(x .< border,"early","late")) =>
+                   :winstart_label) |>
+        insertcols!(__,:winstart_early_border => border)
+end
+predict_bounds = @_ predict |>
+    groupby(__,[:hit,:salience_label,:target_time_label,:condition,:sid]) |>
+    combine(cluster_times,__)
 
 # Find early/late window start boundary
 # -----------------------------------------------------------------
 
-late_boundary = 3.5 # "reasonable" aribtrary cutoff for now
+late_boundary = 2 # "reasonable" aribtrary cutoff for now
 
 # select a validation set
 valids = StatsBase.sample(MersenneTwister(hash((2019_11_19,:early_boundary))),
@@ -291,13 +353,12 @@ early_boundary_ind = map(boundaries[(1+border):(end-border)]) do boundary
 end |> argmin
 early_boundary = boundaries[border+early_boundary_ind]
 
-early_boundary = 2.5
-
-# Target-time x salieence into early/late windowstart
+# Target-time x salience into early/late windowstart
 # -----------------------------------------------------------------
 
 grouped = @_ predict |>
     filter(_.sid ∉ valids,__) |>
+    filter(_.hit == "hit",__) |>
     filter(_.winstart <= late_boundary,__) |>
     transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
         => :winstart_label) |>
@@ -328,6 +389,7 @@ ggsave(file.path($dir,"salience_target_time_bar.pdf"),width=11,height=8)
 # -----------------------------------------------------------------
 grouped = @_ predict |>
     filter(_.winstart <= late_boundary,__) |>
+    filter(_.hit == "hit",__) |>
     filter(_.sid ∉ valids,__) |>
     transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
         :winstart_label) |>
@@ -358,6 +420,8 @@ ggsave(file.path($dir,"salience_bar.pdf"),width=11,height=8)
 # -----------------------------------------------------------------
 
 grouped = @_ predict |>
+    filter(_.hit == "hit",__) |>
+    filter(_.sid ∉ valids,__) |>
     filter(_.winstart <= late_boundary,__) |>
     transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
         => :winstart_label) |>
