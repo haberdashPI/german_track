@@ -191,22 +191,22 @@ band = @_ predict |>
 
 R"""
 pl = ggplot($band,
-        aes(x = winstart,
-            y = correct,
+        aes(    x = winstart,
+                y = correct,
             color = interaction(salience_label, target_time_label))) +
     geom_ribbon(
         alpha = 0.4,
-        aes(ymin = low,
-            ymax = high,
-            fill = interaction(salience_label, target_time_label),
+        aes( ymin = low,
+             ymax = high,
+             fill = interaction(salience_label, target_time_label),
             color = NULL)) +
     geom_line() +
     facet_grid(~condition) +
     geom_abline(slope = 0, intercept = 50, linetype = 2) +
     guides(fill  = guide_legend(title = "Salience x Target time"),
            color = guide_legend(title = "Salience x Target time")) +
-    scale_fill_brewer( palette = 'Paired') +
-    scale_color_brewer(palette = 'Paired') +
+    scale_fill_brewer( palette = 'Paired', direction = -1) +
+    scale_color_brewer(palette = 'Paired', direction = -1) +
     coord_cartesian(ylim = c(40, 100))
 pl
 """
@@ -290,6 +290,8 @@ pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
                 fill  = salience_label,
                 color = NULL)) +
     geom_line() + facet_grid(~condition) +
+    scale_color_brewer(palette = 'Set1') +
+    scale_fill_brewer( palette = 'Set1') +
     geom_abline(slope = 0, intercept = 50, linetype = 2) +
     coord_cartesian(ylim = c(40, 100))
 pl
@@ -303,27 +305,36 @@ ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
 # -----------------------------------------------------------------
 
 band = @_ predict |>
-    # filter(_.before == "zero",__) |>
-    groupby(__,[:winstart,:target_time_label,:condition]) |> #,:before]) |>
+    # filter(_.before == "zero", __) |>
+    groupby(__, [:winstart, :target_time_label, :condition, :sid]) |> #, :before]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, [:winstart, :target_time_label, :condition]) |> #, :before]) |>
     combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        bs = bootstrap(mean, correct, BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
         (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+    end, __) #|>
+    # transform!(__, [:salience, :before] =>
+    #     ((x, y) -> string.(x, "_", y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=target_time_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=target_time_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=50,linetype=2) +
-    coord_cartesian(ylim=c(40,100))
+pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = target_time_label,
+                color = NULL)) +
+    geom_line() + facet_grid(.~condition) +
+    scale_color_brewer(palette = 'Set2') +
+    scale_fill_brewer( palette = 'Set2') +
+    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    coord_cartesian(ylim = c(40, 100))
 pl
 """
 
 R"""
-ggsave(file.path($dir,"object_target_time.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir, "object_target_time.pdf"), pl, width = 11, height = 8)
 """
 
 # Timeline dividied into data-driven early/late phase
@@ -337,7 +348,7 @@ function cluster_times(sdf)
     times = unique(sdf.winstart) |> sort!
     best_time_index = map(times[(1+edge):(end-edge)]) do border
         @_ sdf |>
-            DataFrames.transform(__,:winstart => earlylate(border) => :winstart_label) |>
+            DataFrames.transform(__,:winstart => ByRow(earlylate(border)) => :winstart_label) |>
             groupby(__,:winstart_label) |>
             combine(__,:correct_mean => std => :correct_sd) |>
             mean(__.correct_sd)
@@ -345,7 +356,7 @@ function cluster_times(sdf)
     border = times[best_time_index+edge]
 
     @_ sdf |>
-        DataFrames.transform(__,:winstart => earlylate(border) => :winstart_label) |>
+        DataFrames.transform(__,:winstart => ByRow(earlylate(border)) => :winstart_label) |>
         insertcols!(__,:winstart_early_border => border)
 end
 predict_bounds = @_ predict |>
@@ -369,12 +380,25 @@ grouped = @_ predict_bounds |>
 
 R"""
 pos = position_dodge(width=0.75)
-pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
-    geom_bar(stat='identity',aes(fill=salience_label),width=0.6,position=pos) +
+pl = ggplot($grouped,
+        aes(x    = target_time_label,
+            y    = correct,
+            fill = interaction(winstart_label, salience_label))) +
+    geom_bar(stat='identity',
+        aes(fill=interaction(winstart_label, salience_label)), width=0.6, position=pos) +
     geom_linerange(aes(ymin=low,ymax=high),position=pos) +
-    facet_wrap(target_time_label~condition,labeller="label_both") +
+    scale_fill_brewer( palette = 'Paired', direction = -1) +
+    scale_color_brewer(palette = 'Paired', direction = -1) +
+    guides(fill  = guide_legend(title = "Window time x Salience"),
+           color = guide_legend(title = "Window time x Salience")) +
+    facet_wrap(~condition) +
     coord_cartesian(ylim=c(50,100))
 """
+
+# ### Summary
+# In this graph, low salience shows an increase at later time points for earlier
+# earl-trial targets. High salience shows a trending increase at later time points
+# for late-trial targets.
 
 R"""
 ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)
