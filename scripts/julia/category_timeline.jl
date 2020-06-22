@@ -496,20 +496,21 @@ function bestonly(var,measure,df)
 end
 
 hit_compare = @_ vcat(object_predict,spatial_predict) |>
-    groupby(__,[:salience,:hit,:condition]) |>
-    combine(bestonly(:winstart,:correct_mean,_),__) |>
-    groupby(__,[:salience,:condition,:sid,:hit]) |>
-    combine(__,:correct_mean => mean => :correct_mean) |>
-    groupby(__,:hit) |>
+    groupby(__, [:salience, :hit, :condition]) |>
+    combine(bestonly(:winstart, :correct_mean, _), __) |>
+    groupby(__, [:salience, :condition, :sid, :hit]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, :hit) |>
     combine(:correct_mean => function(x)
-        bs = bootstrap(mean,x,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        bs = bootstrap(mean, x, BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
         (correct = μ, low = low, high = high)
-    end,__)
+    end, __)
 
 R"""
-pl = ggplot($hit_compare,aes(x=factor(hit,order=T,levels=c('hit','miss','baseline')),
-        y=correct,fill=hit)) +
+pl = ggplot($hit_compare,aes(
+        x = factor(hit,order=T,levels=c('hit','miss','baseline')),
+        y = correct,fill=hit)) +
     geom_bar(stat='identity',width=0.7) +
     geom_linerange(aes(ymin=low,ymax=high)) +
     coord_cartesian(ylim=c(40,100)) +
