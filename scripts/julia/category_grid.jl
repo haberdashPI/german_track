@@ -105,6 +105,7 @@ else
             x
         end,__)
     ProgressMeter.finish!(progress)
+    CSV.write(classdf_file,classdf)
 end
 
 # Hyper-parameter Optimization: Global v Object
