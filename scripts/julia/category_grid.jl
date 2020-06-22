@@ -137,8 +137,9 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         # catch those and return the worst possible fitness
         try
             np.random.seed(typemax(UInt32) & hash((params,seed)))
-            result = testclassifier(sdf,NuSVC(;params...),
-                :sid,:condition,r"channel",n_folds=3)
+            result = testclassifier(NuSVC(;params...), data = sdf,
+                y = :condition,X = r"channel", crossval = :sid, n_folds=3,
+                seed=hash((params,seed)))
             return (mean = mean(result.correct,weights(result.weight)),
                 weight = sum(result.weight),
                 NamedTuple(key)...)
@@ -180,14 +181,15 @@ if use_slurm || !use_cache || !isfile(paramfile)
             Random.seed!(hash((seed,:object,i)))
             fold_params, fitness = optparams(param_range;opts...) do params
 
-                transformed_params = @_ map(_1(_2), param_by, params)
+                tparams_vals = @_ map(_1(_2), param_by, params)
+                tparams = NamedTuple{keys(param_by)}(tparams_vals)
 
                 objectgr = @_ objectdf |> filter(_.sid ∈ train,__) |>
                     groupby(__, [:winstart,:winlen,:salience_label,:target_time_label]) |>
                     pairs |> collect
 
                 objectresult = dreduce(append!!,
-                    Map(i -> [modelacc(objectgr[i],transformed_params)]),
+                    Map(i -> [modelacc(objectgr[i],tparams)]),
                     1:length(objectgr),init=Empty(Vector))
 
                 spatialgr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
@@ -195,7 +197,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
                     pairs |> collect
 
                 spatialresult = dreduce(append!!,
-                    Map(i -> [modelacc(spatialgr[i],transformed_params)]),
+                    Map(i -> [modelacc(spatialgr[i],tparams)]),
                     1:length(spatialgr),init=Empty(Vector))
 
                 # spatialresult = dreduce(append!!,
