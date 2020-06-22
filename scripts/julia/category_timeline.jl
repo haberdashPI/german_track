@@ -263,16 +263,78 @@ R"""
 ggsave(file.path($dir,"object_target_time.pdf"),pl,width=11,height=8)
 """
 
-# Salience grouped into early/late windowstart
+
+# Find early/late window start boundary
 # -----------------------------------------------------------------
 
-# For now, just group by the latest timepoint that miss shows
-# something interesting (~2 seconds).
+late_boundary = 3.5 # "reasonable" aribtrary cutoff for now
+
+# select a validation set
+valids = StatsBase.sample(MersenneTwister(hash((2019_11_19,:early_boundary))),
+    unique(predict.sid), round(Int,0.2length(unique(predict.sid))), replace=false)
+early_boundary_data = @_ predict |>
+    filter(_.sid ∈ valids,__) |> # use a validation set (to avoid "double-dipping" the data)
+    filter(_.winstart <= late_boundary,__) |> # aribtrary cutoff, for now...
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |>
+    combine(__,:correct_mean => mean => :correct_mean)
+
+# compute a boundary that minimizes within-time-block standard deviation across all groups
+boundaries = early_boundary_data.winstart |> unique
+border = 2
+early_boundary_ind = map(boundaries[(1+border):(end-border)]) do boundary
+    df = @_ early_boundary_data |>
+        transform!(__,:winstart => (x -> ifelse.(x .< boundary,"early","late")) =>
+            :winstart_label) |>
+        groupby(__,[:winstart_label,:salience_label,:target_time_label,:condition]) |>
+        combine(__,:correct_mean => std => :correct_sd) |>
+        mean(__.correct_sd)
+end |> argmin
+early_boundary = boundaries[border+early_boundary_ind]
+
+early_boundary = 2.5
+
+# Target-time x salieence into early/late windowstart
+# -----------------------------------------------------------------
+
 grouped = @_ predict |>
-    filter(_.winstart <= 1.5,__) |>
-    transform!(__,:winstart => (x -> ifelse.(x .< 0.5,"early","late")) => :winstart_label) |>
-    groupby(__,[:winstart_label,:salience_label,:condition,:sid]) |>
+    filter(_.sid ∉ valids,__) |>
+    filter(_.winstart <= late_boundary,__) |>
+    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
+        => :winstart_label) |>
+    groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition,:sid]) |>
     combine(__,:correct_mean => mean => :correct_mean) |>
+    groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+
+
+R"""
+pos = position_dodge(width=0.75)
+ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
+    geom_bar(stat='identity',aes(fill=salience_label),width=0.6,position=pos) +
+    geom_linerange(aes(ymin=low,ymax=high),position=pos) +
+    facet_wrap(target_time_label~condition,labeller="label_both") +
+    coord_cartesian(ylim=c(50,100))
+"""
+
+R"""
+ggsave(file.path($dir,"salience_target_time_bar.pdf"),width=11,height=8)
+"""
+
+# Salience grouped into early/late windowstart
+# -----------------------------------------------------------------
+grouped = @_ predict |>
+    filter(_.winstart <= late_boundary,__) |>
+    filter(_.sid ∉ valids,__) |>
+    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
+        :winstart_label) |>
+    groupby(__,[:winstart,:winstart_label,:salience_label,:condition,:sid]) |>
+    combine(__,:correct_mean => mean => :correct_mean) |>
+    groupby(__,[:winstart_label,:salience_label,:condition,:sid]) |>
+    combine(__,:correct_mean => maximum => :correct_mean) |>
     groupby(__,[:winstart_label,:salience_label,:condition]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
@@ -295,11 +357,10 @@ ggsave(file.path($dir,"salience_bar.pdf"),width=11,height=8)
 # Target-timing grouped into early/late windowstart
 # -----------------------------------------------------------------
 
-# For now, just group by the latest timepoint that miss shows
-# something interesting (~2 seconds).
 grouped = @_ predict |>
-    filter(_.winstart <= 1.5,__) |>
-    transform!(__,:winstart => (x -> ifelse.(x .< 0.5,"early","late")) => :winstart_label) |>
+    filter(_.winstart <= late_boundary,__) |>
+    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
+        => :winstart_label) |>
     groupby(__,[:winstart_label,:target_time_label,:condition,:sid]) |>
     combine(__,:correct_mean => mean => :correct_mean) |>
     groupby(__,[:winstart_label,:target_time_label,:condition]) |>
