@@ -214,7 +214,8 @@ if use_slurm || !use_cache || !isfile(paramfile)
 
                 return 1.0 - maxacc
             end
-            fold_params = @_ map(_1(_2), by, fold_params)
+            fold_params_vals = @_ map(_1(_2), param_by, fold_params)
+            fold_params = NamedTuple{keys(param_by)}(fold_params_vals)
             result = append!!(result,DataFrame(sid = test; fold_params...))
         end
 
