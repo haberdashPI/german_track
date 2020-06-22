@@ -180,10 +180,10 @@ if use_slurm || !use_cache || !isfile(paramfile)
             Random.seed!(hash((seed,:object,i)))
             fold_params, fitness = optparams(param_range;opts...) do params
 
-                transformed_params = @_ map(_1(_2), by, params)
+                transformed_params = @_ map(_1(_2), param_by, params)
 
                 objectgr = @_ objectdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
+                    groupby(__, [:winstart,:winlen,:salience_label,:target_time_label]) |>
                     pairs |> collect
 
                 objectresult = dreduce(append!!,
@@ -191,7 +191,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
                     1:length(objectgr),init=Empty(Vector))
 
                 spatialgr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience,:target_time]) |>
+                    groupby(__, [:winstart,:winlen,:salience_label,:target_time_label]) |>
                     pairs |> collect
 
                 spatialresult = dreduce(append!!,
@@ -205,8 +205,8 @@ if use_slurm || !use_cache || !isfile(paramfile)
                 next!(progress)
 
                 maxacc = max(
-                    resultmax(objectresult,:salience,:target_time),
-                    resultmax(spatialresult,:salience,:target_time)
+                    resultmax(objectresult,:salience_label,:target_time_label),
+                    resultmax(spatialresult,:salience_label,:target_time_label)
                 )
 
                 return 1.0 - maxacc
@@ -245,15 +245,15 @@ if !use_slurm
 
     testgroups = @_ objectdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience,:target_time,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience_label,:target_time_label,:nu,:gamma])
     object_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
         combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct)
     wimeans = @_ subj_means |>
-        groupby(__,[:winstart,:winlen,:salience,:target_time]) |>
+        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean)
 
     sort!(wimeans,order(:correct_mean,rev=true))
@@ -273,8 +273,8 @@ if !use_slurm
                 :correct_mean,
                 scale={reverse=true,domain=[0.5,1],scheme="plasma"}
             },
-            column=:salience,
-            row=:target_time)
+            column=:salience_label,
+            row=:target_time_label)
 
     save(joinpath(dir,"object_salience.pdf"),pl)
 end
@@ -292,15 +292,15 @@ if !use_slurm
 
     testgroups = @_ spatialdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience, :target_time,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience_label, :target_time_label,:nu,:gamma])
     spatial_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience, :target_time,:sid]) |>
+        groupby(__,[:winstart,:winlen,:salience_label, :target_time_label,:sid]) |>
         combine(__,[:correct,:weight] => ((x,w) -> wmean(x,weights(w).+1)) => :correct)
     wimeans = @_ subj_means |>
-        groupby(__,[:winstart,:winlen,:salience,:target_time]) |>
+        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean)
 
     sort!(wimeans,order(:correct_mean,rev=true))
@@ -323,7 +323,7 @@ if !use_slurm
                 bin={step=2/9},
             },
             color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience,row=:target_time)
+            column=:salience_label,row=:target_time)
 
     save(joinpath(dir,"spatial_salience.pdf"),pl)
 
@@ -335,21 +335,21 @@ end
 @static if !use_slurm
 
     object_winlen_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
         combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
-        groupby(__,[:winlen,:salience,:target_time]) |>
+        groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience,:target_time,:sid]) |>
+        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
         combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
-        groupby(__,[:winlen,:salience,:target_time]) |>
+        groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")
 
     best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
-        groupby(__,[:salience,:target_time,:condition]) |>
+        groupby(__,[:salience_label,:target_time_label,:condition]) |>
         combine(__,[:winlen,:correct_mean] =>
             ((len,val) -> len[argmax(val)]) => :winlen)
 
