@@ -140,12 +140,12 @@ end
 
 objectdf = @_ classdf |>
     filter(_.condition in ["global","object"],__)
-object_predict = classpredict(objectdf, best_params, "object", :salience_label,
+object_predict = classpredict(objectdf, best_params, "object", :hit, :salience_label,
     :target_time_label)
 
 spatialdf = @_ classdf |>
     filter(_.condition in ["global","spatial"],__)
-spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience_label,
+spatial_predict = classpredict(spatialdf, best_params, "spatial", :hit, :salience_label,
     :target_time_label)
 
 predict = vcat(object_predict,spatial_predict)
@@ -153,11 +153,11 @@ predict = vcat(object_predict,spatial_predict)
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-# Timeline across salience x target time
+# Timeline across salience x target time (for hit trials)
 # -----------------------------------------------------------------
 
 band = @_ predict |>
-    # filter(_.before == "zero",__) |>
+    filter(_.hit == "hit",__) |>
     groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
@@ -178,6 +178,33 @@ pl
 
 R"""
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
+"""
+
+# Timeline across salience x target time (for miss trials)
+# -----------------------------------------------------------------
+
+band = @_ predict |>
+    filter(_.hit == "miss",__) |>
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+
+R"""
+pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
+    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(target_time_label~condition) +
+    geom_abline(slope=0,intercept=50,linetype=2) +
+    coord_cartesian(ylim=c(40,100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_timeline_miss.pdf"),pl,width=11,height=8)
 """
 
 # Timeline across salience

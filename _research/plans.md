@@ -1,6 +1,7 @@
   - 2x2 for salinece / target-timing
   - try early late timing (for data summary, some way to split across all conditions)
-  - freqmeans getting long (parallelize data?)
+    - minimize difference with each split (across all conditions or within each?)
+  - freqmeans getting long (parallelize data?, threading doesn't seem to help...)
 
   - try some raw analysis (look at spectrograms, spectrum, some view of bands???),
     global condition (focus?)
