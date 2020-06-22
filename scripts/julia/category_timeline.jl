@@ -122,14 +122,14 @@ else
     alert("Salience Freqmeans Complete!")
 end
 
-paramdir = joinpath(processed_datadir(),"svm_params")
-paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
+paramdir    = joinpath(processed_datadir(),"svm_params")
+paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
 end
 
-# Timeline
+# Timelines
 # =================================================================
 
 function modelresult((key,sdf))
@@ -317,75 +317,37 @@ R"""
 ggsave(file.path($dir,"object_target_time.pdf"),pl,width=11,height=8)
 """
 
-# Compute early/late window timings
-# -----------------------------------------------------------------
+# Timeline dividied into data-driven early/late phase
+# =================================================================
 
-# TODO: new proposal for early/late distinction
-#=
-Reduce each individual listener to two (3-4?) time points, minimizing variance
-within those timepoints. Use a validation set of time points, exclude those
-from the final computed graph
-=#
+earlylate(border) = x -> earlylate(x,border)
+earlylate(x,border) = x < border ? "early" : "late"
 
 function cluster_times(sdf)
-    boundary = 2
+    edge = 2
     times = unique(sdf.winstart) |> sort!
-    best_time_ind = map(times[(1+boundary):(end-boundary)]) do border
+    best_time_index = map(times[(1+edge):(end-edge)]) do border
         @_ sdf |>
-            DataFrames.transform(__,:winstart => (x -> ifelse.(x .< border,"early","late")) =>
-                :winstart_label) |>
+            DataFrames.transform(__,:winstart => earlylate(border) => :winstart_label) |>
             groupby(__,:winstart_label) |>
             combine(__,:correct_mean => std => :correct_sd) |>
             mean(__.correct_sd)
     end |> argmin
-    border = times[best_time_ind+boundary]
+    border = times[best_time_index+edge]
+
     @_ sdf |>
-        DataFrames.transform(__,:winstart => (x -> ifelse.(x .< border,"early","late")) =>
-                   :winstart_label) |>
+        DataFrames.transform(__,:winstart => earlylate(border) => :winstart_label) |>
         insertcols!(__,:winstart_early_border => border)
 end
 predict_bounds = @_ predict |>
     groupby(__,[:hit,:salience_label,:target_time_label,:condition,:sid]) |>
     combine(cluster_times,__)
 
-# Find early/late window start boundary
-# -----------------------------------------------------------------
-
-#=
-late_boundary = 2 # "reasonable" aribtrary cutoff for now
-
-# select a validation set
-valids = StatsBase.sample(MersenneTwister(hash((2019_11_19,:early_boundary))),
-    unique(predict.sid), round(Int,0.2length(unique(predict.sid))), replace=false)
-early_boundary_data = @_ predict |>
-    filter(_.sid ∈ valids,__) |> # use a validation set (to avoid "double-dipping" the data)
-    filter(_.winstart <= late_boundary,__) |> # aribtrary cutoff, for now...
-    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |>
-    combine(__,:correct_mean => mean => :correct_mean)
-
-# compute a boundary that minimizes within-time-block standard deviation across all groups
-boundaries = early_boundary_data.winstart |> unique
-border = 2
-early_boundary_ind = map(boundaries[(1+border):(end-border)]) do boundary
-    df = @_ early_boundary_data |>
-        transform!(__,:winstart => (x -> ifelse.(x .< boundary,"early","late")) =>
-            :winstart_label) |>
-        groupby(__,[:winstart_label,:salience_label,:target_time_label,:condition]) |>
-        combine(__,:correct_mean => std => :correct_sd) |>
-        mean(__.correct_sd)
-end |> argmin
-early_boundary = boundaries[border+early_boundary_ind]
-=#
-
 # Target-time x salience into early/late windowstart
 # -----------------------------------------------------------------
 
 grouped = @_ predict_bounds |>
-    # filter(_.sid ∉ valids,__) |>
     filter(_.hit == "hit",__) |>
-    # filter(_.winstart <= late_boundary,__) |>
-    # transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
-    #     :winstart_label) |>
     groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition,:sid]) |>
     combine(__,:correct_mean => mean => :correct_mean) |>
     groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition]) |>
