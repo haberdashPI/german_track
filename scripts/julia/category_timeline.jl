@@ -6,13 +6,32 @@ using DrWatson
 use_cache = true
 seed = 072189
 
-using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, StatsBase, Random, Printf, ProgressMeter, VegaLite,
-    FileIO, StatsBase, RCall, Bootstrap, BangBang, Transducers, PyCall,
-    Distributions, Alert, JSON3, JSONTables
-
-# local only packages
-using Formatting, ScikitLearn, Distributions
+using EEGCoding,
+    GermanTrack,
+    DataFrames,
+    Statistics,
+    DataStructures,
+    Dates,
+    Underscores,
+    StatsBase,
+    Random,
+    Printf,
+    ProgressMeter,
+    VegaLite,
+    FileIO,
+    StatsBase,
+    RCall,
+    Bootstrap,
+    BangBang,
+    Transducers,
+    PyCall,
+    Distributions,
+    Alert,
+    JSON3,
+    JSONTables,
+    Formatting,
+    ScikitLearn,
+    Distributions
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
@@ -33,7 +52,7 @@ library(dplyr)
 best_windows = CSV.read(joinpath(processed_datadir(),"svm_params",
     "best_windows_sal_target_tim.csv"))
 
-spread(scale,npoints) = x -> spread(x,scale,npoints)
+spread(scale,npoints)   = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
 grouped_winlens = groupby(best_windows,[:salience,:target_time,:condition])
@@ -56,8 +75,8 @@ function best_windows_for(df)
             condition   = df.condition[1]
         )].winlen
     end
-    winlens = reduce(vcat,spread.(best_winlen,0.5,6))
-    winstarts = range(0,4,length=64)
+    winlens   = reduce(vcat,spread.(best_winlen,0.5,6))
+    winstarts =  range(0,4,length=64)
 
     Iterators.product(winstarts,winlens)
 end
@@ -67,11 +86,13 @@ if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
-                                            encoding = RawEncoding())
-        for file in eeg_files)
+    subjects  = Dict(
+        sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
+                            encoding = RawEncoding())
+        for file in eeg_files
+    )
 
-    events = @_ mapreduce(_.events,append!!,values(subjects))
+    events         = @_ mapreduce(_.events,append!!,values(subjects))
     classdf_groups = @_ events |>
         filter(_.target_present,__) |>
         insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
@@ -79,10 +100,11 @@ else
         groupby(__,[:hit,:salience_label,:target_time_label,:sid,:condition])
 
     progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
-    classdf = @_ classdf_groups |>
+    classdf  = @_ classdf_groups |>
         combine(function(sdf)
             # setup the windows
             windows = best_windows_for(sdf)
+
             # compute features in each window
             x = mapreduce(append!!,windows) do (start,len)
                 result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
