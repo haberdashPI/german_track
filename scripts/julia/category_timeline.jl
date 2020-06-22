@@ -272,24 +272,26 @@ ggsave(file.path($dir,"object_salience_timeline_miss.pdf"),pl,width=11,height=8)
 # -----------------------------------------------------------------
 
 band = @_ predict |>
-    # filter(_.before == "zero",__) |>
-    groupby(__,[:winstart,:salience_label,:condition,:sid]) |> #,:before]) |>
-    combine(__,:correct_mean => mean => :correct_mean) |>
-    groupby(__,[:winstart,:salience_label,:condition]) |> #,:before]) |>
+    groupby(__, [:winstart, :salience_label, :condition, :sid]) |> #, :before]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, [:winstart, :salience_label, :condition]) |> #, :before]) |>
     combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        bs = bootstrap(mean, correct, BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
         (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+    end, __) #|>
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,color=salience_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,fill=salience_label,color=NULL),alpha=0.4) +
+pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = salience_label,
+                color = NULL)) +
     geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=50,linetype=2) +
-    coord_cartesian(ylim=c(40,100))
+    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    coord_cartesian(ylim = c(40, 100))
 pl
 """
 
