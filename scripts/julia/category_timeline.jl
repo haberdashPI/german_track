@@ -190,17 +190,24 @@ band = @_ predict |>
     #     ((x,y) -> string.(x,"_",y)) => :salience_for)
 
 R"""
-pl = ggplot($band,aes(x=winstart,y=correct,
-        color=interaction(salience_label,target_time_label))) +
-    geom_ribbon(aes(ymin=low,ymax=high,
-        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=50,linetype=2) +
-    guides(fill = guide_legend(title="Salience x Target time"),
-            color = guide_legend(title="Salience x Target time")) +
-    scale_fill_brewer(palette='Paired') +
-    scale_color_brewer(palette='Paired') +
-    coord_cartesian(ylim=c(40,100))
+pl = ggplot($band,
+        aes(x = winstart,
+            y = correct,
+            color = interaction(salience_label, target_time_label))) +
+    geom_ribbon(
+        alpha = 0.4,
+        aes(ymin = low,
+            ymax = high,
+            fill = interaction(salience_label, target_time_label),
+            color = NULL)) +
+    geom_line() +
+    facet_grid(~condition) +
+    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    guides(fill  = guide_legend(title = "Salience x Target time"),
+           color = guide_legend(title = "Salience x Target time")) +
+    scale_fill_brewer( palette = 'Paired') +
+    scale_color_brewer(palette = 'Paired') +
+    coord_cartesian(ylim = c(40, 100))
 pl
 """
 
