@@ -329,6 +329,7 @@ predict_bounds = @_ predict |>
 # Find early/late window start boundary
 # -----------------------------------------------------------------
 
+#=
 late_boundary = 2 # "reasonable" aribtrary cutoff for now
 
 # select a validation set
@@ -352,16 +353,17 @@ early_boundary_ind = map(boundaries[(1+border):(end-border)]) do boundary
         mean(__.correct_sd)
 end |> argmin
 early_boundary = boundaries[border+early_boundary_ind]
+=#
 
 # Target-time x salience into early/late windowstart
 # -----------------------------------------------------------------
 
-grouped = @_ predict |>
-    filter(_.sid ∉ valids,__) |>
+grouped = @_ predict_bounds |>
+    # filter(_.sid ∉ valids,__) |>
     filter(_.hit == "hit",__) |>
-    filter(_.winstart <= late_boundary,__) |>
-    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
-        => :winstart_label) |>
+    # filter(_.winstart <= late_boundary,__) |>
+    # transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
+    #     :winstart_label) |>
     groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition,:sid]) |>
     combine(__,:correct_mean => mean => :correct_mean) |>
     groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition]) |>
@@ -374,7 +376,7 @@ grouped = @_ predict |>
 
 R"""
 pos = position_dodge(width=0.75)
-ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
+pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
     geom_bar(stat='identity',aes(fill=salience_label),width=0.6,position=pos) +
     geom_linerange(aes(ymin=low,ymax=high),position=pos) +
     facet_wrap(target_time_label~condition,labeller="label_both") +
@@ -382,21 +384,19 @@ ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
 """
 
 R"""
-ggsave(file.path($dir,"salience_target_time_bar.pdf"),width=11,height=8)
+ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)
 """
 
 # Salience grouped into early/late windowstart
 # -----------------------------------------------------------------
-grouped = @_ predict |>
-    filter(_.winstart <= late_boundary,__) |>
+grouped = @_ predict_bounds |>
+    # filter(_.winstart <= late_boundary,__) |>
     filter(_.hit == "hit",__) |>
-    filter(_.sid ∉ valids,__) |>
-    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
-        :winstart_label) |>
-    groupby(__,[:winstart,:winstart_label,:salience_label,:condition,:sid]) |>
-    combine(__,:correct_mean => mean => :correct_mean) |>
+    # filter(_.sid ∉ valids,__) |>
+    # transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late")) =>
+    #     :winstart_label) |>
     groupby(__,[:winstart_label,:salience_label,:condition,:sid]) |>
-    combine(__,:correct_mean => maximum => :correct_mean) |>
+    combine(__,:correct_mean => mean => :correct_mean) |>
     groupby(__,[:winstart_label,:salience_label,:condition]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
@@ -406,25 +406,25 @@ grouped = @_ predict |>
 
 R"""
 pos = position_dodge(width=0.75)
-ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
+pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
     geom_bar(stat='identity',aes(fill=salience_label),width=0.6,position=pos) +
     geom_linerange(aes(ymin=low,ymax=high),position=pos) +
     facet_wrap(~condition) + coord_cartesian(ylim=c(50,100))
 """
 
 R"""
-ggsave(file.path($dir,"salience_bar.pdf"),width=11,height=8)
+ggsave(file.path($dir,"salience_bar.pdf"),pl,width=11,height=8)
 """
 
 # Target-timing grouped into early/late windowstart
 # -----------------------------------------------------------------
 
-grouped = @_ predict |>
+grouped = @_ predict_bounds |>
     filter(_.hit == "hit",__) |>
-    filter(_.sid ∉ valids,__) |>
-    filter(_.winstart <= late_boundary,__) |>
-    transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
-        => :winstart_label) |>
+    # filter(_.sid ∉ valids,__) |>
+    # filter(_.winstart <= late_boundary,__) |>
+    # transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
+    #     => :winstart_label) |>
     groupby(__,[:winstart_label,:target_time_label,:condition,:sid]) |>
     combine(__,:correct_mean => mean => :correct_mean) |>
     groupby(__,[:winstart_label,:target_time_label,:condition]) |>
@@ -437,14 +437,14 @@ grouped = @_ predict |>
 
 R"""
 pos = position_dodge(width=0.75)
-ggplot($grouped,aes(x=winstart_label,y=correct,fill=target_time_label)) +
+pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=target_time_label)) +
     geom_bar(stat='identity',aes(fill=target_time_label),width=0.6,position=pos) +
     geom_linerange(aes(ymin=low,ymax=high),position=pos) +
     facet_wrap(~condition) + coord_cartesian(ylim=c(50,100))
 """
 
 R"""
-ggsave(file.path($dir,"targettime_bar.pdf"),width=11,height=8)
+ggsave(file.path($dir,"targettime_bar.pdf"),pl,width=11,height=8)
 """
 
 # Overall vs Miss
