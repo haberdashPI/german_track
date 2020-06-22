@@ -7,6 +7,7 @@ use_cache = true
 seed = 072189
 num_local_procs = 1
 num_cluster_procs = 16
+use_absolute_features = true
 use_slurm = gethostname() == "lcap.cluster"
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -61,22 +62,49 @@ end
 # Mean Frequency Bin Analysis
 # =================================================================
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time.csv")
+if use_absolute_features
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time_absolute.csv")
+else
+    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time.csv")
+end
+
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
+    windows = [(len=len,start=start,before=-len)
+        for len in 2.0 .^ range(-1,1,length=10),
+            start in [0; 2.0 .^ range(-2,2,length=9)]]
     eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
-                                        encoding = RawEncoding())
-        for file in eeg_files)
-    classdf = find_powerdiff(
-        subjects,groups=[:salience,:target_time],
-        hittypes = ["hit"],
-        regions = ["target"],
-        windows = [(len=len,start=start,before=-len)
-            for len in 2.0 .^ range(-1,1,length=10),
-                start in [0; 2.0 .^ range(-2,2,length=9)]])
-    CSV.write(classdf_file,classdf)
+    subjects = Dict(
+        sidfor(file) => load_subject(
+            joinpath(processed_datadir(), file), stim_info,
+            encoding = RawEncoding()
+        ) for file in eeg_files)
+
+    events = @_ mapreduce(_.events,append!!,values(subjects))
+    classdf_groups = @_ events |>
+        filter(_.target_present,__) |>
+        filter(ishit(_,region = "target") == "hit",__) |>
+        groupby(__,[:salience_label,:target_time_label,:sid,:condition])
+
+    progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
+    classdf = @_ classdf_groups |>
+        combine(function(sdf)
+            # compute features in each window
+            x = mapreduce(append!!,windows) do window
+                result = if use_absolute_features
+                    compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf,"target",window)
+                else
+                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",window)
+                end
+                result[!,:winstart] .= window.start
+                result[!,:winlen] .= window.len
+                result
+            end
+            next!(progress)
+            x
+        end,__)
+    ProgressMeter.finish!(progress)
 end
 
 # Hyper-parameter Optimization: Global v Object

@@ -1,4 +1,4 @@
-export compute_powerdiff_features, computebands
+export compute_powerdiff_features, compute_powerbin_features, computebands
 
 function compute_powerdiff_features(eeg,data,region,window)
     fs = framerate(eeg)
@@ -37,6 +37,38 @@ function compute_powerdiff_features(eeg,data,region,window)
         chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
         features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
         DataFrame(weight=minimum(powerdf.weight);(features .=> powerdiff)...)
+    else
+        Empty(DataFrame)
+    end
+end
+
+function compute_powerbin_features(eeg,data,region,window)
+    fs = framerate(eeg)
+
+    windows = map(eachrow(data)) do row
+        bounds = (window.start, window.start + window.len)
+        region == "target" ?
+            windowtarget(eeg[row.trial_index],row,fs,bounds...) :
+            windowbaseline(eeg[row.trial_index],row,fs,bounds...)
+    end
+    signal = reduce(hcat,windows)
+    weight = sum(!isempty,windows)
+    freqdf = computebands(signal,fs)
+    freqdf[!,:weight] .= weight
+
+    freqdf
+
+    if size(freqdf,1) > 0
+        powerdf = @_ freqdf |>
+            stack(__, Between(:delta,:gamma),
+                variable_name = :freqbin, value_name = :power) |>
+            groupby(__,:channel) |>
+            transform!(__,:weight => minimum => :weight) |>
+            filter(all(!isnan,_.power), __)
+
+        chstr = @_(map(@sprintf("%02d",_),powerdf.channel))
+        features = Symbol.("channel_",chstr,"_",powerdf.freqbin)
+        DataFrame(weight=minimum(powerdf.weight);(features .=> powerdf.power)...)
     else
         Empty(DataFrame)
     end
