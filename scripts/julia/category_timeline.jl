@@ -400,6 +400,9 @@ pl = ggplot($grouped,
 # earl-trial targets. High salience shows a trending increase at later time points
 # for late-trial targets.
 
+# TODO: plot the difference from early to late window times rather than the % correct
+# to simplify this graph
+
 R"""
 ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)
 """
