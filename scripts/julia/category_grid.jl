@@ -173,7 +173,8 @@ JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.Struc
 
 paramdir = joinpath(processed_datadir(),"svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
+paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",
+    (absolute=use_absolute_features,),"json"))
 n_folds = 5
 if use_slurm || !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
@@ -224,7 +225,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
 
         # save a reproducible record of the results
         @tagsave paramfile Dict(
-            :data => JSONTables.ObjectTable(Tables.columns(result)),
+            :data => JSONTables.ObjectTable(Tables.columns(best_params)),
             :seed => seed,
             :param_range => param_range,
             :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
