@@ -44,6 +44,7 @@ R"""
 library(ggplot2)
 library(cowplot)
 library(dplyr)
+library(Hmisc)
 """
 
 # Freqmeans Analysis
@@ -147,16 +148,16 @@ function modelresult((key,sdf))
     end
 end
 
-function classpredict(df,params,condition,variables...)
+function classpredict(df, params, condition, variables...)
     testgroups = @_ df |>
-        innerjoin(__,params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,variables...,:nu,:gamma])
-    predictions = foldl(append!!,Map(modelresult),
-        collect(pairs(testgroups)),init=Empty(DataFrame))
+        innerjoin(__, params, on=:sid) |>
+        groupby(__, [:winstart,:winlen, variables...,:nu,:gamma])
+    predictions = foldl(append!!, Map(modelresult),
+        collect(pairs(testgroups)), init=Empty(DataFrame))
 
     @_ predictions |>
-        groupby(__,[:winstart,variables...,:sid]) |> #,:before]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct_mean) |>
+        groupby(__,[:winstart, variables...,:sid]) |> #,:before]) |>
+        combine(__,[:correct,:weight] => ((x, w) -> mean(x, weights(w.+1))) => :correct_mean) |>
         insertcols!(__,:condition => condition)
 end
 
@@ -369,31 +370,35 @@ predict_bounds = @_ predict |>
 grouped = @_ predict_bounds |>
     filter(_.hit == "hit",__) |>
     groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition,:sid]) |>
-    combine(__,:correct_mean => mean => :correct_mean) |>
-    groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-
+    combine(__,:correct_mean => mean => :correct_mean)
 
 R"""
 pos = position_dodge(width=0.75)
+posjit = position_jitterdodge(jitter.width=0.1,dodge.width=0.75)
 pl = ggplot($grouped,
         aes(x    = target_time_label,
-            y    = correct,
+            y    = 100*correct_mean,
             fill = interaction(winstart_label, salience_label))) +
-    geom_bar(stat='identity',
+    stat_summary(geom='bar',fun.data='mean_cl_boot',
         aes(fill=interaction(winstart_label, salience_label)), width=0.6, position=pos) +
-    geom_linerange(aes(ymin=low,ymax=high),position=pos) +
+    stat_summary(geom='linerange',fun.data='mean_cl_boot', fun.args=list(conf.int=0.682),
+        aes(fill=interaction(winstart_label, salience_label)), width=0.6, position=pos) +
+    geom_point(aes(group=interaction(winstart_label, salience_label)), position=posjit,
+        alpha=0.4) +
     scale_fill_brewer( palette = 'Paired', direction = -1) +
     scale_color_brewer(palette = 'Paired', direction = -1) +
     guides(fill  = guide_legend(title = "Window time x Salience"),
            color = guide_legend(title = "Window time x Salience")) +
     facet_wrap(~condition) +
-    coord_cartesian(ylim=c(50,100))
+    coord_cartesian(ylim=c(0,100))
 """
+
+R"""
+model = lm(correct_mean ~ target_time_label*winstart_label*salience_label, $grouped)
+anova(model)
+summary(model)
+"""
+
 
 # ### Summary
 # In this graph, low salience shows an increase at later time points for earlier
@@ -416,23 +421,21 @@ diffs = @_ predict_bounds |>
     transform!(__,:target_time_label =>
         (t -> recode(t,
             "early" => "2 or fewer switches",
-            "late" => "3 or more switches")) => :target_time_descrip) |>
-    groupby(__,[:target_time_descrip,:salience_label,:condition]) |>
-    combine(:diff => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
+            "late" => "3 or more switches")) => :target_time_descrip)
 
 R"""
 pos = position_dodge(width=0.75)
+posjit = position_jitterdodge(jitter.width=0.1,dodge.width=0.75)
 pl = ggplot($diffs,
         aes(x    = target_time_descrip,
-            y    = correct,
+            y    = 100*diff,
             fill = salience_label)) +
-    geom_bar(stat = 'identity',
-        aes(fill = salience_label), width = 0.6, position = pos) +
-    geom_linerange(aes(ymin = low, ymax = high), position = pos) +
+    stat_summary(geom='bar',fun.data='mean_cl_boot',
+        aes(fill = salience_label), width=0.6, position=pos) +
+    stat_summary(geom='linerange',fun.data='mean_cl_boot', fun.args=list(conf.int=0.682),
+        aes(fill=salience_label), width=0.6, position=pos) +
+    geom_point(aes(group=salience_label), position=posjit,
+        alpha=0.4) +
     scale_fill_brewer( palette = 'Set1') +
     scale_color_brewer(palette = 'Set1') +
     guides(fill  = guide_legend(title = "Salience"),
@@ -444,6 +447,32 @@ pl = ggplot($diffs,
 
 R"""
 ggsave(file.path($dir,"salience_target_time_diff_bar.pdf"),pl,width=11,height=8)
+"""
+
+
+R"""
+pos = position_dodge(width=0.75)
+posjit = position_jitterdodge(jitter.width=0.1,dodge.width=0.75)
+pl = ggplot($diffs,
+        aes(x    = target_time_descrip,
+            y    = 100*diff,
+            fill = salience_label)) +
+    stat_summary(geom='bar',fun.data='mean_cl_boot',
+        aes(fill = salience_label), width=0.6, position=pos) +
+    stat_summary(geom='linerange',fun.data='mean_cl_boot', fun.args=list(conf.int=0.682),
+        aes(fill=salience_label), width=0.6, position=pos) +
+    scale_fill_brewer( palette = 'Set1') +
+    scale_color_brewer(palette = 'Set1') +
+    guides(fill  = guide_legend(title = "Salience"),
+           color = guide_legend(title = "Salience")) +
+    facet_wrap(~condition) +
+    ylab("Late - Early Window difference (% Correct Classification)") +
+    xlab("Target Timing")
+"""
+
+
+R"""
+ggsave(file.path($dir,"salience_target_time_diff_bar_noind.pdf"),pl,width=11,height=8)
 """
 
 # Salience grouped into early/late windowstart
