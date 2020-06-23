@@ -400,14 +400,12 @@ pl = ggplot($grouped,
 # earl-trial targets. High salience shows a trending increase at later time points
 # for late-trial targets.
 
-# TODO: plot the difference from early to late window times rather than the % correct
-# to simplify this graph
-
 R"""
 ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)
 """
 
 # Target-time x salience with late - early window difference
+# -----------------------------------------------------------------
 
 diffs = @_ predict_bounds |>
     filter(_.hit == "hit",__) |>
@@ -448,7 +446,6 @@ R"""
 ggsave(file.path($dir,"salience_target_time_diff_bar.pdf"),pl,width=11,height=8)
 """
 
-
 # Salience grouped into early/late windowstart
 # -----------------------------------------------------------------
 grouped = @_ predict_bounds |>
@@ -467,11 +464,14 @@ grouped = @_ predict_bounds |>
     end,__) #|>
 
 R"""
-pos = position_dodge(width=0.75)
-pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=salience_label)) +
-    geom_bar(stat='identity',aes(fill=salience_label),width=0.6,position=pos) +
-    geom_linerange(aes(ymin=low,ymax=high),position=pos) +
-    facet_wrap(~condition) + coord_cartesian(ylim=c(50,100))
+pos = position_dodge(width = 0.75)
+pl = ggplot($grouped, aes(x = winstart_label, y = correct, fill = salience_label)) +
+    geom_bar(stat = 'identity', aes(fill = salience_label), width = 0.6, position = pos) +
+    geom_linerange(aes(ymin = low, ymax = high), position = pos) +
+    scale_fill_brewer(name='Salience',palette = 'Set1') +
+    ylab('% Correct Classification') +
+    xlab('Window Timing') +
+    facet_wrap(~condition) + coord_cartesian(ylim = c(50, 100))
 """
 
 R"""
@@ -483,30 +483,36 @@ ggsave(file.path($dir,"salience_bar.pdf"),pl,width=11,height=8)
 
 grouped = @_ predict_bounds |>
     filter(_.hit == "hit",__) |>
-    # filter(_.sid ∉ valids,__) |>
-    # filter(_.winstart <= late_boundary,__) |>
-    # transform!(__,:winstart => (x -> ifelse.(x .< early_boundary,"early","late"))
+    # filter(_.sid ∉ valids, __) |>
+    # filter(_.winstart <= late_boundary, __) |>
+    # transform!(__, :winstart => (x -> ifelse.(x .< early_boundary, "early", "late"))
     #     => :winstart_label) |>
-    groupby(__,[:winstart_label,:target_time_label,:condition,:sid]) |>
-    combine(__,:correct_mean => mean => :correct_mean) |>
-    groupby(__,[:winstart_label,:target_time_label,:condition]) |>
+    groupby(__, [:winstart_label, :target_time_label, :condition, :sid]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, [:winstart_label, :target_time_label, :condition]) |>
     combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,correct,BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        bs = bootstrap(mean,correct, BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs,BasicConfInt(0.682))[1]
         (correct = μ, low = low, high = high)
     end,__) #|>
 
 
 R"""
-pos = position_dodge(width=0.75)
-pl = ggplot($grouped,aes(x=winstart_label,y=correct,fill=target_time_label)) +
-    geom_bar(stat='identity',aes(fill=target_time_label),width=0.6,position=pos) +
-    geom_linerange(aes(ymin=low,ymax=high),position=pos) +
-    facet_wrap(~condition) + coord_cartesian(ylim=c(50,100))
+pos = position_dodge(width = 0.75)
+pl = ggplot($grouped,aes(x = winstart_label, y = correct, fill = target_time_label)) +
+    geom_bar(stat = 'identity', aes(fill = target_time_label), width = 0.6, position = pos) +
+    geom_linerange(aes(ymin = low, ymax = high), position = pos) +
+    scale_fill_brewer(
+        name = 'Target Timing',
+        label=c('2 or fewer switches','3 or more switches'),
+        palette='Set2') +
+    xlab('Window Timing') +
+    ylab('% Correct Classification') +
+    facet_wrap(~condition) + coord_cartesian(ylim = c(50, 100))
 """
 
 R"""
-ggsave(file.path($dir,"targettime_bar.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir, "targettime_bar.pdf"), pl, width = 11, height = 8)
 """
 
 # Overall vs Miss
