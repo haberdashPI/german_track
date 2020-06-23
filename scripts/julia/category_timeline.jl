@@ -407,6 +407,48 @@ R"""
 ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)
 """
 
+# Target-time x salience with late - early window difference
+
+diffs = @_ predict_bounds |>
+    filter(_.hit == "hit",__) |>
+    groupby(__,[:winstart_label,:target_time_label,:salience_label,:condition,:sid]) |>
+    combine(__,:correct_mean => mean => :correct_mean) |>
+    unstack(__,[:target_time_label,:salience_label,:condition,:sid],:winstart_label,:correct_mean) |>
+    transform!(__,[:late,:early] => (-) => :diff) |>
+    transform!(__,:target_time_label =>
+        (t -> recode(t,
+            "early" => "2 or fewer switches",
+            "late" => "3 or more switches")) => :target_time_descrip) |>
+    groupby(__,[:target_time_descrip,:salience_label,:condition]) |>
+    combine(:diff => function(correct)
+        bs = bootstrap(mean,correct,BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+
+R"""
+pos = position_dodge(width=0.75)
+pl = ggplot($diffs,
+        aes(x    = target_time_descrip,
+            y    = correct,
+            fill = salience_label)) +
+    geom_bar(stat = 'identity',
+        aes(fill = salience_label), width = 0.6, position = pos) +
+    geom_linerange(aes(ymin = low, ymax = high), position = pos) +
+    scale_fill_brewer( palette = 'Set1') +
+    scale_color_brewer(palette = 'Set1') +
+    guides(fill  = guide_legend(title = "Salience"),
+           color = guide_legend(title = "Salience")) +
+    facet_wrap(~condition) +
+    ylab("Late - Early Window difference (% Correct Classification)") +
+    xlab("Target Timing")
+"""
+
+R"""
+ggsave(file.path($dir,"salience_target_time_diff_bar.pdf"),pl,width=11,height=8)
+"""
+
+
 # Salience grouped into early/late windowstart
 # -----------------------------------------------------------------
 grouped = @_ predict_bounds |>
