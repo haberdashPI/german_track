@@ -223,12 +223,12 @@ if use_slurm || !use_cache || !isfile(paramfile)
         global best_params = result
 
         # save a reproducible record of the results
-        @tagsave paramfile safe=true Dict(
+        @tagsave paramfile Dict(
             :data => JSONTables.ObjectTable(Tables.columns(best_params)),
             :seed => seed,
             :param_range => param_range,
             :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
-        )
+        ) safe=true
     end
 else
     global best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
@@ -374,16 +374,8 @@ end
     best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
         (absolute=use_absolute_features,),"json"))
 
-    @tagsave best_windows_file safe=true Dict(
+    @tagsave best_windows_file Dict(
         :data => JSONTables.ObjectTable(Tables.columns(best_windows)),
-        :seed => seed,
-    )
-
-    if use_absolute_features
-        CSV.write(joinpath(processed_datadir(),"svm_params",
-            "best_windows_sal_target_tim_absolute.csv"),best_windows)
-    else
-        CSV.write(joinpath(processed_datadir(),"svm_params",
-            "best_windows_sal_target_tim.csv"),best_windows)
-    end
+        :seed => seed
+    ) safe=true
 end
