@@ -40,20 +40,20 @@ function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
         test = @_ filter(_[crossval] in testids,data)
 
         # check for at least 2 classes
-        if length(unique(data[:,y])) < 2
-            error("Something is wrong, there is only one class in this classification ",
-                  "task.")
+        _labels = if length(unique(train[:,y])) < 2
+            @warn "Degenerate classification (1 class), bypassing training" maxlog=1
+            fill(train[1,y],size(test,1))
+        else
+            # setup the model and fit it
+            f = apply_schema(formula, schema(formula, data))
+            _y,_X = modelcols(f, train)
+            coefs = ScikitLearn.fit!(model,_X,vec(_y);kwds...)
+
+            # test the model
+            _y,_X = modelcols(f, test)
+            level = ScikitLearn.predict(coefs,_X)
+            f.lhs.contrasts.levels[round.(Int,level).+1]
         end
-
-        # setup the model and fit it
-        f = apply_schema(formula, schema(formula, data))
-        _y,_X = modelcols(f, train)
-        coefs = ScikitLearn.fit!(model,_X,vec(_y);kwds...)
-
-        # test the model
-        _y,_X = modelcols(f, test)
-        level = ScikitLearn.predict(coefs,_X)
-        _labels = f.lhs.contrasts.levels[round.(Int,level).+1]
 
         # add to the results
         keepvars = propertynames(view(data,:,Not(X)))
