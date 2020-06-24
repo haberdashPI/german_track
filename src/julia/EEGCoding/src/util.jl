@@ -17,7 +17,39 @@ function progress_ammend!(prog::Progress,n)
 end
 progress_ammend!(prog::Bool,n) = @assert !prog
 
-function folds(K,indices,test_indices=indices)
+"""
+    folds(k,indices,[test_indices];
+        on_all_empty_test=:error,
+        filter_empty_test=on_all_empty_test == :error,
+        filter_empty_train=true)
+
+Robust generation of k-folds for cross-validation.
+
+Gracefully handles situations with too few data points for a given fold count by
+creating some empty folds (these can be filtered out).
+
+## Parameters
+- `k`: the desired number of folds to produce
+- `indices`: the indices over which to generate folds (e.g. 1:N)
+- `test_indices`: optional argument; handles the case where the test data only partially
+    overlap with the training data. Each fold will contain some subset of the train and
+    test data, where test data excludes any indices present in the current train data of
+    the fold. All test and train data will be covered across the folds.
+- `on_all_empty_test`: how to respond if there are too little data to generate even two
+    folds (0 or 1 data points); this can be `:error`, `:warn`, `:nothing` or a callback
+    function. In the case of `:warn` and `:nothing` a single "fold" is returned
+    containing all indices as the trian data, and an empty test data set (it may be
+    filtered out).
+- `filter_empty_test`, `filter_empty_train`: remove any folds that have
+    an empty test or train set, respectively.
+
+## Result
+
+An iterable object of folds. Each fold is a tuple of train and then test indices.
+
+"""
+function folds(K,indices,test_indices=indices;on_all_empty_test=:error,
+        filter_empty_test=on_all_empty_test==:error,filter_empty_train=true)
     len = length(indices)
     fold_size = len / K
 
@@ -25,27 +57,44 @@ function folds(K,indices,test_indices=indices)
     k_step = length(unshared_indices) / K
     last_unshared = 0
 
-    @assert length(indices) > 1
-    map(1:K) do k
-        start = floor(Int,(k-1)fold_size)+1
-        stop = (min(len,floor(Int,k*fold_size)))
-        shared_test = indices[start:stop]
-        if !isempty(shared_test)
-            train = setdiff(indices,shared_test)
-
-            from = last_unshared+1
-            to = floor(Int,min(length(unshared_indices),k*k_step))
-            last_unshared = max(last_unshared,to)
-            test = (shared_test ∩ test_indices) ∪ unshared_indices[from:to]
-            if k == K && to < length(unshared_indices)
-                @assert to == length(unshared_indices)-1
-                to = length(unshared_indices)
-            end
-
-            (train,test)
+    if length(indices) ≤ 1
+        if on_all_empty_test == :error
+            error("≤ 1 data points")
+        elseif on_all_empty_test == :warn
+            @warn "≤ 1 data points; no test data created"
+            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
+        elseif on_all_empty_test == :nothing
+            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
         else
-            shared_test, shared_test # empty, empty
+            on_all_empty_test()
+            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
         end
+    else
+        result = map(1:K) do k
+            start = floor(Int,(k-1)fold_size)+1
+            stop = (min(len,floor(Int,k*fold_size)))
+            shared_test = indices[start:stop]
+            if !isempty(shared_test)
+                train = setdiff(indices,shared_test)
+
+                from = last_unshared+1
+                to = floor(Int,min(length(unshared_indices),k*k_step))
+                last_unshared = max(last_unshared,to)
+                test = (shared_test ∩ test_indices) ∪ unshared_indices[from:to]
+                if k == K && to < length(unshared_indices)
+                    @assert to == length(unshared_indices)-1
+                    to = length(unshared_indices)
+                end
+
+                (train,test)
+            else
+                shared_test, shared_test # empty, empty
+            end
+        end
+        result = filter_empty_train ? @_(filter(!isempty(_[1]),result)) : result
+        result = filter_empty_test ? @_(filter(!isempty(_[2]),result)) : result
+
+        result
     end
 end
 

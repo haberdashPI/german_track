@@ -57,6 +57,8 @@ if !use_slurm
     isdir(dir) || mkdir(dir)
 end
 
+wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(x,weights(w))
+
 # is freq means always the same?
 
 # Mean Frequency Bin Analysis
@@ -140,7 +142,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
             result = testclassifier(NuSVC(;params...), data = sdf,
                 y = :condition,X = r"channel", crossval = :sid, n_folds=3,
                 seed=hash((params,seed)))
-            return (mean = mean(result.correct,weights(result.weight)),
+            return (mean = wmeanish(result.correct,result.weight),
                 weight = sum(result.weight),
                 NamedTuple(key)...)
         catch e
@@ -256,7 +258,7 @@ if !use_slurm
 
     subj_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct)
+        combine(__,[:correct,:weight] => wmeanish => :correct)
     wimeans = @_ subj_means |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean)
@@ -312,7 +314,7 @@ if !use_slurm
 
     subj_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label, :target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> wmean(x,weights(w).+1)) => :correct)
+        combine(__,[:correct,:weight] => wmeanish => :correct)
     wimeans = @_ subj_means |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean)
@@ -354,14 +356,14 @@ end
 
     object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
+        combine(__,[:correct,:weight] => wmeanish => :correct) |>
         groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
+        combine(__,[:correct,:weight] => wmeanish => :correct) |>
         groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")

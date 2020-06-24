@@ -5,6 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 072189
+use_absolute_features = true
 
 using EEGCoding,
     GermanTrack,
@@ -47,32 +48,39 @@ library(dplyr)
 library(Hmisc)
 """
 
+wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+
 # Freqmeans Analysis
 # =================================================================
 
-best_windows = CSV.read(joinpath(processed_datadir(),"svm_params",
-    "best_windows_sal_target_tim.csv"))
+paramdir = joinpath(processed_datadir(),"svm_params")
+best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
+    (absolute=use_absolute_features,),"json"))
+best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
+# we use the best window length (determined by average performance across all window starts)
+# per condition, salience and target_time, and some spread of values near those best window
+# lengths
 spread(scale,npoints)   = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-grouped_winlens = groupby(best_windows,[:salience,:target_time,:condition])
+grouped_winlens = groupby(best_windows,[:salience_label,:target_time_label,:condition])
 function best_windows_for(df)
     best_winlen = if df.condition[1] == "global"
         vcat(grouped_winlens[(
-            salience    = df.salience_label[1],
-            target_time = df.target_time_label[1],
-            condition   = "object"
+            salience_label    = df.salience_label[1],
+            target_time_label = df.target_time_label[1],
+            condition         = "object"
         )].winlen,
         grouped_winlens[(
-            salience    = df.salience_label[1],
-            target_time = df.target_time_label[1],
-            condition   = "spatial"
+            salience_label    = df.salience_label[1],
+            target_time_label = df.target_time_label[1],
+            condition         = "spatial"
         )].winlen)
     else
         grouped_winlens[(
-            salience    = df.salience_label[1],
-            target_time = df.target_time_label[1],
+            salience_label    = df.salience_label[1],
+            target_time_label = df.target_time_label[1],
             condition   = df.condition[1]
         )].winlen
     end
@@ -82,7 +90,9 @@ function best_windows_for(df)
     Iterators.product(winstarts,winlens)
 end
 
-classdf_file = joinpath(cache_dir(),"data","freqmeans_timeline_sal_target_time_withmiss.csv")
+classdf_file = joinpath(cache_dir(),"data",
+    savename("freqmeans_timeline_sal_target_time_withmiss",
+        (absolute=use_absolute_features,), "csv"))
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -108,8 +118,13 @@ else
 
             # compute features in each window
             x = mapreduce(append!!,windows) do (start,len)
-                result = compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
-                    (len = len, start = start, before = -len))
+                result = if use_absolute_features
+                    compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf,"target",
+                        (len = len, start = start))
+                else
+                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
+                        (len = len, start = start, before = -len))
+                end
                 result[!,:winstart] .= start
                 result[!,:winlen] .= len
                 result
@@ -120,11 +135,12 @@ else
     ProgressMeter.finish!(progress)
 
     CSV.write(classdf_file,classdf)
-    alert("Salience Freqmeans Complete!")
+    alert("Freqmeans Complete!")
 end
 
 paramdir    = joinpath(processed_datadir(),"svm_params")
-paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",(;),"json"))
+paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",
+    (absolute=use_absolute_features,),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -136,7 +152,8 @@ end
 function modelresult((key,sdf))
     if length(unique(sdf.condition)) >= 2
         params = (nu = key[:nu], gamma = key[:gamma])
-        testclassifier(NuSVC(;params...),data=sdf,y=:condition,X=r"channel",
+        testclassifier(NuSVC(;params...),
+            data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
             crossval=:sid, seed=hash((params,seed)))
     else
         # in the case where there is one condition, this means that the selected window
@@ -155,21 +172,25 @@ function classpredict(df, params, condition, variables...)
     predictions = foldl(append!!, Map(modelresult),
         collect(pairs(testgroups)), init=Empty(DataFrame))
 
-    @_ predictions |>
+    processed = @_ predictions |>
         groupby(__,[:winstart, variables...,:sid]) |> #,:before]) |>
-        combine(__,[:correct,:weight] => ((x, w) -> mean(x, weights(w.+1))) => :correct_mean) |>
+        combine(__,[:correct,:weight] => wmeanish => :correct_mean) |>
         insertcols!(__,:condition => condition)
+
+    processed, predictions
 end
 
 objectdf = @_ classdf |>
     filter(_.condition in ["global","object"],__)
-object_predict = classpredict(objectdf, best_params, "object", :hit, :salience_label,
+object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit, :salience_label,
     :target_time_label)
 
+best_params_hack = copy(best_params)
+best_params_hack.nu .= min.(0.35,best_params_hack.nu)
 spatialdf = @_ classdf |>
     filter(_.condition in ["global","spatial"],__)
-spatial_predict = classpredict(spatialdf, best_params, "spatial", :hit, :salience_label,
-    :target_time_label)
+spatial_predict, spatial_raw = classpredict(spatialdf, best_params_hack, "spatial", :hit,
+    :salience_label, :target_time_label)
 
 predict = vcat(object_predict,spatial_predict)
 
@@ -398,12 +419,6 @@ model = lm(correct_mean ~ target_time_label*winstart_label*salience_label, $grou
 anova(model)
 summary(model)
 """
-
-
-# ### Summary
-# In this graph, low salience shows an increase at later time points for earlier
-# earl-trial targets. High salience shows a trending increase at later time points
-# for late-trial targets.
 
 R"""
 ggsave(file.path($dir,"salience_target_time_bar.pdf"),pl,width=11,height=8)

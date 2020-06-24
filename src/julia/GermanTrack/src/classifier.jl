@@ -23,7 +23,7 @@ function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
     formula = term(0)
 
     # include all columns `X` as features of the classification
-    for col in propertynames(view(data,:,X))
+    for col in propertynames(view(data, :, X))
         formula += term(col)
     end
     # include `y` as the dependent variable (the class to be learned)
@@ -33,34 +33,38 @@ function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
     result = Empty(DataFrame)
 
     # cross validation loop
-    for (i, (trainids,testids)) in enumerate(folds(n_folds,unique(data[:,crossval])))
-        # select train and test sets
-        isempty(trainids) && continue
-        train = @_ filter(_[crossval] in trainids,data)
-        test = @_ filter(_[crossval] in testids,data)
+    _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test=:nothing)
+    for (i, (trainids, testids)) in enumerate(_folds)
+        train = @_ filter(_[crossval] in trainids, data)
+        test = @_ filter(_[crossval] in testids, data)
 
         # check for at least 2 classes
-        _labels = if length(unique(train[:,y])) < 2
+        _labels = if length(unique(train[:, y])) < 2
             @warn "Degenerate classification (1 class), bypassing training" maxlog=1
-            fill(train[1,y],size(test,1))
+            fill(missing, size(test, 1))
         else
             # setup the model and fit it
             f = apply_schema(formula, schema(formula, data))
-            _y,_X = modelcols(f, train)
-            coefs = ScikitLearn.fit!(model,_X,vec(_y);kwds...)
+            _y, _X = modelcols(f, train)
+            local coefs
+            try
+                coefs = ScikitLearn.fit!(model, _X, vec(_y);kwds...)
+            catch e
+                @infiltrate
+            end
 
             # test the model
-            _y,_X = modelcols(f, test)
-            level = ScikitLearn.predict(coefs,_X)
-            f.lhs.contrasts.levels[round.(Int,level).+1]
+            _y, _X = modelcols(f, test)
+            level = ScikitLearn.predict(coefs, _X)
+            f.lhs.contrasts.levels[round.(Int, level).+1]
         end
 
         # add to the results
-        keepvars = propertynames(view(data,:,Not(X)))
+        keepvars = propertynames(view(data, :, Not(X)))
         result = append!!(result, DataFrame(
-            label = _labels,
-            correct = _labels .== test[:,y];
-            (keepvars .=> eachcol(test[:,keepvars]))...
+            label = convert(Array{Union{String, Missing}}, _labels),
+            correct = convert(Array{Union{Bool, Missing}}, _labels .== test[:, y]);
+            (keepvars .=> eachcol(test[:, keepvars]))...
         ))
     end
 

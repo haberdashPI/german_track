@@ -1,3 +1,4 @@
+- use C rather than ν parameterization of SVC to possibly avoid infeasible states
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
 - don't split window timings for the early/late target times
 - then for target timing split into groups relative to the switch (as per the behavioral data)
