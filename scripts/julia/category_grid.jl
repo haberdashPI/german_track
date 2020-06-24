@@ -137,7 +137,6 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            np.random.seed(typemax(UInt32) & hash((params,seed)))
             result = testclassifier(NuSVC(;params...), data = sdf,
                 y = :condition,X = r"channel", crossval = :sid, n_folds=3,
                 seed=hash((params,seed)))
@@ -224,7 +223,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
         global best_params = result
 
         # save a reproducible record of the results
-        @tagsave paramfile Dict(
+        @tagsave paramfile safe=true Dict(
             :data => JSONTables.ObjectTable(Tables.columns(best_params)),
             :seed => seed,
             :param_range => param_range,
@@ -232,7 +231,7 @@ if use_slurm || !use_cache || !isfile(paramfile)
         )
     end
 else
-    best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
+    global best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
     if :subjects in propertynames(best_params) # some old files misnamed the sid column
         rename!(best_params,:subjects => :sid)
     end
@@ -242,10 +241,11 @@ end
 # =================================================================
 
 if !use_slurm
+
     @everywhere function modelresult((key,sdf))
         params = (nu = key[:nu], gamma = key[:gamma])
-        np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        testclassifier(NuSVC(;params...), data = sdf, y = :condition, X = r"channel",
+            crossval = :sid, seed = hash((params, seed)))
     end
 
     testgroups = @_ objectdf |>
@@ -281,7 +281,11 @@ if !use_slurm
             column=:salience_label,
             row=:target_time_label)
 
-    save(joinpath(dir,"object_salience.pdf"),pl)
+    if use_absolute_features
+        save(joinpath(dir,"object_grid_absolute.pdf"),pl)
+    else
+        save(joinpath(dir,"object_grid.pdf"),pl)
+    end
 end
 
 # Classifciation Results: Global v Spattial
@@ -291,14 +295,19 @@ if !use_slurm
 
     @everywhere function modelresult((key,sdf))
         params = (nu = key[:nu], gamma = key[:gamma])
-        np.random.seed(typemax(UInt32) & hash((params,seed)))
-        testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
+        if length(unique(sdf.condition)) == 1
+            @info "Skipping data with one class: $(first(sdf,1))"
+            Empty(DataFrame)
+        else
+            testclassifier(NuSVC(;params...), data = sdf, y = :condition, X = r"channel",
+                crossval = :sid, seed = hash((params, seed)), n_folds = 3)
+        end
     end
 
     testgroups = @_ spatialdf |>
         innerjoin(__,best_params,on=:sid) |>
         groupby(__, [:winstart,:winlen,:salience_label, :target_time_label,:nu,:gamma])
-    spatial_classpredict = dreduce(append!!,Map(modelresult),
+    spatial_classpredict = foldl(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
     subj_means = @_ spatial_classpredict |>
@@ -328,10 +337,14 @@ if !use_slurm
                 bin={step=2/9},
             },
             color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience_label,row=:target_time)
+            column=:salience_label,row=:target_time_label)
 
-    save(joinpath(dir,"spatial_salience.pdf"),pl)
 
+    if use_absolute_features
+        save(joinpath(dir,"spatial_grid_absolute.pdf"),pl)
+    else
+        save(joinpath(dir,"spatial_grid.pdf"),pl)
+    end
 end
 
 # Find Best Window Length
@@ -341,14 +354,14 @@ end
 
     object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
         groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w))) => :correct) |>
+        combine(__,[:correct,:weight] => ((x,w) -> mean(x,weights(w.+1))) => :correct) |>
         groupby(__,[:winlen,:salience_label,:target_time_label]) |>
         combine(__,:correct => mean) |>
         insertcols!(__,:condition => "spatial")
@@ -358,6 +371,19 @@ end
         combine(__,[:winlen,:correct_mean] =>
             ((len,val) -> len[argmax(val)]) => :winlen)
 
-    CSV.write(joinpath(processed_datadir(),"svm_params",
-        "best_windows_sal_target_tim.csv"),best_windows)
+    best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
+        (absolute=use_absolute_features,),"json"))
+
+    @tagsave best_windows_file safe=true Dict(
+        :data => JSONTables.ObjectTable(Tables.columns(best_windows)),
+        :seed => seed,
+    )
+
+    if use_absolute_features
+        CSV.write(joinpath(processed_datadir(),"svm_params",
+            "best_windows_sal_target_tim_absolute.csv"),best_windows)
+    else
+        CSV.write(joinpath(processed_datadir(),"svm_params",
+            "best_windows_sal_target_tim.csv"),best_windows)
+    end
 end
