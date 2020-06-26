@@ -3,13 +3,13 @@ using DrWatson; @quickactivate("german_track")
 include(joinpath(srcdir(), "julia", "setup.jl"))
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(), "config.json"))
-# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir()))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(processed_datadir()))
-# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir()))
+# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir("eeg")))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(processed_datadir("eeg")))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir("eeg")))
 eeg_encoding = RawEncoding()
 
 subjects = Dict(file =>
-    load_subject(joinpath(processed_datadir(), file),
+    load_subject(joinpath(processed_datadir("eeg"), file),
         stim_info,
         encoding = eeg_encoding)
     for file in eeg_files)

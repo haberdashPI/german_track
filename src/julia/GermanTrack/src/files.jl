@@ -113,7 +113,7 @@ end
 
 function events_for_eeg(file,stim_info)
     sid = sidfor(file)
-    event_file = joinpath(processed_datadir(),@sprintf("sound_events_%03d.csv",sid))
+    event_file = joinpath(processed_datadir("eeg"),@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(CSV.File(event_file))
 
     target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])

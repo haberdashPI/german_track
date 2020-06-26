@@ -52,7 +52,7 @@ function train_test(method,stim_method,files,stim_info;
     if isnothing(subjects)
         @info "Loading subject data..."
         subjects = Dict(
-            file => load_subject(joinpath(processed_datadir(),file),stim_info,
+            file => load_subject(joinpath(processed_datadir("eeg"),file),stim_info,
                                 framerate=resample,encoding=encode_eeg)
             for file in files
         )

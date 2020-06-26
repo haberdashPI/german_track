@@ -50,7 +50,7 @@ include(joinpath(@__DIR__,"..","util","setup.jl"))
 using ClusterManagers
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(processed_datadir()))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(processed_datadir("eeg")))
 sidfile(id) = @sprintf("eeg_response_%03d_mcca65.bson",id)
 
 plot_dir() = joinpath(@__DIR__,"..","plots","results_$(Date(now()))")
@@ -85,8 +85,8 @@ data = train_test(method,speakers,eeg_files,stim_info,
     skip_bad_trials = true)
 
 data = DataFrame(convert(Array{OnlineResult},data))
-@save joinpath(processed_datadir(),"test_all_online_speakers.bson") data
-# @load joinpath(processed_datadir(),"test_all_online_speakers.bson") data
+@save joinpath(processed_datadir("eeg"),"test_all_online_speakers.bson") data
+# @load joinpath(processed_datadir("eeg"),"test_all_online_speakers.bson") data
 
 # testing...
 plots = map(unique(data[data.sid .== 8,:trial])) do i
@@ -188,7 +188,7 @@ means |>
 ####################
 # testing an individual trial (to figure out why things fail)
 eeg, stim_events, sid =
-    load_subject(joinpath(processed_datadir(),sidfile(data[1,:sid])),stim_info)
+    load_subject(joinpath(processed_datadir("eeg"),sidfile(data[1,:sid])),stim_info)
 fs = framerate(eeg)
 stimuli = map(i -> load_speaker_mix_minus(stim_events,fs,1,i,
     encoding=:audiospect),1:5)
@@ -259,8 +259,8 @@ data = train_test(online,channels,eeg_files,stim_info,
         all_indices : no_indices,
     skip_bad_trials = true)
 
-@save joinpath(processed_datadir(),"test_online_channels.bson") data
-# @load joinpath(processed_datadir(),"test_online_channels.bson") data
+@save joinpath(processed_datadir("eeg"),"test_online_channels.bson") data
+# @load joinpath(processed_datadir("eeg"),"test_online_channels.bson") data
 data = DataFrame(convert(Array{OnlineResult},data))
 
 ########################################
@@ -330,8 +330,8 @@ data = train_test(method,speakers,eeg_files,stim_info,
     skip_bad_trials = true)
 
 data = DataFrame(convert(Array{OnlineResult},data))
-@save joinpath(processed_datadir(),"test_online_first_switch_speakers_audiospect.bson") data
-# @load joinpath(processed_datadir(),"test_online_first_switch_speakers_audiospect.bson") data
+@save joinpath(processed_datadir("eeg"),"test_online_first_switch_speakers_audiospect.bson") data
+# @load joinpath(processed_datadir("eeg"),"test_online_first_switch_speakers_audiospect.bson") data
 
 # TODO: think through this summary (there are some issues also
 # noted in the top-level comments. Also worth plotting individual

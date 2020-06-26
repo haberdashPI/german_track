@@ -28,12 +28,10 @@ ft_defaults;
 % download https://github.com/sofacoustics/API_MO and add to MATLAB path
 SOFAstart;
 
-dates = read_json(fullfile(base_dir,'dateconfig.json'));
-
 analysis_dir = fullfile(base_dir,'scripts','matlab');
 cache_dir = fullfile(base_dir,'_research','cache');
-processed_datadir = fullfile(base_dir,'data','exp_pro','eeg',dates.processed_datadir);
-raw_stim_dir = fullfile(base_dir,'data','exp_raw','stimuli');
-stim_datadir = fullfile(base_dir,'data','exp_pro','stimuli',dates.stim_datadir);
+processed_datadir = fullfile(base_dir,'data','processed');
+raw_stim_dir = fullfile(base_dir,'data','raw','stimuli');
+stim_datadir = fullfile(base_dir,'data','processed','stimuli');
 stimulus_dir = fullfile(base_dir,'src','matlab','stimuli');
-raw_datadir = fullfile(base_dir,'data','exp_raw','eeg');
+raw_datadir = fullfile(base_dir,'data','raw','eeg');

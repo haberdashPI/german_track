@@ -167,7 +167,7 @@ for i = 1:length(eegfiles)
     end
 
     %% read in the events
-    event_file = fullfile(processed_datadir,sprintf('sound_events_%03d.csv',sid));
+    event_file = fullfile(processed_datadir,'eeg',sprintf('sound_events_%03d.csv',sid));
     stim_events = readtable(event_file);
 
     %% read in eeg data header
@@ -411,7 +411,7 @@ for i = 1:length(cleaned_files)
     mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
     savename = regexprep(cleaned_files(i).name,'.eeg$','.mcca');
-    mccafile = fullfile(processed_datadir,savename);
+    mccafile = fullfile(processed_datadir,'eeg',savename);
 
     save_subject_components(mcca,mccafile)
 end

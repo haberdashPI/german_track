@@ -53,7 +53,7 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Freqmeans Analysis
 # =================================================================
 
-paramdir = joinpath(processed_datadir(),"svm_params")
+paramdir = joinpath(processed_datadir("eeg"),"svm_params")
 best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
     (absolute=use_absolute_features,),"json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
@@ -96,9 +96,9 @@ classdf_file = joinpath(cache_dir(),"data",
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".mcca$",_), __)
     subjects  = Dict(
-        sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
+        sidfor(file) => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                             encoding = RawEncoding())
         for file in eeg_files
     )
@@ -138,7 +138,7 @@ else
     alert("Freqmeans Complete!")
 end
 
-paramdir    = joinpath(processed_datadir(),"svm_params")
+paramdir    = joinpath(processed_datadir("eeg"),"svm_params")
 paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",
     (absolute=use_absolute_features,),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
@@ -566,8 +566,8 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans_miss_baseline.csv")
 if use_cache && isfile(classdf_file)
     classdf_missbase = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 
