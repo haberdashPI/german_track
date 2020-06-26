@@ -12,8 +12,8 @@ using ScikitLearn
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
-subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
+eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".mcca$",_), __)
+subjects = Dict(file => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                                      encoding = RawEncoding())
     for file in eeg_files)
 

@@ -4,14 +4,14 @@ using DrWatson
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, FFTW,
     Dates, LIBSVM, Underscores, StatsBase, Random, Printf
 
-# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir()))
+# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir("eeg")))
 
-eeg_files = filter(x->occursin(r".mcca$", x), readdir(processed_datadir()))
-# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir()))
+eeg_files = filter(x->occursin(r".mcca$", x), readdir(processed_datadir("eeg")))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir("eeg")))
 eeg_encoding = RawEncoding()
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
+subjects = Dict(file => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                                      encoding = eeg_encoding)
     for file in eeg_files)
 

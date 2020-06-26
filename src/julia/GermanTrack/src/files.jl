@@ -70,6 +70,21 @@ function read_mcca_proj(filename)
     end
 end
 
+function read_h5_subj(filename)
+    h5open(filename, "r") do file
+        channels   = read(file, "channels")
+        components = read(file, "components")
+        ntrials    = only(read(file, "trials/count"))
+        samplerate = only(read(file, "trials/samplerate"))
+
+        trials = Vector{Array{Float64, 2}}(undef, ntrials)
+        for i in 1:ntrials
+            trials[i] = read(file, @sprintf("trials/%03d", i))
+        end
+
+        EEGData(data = trials, label = channels, fs = samplerate)
+    end
+end
 
 const subject_cache = Dict()
 Base.@kwdef struct SubjectData
@@ -95,6 +110,8 @@ function load_subject(file,stim_info;encoding=RawEncoding(),framerate=missing)
             read_mcca_proj(file)
         elseif endswith(file,".eeg")
             read_eeg_binary(file)
+        elseif endswith(file,".h5")
+            read_h5_subj(file)
         else
             pat = match(r"\.([^\.]+)$",file)
             if pat != nothing
@@ -113,7 +130,7 @@ end
 
 function events_for_eeg(file,stim_info)
     sid = sidfor(file)
-    event_file = joinpath(processed_datadir(),@sprintf("sound_events_%03d.csv",sid))
+    event_file = joinpath(processed_datadir("eeg"),@sprintf("sound_events_%03d.csv",sid))
     stim_events = DataFrame(CSV.File(event_file))
 
     target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
@@ -148,10 +165,10 @@ end
 
 function sidfor(filepath)
     file = splitdir(filepath)[2]
-    pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_]+$"
+    pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_0-9]+$"
     matched = match(pattern,file)
     if isnothing(matched)
-        pattern = r"([0-9]+).*\.[a-z_]+$"
+        pattern = r"([0-9]+).*\.[a-z_0-9]+$"
         matched = match(pattern,file)
         if isnothing(matched)
             error("Could not find subject id in filename '$file'.")

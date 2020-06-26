@@ -53,7 +53,7 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Freqmeans Analysis
 # =================================================================
 
-paramdir = joinpath(processed_datadir(),"svm_params")
+paramdir = processed_datadir("svm_params")
 best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
     (absolute=use_absolute_features,),"json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
@@ -84,21 +84,21 @@ function best_windows_for(df)
             condition   = df.condition[1]
         )].winlen
     end
-    winlens   = reduce(vcat,spread.(best_winlen,0.5,6))
-    winstarts =  range(0,4,length=64)
+    winlens   = reduce(vcat,spread.(best_winlen,0.5,3))
+    winstarts =  range(0,4,length=8)
 
     Iterators.product(winstarts,winlens)
 end
 
 classdf_file = joinpath(cache_dir(),"data",
     savename("freqmeans_timeline_sal_target_time_withmiss",
-        (absolute=use_absolute_features,), "csv"))
+        (absolute=use_absolute_features,temp=true), "csv"))
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".h5$",_), __)
     subjects  = Dict(
-        sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
+        sidfor(file) => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                             encoding = RawEncoding())
         for file in eeg_files
     )
@@ -138,7 +138,7 @@ else
     alert("Freqmeans Complete!")
 end
 
-paramdir    = joinpath(processed_datadir(),"svm_params")
+paramdir    = processed_datadir("svm_params")
 paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",
     (absolute=use_absolute_features,),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
@@ -566,8 +566,8 @@ classdf_file = joinpath(cache_dir(),"data","freqmeans_miss_baseline.csv")
 if use_cache && isfile(classdf_file)
     classdf_missbase = CSV.read(classdf_file)
 else
-    eeg_files = dfhit = @_ readdir(processed_datadir()) |> filter(occursin(r".mcca$",_), __)
-    subjects = Dict(file => load_subject(joinpath(processed_datadir(), file), stim_info,
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".mcca$",_), __)
+    subjects = Dict(file => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                                             encoding = RawEncoding())
         for file in eeg_files)
 

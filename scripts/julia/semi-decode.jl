@@ -17,10 +17,10 @@ if isfile(trainfile)
     weights = data[:weights]
     ii = data[:ii]
 else
-    eeg_files = dfhit = @_ readdir(processed_datadir()) |>
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
         filter(occursin(r"^[0-9]+.*\.mcca$",_), __)
     subjects = Dict(
-        sidfor(file) => load_subject(joinpath(processed_datadir(), file), stim_info,
+        sidfor(file) => load_subject(joinpath(processed_datadir("eeg"), file), stim_info,
                                     encoding = RawEncoding(), framerate = fs)
         for file in eeg_files
     )
@@ -160,7 +160,7 @@ result = regressSS2(
 # TODO: return to older Zygote/CUDA setup, which seemd to work
 # in my earlier tests
 # store the results
-resultfile = joinpath(processed_datadir(),savename("semi-decode-result",
+resultfile = joinpath(processed_datadir("eeg"),savename("semi-decode-result",
     (nlags=nlags,fs=fs),"bson"))
 @tagsave resultfile Dict(
     :weights => weights(result),

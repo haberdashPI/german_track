@@ -2,6 +2,7 @@ module EEGCoding
 using SignalOperators, Requires, Infiltrator, LambdaFn, FFTW, CUDA
 using Zygote: @adjoint
 using Zygote
+using Underscores
 
 const use_gpu = Ref(false)
 gpu(x::AbstractArray) = use_gpu[] ? cu(x) : x

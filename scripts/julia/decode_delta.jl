@@ -2,9 +2,9 @@ using DrWatson
 @quickactivate("german_track")
 include(joinpath("..", "..", "src", "julia", "setup.jl"))
 
-# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir()))
-eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(processed_datadir()))
-# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir()))
+# eeg_files = filter(x->occursin(r"_mcca03\.mcca_proj$", x), readdir(processed_datadir("eeg")))
+eeg_files = filter(x->occursin(r"_mcca34\.mcca_proj$", x), readdir(processed_datadir("eeg")))
+# eeg_files = filter(x->occursin(r"_cleaned\.eeg$", x), readdir(processed_datadir("eeg")))
 
 fs = 32
 eeg_encoding = FFTFiltered("delta" => (1.0,3.0),seconds=15,fs=fs,nchannels=34)
@@ -20,7 +20,7 @@ if isfile(cachefile)
     @load cachefile subjects
 else
     subjects = Dict(file =>
-        load_subject(joinpath(processed_datadir(), file),
+        load_subject(joinpath(processed_datadir("eeg"), file),
             stim_info,
             encoding = eeg_encoding,
             framerate=fs)

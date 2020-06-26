@@ -1,37 +1,30 @@
 function save_subject_components(mcca,filename)
-    fid = fopen(filename,'w','n','UTF-8');
     try
-        % number of channels
-        nchan = size(mcca.label,1);
-        fwrite(fid,nchan,'int32');
-        % channel names
-        for i = 1:length(mcca.label)
-            nchar = numel(mcca.label{i});
-            fwrite(fid,nchar,'int32');
-            fwrite(fid,mcca.label{i},'char');
+        if exist(filename, 'file')
+            delete(filename);
         end
-        % number of components
-        if size(mcca.components,2) ~= nchan
-            error("Expected each component to have %d channels.",nchan)
-        end
-        ncomp = size(mcca.components,1);
-        fwrite(fid,ncomp,'int32');
-        % components
-        fwrite(fid,mcca.components,'float64');
+
+        h5create(filename,'/channels',length(mcca.label),...
+            'Datatype','string');
+        h5write(filename,'/channels',string(mcca.label))
+
+        h5create(filename,'/components',size(mcca.components),'Datatype','double');
+        h5write(filename,'/components',mcca.components);
+
         % number of trials
-        ntrial = length(mcca.projected);
-        fwrite(fid,ntrial,'int32');
-        % sample rate
-        fwrite(fid,mcca.hdr.Fs,'int32');
-        % projected trials
-        for i = 1:length(mcca.projected)
-            % size of trial
-            trial_size = size(mcca.projected{i});
-            fwrite(fid,trial_size,'int32');
-            fwrite(fid,mcca.projected{i},'float64');
+        ntrials = length(mcca.projected);
+        h5create(filename,'/trials/count',[1 1],'Datatype','int32');
+        h5write(filename,'/trials/count',ntrials);
+        h5create(filename,'/trials/samplerate',[1 1],'Datatype','double');
+        h5write(filename,'/trials/samplerate',mcca.hdr.Fs);
+
+        for i = 1:ntrials
+            h5create(filename,sprintf('/trials/%03d',i),size(mcca.projected{i}),...
+                'Datatype','double');
+            h5write(filename,sprintf('/trials/%03d',i),mcca.projected{i});
         end
     catch e
-        fclose(fid);
-        rethrow(e);
+        delete(filename);
+        rethrow(e)
     end
 end

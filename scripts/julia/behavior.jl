@@ -3,7 +3,7 @@ using GermanTrack
 using VegaLite
 
 stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(processed_datadir()))
+eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(processed_datadir("eeg")))
 
 df = mapreduce(vcat,eeg_files) do file
     df_, sid = events_for_eeg(file,stim_info)

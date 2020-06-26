@@ -16,7 +16,7 @@ library(forcats)
 for(sid in c(8:14,16:19, 21:22, 24:25, 27:35)){
 
 cat(paste0('Sid: ',sid,'\n'))
-efraw = read.csv(file.path(processed_datadir,sprintf("eeg_events_%03d.csv",sid)))
+efraw = read.csv(file.path(processed_datadir,'eeg',sprintf("eeg_events_%03d.csv",sid)))
 ef = NULL
 sr = 2048
 for(bit in 0:7){
@@ -109,13 +109,6 @@ if(any(diff(pf$trial) != 1)){
 
 pf %>%
     select(trial,sample,time,condition,response,sound_index) %>%
-    write.csv(file.path(processed_datadir,sprintf("sound_events_%03d.csv",sid)),
+    write.csv(file.path(processed_datadir,'eeg',
+        sprintf("sound_events_%03d.csv",sid)),
         row.names=FALSE)
-
-
-pf %>%
-    mutate(index = as.numeric(condition)) %>%
-    select(trial,time,index,sound_index) %>%
-    write.table(file.path(processed_datadir,sprintf("sound_events_%03d.txt",sid)),
-                quote=FALSE,sep="\t",row.names=FALSE)
-}

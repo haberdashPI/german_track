@@ -9,6 +9,29 @@ In some places throughout the code, due to unfortunate label usage in the origin
 
 TODO: more details about the project should eventually go here.
 
+## Download Source Code and Data
+
+The project uses [git](https://git-scm.com/) to manage versions of the source code and
+[dvc](https://dvc.org/doc/start/data-versioning) to manage versions of the data. You will
+need to install both to use this project. Once you have theese tools installed, setup the
+project as follows:
+
+```bash
+git clone https://github.com/haberdashPI/german_track
+cd german_track
+```
+
+The above commands will create the project folder and open it. Next, download the [project
+data](https://osf.io/rsfm5/). Store it in a folder somewhere *outside* of the `german_track`
+folder you just created.
+
+Then use the folder in the commands below, to setup data version controll (`dvc`).
+
+```bash
+dvc remote add [local data dir]
+dvc pull
+```
+
 ## Installation
 
 To setup these analysis scripts on a new computer:
@@ -18,7 +41,6 @@ To setup these analysis scripts on a new computer:
 3. Install [Julia](https://julialang.org)
 4. Download [fieldtrip](http://www.fieldtriptoolbox.org/download/) and add it to the MATLAB path.
 5. Download [NoiseTools](http://audition.ens.fr/adc/NoiseTools/src/) (Version from 18-Feb-2020) and add it to the MATLAB path.
-6. Create a file called `install.toml` in the base directory containing `data = "[data dir]"` with `[data dir]` replaced with the directory containing the preprocessed data (stored separately from the git repository)
 
 Run `scripts/julia/install.jl` in julia.
 
@@ -26,7 +48,7 @@ Run `scripts/julia/install.jl` in julia.
 
 - `scripts` The top-level scripts called to analyze the data.
 - `src` all supporting code called from the top-level scripts
-- `data` all of the raw and processed experimental data (stored separately fromo git repository)
+- `data` all of the raw and processed experimental data (managed using `dvc`)
 - `plots` the code to generate plots, and their resulting pdfs
 - `_research` contains various temporary files
 - `notebooks` will contain any notebooks with plots / analyses in them
@@ -56,13 +78,10 @@ Run `scripts/julia/install.jl` in julia.
 ### EEG data
 
 There are few steps necessary to regenerate the preprocessed data files (which
-are stored in the `data/exp_pro` subfolder).
+are stored in the `data/processed` subfolder).
 
 1. Call `scripts/matlab/read_eeg_events.m` to generate *.csv files with the event triggers.
 2. **Optional** comment out the call to `redatedir` to generate the data in the same output directory as used previously.
-2. If you skipped step 2, update the dated directory in `dateconfig.json`.
-   It should be equal to the directory specified by `data_dir` after running `read_eeg_events.m`.
-
 3. Call `scripts/R/read_sound_events.R` to filter the events based on the
    Presentation log file. The result will be a set of 150 events, corresponding
    to the start of the 50 trials for each of the three conditions. This script
