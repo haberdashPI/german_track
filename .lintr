@@ -1,4 +1,4 @@
-linters: with_defaults(line_length_linter(80),assignment_linter=NULL,
+linters: with_defaults(line_length_linter(92),assignment_linter=NULL,
                        spaces_left_parentheses_linter=NULL,
                        snake_case_linter=NULL,
                        single_quotes_linter=NULL,
