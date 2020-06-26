@@ -1,11 +1,10 @@
 - use C rather than ν parameterization of SVC to possibly avoid infeasible states
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
-- don't split window timings for the early/late target times
-- then for target timing split into groups relative to the switch (as per the behavioral data)
-- just target time and salience of anova (no window start)
-- does a median or a mean across window times change anything
+  - does a median or a mean across window times change anything
 - can we get a way with not splitting the early/late window distinction for
   the interaction
+- then for target timing split into groups relative to the switch (as per the behavioral data)
+- just target time and salience of anova (no window start)
 
 - look at the raw window
 - also look at the baseline window just before
