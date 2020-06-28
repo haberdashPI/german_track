@@ -11,8 +11,9 @@ interactive = false;
 
 eegfiles = dir(fullfile(raw_datadir,'*.bdf'));
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% plot configuration
+% Plot Configuration
+% -----------------------------------------------------------------
+%%
 
 % trial plot configuration
 plot_cfg = [];
@@ -34,8 +35,9 @@ end
 
 [closest,dists]=nt_proximity('biosemi64.lay',63);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find the length of all stimuli
+% -----------------------------------------------------------------
+%%
 
 soundsdir = fullfile(stim_datadir,'mixtures','testing');
 sounds = sort({dir(fullfile(soundsdir,'*.wav')).name});
@@ -45,8 +47,9 @@ for i = 1:length(sounds)
     sound_lengths(i) = size(x,1) / fs;
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % setup data cleaning parameters for individual participants
+% -----------------------------------------------------------------
+%%
 
 subject = [];
 
@@ -138,8 +141,9 @@ subject(26).bad_channel_threshs = {2,150,1};
 
 subject(27).sid = 35;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % data cleaning
+% -----------------------------------------------------------------
+%%
 
 data = [];
 
@@ -154,7 +158,7 @@ for i = 1:length(eegfiles)
             subject(i).sid,i,sid);
     end
 
-    savename = regexprep(filename,'.bdf$','.eeg');
+    savename = regexprep(filename,'.bdf$','_cleaned.mat');
     savetopath = fullfile(cache_dir,'eeg',savename);
 
     if isempty(subject(i).sid)
@@ -312,11 +316,12 @@ for i = 1:length(eegfiles)
     save_subject_binary(eeg,savetopath,'weights',wseg);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % compute correlation (C) of channel-subject features across all
+% -----------------------------------------------------------------
+%%
 % stimulus-condition pairs
 
-cleaned_files = dir(fullfile(cache_dir,'eeg','*.eeg'));
+cleaned_files = dir(fullfile(cache_dir,'eeg','*.h5'));
 maxlen = round(256*(max(sound_lengths)+0.5));
 
 cachefile = fullfile(cache_dir,'eeg','C.mat')
