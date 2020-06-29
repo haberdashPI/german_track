@@ -1,13 +1,6 @@
 WIP: re-organizing data: using dvc with csv, json, and HDF5 file formats, to make things
 reporducible and easy to read without my code.
 
-In process of re-running matlab code to re-create processed data with these more general
-purpose formats. This will also veryify that the new directory organization is working for
-this pipeline.
-
-Run into issue with bracketed paste mode at matlab terminal. The preferences for
-terminal-polyglot do not seem to work... uh oh.
-
 - use C rather than ν parameterization of SVC to possibly avoid infeasible states
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
   - does a median or a mean across window times change anything
