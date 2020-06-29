@@ -321,10 +321,10 @@ end
 %%
 % stimulus-condition pairs
 
-cleaned_files = dir(fullfile(cache_dir,'eeg','*.h5'));
+cleaned_files = dir(fullfile(cache_dir,'eeg','*.mat'));
 maxlen = round(256*(max(sound_lengths)+0.5));
 
-cachefile = fullfile(cache_dir,'eeg','C.mat')
+cachefile = fullfile(cache_dir,'eeg','C.mat');
 if usecache && isfile(cachefile)
     load(fullfile(cache_dir,'eeg','C.mat'))
 else
@@ -415,7 +415,7 @@ for i = 1:length(cleaned_files)
     raw = gt_eeg_to_ft(trial,label,256);
     mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
-    savename = regexprep(cleaned_files(i).name,'.eeg$','.mcca');
+    savename = regexprep(cleaned_files(i).name,'.eeg$','.h5');
     mccafile = fullfile(processed_datadir,'eeg',savename);
 
     save_subject_components(mcca,mccafile)
