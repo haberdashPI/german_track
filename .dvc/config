@@ -1,1 +1,2 @@
-
+['remote "lcap-cluster"']
+    url = ssh://10.160.200.212:/home/davidlittle/data/german_track_versioned
