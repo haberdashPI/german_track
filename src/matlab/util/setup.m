@@ -1,4 +1,3 @@
-% NOTE: matlab should be called
 dirs = strsplit(pwd(),filesep);
 while ~strcmp(dirs(end),'german_track')
     dirs = dirs(1:(end-1));
@@ -20,6 +19,11 @@ global stimulus_dir;
 global raw_stim_dir;
 
 fprintf('Base directory is %s\n',base_dir);
+for listing = dir(fullfile(base_dir,'src','matlab','external'))
+    if listing.isdir
+        addpath(listing.name)
+    end
+end
 addpath(fullfile(base_dir,'src','matlab','util'));
 
 % fieldtrip can be installed from http://www.fieldtriptoolbox.org/

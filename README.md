@@ -5,7 +5,9 @@ includes three listening conditions: listening to all speakers--the *global*
 condition--listening to one speaker--the *object* condition--or listening to
 one ear--the *feature* condition.
 
-In some places throughout the code, due to unfortunate label usage in the original experiment, the `test` condition is used to indicate the `global` condition. (TODO: At some point I need to have the `test` label renmaed throughout most of the code)
+In some places throughout the code, due to unfortunate label usage in the original
+experiment, the `test` condition is used to indicate the `global` condition. (TODO: At some
+point I need to have the `test` label renamed throughout most of the code)
 
 TODO: more details about the project should eventually go here.
 
@@ -13,22 +15,27 @@ TODO: more details about the project should eventually go here.
 
 The project uses [git](https://git-scm.com/) to manage versions of the source code and
 [dvc](https://dvc.org/doc/start/data-versioning) to manage versions of the data. You will
-need to install both to use this project. Once you have theese tools installed, setup the
+need to install both to use this project. Once you have these tools installed, set up the
 project as follows:
 
 ```bash
 git clone https://github.com/haberdashPI/german_track
-cd german_track
 ```
 
-The above commands will create the project folder and open it. Next, download the [project
-data](https://osf.io/rsfm5/). Store it in a folder somewhere *outside* of the `german_track`
-folder you just created.
-
-Then use the folder in the commands below, to setup data version controll (`dvc`).
+This will create the project folder. Next, download the [project
+data](https://osf.io/rsfm5/). This should be stored under `german_track_data`, *outside* of
+the `german_track` folder you just created, in the same parent directory. For example, on a
+Mac or Unix systems you could do the following:
 
 ```bash
-dvc remote add [local data dir]
+curl -o german_track_data.tgz http://osf.io/rsfm5/[**URL HERE**]
+tar xvzf german_track_data.tgz
+```
+
+Then, use this folder to version the data using dvc.
+
+```bash
+dvc remote add local ../german_track_data
 dvc pull
 ```
 
@@ -39,10 +46,12 @@ To setup these analysis scripts on a new computer:
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
 3. Install [Julia](https://julialang.org)
-4. Download [fieldtrip](http://www.fieldtriptoolbox.org/download/) and add it to the MATLAB path.
-5. Download [NoiseTools](http://audition.ens.fr/adc/NoiseTools/src/) (Version from 18-Feb-2020) and add it to the MATLAB path.
+4. Download and install [fieldtrip](http://www.fieldtriptoolbox.org/download/),
+following the directions there to add fieldtrip to your path.
+5. Run the script `scripts/julia/install.jl` in Julia.
 
-Run `scripts/julia/install.jl` in julia.
+> **NOTE**: When running MATLAB, make sure to use `german_track` as your startup folder
+> so that all paths to source files are correct.
 
 ## Project organization
 
