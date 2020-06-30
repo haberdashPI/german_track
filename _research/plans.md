@@ -1,6 +1,3 @@
-WIP: re-organizing data: using dvc with csv, json, and HDF5 file formats, to make things
-reporducible and easy to read without my code.
-
 - use C rather than ν parameterization of SVC to possibly avoid infeasible states
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
   - does a median or a mean across window times change anything
@@ -81,7 +78,7 @@ reporducible and easy to read without my code.
 
 as a first pass:
 
-using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so "easy" to train
+Using nuisance mixing parameters for each windows block of the data, leave out switches, group by segments; should be linear, and so "easy" to train
 
 first approach to solve takes up too much memory: try a solution that
 uses only first-order derivative information

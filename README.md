@@ -22,6 +22,8 @@ project as follows:
 git clone https://github.com/haberdashPI/german_track
 ```
 
+**TODO**: describe how to only download the necessary files (e.g. processed only)
+
 This will create the project folder. Next, download the [project
 data](https://osf.io/rsfm5/). This should be stored under `german_track_data`, *outside* of
 the `german_track` folder you just created, in the same parent directory. For example, on a
