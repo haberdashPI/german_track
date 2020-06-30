@@ -64,11 +64,9 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(x,weights(w))
 # Mean Frequency Bin Analysis
 # =================================================================
 
-if use_absolute_features
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time_absolute.csv")
-else
-    classdf_file = joinpath(cache_dir(),"data","freqmeans_sal_and_target_time.csv")
-end
+isdir(processed_datadir("features")) || mkdir(processed_datadir("features"))
+classdf_file = joinpath(processed_datadir("features"),savename("freaqmeans",
+    (absolute=use_absolute_features,),"csv"))
 
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -76,7 +74,7 @@ else
     windows = [(len=len,start=start,before=-len)
         for len in 2.0 .^ range(-1,1,length=10),
             start in [0; 2.0 .^ range(-2,2,length=9)]]
-    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".mcca$",_), __)
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".h5$",_), __)
     subjects = Dict(
         sidfor(file) => load_subject(
             joinpath(processed_datadir("eeg"), file), stim_info,
@@ -108,6 +106,7 @@ else
         end,__)
     ProgressMeter.finish!(progress)
     CSV.write(classdf_file,classdf)
+
 end
 
 # Hyper-parameter Optimization: Global v Object

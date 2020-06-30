@@ -21,6 +21,7 @@ tags
 data/processed/eeg
 data/processed/stimuli
 data/processed/svm_params
+data/processed/features
 data/raw
 _research/cache
 _research/results
