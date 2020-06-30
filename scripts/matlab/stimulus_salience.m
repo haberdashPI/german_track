@@ -1,5 +1,5 @@
 % setup paths
-run(fullfile('..','..','src','matlab','util','setup.m'));
+run(fullfile('src','matlab','util','setup.m'));
 addpath(fullfile(base_dir,'src','matlab','salience'));
 addpath(stimulus_dir);
 

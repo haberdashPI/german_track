@@ -1,4 +1,4 @@
-run(fullfile('..','..','src','matlab','util','setup.m'));
+run(fullfile('src','matlab','util','setup.m'));
 mkdir(fullfile(cache_dir,'eeg'));
 
 % whether to use previously preprocessed data stored in the cache

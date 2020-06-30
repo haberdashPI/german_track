@@ -1,4 +1,4 @@
-run(fullfile('..','..','src','matlab','util','setup.m'));
+run(fullfile('src','matlab','util','setup.m'));
 addpath(stimulus_dir);
 
 config = [];

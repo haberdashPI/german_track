@@ -1,4 +1,4 @@
-run(fullfile('..','..','src','matlab','util','setup.m'));
+run(fullfile('src','matlab','util','setup.m'));
 
 eeg_files = dir(fullfile(raw_datadir,'*.bdf'));
 for i = 1:length(eeg_files)

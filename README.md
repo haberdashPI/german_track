@@ -50,9 +50,6 @@ To setup these analysis scripts on a new computer:
 following the directions there to add fieldtrip to your path.
 5. Run the script `scripts/julia/install.jl` in Julia.
 
-> **NOTE**: When running MATLAB, make sure to use `german_track` as your startup folder
-> so that all paths to source files are correct.
-
 ## Project organization
 
 - `scripts` The top-level scripts called to analyze the data.
