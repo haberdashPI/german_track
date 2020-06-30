@@ -5,6 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 072189
+test_optimization = false
 num_local_procs = 1
 num_cluster_procs = 16
 use_absolute_features = true
@@ -50,7 +51,7 @@ end
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 end
 
-@everywhere( @sk_import svm: (NuSVC, SVC) )
+@everywhere( @sk_import svm: SVC )
 
 if !use_slurm
     dir = joinpath(plotsdir(),string("results_",Date(now())))
@@ -138,7 +139,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            result = testclassifier(NuSVC(;params...), data = sdf,
+            result = testclassifier(SVC(;params...), data = sdf,
                 y = :condition,X = r"channel", crossval = :sid, n_folds=3,
                 seed=hash((params,seed)))
             return (mean = wmeanish(result.correct,result.weight),
@@ -158,25 +159,24 @@ end
 # Optimization
 # -----------------------------------------------------------------
 
-param_range = (nu=(0.0,0.5),gamma=(-4.0,1.0))
-param_by = (nu=identity,gamma=x -> 10^x)
+param_range = (C=(-8.0,2.0),gamma=(-4.0,1.0))
+param_by = (C=x -> 10^x,gamma=x -> 10^x)
 opts = (
-    MaxFuncEvals = 1_500,
-    # MaxFuncEvals = 6,
+    MaxFuncEvals = test_optimization ? 6 : 1_500
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
 )
+n_folds = 5
 
 # type piracy: awaiting PR acceptance to remove
 JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.StructTypes.StringType()
 
 paramdir = processed_datadir("svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,savename("all-conds-salience-and-target",
-    (absolute=use_absolute_features,),"json"))
-n_folds = 5
-if use_slurm || !use_cache || !isfile(paramfile)
+paramfile = joinpath(paramdir,savename("hyper-parameters",
+    (absolute=use_absolute_features,n_folds=n_folds),"json"))
+if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
     let result = Empty(DataFrame)
         for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
@@ -224,12 +224,14 @@ if use_slurm || !use_cache || !isfile(paramfile)
         global best_params = result
 
         # save a reproducible record of the results
-        @tagsave paramfile Dict(
-            :data => JSONTables.ObjectTable(Tables.columns(best_params)),
-            :seed => seed,
-            :param_range => param_range,
-            :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
-        ) safe=true
+        if !test_optimization
+            @tagsave paramfile Dict(
+                :data => JSONTables.ObjectTable(Tables.columns(best_params)),
+                :seed => seed,
+                :param_range => param_range,
+                :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
+            ) safe=true
+        end
     end
 else
     global best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
@@ -241,17 +243,17 @@ end
 # Object Classification Results
 # =================================================================
 
-if !use_slurm
+if !use_slurm && !test_optimization
 
     @everywhere function modelresult((key,sdf))
-        params = (nu = key[:nu], gamma = key[:gamma])
-        testclassifier(NuSVC(;params...), data = sdf, y = :condition, X = r"channel",
+        params = (C = key[:C], gamma = key[:gamma])
+        testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
             crossval = :sid, seed = hash((params, seed)))
     end
 
     testgroups = @_ objectdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience_label,:target_time_label,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience_label,:target_time_label,:C,:gamma])
     object_classpredict = dreduce(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
@@ -292,22 +294,22 @@ end
 # Classifciation Results: Global v Spattial
 # =================================================================
 
-if !use_slurm
+if !use_slurm && !test_optimization
 
     @everywhere function modelresult((key,sdf))
-        params = (nu = key[:nu], gamma = key[:gamma])
+        params = (C = key[:C], gamma = key[:gamma])
         if length(unique(sdf.condition)) == 1
             @info "Skipping data with one class: $(first(sdf,1))"
             Empty(DataFrame)
         else
-            testclassifier(NuSVC(;params...), data = sdf, y = :condition, X = r"channel",
+            testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
                 crossval = :sid, seed = hash((params, seed)), n_folds = 3)
         end
     end
 
     testgroups = @_ spatialdf |>
         innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience_label, :target_time_label,:nu,:gamma])
+        groupby(__, [:winstart,:winlen,:salience_label, :target_time_label,:C,:gamma])
     spatial_classpredict = foldl(append!!,Map(modelresult),
         collect(pairs(testgroups)),init=Empty(DataFrame))
 
@@ -351,7 +353,7 @@ end
 # Find Best Window Length
 # =================================================================
 
-@static if !use_slurm
+@static if !use_slurm && !test_optimization
 
     object_winlen_means = @_ object_classpredict |>
         groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
