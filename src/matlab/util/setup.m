@@ -19,17 +19,13 @@ global stimulus_dir;
 global raw_stim_dir;
 
 fprintf('Base directory is %s\n',base_dir);
-for listing = dir(fullfile(base_dir,'src','matlab','external'))
-    if listing.isdir
-        addpath(listing.name)
-    end
-end
+addpath(fullfile(base_dir,'src','matlab','external','noisetools'));
+addpath(fullfile(base_dir,'src','matlab','external','sofa','API_MO'));
 addpath(fullfile(base_dir,'src','matlab','util'));
 
 % fieldtrip can be installed from http://www.fieldtriptoolbox.org/
 % add it to the MATLAB path
 ft_defaults;
-% download https://github.com/sofacoustics/API_MO and add to MATLAB path
 SOFAstart;
 
 analysis_dir = fullfile(base_dir,'scripts','matlab');
