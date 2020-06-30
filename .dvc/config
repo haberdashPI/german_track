@@ -1,4 +1,1 @@
-[core]
-    remote = dropbox
-['remote "dropbox"']
-    url = /Users/davidlittle/LCAP Dropbox/David Little/data/german_track_versioned
+
