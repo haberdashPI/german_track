@@ -5,7 +5,8 @@
 - can you classify difference of switch vs no switch (maybe? try it?)
 
 do all 3:
-  1. wihtin condition (global spatial object) after and before switch, after and later trial
+
+  1. within condition (global spatial object) after and before switch, after and later trial
   2. still do object v global early late trial
   3. show neural power
 
