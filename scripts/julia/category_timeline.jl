@@ -382,6 +382,39 @@ R"""
 ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
 """
 
+# Timeline across salience, using baseline
+# -----------------------------------------------------------------
+
+band = @_ predict_baseline |>
+    groupby(__, [:winstart, :salience_label, :condition, :sid]) |> #, :before]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, [:winstart, :salience_label, :condition]) |> #, :before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean, collect(skipmissing(correct)), BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end, __) #|>
+
+R"""
+pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = salience_label,
+                color = NULL)) +
+    geom_line() + facet_grid(~condition) +
+    scale_color_brewer(palette = 'Set1') +
+    scale_fill_brewer( palette = 'Set1') +
+    geom_abline(slope = 0, intercept = 50, linetype = 2)
+    # coord_cartesian(ylim = c(40, 100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_baseline.pdf"),pl,width=11,height=8)
+"""
+
 # Timeline across target time
 # -----------------------------------------------------------------
 
@@ -416,6 +449,42 @@ pl
 
 R"""
 ggsave(file.path($dir, "object_target_time.pdf"), pl, width = 11, height = 8)
+"""
+
+# Timeline across target time
+# -----------------------------------------------------------------
+
+band = @_ predict_baseline |>
+    # filter(_.before == "zero", __) |>
+    groupby(__, [:winstart, :target_time_label, :condition, :sid]) |> #, :before]) |>
+    combine(__, :correct_mean => mean => :correct_mean) |>
+    groupby(__, [:winstart, :target_time_label, :condition]) |> #, :before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean, collect(skipmissing(correct)), BasicSampling(10_000))
+        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end, __) #|>
+    # transform!(__, [:salience, :before] =>
+    #     ((x, y) -> string.(x, "_", y)) => :salience_for)
+
+R"""
+pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = target_time_label,
+                color = NULL)) +
+    geom_line() + facet_grid(.~condition) +
+    scale_color_brewer(palette = 'Set2') +
+    scale_fill_brewer( palette = 'Set2') +
+    geom_abline(slope = 0, intercept = 50, linetype = 2)
+    # coord_cartesian(ylim = c(40, 100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir, "object_target_time_baseline.pdf"), pl, width = 11, height = 8)
 """
 
 # Timeline dividied into data-driven early/late phase
