@@ -49,6 +49,8 @@ end
     JSON3, JSONTables, Tables, FileIO
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
+
+    wmeanish(x,w) = iszero(sum(w)) ? zero(float(eltype(x))) : mean(x,weights(w))
 end
 
 @everywhere( @sk_import svm: SVC )
@@ -57,8 +59,6 @@ if !use_slurm
     dir = joinpath(plotsdir(),string("results_",Date(now())))
     isdir(dir) || mkdir(dir)
 end
-
-wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(x,weights(w))
 
 # is freq means always the same?
 
@@ -162,7 +162,7 @@ end
 param_range = (C=(-8.0,2.0),gamma=(-4.0,1.0))
 param_by = (C=x -> 10^x,gamma=x -> 10^x)
 opts = (
-    MaxFuncEvals = test_optimization ? 6 : 1_500
+    MaxFuncEvals = test_optimization ? 6 : 1_500,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
