@@ -1,3 +1,19 @@
+## baseline analysis
+- show global spatial object (no other)
+- then different timing srelative to switches
+- looking at switches (far from targets)
+- can you classify difference of switch vs no switch (maybe? try it?)
+
+do all 3:
+  1. wihtin condition (global spatial object) after and before switch, after and later trial
+  2. still do object v global early late trial
+  3. show neural power
+
+look at raw power
+for raw power: try a eucledean distance
+
+## target timeline analysis
+
 - use C rather than ν parameterization of SVC to possibly avoid infeasible states
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
   - does a median or a mean across window times change anything
