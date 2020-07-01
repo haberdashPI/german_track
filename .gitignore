@@ -19,7 +19,9 @@ tags
 
 # Folders to ignore - files may be too large, too many, etc. NOTE: EDIT IF NEEDED.
 data/processed/eeg
-data/processed/stimuli
+data/processed/stimuli/mixtures
+data/processed/stimuli/target_salience.csv
+data/processed/stimuli/config.json
 data/processed/svm_params
 data/processed/features
 data/raw
