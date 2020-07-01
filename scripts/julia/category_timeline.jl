@@ -63,6 +63,7 @@ best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataF
 # lengths
 spread(scale,npoints)   = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+windowtypes = ["target", "baseline"]
 
 grouped_winlens = groupby(best_windows,[:salience_label,:target_time_label,:condition])
 function best_windows_for(df)
@@ -84,15 +85,17 @@ function best_windows_for(df)
             condition   = df.condition[1]
         )].winlen
     end
-    winlens   = reduce(vcat,spread.(best_winlen,0.5,3))
-    winstarts =  range(0,4,length=8)
+    winlens   = reduce(vcat,spread.(best_winlen,0.5,6))
+    winstarts =  range(0,3,length=64)
 
-    Iterators.product(winstarts,winlens)
+    Iterators.flatten(
+        [Iterators.product(winstarts, winlens,["target"]),
+         zip(.-winlens, winlens, fill("baseline", length(winlens)))])
+
 end
 
 classdf_file = joinpath(cache_dir(),"data",
-    savename("freqmeans_timeline_sal_target_time_withmiss",
-        (absolute=use_absolute_features,temp=true), "csv"))
+    savename("freqmeans_timeline", (absolute=use_absolute_features,), "csv"))
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -117,7 +120,7 @@ else
             windows = best_windows_for(sdf)
 
             # compute features in each window
-            x = mapreduce(append!!,windows) do (start,len)
+            x = mapreduce(append!!,windows) do (start,len,type)
                 result = if use_absolute_features
                     compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf,"target",
                         (len = len, start = start))
@@ -127,6 +130,7 @@ else
                 end
                 result[!,:winstart] .= start
                 result[!,:winlen] .= len
+                result[!,:wintype] .= type
                 result
             end
             next!(progress)
@@ -168,12 +172,12 @@ end
 function classpredict(df, params, condition, variables...)
     testgroups = @_ df |>
         innerjoin(__, params, on=:sid) |>
-        groupby(__, [:winstart,:winlen, variables...,:nu,:gamma])
+        groupby(__, [:winstart,:winlen, :wintype, variables...,:nu,:gamma])
     predictions = foldl(append!!, Map(modelresult),
         collect(pairs(testgroups)), init=Empty(DataFrame))
 
     processed = @_ predictions |>
-        groupby(__,[:winstart, variables...,:sid]) |> #,:before]) |>
+        groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>
         combine(__,[:correct,:weight] => wmeanish => :correct_mean) |>
         insertcols!(__,:condition => condition)
 
@@ -202,6 +206,7 @@ isdir(dir) || mkdir(dir)
 
 band = @_ predict |>
     filter(_.hit == "hit",__) |>
+    filter(_.wintype != "baseline",__) |>
     groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
     combine(:correct_mean => function(correct)
         bs = bootstrap(mean,correct,BasicSampling(10_000))
@@ -235,6 +240,60 @@ pl
 
 R"""
 ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
+"""
+
+# Timeline across salience x target time (for hit trials) with baseline
+# -----------------------------------------------------------------
+
+winstartish(wintype,winstart) = wintype == "baseline" ? -1.0 : winstart
+baseremove = @_ predict |>
+    filter(_.hit == "hit",__) |>
+    transform!(__,[:wintype,:winstart] => ByRow(winstartish) => :winstartish) |>
+    unstack(__,[:salience_label,:target_time_label,:condition,:sid],:winstartish,:correct_mean,
+        renamecols = x -> Symbol("start",x))
+baseremove[:,r"start[0-9.]"] .-= Array(baseremove[:,r"start-1.0"])
+
+predict_baseline = @_ baseremove[:,Not(r"start-1.0")] |>
+    stack(__,All(r"start"),[:salience_label,:target_time_label,:condition,:sid],
+        variable_name=:winstart, value_name=:correct_mean) |>
+    transform!(__,:winstart =>
+        (x -> @.(parse(Float64, getindex(match(r"start([0-9.]+)",string(x)),1)))) =>
+        :winstart)
+
+band = @_ predict_baseline |>
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+
+R"""
+pl = ggplot($band,
+        aes(    x = winstart,
+                y = correct,
+            color = interaction(salience_label, target_time_label))) +
+    geom_ribbon(
+        alpha = 0.4,
+        aes( ymin = low,
+             ymax = high,
+             fill = interaction(salience_label, target_time_label),
+            color = NULL)) +
+    geom_line() +
+    facet_grid(~condition) +
+    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    guides(fill  = guide_legend(title = "Salience x Target time"),
+           color = guide_legend(title = "Salience x Target time")) +
+    scale_fill_brewer( palette = 'Paired', direction = -1) +
+    scale_color_brewer(palette = 'Paired', direction = -1)
+    # coord_cartesian(ylim = c(40, 100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_timeline_baseline.pdf"),pl,width=11,height=8)
 """
 
 # Individual-data timeline
@@ -362,28 +421,29 @@ ggsave(file.path($dir, "object_target_time.pdf"), pl, width = 11, height = 8)
 # Timeline dividied into data-driven early/late phase
 # =================================================================
 
-earlylate(border) = x -> earlylate(x,border)
-earlylate(x,border) = x < border ? "early" : "late"
+# select a validation set
+late_boundary = 3.5
+# valids = StatsBase.sample(MersenneTwister(hash((2019_11_19,:early_boundary))),
+#     unique(predict.sid), round(Int,0.3length(unique(predict.sid))), replace=false)
+valids = unique(predict.sid)
+early_boundary_data = @_ predict |>
+    filter(_.sid ∈ valids,__) |> # use a validation set (to avoid "double-dipping" the data)
+    filter(_.winstart <= late_boundary,__) |> # aribtrary cutoff, for now...
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |>
+    combine(__,:correct_mean => mean => :correct_mean)
 
-function cluster_times(sdf)
-    edge = 2
-    times = unique(sdf.winstart) |> sort!
-    best_time_index = map(times[(1+edge):(end-edge)]) do border
-        @_ sdf |>
-            DataFrames.transform(__,:winstart => ByRow(earlylate(border)) => :winstart_label) |>
-            groupby(__,:winstart_label) |>
-            combine(__,:correct_mean => std => :correct_sd) |>
-            mean(__.correct_sd)
-    end |> argmin
-    border = times[best_time_index+edge]
-
-    @_ sdf |>
-        DataFrames.transform(__,:winstart => ByRow(earlylate(border)) => :winstart_label) |>
-        insertcols!(__,:winstart_early_border => border)
-end
-predict_bounds = @_ predict |>
-    groupby(__,[:hit,:salience_label,:target_time_label,:condition,:sid]) |>
-    combine(cluster_times,__)
+# compute a boundary that minimizes within-time-block standard deviation across all groups
+boundaries = early_boundary_data.winstart |> unique
+border = 2
+early_boundary_ind = map(boundaries[(1+border):(end-border)]) do boundary
+    df = @_ early_boundary_data |>
+        transform!(__,:winstart => (x -> ifelse.(x .< boundary,"early","late")) =>
+            :winstart_label) |>
+        groupby(__,[:winstart_label,:salience_label,:target_time_label,:condition]) |>
+        combine(__,:correct_mean => std => :correct_sd) |>
+        mean(__.correct_sd)
+end |> argmin
+early_boundary = boundaries[border+early_boundary_ind]
 
 # Target-time x salience into early/late windowstart
 # -----------------------------------------------------------------
