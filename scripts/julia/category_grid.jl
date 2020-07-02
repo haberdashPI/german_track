@@ -159,7 +159,7 @@ end
 # Optimization
 # -----------------------------------------------------------------
 
-param_range = (C=(-8.0,2.0),gamma=(-4.0,1.0))
+param_range = (C=(-1.0,8.0),gamma=(-4.0,1.0))
 param_by = (C=x -> 10^x,gamma=x -> 10^x)
 opts = (
     MaxFuncEvals = test_optimization ? 6 : 1_500,
@@ -167,7 +167,7 @@ opts = (
     TargetFitness = 0.0,
     # PopulationSize = 25,
 )
-n_folds = 5
+n_folds = 3
 
 # type piracy: awaiting PR acceptance to remove
 JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.StructTypes.StringType()
