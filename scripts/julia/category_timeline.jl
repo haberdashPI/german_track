@@ -36,7 +36,7 @@ using EEGCoding,
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-@sk_import svm: (NuSVC, SVC)
+@sk_import svm: SVC
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -143,8 +143,8 @@ else
 end
 
 paramdir    = processed_datadir("svm_params")
-paramfile   = joinpath(paramdir,savename("all-conds-salience-and-target",
-    (absolute=use_absolute_features,),"json"))
+paramfile   = joinpath(paramdir,savename("hyper-parameters",
+    (absolute=use_absolute_features,n_folds=5),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -155,8 +155,8 @@ end
 
 function modelresult((key,sdf))
     if length(unique(sdf.condition)) >= 2
-        params = (nu = key[:nu], gamma = key[:gamma])
-        testclassifier(NuSVC(;params...),
+        params = (C = key[:C], gamma = key[:gamma])
+        testclassifier(SVC(;params...),
             data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
             crossval=:sid, seed=hash((params,seed)))
     else
@@ -172,7 +172,7 @@ end
 function classpredict(df, params, condition, variables...)
     testgroups = @_ df |>
         innerjoin(__, params, on=:sid) |>
-        groupby(__, [:winstart,:winlen, :wintype, variables...,:nu,:gamma])
+        groupby(__, [:winstart,:winlen, :wintype, variables...,:C,:gamma])
     predictions = foldl(append!!, Map(modelresult),
         collect(pairs(testgroups)), init=Empty(DataFrame))
 
@@ -189,11 +189,9 @@ objectdf = @_ classdf |>
 object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit, :salience_label,
     :target_time_label)
 
-best_params_hack = copy(best_params)
-best_params_hack.nu .= min.(0.35,best_params_hack.nu)
 spatialdf = @_ classdf |>
     filter(_.condition in ["global","spatial"],__)
-spatial_predict, spatial_raw = classpredict(spatialdf, best_params_hack, "spatial", :hit,
+spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit,
     :salience_label, :target_time_label)
 
 predict = vcat(object_predict,spatial_predict)
@@ -725,8 +723,6 @@ spatialdf = @_ classdf_missbase |>
 paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
-best_params = @_ best_params |>
-    transform!(__,:nu => (nu -> clamp.(nu,0,0.7)) => :nu)
 spatial_predict = classpredict(spatialdf, best_params, "spatial", :salience, :hit)
 
 function bestonly(var,measure,df)
