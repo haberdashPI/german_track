@@ -16,6 +16,7 @@ for raw power: try a eucledean distance
 ## target timeline analysis
 
 - use C rather than ν parameterization of SVC to possibly avoid infeasible states
+  - did this once, doing again, to double check parameter range
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
   - does a median or a mean across window times change anything
 
