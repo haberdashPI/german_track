@@ -8,9 +8,7 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-traindir = joinpath(cache_dir(),"data")
-isdir(traindir) || mkdir(traindir)
-trainfile = joinpath(traindir,"semi-decode-train.jlserialize")
+trainfile = joinpath(processed_datadir("features"), "semi-decode-train.jlserialize")
 if isfile(trainfile)
     data = deserialize(trainfile)
     x,y = data[:x], data[:y]
