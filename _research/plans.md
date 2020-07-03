@@ -1,3 +1,11 @@
+# semi-supervised
+- full problem running on cluster now
+- but, test weights are getting worse, possibly related to the need to bound
+  the weight paraemters
+  - if that doesn't help us, we might want to impose some kind of regularization over the
+    weights: e.g. assume that responses tend to favor one particular source
+    (that is, add a loss for weight vectors that are more evenly distributed across sources)
+
 ## baseline analysis
 - show global spatial object (no other)
 - then different timing srelative to switches
