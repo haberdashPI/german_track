@@ -117,6 +117,18 @@ apply_byindex!(o, x, ix, Δ) = error("Unsupported optimizer type: $(typeof(o))")
 
 #### end copy
 
+function clamp_penalty(x,lower,upper)
+    diffs = max.(0,lower .- x).^2
+    sumdiff = sum(diffs)
+    unsafe_gpu_free!(diffs)
+
+    diffs = max.(0,x .- upper).^2
+    sumdiff += sum(diffs)
+    unsafe_gpu_free!(diffs)
+    
+    return sumdiff
+end
+
 function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
     uis = 1:size(t.u,2)
     vis = 1:size(t.v,2)
@@ -138,7 +150,8 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
         else
             u = t.u[:,wi]
             Δ = Flux.gradient(t.A,u) do A,_u
-                loss(A,_x,_y,tosimplex(_u)) + reg(vec(A))
+                loss(A,_x,_y,tosimplex(clamp.(_u,0,1))) + clamp_penalty(_u,0,1) + 
+                    reg(vec(A))
             end
 
             Flux.update!(optimizer,t.A,Δ[1])
