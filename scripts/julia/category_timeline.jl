@@ -53,6 +53,8 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Freqmeans Analysis
 # =================================================================
 
+n_winlens = 12
+n_winstarts = 32
 paramdir = processed_datadir("svm_params")
 best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
     (absolute=use_absolute_features,),"json"))
@@ -85,8 +87,8 @@ function best_windows_for(df)
             condition   = df.condition[1]
         )].winlen
     end
-    winlens   = reduce(vcat,spread.(best_winlen,0.5,6))
-    winstarts =  range(0,3,length=64)
+    winlens   = reduce(vcat,spread.(best_winlen,0.5,n_winlens))
+    winstarts =  range(0,3,length=n_winstarts)
 
     Iterators.flatten(
         [Iterators.product(winstarts, winlens,["target"]),
@@ -95,7 +97,9 @@ function best_windows_for(df)
 end
 
 classdf_file = joinpath(cache_dir(),"data",
-    savename("freqmeans_timeline", (absolute=use_absolute_features,), "csv"))
+    savename("freqmeans_timeline",
+        (absolute=use_absolute_features,n_winlens=n_winlens,n_winstarts=n_winstarts),
+        "csv"))
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
@@ -237,7 +241,7 @@ pl
 """
 
 R"""
-ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir,"object_salience_timeline_B.pdf"),pl,width=11,height=8)
 """
 
 # Timeline across salience x target time (for hit trials) with baseline
