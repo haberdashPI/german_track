@@ -18,7 +18,7 @@ using StatsFuns
 using Underscores
 using Random
 using TensorCast
-using CUDA
+using CuArrays
 
 
 tosimplex(x::AbstractMatrix) = tosimplex_(x)[1]
@@ -152,8 +152,8 @@ end
 
 function weights(t::SemiDecodeTrainer,ArrayType=Array)
     w = ArrayType{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
-    w[:,t.vi] = t.v
-    w[:,setdiff(1:end,t.vi)] = tosimplex(t.u)
+    w[:,t.vi] = convert(ArrayType,t.v)
+    w[:,setdiff(1:end,t.vi)] = convert(ArrayType,tosimplex(t.u))
     w
 end
 function coefs(t::SemiDecodeTrainer,ArrayType=Array)
@@ -180,8 +180,8 @@ function regressSS2(x,y,v,vi;regularize=x->0.0,batchsize=32,epochs=2,
     testx, testy = gpu.((trainer.xᵥ,trainer.yᵥ))
     function status()
         @info "Training, on epoch $epoch."
-        CUDA.memory_status()
-        testcb(decoder)
+        CuArrays.memory_status()
+        testcb(trainer)
     end
     throt_status = Flux.throttle(status,status_rate)
 
