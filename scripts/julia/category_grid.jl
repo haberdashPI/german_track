@@ -75,7 +75,8 @@ else
     windows = [(len=len,start=start,before=-len)
         for len in 2.0 .^ range(-1,1,length=10),
             start in [0; 2.0 .^ range(-2,2,length=9)]]
-    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".h5$",_), __)
+    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
+        filter(occursin(r".h5$",_), __)
     subjects = Dict(
         sidfor(file) => load_subject(
             joinpath(processed_datadir("eeg"), file), stim_info,
@@ -170,7 +171,8 @@ opts = (
 n_folds = 3
 
 # type piracy: awaiting PR acceptance to remove
-JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.StructTypes.StringType()
+JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
+    JSON3.StructTypes.StringType()
 
 paramdir = processed_datadir("svm_params")
 isdir(paramdir) || mkdir(paramdir)
