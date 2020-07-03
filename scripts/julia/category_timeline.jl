@@ -144,7 +144,7 @@ end
 
 paramdir    = processed_datadir("svm_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,n_folds=5),"json"))
+    (absolute=use_absolute_features,n_folds=3),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -281,7 +281,7 @@ pl = ggplot($band,
             color = NULL)) +
     geom_line() +
     facet_grid(~condition) +
-    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    geom_abline(slope = 0, intercept = 0, linetype = 2) +
     guides(fill  = guide_legend(title = "Salience x Target time"),
            color = guide_legend(title = "Salience x Target time")) +
     scale_fill_brewer( palette = 'Paired', direction = -1) +
@@ -351,6 +351,7 @@ ggsave(file.path($dir,"object_salience_timeline_miss.pdf"),pl,width=11,height=8)
 # -----------------------------------------------------------------
 
 band = @_ predict |>
+    filter(_.wintype != "baseline",__) |>
     groupby(__, [:winstart, :salience_label, :condition, :sid]) |> #, :before]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
     groupby(__, [:winstart, :salience_label, :condition]) |> #, :before]) |>
@@ -404,7 +405,7 @@ pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
     geom_line() + facet_grid(~condition) +
     scale_color_brewer(palette = 'Set1') +
     scale_fill_brewer( palette = 'Set1') +
-    geom_abline(slope = 0, intercept = 50, linetype = 2)
+    geom_abline(slope = 0, intercept = 0, linetype = 2)
     # coord_cartesian(ylim = c(40, 100))
 pl
 """
@@ -418,6 +419,7 @@ ggsave(file.path($dir,"object_salience_baseline.pdf"),pl,width=11,height=8)
 
 band = @_ predict |>
     # filter(_.before == "zero", __) |>
+    filter(_.wintype != "baseline",__) |>
     groupby(__, [:winstart, :target_time_label, :condition, :sid]) |> #, :before]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
     groupby(__, [:winstart, :target_time_label, :condition]) |> #, :before]) |>
@@ -476,7 +478,7 @@ pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
     geom_line() + facet_grid(.~condition) +
     scale_color_brewer(palette = 'Set2') +
     scale_fill_brewer( palette = 'Set2') +
-    geom_abline(slope = 0, intercept = 50, linetype = 2)
+    geom_abline(slope = 0, intercept = 0, linetype = 2)
     # coord_cartesian(ylim = c(40, 100))
 pl
 """
