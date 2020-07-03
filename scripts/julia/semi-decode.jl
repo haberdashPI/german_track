@@ -135,34 +135,38 @@ testsize = round(Int,0.2N)
 testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
     sort!
 
-testweights = weights[:,testset]
-testii = ii[testset]
-trainweights = weights[:,setdiff(1:end,testset)]
-trainii = ii[setdiff(1:end,testset)]
+function rundecode(x,y,weights,ii,testset)
+    testweights = weights[:,testset]
+    testii = ii[testset]
+    trainweights = weights[:,setdiff(1:end,testset)]
+    trainii = ii[setdiff(1:end,testset)]
 
-function onvalidate(decoder)
-    err = sum((weights(decoder)[testset] .- testweights).^2)
-    @info "Test weights have an average error of $(fmt("2.3f",err))"
+    function onvalidate(decoder)
+        err = sum((view(EEGCoding.weights(decoder),:,testset) .- testweights).^2)
+        @info "Test weights have an average error of $(fmt("2.3f",err))"
+    end
+
+    # run decoding
+    CUDA.allowscalar(false)
+    regressSS2(
+        x,y,trainweights,trainii,
+        regularize = x -> 0.5sum(abs,x),
+        optimizer=AMSGrad(),
+        epochs = 100,
+        testcb = onvalidate,
+    )
 end
 
-# run decoding
-CUDA.allowscalar(false)
-result = regressSS2(
-    x,y,trainweights,trainii,
-    regularize = x -> 0.5f0*sum(abs,x),
-    optimizer=AMSGrad(),
-    epochs = 1,
-    testcb = onvalidate,
-)
-
+result = rundecode(x,y,weights,ii,testset)
 # TODO: return to older Zygote/CUDA setup, which seemd to work
 # in my earlier tests
 
 # store the results
-resultfile = joinpath(processed_datadir("eeg"),savename("semi-decode-result",
+isdir(processed_datadir("decode-params")) || mkdir(processed_datadir("decode-params"))
+resultfile = joinpath(processed_datadir("decode-params"),savename("semi-decode-result",
     (nlags=nlags,fs=fs),"bson"))
 @tagsave resultfile Dict(
-    :weights => weights(result),
+    :weights => EEGCoding.weights(result),
     :coefs => EEGCoding.coefs(result),
-    :testii => testii
+    :testii => ii[testset]
 )

@@ -59,6 +59,7 @@ SampledSignals = "≥2.0"
 StatsBase = "≥0.30"
 Unitful = "≥0.15"
 julia = "≥0.7"
+Zygote = "0.4"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
