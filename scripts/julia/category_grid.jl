@@ -178,8 +178,8 @@ n_folds = 2
 
 all_opts = (
     SearchRange = collect(values(param_range)),
-    NumDimensions = length(param_range)
-    TraceMode = :silence,
+    NumDimensions = length(param_range),
+    TraceMode = :silent,
     opts...
 )
 
@@ -197,7 +197,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
         for (k, (train, test)) in enumerate(folds(n_folds, objectdf.sid |> unique))
             Random.seed!(hash((seed, :object, k)))
 
-            optresult = bboptimize(;all_opts) do params
+            optresult = bboptimize(;all_opts...) do params
                 tparams_vals = @_ map(_1(_2), param_by, params)
                 tparams = NamedTuple{keys(param_by)}(tparams_vals)
 
@@ -248,8 +248,8 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
                 :data => JSONTables.ObjectTable(Tables.columns(best_params)),
                 :seed => seed,
                 :param_range => param_range,
-                :n_folds = n_folds,
-                :inner_n_folds = inner_n_folds,
+                :n_folds => n_folds,
+                :inner_n_folds => inner_n_folds,
                 :optimize_parameters => Dict(k => v for (k, v) in pairs(opts) if k != :by)
             ) safe = true
         end
