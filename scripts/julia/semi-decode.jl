@@ -136,8 +136,7 @@ end
 # don't include them as part of the training
 N = size(known_weights,2)
 testsize = round(Int,0.2N)
-testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
-    sort!
+testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |> sort!
 
 function rundecode(x,y,known_weights,ii,testset)
     testweights = known_weights[:,testset]
@@ -162,8 +161,6 @@ function rundecode(x,y,known_weights,ii,testset)
 end
 
 result = rundecode(x,y,known_weights,ii,testset)
-# TODO: return to older Zygote/CUDA setup, which seemd to work
-# in my earlier tests
 
 # store the results
 isdir(processed_datadir("decode-params")) || mkdir(processed_datadir("decode-params"))
