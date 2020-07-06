@@ -6,6 +6,8 @@ using DrWatson
 use_cache = true
 seed = 072189
 use_absolute_features = true
+n_winlens = 6
+n_winstarts = 64
 
 using EEGCoding,
     GermanTrack,
@@ -53,11 +55,9 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Freqmeans Analysis
 # =================================================================
 
-n_winlens = 12
-n_winstarts = 32
 paramdir = processed_datadir("svm_params")
-best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
-    (absolute=use_absolute_features,),"json"))
+best_windows_file = joinpath(paramdir,savename("hyper-parameters",
+    (absolute    = use_absolute_features,), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 # we use the best window length (determined by average performance across all window starts)
@@ -98,7 +98,9 @@ end
 
 classdf_file = joinpath(cache_dir(),"data",
     savename("freqmeans_timeline",
-        (absolute=use_absolute_features,n_winlens=n_winlens,n_winstarts=n_winstarts),
+        (absolute    = use_absolute_features,
+         n_winlens   = n_winlens,
+         n_winstarts = n_winstarts),
         "csv"))
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -241,7 +243,7 @@ pl
 """
 
 R"""
-ggsave(file.path($dir,"object_salience_timeline_B.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
 """
 
 # Timeline across salience x target time (for hit trials) with baseline
