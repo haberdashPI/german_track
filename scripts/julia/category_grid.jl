@@ -47,9 +47,9 @@ end
     seed = 072189
 
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
-    JSON3, JSONTables, Tables, FileIO
+        Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
+        StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
+        JSON3, JSONTables, Tables, FileIO
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
