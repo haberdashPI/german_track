@@ -53,7 +53,7 @@ end
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-    wmeanish(x, w) = iszero(sum(w)) ? zero(float(eltype(x))) : mean(x, weights(w))
+    wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 end
 
 @everywhere( @sk_import svm: SVC )
