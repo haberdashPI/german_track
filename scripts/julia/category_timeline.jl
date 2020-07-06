@@ -8,6 +8,7 @@ seed = 072189
 use_absolute_features = true
 n_winlens = 6
 n_winstarts = 64
+n_folds = 10
 
 using EEGCoding,
     GermanTrack,
@@ -56,7 +57,7 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # =================================================================
 
 paramdir = processed_datadir("svm_params")
-best_windows_file = joinpath(paramdir,savename("hyper-parameters",
+best_windows_file = joinpath(paramdir,savename("best-windows",
     (absolute    = use_absolute_features,), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
@@ -150,7 +151,7 @@ end
 
 paramdir    = processed_datadir("svm_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,n_folds=3),"json"))
+    (absolute=use_absolute_features,),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -164,7 +165,7 @@ function modelresult((key,sdf))
         params = (C = key[:C], gamma = key[:gamma])
         testclassifier(SVC(;params...),
             data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
-            crossval=:sid, seed=hash((params,seed)))
+            crossval=:sid, seed=hash((params,seed)), n_folds=n_folds)
     else
         # in the case where there is one condition, this means that the selected window
         # length has a condition for global but not the second category (object or spatial)
