@@ -34,7 +34,7 @@ using Distributed
     if !(nprocs() > 1) && num_cluster_procs > 1
         addprocs(SlurmManager(num_cluster_procs),
             partition = "CPU",
-            t = "24:00:00",
+            t = "32:00:00",
             mem = "32G",
             exeflags = "--project=.")
     end
