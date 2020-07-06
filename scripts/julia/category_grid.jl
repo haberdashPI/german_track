@@ -16,7 +16,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
     JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim
 
-DrWatson._wsave(file,data::Dict) = open(io -> JSON3.write(io,data), file, "w")
+DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
 
 # local only pac kages
 using Formatting
@@ -31,12 +31,15 @@ using Distributed
 @static if use_slurm
     using ClusterManagers
     if !(nprocs() > 1) && num_cluster_procs > 1
-        addprocs(SlurmManager(num_cluster_procs), partition="CPU", t="24:00:00", mem="32G",
-            exeflags="--project=.")
+        addprocs(SlurmManager(num_cluster_procs),
+            partition = "CPU",
+            t = "24:00:00",
+            mem = "32G",
+            exeflags = "--project = .")
     end
 else
     if !(nprocs() > 1) && num_local_procs > 1
-        addprocs(num_local_procs,exeflags="--project=.")
+        addprocs(num_local_procs, exeflags = "--project = .")
     end
 end
 
@@ -50,13 +53,13 @@ end
 
     import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-    wmeanish(x,w) = iszero(sum(w)) ? zero(float(eltype(x))) : mean(x,weights(w))
+    wmeanish(x, w) = iszero(sum(w)) ? zero(float(eltype(x))) : mean(x, weights(w))
 end
 
 @everywhere( @sk_import svm: SVC )
 
 if !use_slurm
-    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    dir = joinpath(plotsdir(), string("results_", Date(now())))
     isdir(dir) || mkdir(dir)
 end
 
@@ -66,56 +69,58 @@ end
 # =================================================================
 
 isdir(processed_datadir("features")) || mkdir(processed_datadir("features"))
-classdf_file = joinpath(processed_datadir("features"),savename("freaqmeans",
-    (absolute=use_absolute_features,),"csv"))
+classdf_file = joinpath(processed_datadir("features"), savename("freaqmeans",
+    (absolute = use_absolute_features,), "csv"))
 
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    windows = [(len=len,start=start,before=-len)
-        for len in 2.0 .^ range(-1,1,length=10),
-            start in [0; 2.0 .^ range(-2,2,length=9)]]
+    windows = [(len = len, start = start, before = -len)
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in [0; 2.0 .^ range(-2, 2, length = 9)]]
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
-        filter(occursin(r".h5$",_), __)
+        filter(occursin(r".h5$", _), __)
     subjects = Dict(
         sidfor(file) => load_subject(
             joinpath(processed_datadir("eeg"), file), stim_info,
             encoding = RawEncoding()
         ) for file in eeg_files)
 
-    events = @_ mapreduce(_.events,append!!,values(subjects))
+    events = @_ mapreduce(_.events, append!!, values(subjects))
     classdf_groups = @_ events |>
-        filter(_.target_present,__) |>
-        filter(ishit(_,region = "target") == "hit",__) |>
-        groupby(__,[:salience_label,:target_time_label,:sid,:condition])
+        filter(_.target_present, __) |>
+        filter(ishit(_, region = "target") == "hit", __) |>
+        groupby(__, [:salience_label, :target_time_label, :sid, :condition])
 
-    progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
+    progress = Progress(length(classdf_groups), desc = "Computing frequency bins...")
     classdf = @_ classdf_groups |>
         combine(function(sdf)
             # compute features in each window
-            x = mapreduce(append!!,windows) do window
+            x = mapreduce(append!!, windows) do window
                 result = if use_absolute_features
-                    compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf,"target",window)
+                    compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+                        "target", window)
                 else
-                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",window)
+                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg, sdf,
+                        "target", window)
                 end
-                result[!,:winstart] .= window.start
-                result[!,:winlen] .= window.len
+                result[!, :winstart] .= window.start
+                result[!, :winlen] .= window.len
                 result
             end
             next!(progress)
             x
-        end,__)
+        end, __)
     ProgressMeter.finish!(progress)
-    CSV.write(classdf_file,classdf)
+    CSV.write(classdf_file, classdf)
 
 end
 
 # Hyper-parameter Optimization: Global v Object
 # =================================================================
 
-objectdf = @_ classdf |> filter(_.condition in ["global","object"],__)
-spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
+objectdf = @_ classdf |> filter(_.condition in ["global", "object"], __)
+spatialdf = @_ classdf |> filter(_.condition in ["global", "spatial"], __)
 
 # Function Definitions
 # -----------------------------------------------------------------
@@ -123,13 +128,13 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 @everywhere begin
     np = pyimport("numpy")
     inner_n_folds = 10
-    # _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
+    # _wmean(x, weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
-    function resultmax(result,conditions...)
+    function resultmax(result, conditions...)
         if result isa Vector{<:NamedTuple}
             maxacc = @_ DataFrame(result) |>
-                groupby(__,collect(conditions)) |>
-                combine(__,:mean => maximum => :max)
+                groupby(__, collect(conditions)) |>
+                combine(__, :mean => maximum => :max)
             return mean(maxacc.max)#/length(gr)
         else
             @info "Exception: $result"
@@ -137,14 +142,14 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         end
     end
 
-    function modelacc((key,sdf),params)
+    function modelacc((key, sdf), params)
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
             result = testclassifier(SVC(;params...), data = sdf,
-                y = :condition,X = r"channel", crossval = :sid, n_folds = inner_n_folds,
-                seed=hash((params,seed)))
-            return (mean = wmeanish(result.correct,result.weight),
+                y = :condition, X = r"channel", crossval = :sid, n_folds = inner_n_folds,
+                seed = hash((params, seed)))
+            return (mean = wmeanish(result.correct, result.weight),
                 weight = sum(result.weight),
                 NamedTuple(key)...)
         catch e
@@ -161,8 +166,8 @@ end
 # Optimization
 # -----------------------------------------------------------------
 
-param_range = (C=(-3.0,3.0),gamma=(-4.0,1.0))
-param_by = (C=x -> 10^x,gamma=x -> 10^x)
+param_range = (C=(-3.0, 3.0), gamma=(-4.0, 1.0))
+param_by = (C = x -> 10^x, gamma = x -> 10^x)
 opts = (
     MaxFuncEvals = test_optimization ? 6 : 1000,
     FitnessTolerance = 0.03,
@@ -184,43 +189,45 @@ JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
 
 paramdir = processed_datadir("svm_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,),"json"))
+paramfile = joinpath(paramdir, savename("hyper-parameters",
+    (absolute = use_absolute_features, ), "json"))
 if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
-    progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
+    progress = Progress(opts.MaxFuncEvals*n_folds, "Optimizing params...")
     let result = Empty(DataFrame)
-        for (k,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
-            Random.seed!(hash((seed,:object,k)))
+        for (k, (train, test)) in enumerate(folds(n_folds, objectdf.sid |> unique))
+            Random.seed!(hash((seed, :object, k)))
 
             optresult = bboptimize(;all_opts) do params
                 tparams_vals = @_ map(_1(_2), param_by, params)
                 tparams = NamedTuple{keys(param_by)}(tparams_vals)
 
-                objectgr = @_ objectdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience_label,:target_time_label]) |>
+                objectgr = @_ objectdf |> filter(_.sid ∈ train, __) |>
+                    groupby(__, [:winstart, :winlen, :salience_label,
+                        :target_time_label]) |>
                     pairs |> collect
 
                 objectresult = dreduce(append!!,
-                    Map(i -> [modelacc(objectgr[i],tparams)]),
-                    1:length(objectgr),init=Empty(Vector))
+                    Map(i -> [modelacc(objectgr[i], tparams)]),
+                    1:length(objectgr), init = Empty(Vector))
 
-                spatialgr = @_ spatialdf |> filter(_.sid ∈ train,__) |>
-                    groupby(__, [:winstart,:winlen,:salience_label,:target_time_label]) |>
+                spatialgr = @_ spatialdf |> filter(_.sid ∈ train, __) |>
+                    groupby(__, [:winstart, :winlen, :salience_label,
+                        :target_time_label]) |>
                     pairs |> collect
 
                 spatialresult = dreduce(append!!,
-                    Map(i -> [modelacc(spatialgr[i],tparams)]),
-                    1:length(spatialgr),init=Empty(Vector))
+                    Map(i -> [modelacc(spatialgr[i], tparams)]),
+                    1:length(spatialgr), init = Empty(Vector))
 
                 # spatialresult = dreduce(append!!,
-                #     Map(i -> [modelacc(spatialgr[i],params)]),
-                #     1:length(spatialgr),init=Empty(Vector))
+                #     Map(i -> [modelacc(spatialgr[i], params)]),
+                #     1:length(spatialgr), init = Empty(Vector))
 
                 next!(progress)
 
                 maxacc = max(
-                    resultmax(objectresult,:salience_label,:target_time_label),
-                    resultmax(spatialresult,:salience_label,:target_time_label)
+                    resultmax(objectresult, :salience_label, :target_time_label),
+                    resultmax(spatialresult, :salience_label, :target_time_label)
                 )
 
                 return 1.0 - maxacc
@@ -229,7 +236,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
             fold_params, fitness = best_candidate(optresult), best_fitness(optresult)
             fold_params_vals = @_ map(_1(_2), param_by, fold_params)
             fold_params = NamedTuple{keys(param_by)}(fold_params_vals)
-            result = append!!(result,DataFrame(sid = test; fold_params...))
+            result = append!!(result, DataFrame(sid = test; fold_params...))
         end
 
         ProgressMeter.finish!(progress)
@@ -243,14 +250,14 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
                 :param_range => param_range,
                 :n_folds = n_folds,
                 :inner_n_folds = inner_n_folds,
-                :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
-            ) safe=true
+                :optimize_parameters => Dict(k => v for (k, v) in pairs(opts) if k != :by)
+            ) safe = true
         end
     end
 else
-    global best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
+    global best_params = jsontable(open(JSON3.read, paramfile, "r")[:data]) |> DataFrame
     if :subjects in propertynames(best_params) # some old files misnamed the sid column
-        rename!(best_params,:subjects => :sid)
+        rename!(best_params, :subjects => :sid)
     end
 end
 
@@ -259,49 +266,49 @@ end
 
 if !use_slurm && !test_optimization
 
-    @everywhere function modelresult((key,sdf))
+    @everywhere function modelresult((key, sdf))
         params = (C = key[:C], gamma = key[:gamma])
         testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
             crossval = :sid, seed = hash((params, seed)))
     end
 
     testgroups = @_ objectdf |>
-        innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience_label,:target_time_label,:C,:gamma])
-    object_classpredict = dreduce(append!!,Map(modelresult),
-        collect(pairs(testgroups)),init=Empty(DataFrame))
+        innerjoin(__, best_params, on = :sid) |>
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :C, :gamma])
+    object_classpredict = dreduce(append!!, Map(modelresult),
+        collect(pairs(testgroups)), init = Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => wmeanish => :correct)
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
+        combine(__, [:correct, :weight] => wmeanish => :correct)
     wimeans = @_ subj_means |>
-        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
-        combine(__,:correct => mean)
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label]) |>
+        combine(__, :correct => mean)
 
-    sort!(wimeans,order(:correct_mean,rev=true))
-    first(wimeans,6)
+    sort!(wimeans, order(:correct_mean, rev = true))
+    first(wimeans, 6)
 
-    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    dir = joinpath(plotsdir(), string("results_", Date(now())))
     isdir(dir) || mkdir(dir)
 
-    wimeans.llen = log.(2,wimeans.winlen)
-    wimeans.lstart = log.(2,wimeans.winstart)
+    wimeans.llen = log.(2, wimeans.winlen)
+    wimeans.lstart = log.(2, wimeans.winstart)
 
     pl = wimeans |>
         @vlplot(:rect,
-            x={ field=:lstart, bin={step=0.573}, },
-            y={ field=:llen, bin={step=2/9}, },
-            color={
+            x = { field = :lstart, bin = {step = 0.573}, },
+            y = { field = :llen, bin = {step = 2/9}, },
+            color = {
                 :correct_mean,
-                scale={reverse=true,domain=[0.5,1],scheme="plasma"}
+                scale = {reverse = true, domain = [0.5, 1], scheme = "plasma"}
             },
-            column=:salience_label,
-            row=:target_time_label)
+            column = :salience_label,
+            row = :target_time_label)
 
     if use_absolute_features
-        save(joinpath(dir,"object_grid_absolute.pdf"),pl)
+        save(joinpath(dir, "object_grid_absolute.pdf"), pl)
     else
-        save(joinpath(dir,"object_grid.pdf"),pl)
+        save(joinpath(dir, "object_grid.pdf"), pl)
     end
 end
 
@@ -310,10 +317,10 @@ end
 
 if !use_slurm && !test_optimization
 
-    @everywhere function modelresult((key,sdf))
+    @everywhere function modelresult((key, sdf))
         params = (C = key[:C], gamma = key[:gamma])
         if length(unique(sdf.condition)) == 1
-            @info "Skipping data with one class: $(first(sdf,1))"
+            @info "Skipping data with one class: $(first(sdf, 1))"
             Empty(DataFrame)
         else
             testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
@@ -322,45 +329,46 @@ if !use_slurm && !test_optimization
     end
 
     testgroups = @_ spatialdf |>
-        innerjoin(__,best_params,on=:sid) |>
-        groupby(__, [:winstart,:winlen,:salience_label, :target_time_label,:C,:gamma])
-    spatial_classpredict = foldl(append!!,Map(modelresult),
-        collect(pairs(testgroups)),init=Empty(DataFrame))
+        innerjoin(__, best_params, on = :sid) |>
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :C, :gamma])
+    spatial_classpredict = foldl(append!!, Map(modelresult),
+        collect(pairs(testgroups)), init = Empty(DataFrame))
 
     subj_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience_label, :target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => wmeanish => :correct)
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
+        combine(__, [:correct, :weight] => wmeanish => :correct)
     wimeans = @_ subj_means |>
-        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label]) |>
-        combine(__,:correct => mean)
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label]) |>
+        combine(__, :correct => mean)
 
-    sort!(wimeans,order(:correct_mean,rev=true))
-    first(wimeans,6)
+    sort!(wimeans, order(:correct_mean, rev = true))
+    first(wimeans, 6)
 
-    dir = joinpath(plotsdir(),string("results_",Date(now())))
+    dir = joinpath(plotsdir(), string("results_", Date(now())))
     isdir(dir) || mkdir(dir)
 
-    wimeans.llen = log.(2,wimeans.winlen)
-    wimeans.lstart = log.(2,wimeans.winstart)
+    wimeans.llen = log.(2, wimeans.winlen)
+    wimeans.lstart = log.(2, wimeans.winstart)
 
     pl = wimeans |>
         @vlplot(:rect,
-            x={
-                field=:lstart,
-                bin={step=0.573},
+            x = {
+                field = :lstart,
+                bin = {step = 0.573},
             },
-            y={
-                field=:llen,
-                bin={step=2/9},
+            y = {
+                field = :llen,
+                bin = {step = 2/9},
             },
-            color={:correct_mean,scale={reverse=true,domain=[0.5,1],scheme="plasma"}},
-            column=:salience_label,row=:target_time_label)
+            color = {:correct_mean,
+                scale = {reverse = true, domain = [0.5, 1], scheme = "plasma"}},
+            column = :salience_label, row = :target_time_label)
 
 
     if use_absolute_features
-        save(joinpath(dir,"spatial_grid_absolute.pdf"),pl)
+        save(joinpath(dir, "spatial_grid_absolute.pdf"), pl)
     else
-        save(joinpath(dir,"spatial_grid.pdf"),pl)
+        save(joinpath(dir, "spatial_grid.pdf"), pl)
     end
 end
 
@@ -370,29 +378,29 @@ end
 @static if !use_slurm && !test_optimization
 
     object_winlen_means = @_ object_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => wmeanish => :correct) |>
-        groupby(__,[:winlen,:salience_label,:target_time_label]) |>
-        combine(__,:correct => mean) |>
-        insertcols!(__,:condition => "object")
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
+        combine(__, [:correct, :weight] => wmeanish => :correct) |>
+        groupby(__, [:winlen, :salience_label, :target_time_label]) |>
+        combine(__, :correct => mean) |>
+        insertcols!(__, :condition => "object")
 
     spatial_winlen_means = @_ spatial_classpredict |>
-        groupby(__,[:winstart,:winlen,:salience_label,:target_time_label,:sid]) |>
-        combine(__,[:correct,:weight] => wmeanish => :correct) |>
-        groupby(__,[:winlen,:salience_label,:target_time_label]) |>
-        combine(__,:correct => mean) |>
-        insertcols!(__,:condition => "spatial")
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
+        combine(__, [:correct, :weight] => wmeanish => :correct) |>
+        groupby(__, [:winlen, :salience_label, :target_time_label]) |>
+        combine(__, :correct => mean) |>
+        insertcols!(__, :condition => "spatial")
 
-    best_windows = @_ vcat(object_winlen_means,spatial_winlen_means) |>
-        groupby(__,[:salience_label,:target_time_label,:condition]) |>
-        combine(__,[:winlen,:correct_mean] =>
-            ((len,val) -> len[argmax(val)]) => :winlen)
+    best_windows = @_ vcat(object_winlen_means, spatial_winlen_means) |>
+        groupby(__, [:salience_label, :target_time_label, :condition]) |>
+        combine(__, [:winlen, :correct_mean] =>
+            ((len, val) -> len[argmax(val)]) => :winlen)
 
-    best_windows_file = joinpath(paramdir,savename("best_windows_sal_target_time",
-        (absolute=use_absolute_features,),"json"))
+    best_windows_file = joinpath(paramdir, savename("best_windows_sal_target_time",
+        (absolute = use_absolute_features, ), "json"))
 
     @tagsave best_windows_file Dict(
         :data => JSONTables.ObjectTable(Tables.columns(best_windows)),
         :seed => seed
-    ) safe=true
+    ) safe = true
 end
