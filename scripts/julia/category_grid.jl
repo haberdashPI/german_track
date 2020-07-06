@@ -14,7 +14,7 @@ use_slurm = gethostname() == "lcap.cluster"
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
     StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
-    JSON3, JSONTables, Tables, Infiltrator, FileIO
+    JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim
 
 DrWatson._wsave(file,data::Dict) = open(io -> JSON3.write(io,data), file, "w")
 
@@ -122,6 +122,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
 
 @everywhere begin
     np = pyimport("numpy")
+    inner_n_folds = 10
     # _wmean(x,weight) = (sum(x.*weight) + 1) / (sum(weight) + 2)
 
     function resultmax(result,conditions...)
@@ -141,7 +142,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global","spatial"],__)
         # catch those and return the worst possible fitness
         try
             result = testclassifier(SVC(;params...), data = sdf,
-                y = :condition,X = r"channel", crossval = :sid, n_folds=3,
+                y = :condition,X = r"channel", crossval = :sid, n_folds = inner_n_folds,
                 seed=hash((params,seed)))
             return (mean = wmeanish(result.correct,result.weight),
                 weight = sum(result.weight),
@@ -160,15 +161,22 @@ end
 # Optimization
 # -----------------------------------------------------------------
 
-param_range = (C=(-1.0,8.0),gamma=(-4.0,1.0))
+param_range = (C=(-3.0,3.0),gamma=(-4.0,1.0))
 param_by = (C=x -> 10^x,gamma=x -> 10^x)
 opts = (
-    MaxFuncEvals = test_optimization ? 6 : 1_500,
+    MaxFuncEvals = test_optimization ? 6 : 1000,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
 )
-n_folds = 3
+n_folds = 2
+
+all_opts = (
+    SearchRange = collect(values(param_range)),
+    NumDimensions = length(param_range)
+    TraceMode = :silence,
+    opts...
+)
 
 # type piracy: awaiting PR acceptance to remove
 JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
@@ -177,14 +185,14 @@ JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
 paramdir = processed_datadir("svm_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,n_folds=n_folds),"json"))
+    (absolute=use_absolute_features,),"json"))
 if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals*n_folds,"Optimizing params...")
     let result = Empty(DataFrame)
-        for (i,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
-            Random.seed!(hash((seed,:object,i)))
-            fold_params, fitness = optparams(param_range;opts...) do params
+        for (k,(train,test)) in enumerate(folds(n_folds,objectdf.sid |> unique))
+            Random.seed!(hash((seed,:object,k)))
 
+            optresult = bboptimize(;all_opts) do params
                 tparams_vals = @_ map(_1(_2), param_by, params)
                 tparams = NamedTuple{keys(param_by)}(tparams_vals)
 
@@ -217,6 +225,8 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
 
                 return 1.0 - maxacc
             end
+
+            fold_params, fitness = best_candidate(optresult), best_fitness(optresult)
             fold_params_vals = @_ map(_1(_2), param_by, fold_params)
             fold_params = NamedTuple{keys(param_by)}(fold_params_vals)
             result = append!!(result,DataFrame(sid = test; fold_params...))
@@ -231,6 +241,8 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
                 :data => JSONTables.ObjectTable(Tables.columns(best_params)),
                 :seed => seed,
                 :param_range => param_range,
+                :n_folds = n_folds,
+                :inner_n_folds = inner_n_folds,
                 :optimize_parameters => Dict(k => v for (k,v) in pairs(opts) if k != :by)
             ) safe=true
         end
