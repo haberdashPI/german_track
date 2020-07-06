@@ -85,8 +85,9 @@ function loss(A,x,y,w)
     for i in 1:size(x)[end]
         xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
         xA = xi*A
-        yw = reshape(reshape(yi,:,size(yi,3))*wi,size(yi)[1:2])
-        diff = (xA .- yw).^2
+        yw = reshape(yi,:,size(yi,3))*wi
+        ywr = reshape(yw,size(yi)[1:2])
+        diff = (xA .- ywr).^2
         error += sum(diff)
 
         # NOTE: potentially better than freeing these intermediate computations
