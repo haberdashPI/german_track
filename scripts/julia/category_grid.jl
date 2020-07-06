@@ -5,7 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 072189
-n_fun_evals = 10_000
+n_fun_evals = 5_000
 test_optimization = false
 num_local_procs = 1
 num_cluster_procs = 16
