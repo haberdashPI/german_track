@@ -5,6 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 072189
+n_fun_evals = 10_000
 test_optimization = false
 num_local_procs = 1
 num_cluster_procs = 16
@@ -169,7 +170,7 @@ end
 param_range = (C=(-3.0, 3.0), gamma=(-4.0, 1.0))
 param_by = (C = x -> 10^x, gamma = x -> 10^x)
 opts = (
-    MaxFuncEvals = test_optimization ? 6 : 1000,
+    MaxFuncEvals = test_optimization ? 6 : n_fun_evals,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
