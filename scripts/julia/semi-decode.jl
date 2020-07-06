@@ -4,16 +4,16 @@ nlags = 17
 fs = 64
 
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang, ProgressMeter, Random, Formatting, Serialization, Flux, CUDA
+    BangBang, ProgressMeter, Random, Formatting, Serialization, Flux, CUDA, HDF5
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-trainfile = joinpath(processed_datadir("features"), "semi-decode-train.jlserialize")
+trainfile = joinpath(processed_datadir("features"), "semi-decode-train.h5")
 if isfile(trainfile)
-    data = deserialize(trainfile)
-    x,y = data[:x], data[:y]
-    weights = data[:weights]
-    ii = data[:ii]
+    x = h5read(trainfile, "x")
+    y = h5read(trainfile, "y")
+    known_weights = h5read(trainfile, "weights")
+    ii = h5read(trainfile, "ii")
 else
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
         filter(occursin(r"^[0-9]+.*\.mcca$",_), __)
@@ -107,42 +107,43 @@ else
     # define known labels (or weights) for each segment
     hits = @_ segment_definitions |>
         filter(_.target && subjects[_.sid].events[_.trial,:correct],__)
-    weights = Array{Float32}(undef,nsources,size(hits,1))
+    known_weights = Array{Float32}(undef,nsources,size(hits,1))
     ii = @_ segment_definitions |> eachrow |>
         findall(_.target && subjects[_.sid].events[_.trial,:correct],__)
     for (i,segdef) in enumerate(eachrow(hits))
         label = subjects[segdef.sid].events[segdef.trial,:target_source]
         if label == 1.0
-            weights[:,i] = [1.0,0.0,0.0]
+            known_weights[:,i] = [1.0,0.0,0.0]
         elseif label == 2.0
-            weights[:,i] = [0.0,1.0,0.0]
+            known_weights[:,i] = [0.0,1.0,0.0]
         else
             error("Unexpected label: $label")
         end
     end
 
-    serialize(trainfile,Dict(
-        :x => x, :y => y,
-        :weights => weights,
-        :ii => ii
-    ))
+    h5open(trainfile, "w") do stream
+        stream["x"] = x
+        stream["y"] = y
+        stream["weights"] = known_weights
+        stream["ii"] = ii
+    end
 end
 
 # validate the training using a subset of the known labels;
 # don't include them as part of the training
-N = size(weights,2)
+N = size(known_weights,2)
 testsize = round(Int,0.2N)
 testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
     sort!
 
-function rundecode(x,y,weights,ii,testset)
-    testweights = weights[:,testset]
+function rundecode(x,y,known_weights,ii,testset)
+    testweights = known_weights[:,testset]
     testii = ii[testset]
-    trainweights = weights[:,setdiff(1:end,testset)]
+    trainweights = known_weights[:,setdiff(1:end,testset)]
     trainii = ii[setdiff(1:end,testset)]
 
     function onvalidate(decoder)
-        err = sum((view(EEGCoding.weights(decoder),:,testset) .- testweights).^2)
+        err = sum((view(EEGCoding.weights(decoder),:,ii[testset]) .- testweights).^2)
         @info "Test weights have an average error of $(fmt("2.3f",err))"
     end
 
@@ -157,7 +158,7 @@ function rundecode(x,y,weights,ii,testset)
     )
 end
 
-result = rundecode(x,y,weights,ii,testset)
+result = rundecode(x,y,known_weights,ii,testset)
 # TODO: return to older Zygote/CUDA setup, which seemd to work
 # in my earlier tests
 
