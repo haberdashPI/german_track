@@ -125,7 +125,7 @@ function clamp_penalty(x,lower,upper)
     diffs = max.(0,x .- upper).^2
     sumdiff += sum(diffs)
     unsafe_gpu_free!(diffs)
-    
+
     return sumdiff
 end
 
@@ -150,7 +150,7 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
         else
             u = t.u[:,wi]
             Δ = Flux.gradient(t.A,u) do A,_u
-                loss(A,_x,_y,tosimplex(clamp.(_u,0,1))) + clamp_penalty(_u,0,1) + 
+                loss(A,_x,_y,tosimplex(clamp.(_u,0,1))) + clamp_penalty(_u,0,1) +
                     reg(vec(A))
             end
 
@@ -164,9 +164,10 @@ function regressSS2_train!(t::SemiDecodeTrainer,reg,batchsize,optimizer)
 end
 
 function weights(t::SemiDecodeTrainer,ArrayType=Array)
-    w = ArrayType{eltype(t.v)}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
+    T = eltype(t.v)
+    w = ArrayType{T}(undef,size(t.v,1),size(t.u,2)+size(t.v,2))
     w[:,t.vi] = convert(ArrayType,t.v)
-    w[:,setdiff(1:end,t.vi)] = convert(ArrayType,tosimplex(t.u))
+    w[:,setdiff(1:end,t.vi)] = convert(ArrayType,tosimplex(clamp.(t.u,zero(T),one(T))))
     w
 end
 function coefs(t::SemiDecodeTrainer,ArrayType=Array)
