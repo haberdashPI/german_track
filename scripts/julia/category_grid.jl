@@ -35,7 +35,7 @@ using Distributed
             partition = "CPU",
             t = "24:00:00",
             mem = "32G",
-            exeflags = "--project = .")
+            exeflags = "--project=.")
     end
 else
     if !(nprocs() > 1) && num_local_procs > 1
