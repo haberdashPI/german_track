@@ -7,21 +7,21 @@ cache_dir_ = Ref("")
 set_cache_dir!(str) = cache_dir_[] = str
 cache_dir() = cache_dir_[]
 
-progress_update!(prog::Progress,n=1) =
-    ProgressMeter.update!(prog,prog.counter+n)
-progress_update!(prog::Bool,n=1) = @assert !prog
+progress_update!(prog::Progress, n = 1) =
+    ProgressMeter.update!(prog, prog.counter+n)
+progress_update!(prog::Bool, n = 1) = @assert !prog
 
-function progress_ammend!(prog::Progress,n)
+function progress_ammend!(prog::Progress, n)
     prog.n += n
-    ProgressMeter.update!(prog,prog.counter)
+    ProgressMeter.update!(prog, prog.counter)
 end
-progress_ammend!(prog::Bool,n) = @assert !prog
+progress_ammend!(prog::Bool, n) = @assert !prog
 
 """
-    folds(k,indices,[test_indices];
-        on_all_empty_test=:error,
-        filter_empty_test=on_all_empty_test == :error,
-        filter_empty_train=true)
+    folds(k, indices, [test_indices];
+        on_all_empty_test = :error,
+        filter_empty_test = on_all_empty_test == :error,
+        filter_empty_train = true)
 
 Robust generation of k-folds for cross-validation.
 
@@ -48,12 +48,12 @@ creating some empty folds (these can be filtered out).
 An iterable object of folds. Each fold is a tuple of train and then test indices.
 
 """
-function folds(K,indices,test_indices=indices;on_all_empty_test=:error,
-        filter_empty_test=on_all_empty_test==:error,filter_empty_train=true)
+function folds(K, indices, test_indices = indices;on_all_empty_test = :error,
+        filter_empty_test = on_all_empty_test == :error, filter_empty_train = true)
     len = length(indices)
     fold_size = len / K
 
-    unshared_indices = setdiff(test_indices,indices)
+    unshared_indices = setdiff(test_indices, indices)
     k_step = length(unshared_indices) / K
     last_unshared = 0
 
@@ -62,51 +62,51 @@ function folds(K,indices,test_indices=indices;on_all_empty_test=:error,
             error("≤ 1 data points")
         elseif on_all_empty_test == :warn
             @warn "≤ 1 data points; no test data created"
-            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
+            filter_empty_test ? Tuple{Vector{Int}, Vector{Int}}[] : [(indices, Int[])]
         elseif on_all_empty_test == :nothing
-            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
+            filter_empty_test ? Tuple{Vector{Int}, Vector{Int}}[] : [(indices, Int[])]
         else
             on_all_empty_test()
-            filter_empty_test ? Tuple{Vector{Int},Vector{Int}}[] : [(indices, Int[])]
+            filter_empty_test ? Tuple{Vector{Int}, Vector{Int}}[] : [(indices, Int[])]
         end
     else
         result = map(1:K) do k
-            start = floor(Int,(k-1)fold_size)+1
-            stop = (min(len,floor(Int,k*fold_size)))
+            start = floor(Int, (k-1)fold_size)+1
+            stop = (min(len, floor(Int, k*fold_size)))
             shared_test = indices[start:stop]
             if !isempty(shared_test)
-                train = setdiff(indices,shared_test)
+                train = setdiff(indices, shared_test)
 
                 from = last_unshared+1
-                to = floor(Int,min(length(unshared_indices),k*k_step))
-                last_unshared = max(last_unshared,to)
+                to = floor(Int, min(length(unshared_indices), k*k_step))
+                last_unshared = max(last_unshared, to)
                 test = (shared_test ∩ test_indices) ∪ unshared_indices[from:to]
                 if k == K && to < length(unshared_indices)
                     @assert to == length(unshared_indices)-1
                     to = length(unshared_indices)
                 end
 
-                (train,test)
+                (train, test)
             else
                 shared_test, shared_test # empty, empty
             end
         end
-        result = filter_empty_train ? @_(filter(!isempty(_[1]),result)) : result
-        result = filter_empty_test ? @_(filter(!isempty(_[2]),result)) : result
+        result = filter_empty_train ? @_(filter(!isempty(_[1]), result)) : result
+        result = filter_empty_test ? @_(filter(!isempty(_[2]), result)) : result
 
         result
     end
 end
 
-struct RandMix{T,RNG}
+struct RandMix{T, RNG}
     rng::RNG
     report_source::Bool
     args::T
 end
-Base.length(x::RandMix) = sum(length,x.args)
+Base.length(x::RandMix) = sum(length, x.args)
 Base.eltype(x::RandMix) = Union{eltype.(x.args)...}
-randmix(args...;rng=Random.AbstractRNG,report_source=false) =
-    RandMix(Random.GLOBAL_RNG,report_source,args)
+randmix(args...;rng = Random.AbstractRNG, report_source = false) =
+    RandMix(Random.GLOBAL_RNG, report_source, args)
 
 struct FirstIterate
 end
@@ -114,20 +114,20 @@ const firstitr = FirstIterate()
 struct LastIterate
 end
 const lastitr = LastIterate()
-myitr(x,::FirstIterate) = iterate(x)
-myitr(x,::LastIterate) = nothing
-myitr(x,state) = iterate(x,state)
+myitr(x, ::FirstIterate) = iterate(x)
+myitr(x, ::LastIterate) = nothing
+myitr(x, state) = iterate(x, state)
 
-function Base.iterate(mix::RandMix,states = map(x -> firstitr,mix.args))
-    newstates = collect(Any,states)
+function Base.iterate(mix::RandMix, states = map(x -> firstitr, mix.args))
+    newstates = collect(Any, states)
     indices = Set(1:length(mix.args))
-    i = rand(mix.rng,indices); setdiff!(indices,i)
+    i = rand(mix.rng, indices); setdiff!(indices, i)
 
-    result = myitr(mix.args[i],states[i])
+    result = myitr(mix.args[i], states[i])
     while isnothing(result) && !isempty(indices)
         newstates[i] = lastitr
-        i = rand(mix.rng,indices); setdiff!(indices,i)
-        result = myitr(mix.args[i],states[i])
+        i = rand(mix.rng, indices); setdiff!(indices, i)
+        result = myitr(mix.args[i], states[i])
     end
     if !isnothing(result)
         val, state = result
@@ -141,18 +141,18 @@ function Base.iterate(mix::RandMix,states = map(x -> firstitr,mix.args))
 end
 
 function loadcache(prefix)
-    file = joinpath(cache_dir_[],prefix * ".bson")
+    file = joinpath(cache_dir_[], prefix * ".bson")
     @load file contents
     contents
 end
 
-function cachefn(prefix,fn,args...;__oncache__=() -> nothing,kwds...)
+function cachefn(prefix, fn, args...; __oncache__ = () -> nothing, kwds...)
     if cache_dir_[] == ""
         @warn "Using default cache directory `$(abspath(cache_dir_[]))`;"*
             " use EEGCoding.set_cache_dir! to change where results are cached."
     end
 
-    file = joinpath(cache_dir_[],prefix * ".bson")
+    file = joinpath(cache_dir_[], prefix * ".bson")
     if isfile(file)
         __oncache__()
         @load file contents
@@ -171,10 +171,10 @@ struct JointEncoding <: Encoding
     children::Vector{Encoding}
 end
 JointEncoding(xs...) = JointEncoding(collect(xs))
-Base.string(x::JointEncoding) = join(map(string,x.children),"_")
+Base.string(x::JointEncoding) = join(map(string, x.children), "_")
 
 """
-    encode(x,framerate,method)
+    encode(x, framerate, method)
 
 Encode data (stimlus or eeg) using the given method, outputing the results
 at the given sample rate.

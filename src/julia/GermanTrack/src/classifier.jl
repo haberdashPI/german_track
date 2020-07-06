@@ -1,6 +1,6 @@
 export testclassifier
 
-function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
+function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing, kwds...)
     if !isnothing(seed)
         numpy.random.seed(typemax(UInt32) & seed)
     end
@@ -19,14 +19,14 @@ function testclassifier(model;data,y,X,crossval,n_folds=10,seed=nothing,kwds...)
     result = Empty(DataFrame)
 
     # cross validation loop
-    _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test=:nothing)
+    _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test = :nothing)
     for (i, (trainids, testids)) in enumerate(_folds)
         train = @_ filter(_[crossval] in trainids, data)
         test = @_ filter(_[crossval] in testids, data)
 
         # check for at least 2 classes
         _labels = if length(unique(train[:, y])) < 2
-            @warn "Degenerate classification (1 class), bypassing training" maxlog=1
+            @warn "Degenerate classification (1 class), bypassing training" maxlog = 1
             fill(missing, size(test, 1))
         else
             # setup the model and fit it
