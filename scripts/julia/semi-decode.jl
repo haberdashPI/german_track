@@ -2,13 +2,16 @@ using DrWatson
 @quickactivate("german_track")
 nlags = 17
 fs = 64
+λ = 0.5
+n_epochs = 100
 
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang, ProgressMeter, Random, Formatting, Serialization, Flux, CUDA, HDF5
+    BangBang, ProgressMeter, Random, Formatting, Serialization, Flux, CUDA, HDF5, JSON
 
 import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
-trainfile = joinpath(processed_datadir("features"), "semi-decode-train.h5")
+trainfile = joinpath(processed_datadir("features"),
+    savename("semi-decode-train",(nlags=nlags,fs=fs),"h5"))
 if isfile(trainfile)
     x = h5read(trainfile, "x")
     y = h5read(trainfile, "y")
@@ -151,10 +154,10 @@ function rundecode(x,y,known_weights,ii,testset)
     CUDA.allowscalar(false)
     regressSS2(
         x,y,trainweights,trainii,
-        regularize = x -> 0.5sum(abs,x),
-        optimizer=AMSGrad(),
-        epochs = 100,
-        testcb = onvalidate,
+        regularize = x -> λ*sum(abs,x),
+        optimizer  = AMSGrad(),
+        epochs     = n_epochs,
+        testcb     = onvalidate,
     )
 end
 
@@ -165,9 +168,12 @@ result = rundecode(x,y,known_weights,ii,testset)
 # store the results
 isdir(processed_datadir("decode-params")) || mkdir(processed_datadir("decode-params"))
 resultfile = joinpath(processed_datadir("decode-params"),savename("semi-decode-result",
-    (nlags=nlags,fs=fs),"bson"))
+    (n_epochs=n_epochs,lambda=λ),"json"))
+DrWatson._wsave(file,data::Dict) = open(io -> JSON3.write(io,data), file, "w")
+JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) = JSON3.StructTypes.StringType()
 @tagsave resultfile Dict(
-    :weights => EEGCoding.weights(result),
-    :coefs => EEGCoding.coefs(result),
-    :testii => ii[testset]
+    :weights   => EEGCoding.weights(result),
+    :coefs     => EEGCoding.coefs(result),
+    :trainfile => trainfile,
+    :testset   => testset,
 )
