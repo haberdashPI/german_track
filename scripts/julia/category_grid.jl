@@ -396,7 +396,7 @@ end
         combine(__, [:winlen, :correct_mean] =>
             ((len, val) -> len[argmax(val)]) => :winlen)
 
-    best_windows_file = joinpath(paramdir, savename("best_windows_sal_target_time",
+    best_windows_file = joinpath(paramdir, savename("best-windows",
         (absolute = use_absolute_features, ), "json"))
 
     @tagsave best_windows_file Dict(
