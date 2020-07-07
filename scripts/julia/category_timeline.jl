@@ -58,7 +58,7 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 
 paramdir = processed_datadir("svm_params")
 best_windows_file = joinpath(paramdir,savename("best-windows",
-    (absolute    = use_absolute_features,), "json"))
+    (absolute = use_absolute_features,), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 # we use the best window length (determined by average performance across all window starts)
@@ -103,7 +103,7 @@ classdf_file = joinpath(cache_dir(),"data",
          n_winlens   = n_winlens,
          n_winstarts = n_winstarts),
         "csv"))
-if use_cache && isfile(classdf_file)
+if use_cache && isfile(classdf_file) && mtime(classdf_file) > mtime(best_windows_file)
     classdf = CSV.read(classdf_file)
 else
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |> filter(occursin(r".h5$",_), __)
@@ -160,48 +160,56 @@ end
 # Timelines
 # =================================================================
 
-function modelresult((key,sdf))
-    if length(unique(sdf.condition)) >= 2
-        params = (C = key[:C], gamma = key[:gamma])
-        testclassifier(SVC(;params...),
-            data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
-            crossval=:sid, seed=hash((params,seed)), n_folds=n_folds)
-    else
-        # in the case where there is one condition, this means that the selected window
-        # length has a condition for global but not the second category (object or spatial)
-        # this is an indication that the window length is present for use with a category
-        # other than the one currently being evaluated and can safely be ignored
+classfile = joinpath(paramdir, savename("timeline-classify",
+    (absolute = use_absolute_features,), "json"))
 
-        Empty(DataFrame)
+if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
+    predict = CSV.read(classfile)
+else
+    function modelresult((key,sdf))
+        if length(unique(sdf.condition)) >= 2
+            params = (C = key[:C], gamma = key[:gamma])
+            testclassifier(SVC(;params...),
+                data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
+                crossval=:sid, seed=hash((params,seed)), n_folds=n_folds)
+        else
+            # in the case where there is one condition, this means that the selected window
+            # length has a condition for global but not the second category (object or spatial)
+            # this is an indication that the window length is present for use with a category
+            # other than the one currently being evaluated and can safely be ignored
+
+            Empty(DataFrame)
+        end
     end
+
+    function classpredict(df, params, condition, variables...)
+        testgroups = @_ df |>
+            innerjoin(__, params, on=:sid) |>
+            groupby(__, [:winstart,:winlen, :wintype, variables...,:C,:gamma])
+        predictions = foldl(append!!, Map(modelresult),
+            collect(pairs(testgroups)), init=Empty(DataFrame))
+
+        processed = @_ predictions |>
+            groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>
+            combine(__,[:correct,:weight] => wmeanish => :correct_mean) |>
+            insertcols!(__,:condition => condition)
+
+        processed, predictions
+    end
+
+    objectdf = @_ classdf |>
+        filter(_.condition in ["global","object"],__)
+    object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit, :salience_label,
+        :target_time_label)
+
+    spatialdf = @_ classdf |>
+        filter(_.condition in ["global","spatial"],__)
+    spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit,
+        :salience_label, :target_time_label)
+
+    predict = vcat(object_predict,spatial_predict)
+    CSV.write(classfile, predict)
 end
-
-function classpredict(df, params, condition, variables...)
-    testgroups = @_ df |>
-        innerjoin(__, params, on=:sid) |>
-        groupby(__, [:winstart,:winlen, :wintype, variables...,:C,:gamma])
-    predictions = foldl(append!!, Map(modelresult),
-        collect(pairs(testgroups)), init=Empty(DataFrame))
-
-    processed = @_ predictions |>
-        groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>
-        combine(__,[:correct,:weight] => wmeanish => :correct_mean) |>
-        insertcols!(__,:condition => condition)
-
-    processed, predictions
-end
-
-objectdf = @_ classdf |>
-    filter(_.condition in ["global","object"],__)
-object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit, :salience_label,
-    :target_time_label)
-
-spatialdf = @_ classdf |>
-    filter(_.condition in ["global","spatial"],__)
-spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit,
-    :salience_label, :target_time_label)
-
-predict = vcat(object_predict,spatial_predict)
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
