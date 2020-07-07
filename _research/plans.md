@@ -1,22 +1,37 @@
+things I believe:
+
+There is a bump in accuracy shortly after 1s for the low-salience, early-target
+trials. More convincing for the object condition than spatial condition
+
+overall low-salience shows a classification advantage at later times for the object condition,
+
+things are less clear for the spatial condition, but maybe high is doing better here??? (depends on whether we consider baseline, and miss corrections)
+
+the early-trial targets have less classification accuracy, regardless of condition (but
+this does depend on whether we consider baseline and miss corrections), the time course
+of this effect is less interesting
+
+There is an overall effect in the interaction between early/late target and low/high salience:
+high&early and low&late are easier to differentiate than the other twos, for object
+only. Low early is hard to differentiate for the spatial (ignoring corrections)
+
 # Plans
-
-## Looking at timeline results
-
-Can we order the amount of correct responses by salience and target time within the three
-conditions? The prediction would be that early low salience targets are the hardest (worst
-performing)
+decisions to make
+- where to look at the time line?
+  - split by maximum derivative
+  - select overall best performance on each side of the split
 
 ## baseline analysis
 
 - show global spatial object (no other)
-- then different timing srelative to switches
+- then different timing relative to switches
 - looking at switches (far from targets)
 - can you classify difference of switch vs no switch (maybe? try it?)
 
 do all 3:
 
   1. within condition (global spatial object) after and before switch, after and later trial
-  2. still do object v global early late trial
+  2. still do object v global early late trial?
   3. show neural power
 
 look at raw power
@@ -24,26 +39,20 @@ for raw power: try a eucledean distance
 
 ## target timeline analysis
 
-- use C rather than ν parameterization of SVC to possibly avoid infeasible states
-  - did this once, doing again, to double check parameter range
++ use C rather than ν parameterization of SVC to possibly avoid infeasible states
+  + did this once, doing again, to double check parameter range
 - improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
   - does a median or a mean across window times change anything
 
 - can we get a way with not splitting the early/late window distinction for
   the interaction
+
 - then for target timing split into groups relative to the switch (as per the behavioral data)
 - just target time and salience of anova (no window start)
 
-- look at the raw window
+- look at the raw window (euclidean distance? if good maybe a difference plot)
 - also look at the baseline window just before
 
-  - 2x2 for salinece / target-timing
-  - try early late timing (for data summary, some way to split across all conditions)
-    - minimize difference with each split (across all conditions or within each?)
-  - freqmeans getting long (parallelize data?, threading doesn't seem to help...)
-
-  - try some raw analysis (look at spectrograms, spectrum, some view of bands???),
-    global condition (focus?)
   - try decoder with different lags (pick some best times)
 
 - next steps:
