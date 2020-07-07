@@ -117,7 +117,7 @@ else
 
 end
 
-# Hyper-parameter Optimization: Global v Object
+# Hyper-parameter Optimization
 # =================================================================
 
 objectdf = @_ classdf |> filter(_.condition in ["global", "object"], __)
