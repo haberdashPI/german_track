@@ -1,15 +1,24 @@
-using DrWatson; quickactivate(@__DIR__,"german_track")
+using DrWatson
+@quickactivate("german_track")
+
 using GermanTrack
+import GermanTrack: stim_info
 using VegaLite
+using DataFrames
+using JSON3
+using BangBang
+using Underscores
+using Dates
+using Statistics
+using Distributions
+using RCall
+R"library(ggplot2)"
 
-stim_info = JSON.parsefile(joinpath(stimulus_dir(),"config.json"))
-eeg_files = filter(x -> occursin(r"_mcca65\.bson$",x),readdir(processed_datadir("eeg")))
-
-df = mapreduce(vcat,eeg_files) do file
-    df_, sid = events_for_eeg(file,stim_info)
-    df_[!,:sid] .= sid
-    df_
-end
+df = @_ filter(occursin(r"\.h5$", _), readdir(processed_datadir("eeg"))) |>
+        mapreduce(events_for_eeg(_, stim_info), append!!, __) |>
+        insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
+        transform!(__,:hit => (x -> in.(x,Ref(["hit", "reject"]))) => :correct) |>
+        categorical!
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -19,27 +28,26 @@ function dprime(hits,falarm,n=1)
     quantile(Normal(),meanb(hits,n)) - quantile(Normal(),meanb(falarm,n))
 end
 
-dfsum = df |>
-    @groupby({_.sid,_.condition}) |>
-    @map({key(_)...,
-          dp = dprime(_.target_present .& _.correct,
-                      .!_.target_present .& .!_.correct),
-          mean = mean(_.correct),
-          truepos = mean(_.target_present .& _.correct),
-          trueneg = mean(.!_.target_present .& _.correct),
-          falsepos = mean(.!_.target_present .& .!_.correct),
-          falseneg = mean(_.target_present .& .!_.correct)}) |>
-    DataFrame
+dfsum = @_ df |>
+    groupby(__,[:sid,:condition]) |>
+    combine(__,
+        :correct                    => mean,
+        [:target_present, :correct] => ((t,cor) -> mean(  t .&   cor)) => :truepos,
+        [:target_present, :correct] => ((t,cor) -> mean(.!t .&   cor)) => :trueneg,
+        [:target_present, :correct] => ((t,cor) -> mean(.!t .& .!cor)) => :falsepos,
+        [:target_present, :correct] => ((t,cor) -> mean(  t .& .!cor)) => :falseneg,
+        [:target_present, :correct] => ((t,cor) -> dprime(t .& cor, t .& .!cor)) => :dp)
 
-condition = dfsum |>
-    @vlplot(x="condition:o") +
-    @vlplot(mark={:point, filled=true, size=100},
-        y={"mean(dp)", scale={zero=false}, title="d'"},
-        color={value=:black}) +
-    @vlplot(mark={:errorbar}, y={"dp:q", title="d'"}) +
-    @vlplot(mark={:point}, y={:dp, scale={zero=false}, title="d'"})
+R"""
+pl = ggplot($dfsum, aes(x = condition, y = dp, group = condition)) +
+    stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange',
+        fun.args = list(conf.int = 0.682), size = 1, aes(color = condition)) +
+    geom_point(size = 1, alpha = 0.4, position = position_jitter(width = 0.1))
+"""
 
-save(joinpath(dir,"behavior_summary.pdf"),condition)
+R"""
+ggsave(file.path($dir, "behavior_summary.pdf"), pl, width = 8, height = 6)
+"""
 
 condition_bytrues = dfsum |>
     @vlplot(
@@ -58,14 +66,36 @@ condition_byfalse = dfsum |>
         mark={:point,filled=true}, column=:condition,
         x=:falsepos, y=:dp)
 
-dftiming = df |>
-    @groupby({_.sid,_.condition,time_bin = 1.2*floor.(Int,_.target_time/1.2)}) |>
-    @map({key(_)...,
-          dp = dprime(_.target_present .& _.correct,
-                 .!_.target_present .& .!_.correct,1)}) |>
-    DataFrame
-
+dftiming = @_ df |>
+    transform!(__, :target_time => (x -> 1.2floor.(Int,x/1.2)) => :time_bin) |>
+    groupby(__, [:sid, :condition, :time_bin]) |>
+    combine(__, [:target_present, :correct] =>
+        ((t,cor) -> dprime(t .& cor, t .& .!cor)) => :dp)
 timing = dftiming |>
     @vlplot(:line,x=:time_bin,y=:dp,color="sid:o",column=:condition)
-
 save(joinpath(dir,"behavior_bytype.pdf"),timing)
+
+df_salience_time = @_ df |>
+    filter(_.target_present,__) |>
+    groupby(__, [:sid, :condition, :salience_label, :target_time_label]) |>
+    combine(__, :correct => mean)
+
+R"""
+pl = ggplot($df_salience_time, aes(
+        x     = target_time_label,
+        y     = correct_mean,
+        group = salience_label,
+        color = salience_label
+    )) +
+    stat_summary(fun.data = 'mean_cl_boot', geom = 'pointrange',
+        fun.args = list(conf.int = 0.682), size = 1,
+        position = position_dodge(width = 0.3)) +
+    geom_point(size = 1, alpha = 0.4,
+        position = position_jitterdodge(dodge.width = 0.5, jitter.width = 0.1)) +
+    scale_color_brewer(palette='Set1') +
+    facet_wrap(~condition)
+"""
+
+R"""
+ggsave(file.path($dir, "behavior_salience_timing.pdf"), pl, width = 8, height = 6)
+"""

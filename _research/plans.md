@@ -1,4 +1,13 @@
+# Plans
+
+## Looking at timeline results
+
+Can we order the amount of correct responses by salience and target time within the three
+conditions? The prediction would be that early low salience targets are the hardest (worst
+performing)
+
 ## baseline analysis
+
 - show global spatial object (no other)
 - then different timing srelative to switches
 - looking at switches (far from targets)
