@@ -270,7 +270,7 @@ if !use_slurm && !test_optimization
     @everywhere function modelresult((key, sdf))
         params = (C = key[:C], gamma = key[:gamma])
         testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
-            crossval = :sid, seed = hash((params, seed)))
+            crossval = :sid, seed = hash((params, seed)), n_folds = inner_n_folds)
     end
 
     testgroups = @_ objectdf |>
@@ -307,9 +307,9 @@ if !use_slurm && !test_optimization
             row = :target_time_label)
 
     if use_absolute_features
-        save(joinpath(dir, "object_grid_absolute.pdf"), pl)
+        save(File(format"PDF",joinpath(dir, "object_grid_absolute.pdf")), pl)
     else
-        save(joinpath(dir, "object_grid.pdf"), pl)
+        save(File(format"PDF",joinpath(dir, "object_grid.pdf")), pl)
     end
 end
 
@@ -325,7 +325,7 @@ if !use_slurm && !test_optimization
             Empty(DataFrame)
         else
             testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
-                crossval = :sid, seed = hash((params, seed)), n_folds = 3)
+                crossval = :sid, seed = hash((params, seed)), n_folds = inner_n_folds)
         end
     end
 
@@ -367,9 +367,9 @@ if !use_slurm && !test_optimization
 
 
     if use_absolute_features
-        save(joinpath(dir, "spatial_grid_absolute.pdf"), pl)
+        save(File(format"PDF",joinpath(dir, "spatial_grid_absolute.pdf")), pl)
     else
-        save(joinpath(dir, "spatial_grid.pdf"), pl)
+        save(File(format"PDF",joinpath(dir, "spatial_grid.pdf")), pl)
     end
 end
 
