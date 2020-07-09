@@ -1,3 +1,9 @@
+lessons from today:
+- the interaction between salience and window time is fragile,
+  many choices lead to a non-significant result with the simplified bar graph
+  the continuous-time plot looks very convincing however, if we don't want
+  to complicate things by showing this, how do approach this problme?
+
 things I believe:
 
 There is a bump in accuracy shortly after 1s for the low-salience, early-target
@@ -27,6 +33,9 @@ decisions to make
 - then different timing relative to switches
 - looking at switches (far from targets)
 - can you classify difference of switch vs no switch (maybe? try it?)
+
+
+ALSO: the buildup may occur across the trial, regardless of when the target arises
 
 do all 3:
 

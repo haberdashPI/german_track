@@ -16,70 +16,74 @@ using DSP
 using StatsBase
 using Random
 using Dates
+
 R"library(ggplot2)"
 R"library(cowplot)"
 R"library(lsr)"
+R"library(multcomp)"
+R"library(rstanarm)"
+R"library(Hmisc)"
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
 paramdir = processed_datadir("svm_params")
 classfile = joinpath(paramdir, savename("timeline-classify",
-    (absolute = use_absolute_features,), "json"))
+    (absolute = use_absolute_features,), "csv"))
 
-predict = CSV.read(classfile)
+predictdf = CSV.read(classfile)
 
 # Time split selection
 # =================================================================
 
 # select a validation set
+# we use a validation set (to avoid "double-dipping" the data)
+
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
-    unique(predict.sid), round(Int, 0.2length(unique(predict.sid))), replace = false)
-# validation_ids = unique(predict.sid)
-boundary_selection_data = @_ predict |>
-    filter(_.winstart > 0 && _.winstart < 2.8, __) |>
-    # use a validation set (to avoid "double-dipping" the data)
+    unique(predictdf.sid), round(Int, 0.1length(unique(predictdf.sid))), replace = false)
+# validation_ids = unique(predictdf.sid)
+lowpass = digitalfilter(Lowpass(0.2), Butterworth(5))
+boundary_selection_data = @_ predictdf |>
+    filter(_.winstart > 0.2 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
-    groupby(__, [:winstart]) |>
+    filter(_.hit == "hit", __) |>
+    groupby(__, [:winstart,:condition]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
-    sort!(__, :winstart)
-
-lowpass = digitalfilter(Lowpass(0.1), Butterworth(5))
-boundary_selection_data[!, :correct_mean_lp] =
-    filtfilt(lowpass, boundary_selection_data.correct_mean)
-
-split_time = @_ boundary_selection_data |>
     sort!(__, :winstart) |>
+    groupby(__,[:condition]) |>
+    transform!(__,:correct_mean => (x -> filtfilt(lowpass, x)) => :correct_mean_lp)
+
+split_times = @_ boundary_selection_data |>
+    groupby(__,[:condition]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[argmax(diff(x))+1]) => :maxtime) |>
-    only(__.maxtime)
+        ((x, t) -> t[argmax(diff(x))+1]) => :pos)
+splitg = groupby(split_times,:condition)
 
 before_time = @_ boundary_selection_data |>
-    filter(_.winstart < split_time, __) |>
+    filter(_.winstart < splitg[(condition = _.condition,)].pos[1], __) |>
+    groupby(__,[:condition]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[argmax(x)]) => :before) |>
-    only(__.before)
+        ((x, t) -> t[argmin(x)]) => :pos)
 
 after_time = @_ boundary_selection_data |>
-    filter(_.winstart > split_time, __) |>
+    filter(_.winstart >= splitg[(condition = _.condition,)].pos[1], __) |>
+    groupby(__,[:condition]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[argmax(x)]) => :after) |>
-    only(__.after)
-
-
-after_time = @_ boundary_selection_data.winstart |> unique |> sort! |> __[25]
+        ((x, t) -> t[argmax(x)]) => :pos)
 
 R"""
-ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + geom_line() +
+pl = ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + geom_line() +
     geom_line(aes(y = correct_mean_lp), alpha = 0.5) +
-    geom_vline(xintercept = $split_time,  linetype = 2, color = 'red') +
-    geom_vline(xintercept = $before_time, linetype = 2, color = 'gray') +
-    geom_vline(xintercept = $after_time,  linetype = 2, color = 'gray')
+    geom_vline(data = $split_times, aes(xintercept = pos), linetype = 2, color = 'red') +
+    geom_vline(data = $before_time, aes(xintercept = pos), linetype = 2, color = 'gray') +
+    geom_vline(data = $after_time,  aes(xintercept = pos), linetype = 2, color = 'gray') +
+    facet_wrap(~condition)
 """
 
 R"""
-ggsave(file.path($dir,"window_time_selection.pdf"))
+ggsave(file.path($dir,"window_time_selection.pdf"), pl)
 """
+
 
 # Plots
 # =================================================================
@@ -88,21 +92,29 @@ ggsave(file.path($dir,"window_time_selection.pdf"))
 # -----------------------------------------------------------------
 
 # find best performance for each condition before and after the selected split
-salience_df = @_ predict |>
-    filter(_.sid ∉ validation_ids,__) |>
-    filter(_.winstart ∈ [before_time, after_time], __) |>
-    transform!(__, :winstart => (x -> ifelse.(x .<= split_time, "early", "late")) =>
-        :winstart_label) |>
+beforeg = groupby(before_time, :condition)
+afterg  = groupby(after_time,  :condition)
+splitg = groupby(split_times, :condition)
+
+salience_df = @_ predictdf |>
+    # filter(_.sid ∉ validation_ids,__) |>
+    filter(_.winstart > 0,__) |>
+    transform!(__, [:winstart, :condition] =>
+        ByRow((t, c) -> (-0.75 < (splitg[(condition = c,)].pos[1] - t) < -0.2) ? "late" :
+                        (0.2 < (splitg[( condition = c,)].pos[1] - t) < 0.75) ? "early" :
+                        missing) => :winstart_label) |>
+    filter(!ismissing(_.winstart_label), __) |>
     groupby(__, [:winstart_label, :condition, :salience_label, :sid]) |>
     combine(__, :correct_mean => mean => :correct_mean)
 
 R"""
 pos = position_dodge(width = 0.6)
 pl = ggplot($salience_df, aes(x = winstart_label, y = correct_mean, group = salience_label)) +
-    stat_summary(fun.data = 'mean_cl_boot', aes(fill = salience_label), geom = 'bar',
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'bar',
         position = pos, width = 0.5) +
-    stat_summary(fun.data = 'mean_cl_boot', aes(fill = salience_label), geom = 'linerange',
-        fun.args = list(conf.int = 0.682), position = pos) +
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'linerange',
+        # fun.args = list(conf.int = 0.95),
+        position = pos) +
     geom_point(alpha = 0.4, aes(fill = salience_label),
         position = position_jitterdodge(jitter.width = 0.05, dodge.width = 0.6)) +
     facet_wrap(~condition) +
@@ -115,22 +127,39 @@ R"""
 ggsave(file.path($dir, "salience_bar.pdf"), pl, width = 8, height = 6)
 """
 
+CSV.write(joinpath(processed_datadir("analyses"), "spatial-timing.csv"), salience_df)
+objdf = @_ filter(_.condition == "object", salience_df)
 R"""
-model = lm(correct_mean ~ salience_label * winstart_label * condition,$salience_df)
+model = lm(correct_mean ~ salience_label * winstart_label,$objdf)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
 """
 
+spadf = @_ filter(_.condition == "spatial", salience_df)
+R"""
+model = lm(correct_mean ~ salience_label * winstart_label,$spadf)
+print(summary(model))
+print(anova(model))
+print(etaSquared(model))
+K = rbind(
+    "low_early  - high_early" = c(0, 1,  0,  0),
+    "low_late   - high_late"  = c(0, 1,  0,  1),
+    "high_early - high_late"  = c(0, 0, -1,  0),
+    "low_early  - low_late"   = c(0, 0, -1, -1)
+)
+print(summary(glht(model, linfct = K)))
+"""
+
 # Target timing
 # -----------------------------------------------------------------
 
+# todo: how do we pick the right times here? it should be something different
+# just do 0?
+
 # find best performance for each condition before and after the selected split
-target_time_df = @_ predict |>
-    filter(_.sid ∉ validation_ids,__) |>
-    filter(_.winstart ∈ [before_time, after_time], __) |>
-    transform!(__, :winstart => (x -> ifelse.(x .<= split_time, "early", "late")) =>
-        :winstart_label) |>
+target_time_df = @_ predictdf |>
+    filter(_.winstart == 0,__) |>
     groupby(__, [:condition, :target_time_label, :sid]) |>
     combine(__, :correct_mean => mean => :correct_mean)
 
@@ -166,9 +195,8 @@ print(etaSquared(model))
 # Salience x target timing
 # -----------------------------------------------------------------
 
-salience_target_df = @_ predict |>
-    filter(_.sid ∉ validation_ids,__) |>
-    filter(_.winstart ∈ [before_time, after_time], __) |>
+salience_target_df = @_ predictdf |>
+    filter(_.winstart == 0,__) |>
     groupby(__, [:condition, :target_time_label, :salience_label, :sid]) |>
     combine(__, :correct_mean => mean => :correct_mean)
 

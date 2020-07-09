@@ -161,7 +161,7 @@ end
 # =================================================================
 
 classfile = joinpath(paramdir, savename("timeline-classify",
-    (absolute = use_absolute_features,), "json"))
+    (absolute = use_absolute_features,), "csv"))
 
 if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
     predict = CSV.read(classfile)
@@ -309,6 +309,45 @@ R"""
 ggsave(file.path($dir,"object_salience_timeline_baseline.pdf"),pl,width=11,height=8)
 """
 
+# Timeline across salineece x target-time - miss
+# -----------------------------------------------------------------
+
+predict_miss = @_ predict |>
+    filter(_.winstart ≥ 0,__) |>
+    unstack(__,[:salience_label,:target_time_label,:condition,:sid,:winstart],
+        :hit,:correct_mean) |>
+    transform!(__,[:hit,:miss] => (-) => :correct_mean)
+
+band = @_ predict_miss |>
+    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+
+R"""
+pl = ggplot($band,aes(x=winstart,y=correct,
+        color=interaction(salience_label,target_time_label))) +
+    geom_ribbon(aes(ymin=low,ymax=high,
+        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
+    geom_line() + facet_grid(~condition) +
+    geom_abline(slope=0,intercept=0,linetype=2) +
+    guides(fill = guide_legend(title="Salience x Target time"),
+           color = guide_legend(title="Salience x Target time")) +
+    scale_fill_brewer( palette = 'Paired', direction = -1) +
+    scale_color_brewer(palette = 'Paired', direction = -1)
+    ylab('(Hit - Baseline) - (Miss - Baseline)')
+    # coord_cartesian(ylim=c(40,100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_timeline_miss.pdf"),pl,width=11,height=8)
+"""
+
 # Timeline across salineece x target-time - baseline - miss
 # -----------------------------------------------------------------
 
@@ -337,8 +376,8 @@ pl = ggplot($band,aes(x=winstart,y=correct,
     geom_abline(slope=0,intercept=0,linetype=2) +
     guides(fill = guide_legend(title="Salience x Target time"),
            color = guide_legend(title="Salience x Target time")) +
-    scale_fill_brewer(palette='Paired') +
-    scale_color_brewer(palette='Paired') +
+    scale_fill_brewer( palette = 'Paired', direction = -1) +
+    scale_color_brewer(palette = 'Paired', direction = -1)
     ylab('(Hit - Baseline) - (Miss - Baseline)')
     # coord_cartesian(ylim=c(40,100))
 pl
@@ -382,6 +421,26 @@ R"""
 ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
 """
 
+R"""
+pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = salience_label,
+                color = NULL)) +
+    geom_line() + facet_grid(~condition) +
+    scale_color_brewer(palette = 'Set1') +
+    scale_fill_brewer( palette = 'Set1') +
+    geom_abline(slope = 0, intercept = 50, linetype = 2) +
+    coord_cartesian(ylim = c(40, 70))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
+"""
+
 # Timeline across salience - baseline
 # -----------------------------------------------------------------
 
@@ -413,6 +472,39 @@ pl
 
 R"""
 ggsave(file.path($dir,"object_salience_baseline.pdf"),pl,width=11,height=8)
+"""
+
+# Timeline across salineece - miss
+# -----------------------------------------------------------------
+
+band = @_ predict_miss |>
+    groupby(__,[:winstart,:salience_label,:condition]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
+
+R"""
+pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = salience_label,
+                color = NULL)) +
+    geom_line() + facet_grid(~condition) +
+    scale_color_brewer(palette = 'Set1') +
+    scale_fill_brewer( palette = 'Set1') +
+    geom_abline(slope = 0, intercept = 0, linetype = 2)
+    # coord_cartesian(ylim = c(40, 100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_salience_miss.pdf"),pl,width=11,height=8)
 """
 
 # Timeline across salience - baseline - miss
@@ -519,6 +611,39 @@ pl
 
 R"""
 ggsave(file.path($dir, "object_target_time_baseline.pdf"), pl, width = 11, height = 8)
+"""
+
+# Timeline across salineece - miss
+# -----------------------------------------------------------------
+
+band = @_ predict_miss |>
+    groupby(__,[:winstart,:target_time_label,:condition]) |> #,:before]) |>
+    combine(:correct_mean => function(correct)
+        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
+        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
+        (correct = μ, low = low, high = high)
+    end,__) #|>
+    # transform!(__,[:salience,:before] =>
+    #     ((x,y) -> string.(x,"_",y)) => :target_time_for)
+
+R"""
+pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
+    geom_ribbon(
+            alpha = 0.4,
+            aes(ymin  = low,
+                ymax  = high,
+                fill  = target_time_label,
+                color = NULL)) +
+    geom_line() + facet_grid(~condition) +
+    scale_color_brewer(palette = 'Set1') +
+    scale_fill_brewer( palette = 'Set1') +
+    geom_abline(slope = 0, intercept = 0, linetype = 2)
+    # coord_cartesian(ylim = c(40, 100))
+pl
+"""
+
+R"""
+ggsave(file.path($dir,"object_target_time_miss.pdf"),pl,width=11,height=8)
 """
 
 # Timeline across target time - baseline - miss
