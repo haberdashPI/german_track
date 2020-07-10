@@ -391,6 +391,7 @@ ggsave(file.path($dir,"object_salience_timeline_miss_base.pdf"),pl,width=11,heig
 # -----------------------------------------------------------------
 
 band = @_ predict |>
+    filter(_.hit == "hit",__) |>
     filter(_.wintype != "baseline",__) |>
     groupby(__, [:winstart, :salience_label, :condition, :sid]) |> #, :before]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
