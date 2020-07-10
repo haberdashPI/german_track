@@ -130,9 +130,7 @@ ggsave(file.path($dir, "salience_bar.pdf"), pl, width = 8, height = 6)
 CSV.write(joinpath(processed_datadir("analyses"), "spatial-timing.csv"), salience_df)
 objdf = @_ filter(_.condition == "object", salience_df)
 R"""
-model = lm(correct_mean ~ salience_label * winstart_label,$objdf)
-print(summary(model))
-print(anova(model))
+summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $objdf))
 print(etaSquared(model))
 """
 
