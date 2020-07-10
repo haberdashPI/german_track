@@ -41,11 +41,11 @@ predictdf = CSV.read(classfile)
 # we use a validation set (to avoid "double-dipping" the data)
 
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
-    unique(predictdf.sid), round(Int, 0.1length(unique(predictdf.sid))), replace = false)
+    unique(predictdf.sid), round(Int, 0.2length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
 lowpass = digitalfilter(Lowpass(0.45), Butterworth(5))
 boundary_selection_data = @_ predictdf |>
-    filter(_.winstart > 0.2 && _.winstart < 2.0,__) |>
+    filter(_.winstart >= 0 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
     filter(_.hit == "hit", __) |>
     groupby(__, [:winstart,:condition]) |>
@@ -57,9 +57,17 @@ boundary_selection_data = @_ predictdf |>
 split_times = @_ boundary_selection_data |>
     groupby(__,[:condition]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[argmax(diff(x))+1]) => :pos)
+        (function (x, t)
+            dx = abs.(diff(x))
+            max = maxima(dx)
+            t[max[argmax(dx[max])]]
+        end) => :pos)
 splitg = groupby(split_times,:condition)
 
+function mymin(x, t)
+    m = minima(x)
+    isempty(m) ? t[argmin(x)] : t[m[end]]
+end
 before_time = @_ boundary_selection_data |>
     filter(_.winstart < splitg[(condition = _.condition,)].pos[1], __) |>
     groupby(__,[:condition]) |>
@@ -82,7 +90,7 @@ pl1 = ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + ge
 """
 
 cont_salience_df = @_ predictdf |>
-    # filter(_.sid ∉ validation_ids, __) |>
+    filter(_.sid ∉ validation_ids, __) |>
     filter(_.hit == "hit",__) |>
     filter(_.winstart > 0,__) |>
     groupby(__, [:winstart, :condition, :salience_label, :sid]) |>
@@ -119,7 +127,7 @@ splitg = groupby(split_times, :condition)
 salience_df = @_ predictdf |>
     filter(_.sid ∉ validation_ids,__) |>
     filter(_.hit == "hit",__) |>
-    filter(_.winstart > 0,__) |>
+    filter(_.winstart >= 0,__) |>
     transform!(__, [:winstart, :condition] =>
         ByRow((x, c) -> x == only(beforeg[(condition = c,)].pos) ? "early" :
                         x == only(afterg[( condition = c,)].pos) ? "late"  : missing) =>
