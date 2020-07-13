@@ -245,6 +245,9 @@ R"""
 ggsave(file.path($dir, "salience_target_time_bar.pdf"), pl, width = 8, height = 6)
 """
 
+CSV.write(joinpath(processed_datadir("analyses"), "salience-target-time.csv"),
+    salience_target_df)
+
 R"""
 model = lm(correct_mean ~ target_time_label * salience_label * condition,$salience_target_df)
 print(summary(model))
