@@ -4,6 +4,7 @@ library(cowplot)
 library(dplyr)
 library(rstanarm)
 library(bayestestR)
+library(gamm4)
 
 options(mc.cores = parallel::detectCores())
 
@@ -60,5 +61,11 @@ ggplot(hits, aes(x = winstart, y = correct_mean, group = interaction(salience_la
     geom_ribbon(data = hitmeans, aes(ymin=lower,ymax=upper, fill = interaction(salience_label, target_time_label)), alpha=0.3) +
     coord_cartesian(xlim=c(0,2))
 
-hitmodel2 = stan_gamm4(correct_mean ~ s(winstart) * salience_label * target_time_label,
-    data = hits, family = mgcv::betar)
+hitmodel2 = stan_gamm4(correct_mean ~ s(winstart),data = hits, family = mgcv::betar)
+
+hitmodel3 = stan_gamm4(correct_mean ~ s(winstart), data = hits)
+hitmodel3 = stan_gamm4(correct_mean ~ s(winstart) + salience_label, data = hits)
+hits$salience_label = factor(hits$salience_label)
+hitmodel3 = gamm4(correct_mean ~ s(winstart) + s(winstart, by = salience_label), data = hits)
+
+hitmodel3 = stan_gamm4(correct_mean ~ s(winstart,by=salience_label), data = hits, family = mgcv::betar)
