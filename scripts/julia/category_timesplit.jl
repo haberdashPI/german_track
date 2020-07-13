@@ -64,7 +64,7 @@ before_time = @_ boundary_selection_data |>
     filter(_.winstart < splitg[(condition = _.condition,)].pos[1], __) |>
     groupby(__,[:condition]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[minima(x)[end]]) => :pos)
+        ((x, t) -> t[maxima(x)[end]]) => :pos)
 
 after_time = @_ boundary_selection_data |>
     filter(_.winstart >= splitg[(condition = _.condition,)].pos[1], __) |>
