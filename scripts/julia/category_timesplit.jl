@@ -43,7 +43,7 @@ predictdf = CSV.read(classfile)
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
     unique(predictdf.sid), round(Int, 0.1length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
-lowpass = digitalfilter(Lowpass(0.4), Butterworth(5))
+lowpass = digitalfilter(Lowpass(0.45), Butterworth(5))
 boundary_selection_data = @_ predictdf |>
     filter(_.winstart > 0.2 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
@@ -158,7 +158,6 @@ R"""
 model = lm(correct_mean ~ salience_label * winstart_label,$objdf)
 print(summary(model))
 print(anova(model))
-
 print(summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $objdf)))
 print(etaSquared(model))
 """
@@ -169,13 +168,7 @@ model = lm(correct_mean ~ salience_label * winstart_label,$spadf)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
-K = rbind(
-    "low_early  - high_early" = c(0, 1,  0,  0),
-    "low_late   - high_late"  = c(0, 1,  0,  1),
-    "high_early - high_late"  = c(0, 0, -1,  0),
-    "low_early  - low_late"   = c(0, 0, -1, -1)
-)
-print(summary(glht(model, linfct = K)))
+print(summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $spadf)))
 """
 
 # Target timing
@@ -212,11 +205,14 @@ R"""
 ggsave(file.path($dir, "target_time_bar.pdf"), pl, width = 8, height = 6)
 """
 
+CSV.write(joinpath(processed_datadir("analyses"), "target-time.csv"), target_time_df)
 R"""
 model = lm(correct_mean ~ target_time_label * condition,$target_time_df)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
+print(summary(aov(correct_mean ~ target_time_label +
+    Error(sid / target_time_label), $target_time_df)))
 """
 
 # Salience x target timing
@@ -254,4 +250,6 @@ model = lm(correct_mean ~ target_time_label * salience_label * condition,$salien
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
+print(summary(aov(correct_mean ~ salience_label * target_time_label +
+    Error(sid / (salience_label/target_time_label)), $salience_target_df)))
 """
