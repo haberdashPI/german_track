@@ -66,6 +66,7 @@ hitmodel2 = stan_gamm4(correct_mean ~ s(winstart),data = hits, family = mgcv::be
 hitmodel3 = stan_gamm4(correct_mean ~ s(winstart), data = hits)
 hitmodel3 = stan_gamm4(correct_mean ~ s(winstart) + salience_label, data = hits)
 hits$salience_label = factor(hits$salience_label)
-hitmodel3 = gamm4(correct_mean ~ s(winstart) + s(winstart, by = salience_label), data = hits)
+hitmodel3 = stan_gamm4(correct_mean ~ s(winstart, by = salience_label), data = hits)
 
-hitmodel3 = stan_gamm4(correct_mean ~ s(winstart,by=salience_label), data = hits, family = mgcv::betar)
+hitmodel4 = stan_gamm4(correct_mean ~ s(winstart, by = salience_label),
+    random = ~(1 | sid), data = hits)
