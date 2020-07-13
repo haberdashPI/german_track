@@ -43,25 +43,40 @@ predictdf = CSV.read(classfile)
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
     unique(predictdf.sid), round(Int, 0.2length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
-lowpass = digitalfilter(Lowpass(0.4), Butterworth(5))
+lowpass = digitalfilter(Lowpass(0.2), Butterworth(5))
 boundary_selection_data = @_ predictdf |>
     filter(_.winstart >= 0 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
     filter(_.hit == "hit", __) |>
-    groupby(__, [:winstart,:condition]) |>
+    groupby(__, [:winstart,:salience_label,:target_time_label,:condition]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
     sort!(__, :winstart) |>
-    groupby(__,[:condition]) |>
+    groupby(__,[:condition,:salience_label,:target_time_label]) |>
     transform!(__,:correct_mean => (x -> filtfilt(lowpass, x)) => :correct_mean_lp)
 
 split_times = @_ boundary_selection_data |>
-    groupby(__,[:condition]) |>
+    groupby(__,[:condition,:salience_label,:target_time_label]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
         (function (x, t)
-            dx = abs.(diff(x))
-            max = maxima(dx)
-            t[max[argmax(dx[max])]]
+            points = sort!([minima(x); maxima(x)])
+            select = similar(points)
+            j = 0
+            for i in eachindex(points)
+                if j == 0 || abs(x[select[j]] - x[points[i]]) > 0.1
+                    j += 1
+                    select[j] = points[i]
+                end
+            end
+            t[select[1:j]]
         end) => :pos)
+
+R"""
+pl1 = ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + geom_line() +
+    geom_line(aes(y = correct_mean_lp), alpha = 0.5) +
+    geom_vline(data = $split_times, aes(xintercept = pos), linetype = 2, color = 'red') +
+    facet_grid(salience_label+target_time_label~condition)
+"""
+
 splitg = groupby(split_times,:condition)
 
 function mymin(x, t)
