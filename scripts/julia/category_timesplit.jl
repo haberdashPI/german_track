@@ -43,7 +43,7 @@ predictdf = CSV.read(classfile)
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
     unique(predictdf.sid), round(Int, 0.2length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
-lowpass = digitalfilter(Lowpass(0.2), Butterworth(5))
+lowpass = digitalfilter(Lowpass(0.4), Butterworth(5))
 boundary_selection_data = @_ predictdf |>
     filter(_.winstart >= 0 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
@@ -162,10 +162,12 @@ ggsave(file.path($dir, "salience_bar.pdf"), pl, width = 8, height = 6)
 CSV.write(joinpath(processed_datadir("analyses"), "spatial-timing.csv"), salience_df)
 objdf = @_ filter(_.condition == "object", salience_df)
 R"""
-model = lm(correct_mean ~ salience_label * winstart_label,$objdf)
+library()
+df = $objdf
+df$correct_mean = (df$correct_mean - 0.5)*0.99 + 0.5
+model = glm(correct_mean ~ salience_label * winstart_label, df, family = mgcv::betar)
 print(summary(model))
 print(anova(model))
-
 print(summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $objdf)))
 print(etaSquared(model))
 """
@@ -184,6 +186,41 @@ K = rbind(
 )
 print(summary(glht(model, linfct = K)))
 """
+
+R"""
+pos = position_dodge(width = 0.6)
+pl = ggplot($salience_df, aes(x = winstart_label, y = correct_mean, group = salience_label)) +
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'bar',
+        position = pos, width = 0.5) +
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'linerange',
+        # fun.args = list(conf.int = 0.95),
+        position = pos) +
+    geom_point(alpha = 0.4, aes(fill = salience_label),
+        position = position_jitterdodge(jitter.width = 0.05, dodge.width = 0.6)) +
+    facet_wrap(~condition) +
+    geom_hline(yintercept = 0.5, linetype = 2) +
+    scale_fill_brewer(palette = 'Set1') +
+    coord_cartesian(ylim = c(0.3, 1))
+"""
+
+# Target salience x target time
+# -----------------------------------------------------------------
+
+salience_target_time_df = @_ predictdf |>
+    filter(_.sid ∉ validation_ids,__) |>
+    filter(_.hit == "hit",__) |>
+    filter(_.winstart >= 0,__) |>
+    transform!(__, [:winstart, :condition] =>
+        ByRow((x, c) -> x == only(beforeg[(condition = c,)].pos) ? "early" :
+                        x == only(afterg[( condition = c,)].pos) ? "late"  : missing) =>
+            :winstart_label) |>
+    # transform!(__, [:winstart, :condition] =>
+    #     ByRow((t, c) -> (-0.75 < (splitg[(condition = c,)].pos[1] - t) < -0.2) ? "late" :
+    #                     (0.2 < (splitg[( condition = c,)].pos[1] - t) < 0.75) ? "early" :
+    #                     missing) => :winstart_label) |>
+    filter(!ismissing(_.winstart_label), __) |>
+    groupby(__, [:winstart_label, :target_timeLabel, :condition, :salience_label, :sid]) |>
+    combine(__, :correct_mean => mean => :correct_mean)
 
 # Target timing
 # -----------------------------------------------------------------
