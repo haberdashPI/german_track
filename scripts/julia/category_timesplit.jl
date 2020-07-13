@@ -43,25 +43,40 @@ predictdf = CSV.read(classfile)
 validation_ids = StatsBase.sample(MersenneTwister(hash((seed, :early_boundary))),
     unique(predictdf.sid), round(Int, 0.2length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
-lowpass = digitalfilter(Lowpass(0.2), Butterworth(5))
+lowpass = digitalfilter(Lowpass(0.45), Butterworth(5))
 boundary_selection_data = @_ predictdf |>
     filter(_.winstart >= 0 && _.winstart < 2.0,__) |>
     filter(_.sid ∈ validation_ids, __) |>
     filter(_.hit == "hit", __) |>
-    groupby(__, [:winstart,:condition]) |>
+    groupby(__, [:winstart,:salience_label,:target_time_label,:condition]) |>
     combine(__, :correct_mean => mean => :correct_mean) |>
     sort!(__, :winstart) |>
-    groupby(__,[:condition]) |>
+    groupby(__,[:condition,:salience_label,:target_time_label]) |>
     transform!(__,:correct_mean => (x -> filtfilt(lowpass, x)) => :correct_mean_lp)
 
 split_times = @_ boundary_selection_data |>
-    groupby(__,[:condition]) |>
+    groupby(__,[:condition,:salience_label,:target_time_label]) |>
     combine(__, [:correct_mean_lp, :winstart] =>
         (function (x, t)
-            dx = abs.(diff(x))
-            max = maxima(dx)
-            t[max[argmax(dx[max])]]
+            points = sort!([minima(x); maxima(x)])
+            select = similar(points)
+            j = 0
+            for i in eachindex(points)
+                if j == 0 || abs(x[select[j]] - x[points[i]]) > 0.1
+                    j += 1
+                    select[j] = points[i]
+                end
+            end
+            t[select[1:j]]
         end) => :pos)
+
+R"""
+pl1 = ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + geom_line() +
+    geom_line(aes(y = correct_mean_lp), alpha = 0.5) +
+    geom_vline(data = $split_times, aes(xintercept = pos), linetype = 2, color = 'red') +
+    facet_grid(salience_label+target_time_label~condition)
+"""
+
 splitg = groupby(split_times,:condition)
 
 function mymin(x, t)
@@ -71,7 +86,8 @@ end
 before_time = @_ boundary_selection_data |>
     filter(_.winstart < splitg[(condition = _.condition,)].pos[1], __) |>
     groupby(__,[:condition]) |>
-    combine(__, [:correct_mean_lp, :winstart] => mymin => :pos)
+    combine(__, [:correct_mean_lp, :winstart] =>
+        ((x, t) -> t[maxima(x)[end]]) => :pos)
 
 after_time = @_ boundary_selection_data |>
     filter(_.winstart >= splitg[(condition = _.condition,)].pos[1], __) |>
@@ -162,10 +178,11 @@ ggsave(file.path($dir, "salience_bar.pdf"), pl, width = 8, height = 6)
 CSV.write(joinpath(processed_datadir("analyses"), "spatial-timing.csv"), salience_df)
 objdf = @_ filter(_.condition == "object", salience_df)
 R"""
-model = lm(correct_mean ~ salience_label * winstart_label,$objdf)
+df = $objdf
+df$correct_mean = (df$correct_mean - 0.5)*0.99 + 0.5
+model = lm(correct_mean ~ salience_label * winstart_label, df)
 print(summary(model))
 print(anova(model))
-
 print(summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $objdf)))
 print(etaSquared(model))
 """
@@ -176,14 +193,43 @@ model = lm(correct_mean ~ salience_label * winstart_label,$spadf)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
-K = rbind(
-    "low_early  - high_early" = c(0, 1,  0,  0),
-    "low_late   - high_late"  = c(0, 1,  0,  1),
-    "high_early - high_late"  = c(0, 0, -1,  0),
-    "low_early  - low_late"   = c(0, 0, -1, -1)
-)
-print(summary(glht(model, linfct = K)))
+print(summary(aov(correct_mean ~ salience_label * winstart_label + Error(sid / (salience_label/winstart_label)), $spadf)))
 """
+
+R"""
+pos = position_dodge(width = 0.6)
+pl = ggplot($salience_df, aes(x = winstart_label, y = correct_mean, group = salience_label)) +
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'bar',
+        position = pos, width = 0.5) +
+    stat_summary(fun.data = 'mean_se', aes(fill = salience_label), geom = 'linerange',
+        # fun.args = list(conf.int = 0.95),
+        position = pos) +
+    geom_point(alpha = 0.4, aes(fill = salience_label),
+        position = position_jitterdodge(jitter.width = 0.05, dodge.width = 0.6)) +
+    facet_wrap(~condition) +
+    geom_hline(yintercept = 0.5, linetype = 2) +
+    scale_fill_brewer(palette = 'Set1') +
+    coord_cartesian(ylim = c(0.3, 1))
+"""
+
+# Target salience x target time
+# -----------------------------------------------------------------
+
+salience_target_time_df = @_ predictdf |>
+    filter(_.sid ∉ validation_ids,__) |>
+    filter(_.hit == "hit",__) |>
+    filter(_.winstart >= 0,__) |>
+    transform!(__, [:winstart, :condition] =>
+        ByRow((x, c) -> x == only(beforeg[(condition = c,)].pos) ? "early" :
+                        x == only(afterg[( condition = c,)].pos) ? "late"  : missing) =>
+            :winstart_label) |>
+    # transform!(__, [:winstart, :condition] =>
+    #     ByRow((t, c) -> (-0.75 < (splitg[(condition = c,)].pos[1] - t) < -0.2) ? "late" :
+    #                     (0.2 < (splitg[( condition = c,)].pos[1] - t) < 0.75) ? "early" :
+    #                     missing) => :winstart_label) |>
+    filter(!ismissing(_.winstart_label), __) |>
+    groupby(__, [:winstart_label, :target_timeLabel, :condition, :salience_label, :sid]) |>
+    combine(__, :correct_mean => mean => :correct_mean)
 
 # Target timing
 # -----------------------------------------------------------------
@@ -219,11 +265,14 @@ R"""
 ggsave(file.path($dir, "target_time_bar.pdf"), pl, width = 8, height = 6)
 """
 
+CSV.write(joinpath(processed_datadir("analyses"), "target-time.csv"), target_time_df)
 R"""
 model = lm(correct_mean ~ target_time_label * condition,$target_time_df)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
+print(summary(aov(correct_mean ~ target_time_label +
+    Error(sid / target_time_label), $target_time_df)))
 """
 
 # Salience x target timing
@@ -256,9 +305,14 @@ R"""
 ggsave(file.path($dir, "salience_target_time_bar.pdf"), pl, width = 8, height = 6)
 """
 
+CSV.write(joinpath(processed_datadir("analyses"), "salience-target-time.csv"),
+    salience_target_df)
+
 R"""
 model = lm(correct_mean ~ target_time_label * salience_label * condition,$salience_target_df)
 print(summary(model))
 print(anova(model))
 print(etaSquared(model))
+print(summary(aov(correct_mean ~ salience_label * target_time_label +
+    Error(sid / (salience_label/target_time_label)), $salience_target_df)))
 """
