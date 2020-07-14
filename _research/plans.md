@@ -21,17 +21,11 @@ There is an overall effect in the interaction between early/late target and low/
 high&early and low&late are easier to differentiate than the other twos, for object
 only. Low early is hard to differentiate for the spatial (ignoring corrections)
 
-# Plans
-decisions to make
-- where to look at the time line?
-  - split by maximum derivative
-  - select overall best performance on each side of the split
-
 ## baseline analysis
 
 - show global spatial object (no other)
-- then different timing relative to switches
-- looking at switches (far from targets)
+- then different timing relative to switches (just before, far from)
+  - looking at switches (far from targets)
 - can you classify difference of switch vs no switch (maybe? try it?)
 
 
@@ -48,21 +42,12 @@ for raw power: try a eucledean distance
 
 ## target timeline analysis
 
-+ use C rather than ν parameterization of SVC to possibly avoid infeasible states
-  + did this once, doing again, to double check parameter range
-- improve early/late window (something that is the same across subjects) (try a single point, median, mode, etc...)
-  - does a median or a mean across window times change anything
-
-- can we get a way with not splitting the early/late window distinction for
-  the interaction
-
 - then for target timing split into groups relative to the switch (as per the behavioral data)
-- just target time and salience of anova (no window start)
 
 - look at the raw window (euclidean distance? if good maybe a difference plot)
 - also look at the baseline window just before
 
-  - try decoder with different lags (pick some best times)
+- try decoder with different lags (pick some best times)
 
 - next steps:
   semi-supervised decoding?
