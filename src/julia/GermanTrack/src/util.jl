@@ -73,15 +73,16 @@ function windowtarget(trial,event,fs,from,to)
 end
 
 const baseline_seed = 2017_09_16
-function windowbaseline(trial,event,sid,trialnum,fs,from,to;mindist,minlen)
+function windowbaseline(trial,event,fs,from,to;mindist,minlen)
     si = event.sound_index
-    times = vcat(switch_times[si], target_times[si]) |> sort!
+    times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
+        switch_times[si]
     ranges = far_from(times, 10, mindist=mindist, minlength=minlen)
     if isempty(ranges)
         error("Could not find any valid region for baseline ",
               "'target'. Times: $(times)")
     end
-    at = sample_from_ranges(MersenneTwister(hash((baseline_seed,sid,trialnum))),ranges)
+    at = sample_from_ranges(MersenneTwister(hash((baseline_seed,event.sid,event.trial))),ranges)
     window = only_near(at,fs,window=(from,to))
 
     maxlen = size(trial,2)
