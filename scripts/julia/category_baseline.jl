@@ -122,6 +122,9 @@ else
     alert("Freqmeans Complete!")
 end
 
+# Window Classification
+# -----------------------------------------------------------------
+
 classfile = joinpath(cache_dir(), "data", savename("baseline-classify",
     (absolute = use_absolute_features,), "csv"))
 if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
