@@ -1,7 +1,7 @@
 import EEGCoding: AllIndices
 export clear_cache!, plottrial, only_near,
     not_near, bound, subdict, padmeanpower, far_from,
-    sample_from_ranges, ishit, windowtarget, windowbaseline,
+    sample_from_ranges, ishit, windowtarget, windowbaseline, windowswitch,
     find_decoder_training_trials
 
 using FFTW
@@ -67,26 +67,45 @@ end
 function windowtarget(trial,event,fs,from,to)
     window = only_near(event.target_time, max_trial_length, window=(from, to))
 
-    start = max(1,round(Int,window[1]*fs))
-    stop = min(round(Int,window[2]*fs),size(trial,2))
-    view(trial,:,start:stop)
+    start = max(1, round(Int, window[1]*fs))
+    stop = min(round(Int, window[2]*fs), size(trial, 2))
+    view(trial, :, start:stop)
+end
+
+const switch_seed = 2016_09_11
+function windowswitch(;kwds...)
+    function(trial, event, fs, from, to)
+        seed = hash((switch_seed, event.sid, event.trial))
+        si = event.sound_index
+        stimes = switch_times[si]
+
+        options = only_near(stimes, max_trial_length, window = (from, to))
+        window = rand(MersenneTwister(seed), options)
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
 end
 
 const baseline_seed = 2017_09_16
-function windowbaseline(trial,event,sid,trialnum,fs,from,to;mindist,minlen)
-    si = event.sound_index
-    times = vcat(switch_times[si], target_times[si]) |> sort!
-    ranges = far_from(times, 10, mindist=mindist, minlength=minlen)
-    if isempty(ranges)
-        error("Could not find any valid region for baseline ",
-              "'target'. Times: $(times)")
-    end
-    at = sample_from_ranges(MersenneTwister(hash((baseline_seed,sid,trialnum))),ranges)
-    window = only_near(at,fs,window=(from,to))
+function windowbaseline(;mindist, minlength)
+    function(trial,event,fs,from,to)
+        si = event.sound_index
+        times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
+            switch_times[si]
+        ranges = far_from(times, max_trial_length, mindist=mindist, minlength=minlength)
+        if isempty(ranges)
+            error("Could not find any valid region for baseline ",
+                "'target'. Times: $(times)")
+        end
+        at = sample_from_ranges(MersenneTwister(hash((baseline_seed,event.sid,event.trial))),ranges)
+        window = only_near(at,fs,window=(from,to))
 
-    maxlen = size(trial,2)
-    ixs = bound_indices(window,fs,maxlen)
-    view(trial,:,ixs)
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
 end
 
 function ishit(row; kwds...)

@@ -9,6 +9,8 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
 using BSON: @save, @load
 export CSV, @save, @load
 
+const max_trial_length = 10
+
 include("analyses.jl")
 include("util.jl")
 include("features.jl")
