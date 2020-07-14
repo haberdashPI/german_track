@@ -102,13 +102,19 @@ else
     classdf_groups = @_ events |> groupby(__,[:sid,:condition])
 
     progress = Progress(length(classdf_groups), desc="Computing frequency bins...")
+    classdf_groups = @_ events |>
+        filter(_.target_present,__) |>
+        insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
+        filter(_.hit ∈ ["hit", "miss"],__) |>
+        groupby(__,[:hit,:sid,:condition])
+
     classdf = combine(classdf_groups) do sdf
         winlens = best_winlens_for(sdf)
 
         x = mapreduce(append!!, winlens) do winlen
             si = sdf.sound_index
-            result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf, "target",
-                (len = winlen, start = -winlen))
+            result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf, "baseline",
+                (len = winlen, start = -winlen), baseline = (mindist = 0.25, minlen = 0.5))
             result[!,:winlen] .= winlen
             result
         end
@@ -158,11 +164,11 @@ else
 
     objectdf = @_ classdf |>
         filter(_.condition in ["global", "object"],__)
-    object_predict, object_raw = classpredict(objectdf, best_params, "object")
+    object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit)
 
     spatialdf = @_ classdf |>
         filter(_.condition in ["global", "spatial"],__)
-    spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial")
+    spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit)
 
     predict = vcat(object_predict,spatial_predict)
     CSV.write(classfile, predict)
@@ -175,11 +181,12 @@ isdir(dir) || mkdir(dir)
 # -----------------------------------------------------------------
 
 R"""
-pl = ggplot($predict, aes(x = condition, y = correct_mean)) +
-    stat_summary(fun.data = 'mean_cl_boot', aes(fill = condition),
-        geom = 'bar', width = 0.5) +
-    stat_summary(fun.data = 'mean_cl_boot', aes(fill = condition),
-        geom = 'linerange', fun.args = list(conf.int = 0.682)) +
+pos = position_dodge(width=0.8)
+pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = hit)) +
+    stat_summary(fun.data = 'mean_cl_boot',
+        geom = 'bar', width = 0.5, position = pos) +
+    stat_summary(fun.data = 'mean_cl_boot',
+        geom = 'linerange', fun.args = list(conf.int = 0.682), position = pos) +
     coord_cartesian(ylim = c(0.4, 1)) +
     geom_hline(yintercept = 0.5, linetype = 2)
 """
