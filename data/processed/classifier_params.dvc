@@ -1,0 +1,3 @@
+outs:
+- md5: 22b6ba98c3d26cf637a6f5854bdb2edf.dir
+  path: classifier_params

@@ -1,25 +1,15 @@
 source("src/R/setup.R")
+library(knitr)
 library(ggplot2)
 library(cowplot)
 library(dplyr)
 library(rstanarm)
 library(bayestestR)
 
-df = read.csv(file.path(processed_datadir,'analyses','target-time.csv'))
-df$correct_mean = (df$correct_mean - 0.5)*0.99 + 0.5
+classifier = 'svm_radial'
 
-summary(aov(correct_mean ~ target_time_label * condition +
-    Error(sid / (target_time_label/condition)), data = df))
-
-model = stan_glmer(correct_mean ~ target_time_label * condition + (1 | sid),
-    family = mgcv::betar, data = df)
-
-summary(model)
-pdir = p_direction(model)
-pd_to_p(p_direction(model)[[2]])
-pdir
-
-df = read.csv(file.path(processed_datadir,'analyses','salience-target-time.csv'))
+df = read.csv(file.path(processed_datadir,'analyses',
+    paste0('salience-target-time_classifier=',classifier,'.csv')))
 df$correct_mean = (df$correct_mean - 0.5)*0.99 + 0.5
 
 summary(aov(correct_mean ~ target_time_label * condition * salience_label +
@@ -28,7 +18,15 @@ summary(aov(correct_mean ~ target_time_label * condition * salience_label +
 model = stan_glmer(correct_mean ~ salience_label * target_time_label * condition + (1 | sid),
     family = mgcv::betar, data = df)
 
-summary(model)
-pdir = p_direction(model)
-pd_to_p(p_direction(model)[[2]])
-pdir
+coefnames = p_direction(model)[[1]]
+pval = pd_to_p(p_direction(model)[[2]])
+# Yes: p-values are terrible, so bad in fact that stan_glmer refuses to compute them for you
+# Yes: we need to report them; that's the reality of the publication process right now
+knitr::kable(cbind(
+    round(summary(model)[coefnames,c(1,3)], digits = 2),
+    "p-value" = ifelse(pval < 1e-3, "<1e-3", round(pval, digits=3)),
+    "sig" = ifelse(pval <= 0.001,"***",
+            ifelse(pval <= 0.01, "**",
+            ifelse(pval <= 0.05, "*",
+            ifelse(pval <= 0.1,  "~",""))))))
+

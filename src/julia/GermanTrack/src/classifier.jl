@@ -1,4 +1,41 @@
-export testclassifier
+export testclassifier, buildmodel, classifierparams
+
+const __classifierparams__ = (
+    svm_radial        = (:C,:gamma),
+    svm_linear        = (:C,),
+    gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
+    logistic_l1       = (:C,),
+)
+function classifierparams(obj, classifier)
+    (;(p => obj[p] for p in __classifierparams__[classifier])...)
+end
+
+function buildmodel(params, classifier, seed)
+    model = if classifier == :svm_radial
+        SVC(;params...)
+    elseif classifier == :svm_linear
+        SVC(
+            kernel = "linear",
+            random_state = hash((params, seed)) & typemax(UInt32);
+            params...
+        )
+    elseif classifier == :gradient_boosting
+        GradientBoostingClassifier(
+            loss             = "deviance",
+            random_state     = hash((params, seed)) & typemax(UInt32),
+            n_iter_no_change = 10,
+            max_features     = "auto";
+            params...
+        )
+    elseif classifier == :logistic_l1
+        LogisticRegression(
+            penalty      = "l1",
+            random_state = hash((params, seed)) & typemax(UInt32),
+            solver       = "liblinear";
+            params...
+        )
+    end
+end
 
 function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing, kwds...)
     if !isnothing(seed)
