@@ -28,7 +28,7 @@ R"library(Hmisc)"
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
 
-paramdir = processed_datadir("svm_params")
+paramdir = processed_datadir("classifier_params")
 classfile = joinpath(paramdir, savename("timeline-classify",
     (absolute = use_absolute_features,), "csv"))
 

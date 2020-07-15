@@ -47,7 +47,7 @@ print(ci95)
 ci95 <- posterior_interval(spmodel, prob = 0.95, pars = "salience_labellow:winstart_labellate")
 print(ci95)
 
-classfile = read.csv(file.path(processed_datadir, 'svm_params',
+classfile = read.csv(file.path(processed_datadir, 'classifier_params',
     'timeline-classify_absolute=true.csv'))
 
 hits = classfile %>% filter(winstart > 0, hit == 'hit', condition == 'object')

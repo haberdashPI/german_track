@@ -56,7 +56,7 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Freqmeans Analysis
 # =================================================================
 
-paramdir = processed_datadir("svm_params")
+paramdir = processed_datadir("classifier_params")
 best_windows_file = joinpath(paramdir,savename("best-windows",
     (absolute = use_absolute_features,), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
@@ -149,7 +149,7 @@ else
     alert("Freqmeans Complete!")
 end
 
-paramdir    = processed_datadir("svm_params")
+paramdir    = processed_datadir("classifier_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
     (absolute=use_absolute_features,),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame

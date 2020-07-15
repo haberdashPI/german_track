@@ -188,7 +188,7 @@ all_opts = (
 JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
     JSON3.StructTypes.StringType()
 
-paramdir = processed_datadir("svm_params")
+paramdir = processed_datadir("classifier_params")
 isdir(paramdir) || mkdir(paramdir)
 paramfile = joinpath(paramdir, savename("hyper-parameters",
     (absolute = use_absolute_features, ), "json"))

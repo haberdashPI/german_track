@@ -18,7 +18,7 @@ isdir(dir) || mkdir(dir)
 
 # ----------------------------- Fremeans Analysis ---------------------------- #
 
-best_windows = CSV.read(joinpath(datadir(),"svm_params","best_windows.csv"))
+best_windows = CSV.read(joinpath(datadir(),"classifier_params","best_windows.csv"))
 
 classdf_file = joinpath(cache_dir(),"data","freqmeans_baseline.csv")
 if use_cache && isfile(classdf_file)
@@ -47,7 +47,7 @@ objectdf = @_ classdf |>
     filter(_.condition in ["global","object"],__) |>
     filter(_1.winlen == winlens[(condition = "object", salience = _1.salience)].winlen[1],__)
 
-paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
+paramfile = joinpath(datadir(),"classifier_params","object_salience.csv")
 best_params = CSV.read(paramfile)
 
 
@@ -57,7 +57,7 @@ best_params = CSV.read(paramfile)
 # for now, this one:
 # train on hits, test on hits, train on misses, test on misses
 
-paramfile = joinpath(datadir(),"svm_params","object_salience.csv")
+paramfile = joinpath(datadir(),"classifier_params","object_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
 
@@ -108,7 +108,7 @@ spatialdf = @_ classdf |>
     filter(_.condition in ["global","spatial"],__) |>
     filter(_1.winlen == winlens[(condition = "spatial", salience = _1.salience)].winlen[1],__)
 
-paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
+paramfile = joinpath(datadir(),"classifier_params","spatial_salience.csv")
     best_params = CSV.read(paramfile)
 
 
@@ -118,7 +118,7 @@ paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
 # for now, this one:
 # train on hits, test on hits, train on misses, test on misses
 
-paramfile = joinpath(datadir(),"svm_params","spatial_salience.csv")
+paramfile = joinpath(datadir(),"classifier_params","spatial_salience.csv")
 best_params = CSV.read(paramfile)
 rename!(best_params,:subjects => :sid)
 best_params.nu = min.(0.7,best_params.nu)
