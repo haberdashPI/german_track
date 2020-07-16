@@ -11,6 +11,9 @@ num_local_procs = 1
 num_cluster_procs = 16
 use_absolute_features = true
 use_slurm = gethostname() == "lcap.cluster"
+classifiers = :svm_radial, :svm_linear, :gradient_boosting, :logistic_l1
+classifier = classifiers[3] # gradient_boosting
+classifier ∈ classifiers || error("Unexpected classifier $classifier")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
@@ -31,7 +34,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 using Distributed
 @static if use_slurm
     using ClusterManagers
-    if !(nprocs() > 1) && num_cluster_procs > 1
+    if !(nprocs() > 1) && num_cluster_procs > 1 && !test_optimization
         addprocs(SlurmManager(num_cluster_procs),
             partition = "CPU",
             t = "32:00:00",
@@ -45,8 +48,6 @@ else
 end
 
 @everywhere begin
-    seed = 072189
-
     using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
         Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
         StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
@@ -57,7 +58,12 @@ end
     wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 end
 
+@everywhere classifier = Symbol($(string(classifier))) # bug means we can't pass symbol values normally
+@everywhere seed = $seed
+
 @everywhere( @sk_import svm: SVC )
+@everywhere( @sk_import ensemble: GradientBoostingClassifier )
+@everywhere( @sk_import linear_model: LogisticRegression )
 
 if !use_slurm
     dir = joinpath(plotsdir(), string("results_", Date(now())))
@@ -77,8 +83,8 @@ if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     windows = [(len = len, start = start, before = -len)
-        for len in 2.0 .^ range(-1, 1, length = 10),
-            start in [0; 2.0 .^ range(-2, 2, length = 9)]]
+        for len in 2.0 .^ range(-1, 1, length = 7),
+            start in [0; 2.0 .^ range(-2, 2, length = 6)]]
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
         filter(occursin(r".h5$", _), __)
     subjects = Dict(
@@ -144,15 +150,44 @@ spatialdf = @_ classdf |> filter(_.condition in ["global", "spatial"], __)
     end
 
     function modelacc((key, sdf), params)
+        global classifier
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            result = testclassifier(SVC(;params...), data = sdf,
+            model = if classifier == :svm_radial
+                SVC(;params...)
+            elseif classifier == :svm_linear
+                SVC(
+                    kernel = "linear",
+                    random_state = hash((params, seed)) & typemax(UInt32);
+                    params...
+                )
+            elseif classifier == :gradient_boosting
+                GradientBoostingClassifier(
+                    loss             = "deviance",
+                    random_state     = hash((params, seed)) & typemax(UInt32),
+                    n_iter_no_change = 10,
+                    max_features     = "auto";
+                    params...
+                )
+            elseif classifier == :logistic_l1
+                LogisticRegression(
+                    penalty      = "l1",
+                    random_state = hash((params, seed)) & typemax(UInt32),
+                    solver       = "liblinear";
+                    params...
+                )
+            end
+
+            result = testclassifier(model, data = sdf,
                 y = :condition, X = r"channel", crossval = :sid, n_folds = inner_n_folds,
                 seed = hash((params, seed)))
-            return (mean = wmeanish(result.correct, result.weight),
+
+            return (
+                mean   = wmeanish(result.correct, result.weight),
                 weight = sum(result.weight),
-                NamedTuple(key)...)
+                NamedTuple(key)...
+            )
         catch e
             if e isa PyCall.PyError
                 @info "Error while evaluting function: $(e)"
@@ -167,10 +202,28 @@ end
 # Optimization
 # -----------------------------------------------------------------
 
-param_range = (C=(-3.0, 3.0), gamma=(-4.0, 1.0))
-param_by = (C = x -> 10^x, gamma = x -> 10^x)
+param_range, param_by = if classifier == :svm_radial
+    (C=(-3.0, 3.0), gamma=(-4.0, 1.0)), (C = x -> 10^x, gamma = x -> 10^x)
+elseif classifier ∈ (:svm_linear, :logistic_l1)
+    (C=(-3.0, 3.0), ), (C = x -> 10^x, )
+elseif classifier == :gradient_boosting
+    p = (
+        max_depth     = (1.0,  5.0),
+        n_estimators  = (10.0, 251.0),
+        learning_rate = (-3.0, 0.0),
+    )
+    f = (
+        max_depth     = x -> floor(Int,x),
+        n_estimators  = x -> floor(Int,x),
+        learning_rate = x -> 10^x,
+    )
+    p, f
+else
+    error("Unrecognized classifier: $classifier")
+end
+
 opts = (
-    MaxFuncEvals = test_optimization ? 6 : n_fun_evals,
+    MaxFuncEvals = test_optimization ? 2 : n_fun_evals,
     FitnessTolerance = 0.03,
     TargetFitness = 0.0,
     # PopulationSize = 25,
@@ -190,12 +243,16 @@ JSON3.StructTypes.StructType(::Type{<:CategoricalValue{<:String}}) =
 
 paramdir = processed_datadir("classifier_params")
 isdir(paramdir) || mkdir(paramdir)
-paramfile = joinpath(paramdir, savename("hyper-parameters",
-    (absolute = use_absolute_features, ), "json"))
+paramfile = joinpath(paramdir, savename("hyper-parameters", (
+    absolute   = use_absolute_features,
+    classifier = classifier,
+), "json"))
+
 if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
     progress = Progress(opts.MaxFuncEvals*n_folds, "Optimizing params...")
     let result = Empty(DataFrame)
         for (k, (train, test)) in enumerate(folds(n_folds, objectdf.sid |> unique))
+            reducefn = test_optimization ? foldl : dreduce
             Random.seed!(hash((seed, :object, k)))
 
             optresult = bboptimize(;all_opts...) do params
@@ -207,7 +264,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
                         :target_time_label]) |>
                     pairs |> collect
 
-                objectresult = dreduce(append!!,
+                objectresult = reducefn(append!!,
                     Map(i -> [modelacc(objectgr[i], tparams)]),
                     1:length(objectgr), init = Empty(Vector))
 
@@ -216,7 +273,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
                         :target_time_label]) |>
                     pairs |> collect
 
-                spatialresult = dreduce(append!!,
+                spatialresult = reducefn(append!!,
                     Map(i -> [modelacc(spatialgr[i], tparams)]),
                     1:length(spatialgr), init = Empty(Vector))
 
@@ -237,7 +294,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
             fold_params, fitness = best_candidate(optresult), best_fitness(optresult)
             fold_params_vals = @_ map(_1(_2), param_by, fold_params)
             fold_params = NamedTuple{keys(param_by)}(fold_params_vals)
-            result = append!!(result, DataFrame(sid = test; fold_params...))
+            result = append!!(result, DataFrame(sid = test, fitness = fitness; fold_params...))
         end
 
         ProgressMeter.finish!(progress)
@@ -307,9 +364,9 @@ if !use_slurm && !test_optimization
             row = :target_time_label)
 
     if use_absolute_features
-        save(File(format"PDF",joinpath(dir, "object_grid_absolute.pdf")), pl)
+        save(File(format"PDF",joinpath(dir, "object_grid_absolute_$(classifier).pdf")), pl)
     else
-        save(File(format"PDF",joinpath(dir, "object_grid.pdf")), pl)
+        save(File(format"PDF",joinpath(dir, "object_grid_$(classifier).pdf")), pl)
     end
 end
 
@@ -367,9 +424,9 @@ if !use_slurm && !test_optimization
 
 
     if use_absolute_features
-        save(File(format"PDF",joinpath(dir, "spatial_grid_absolute.pdf")), pl)
+        save(File(format"PDF",joinpath(dir, "spatial_grid_absolute_$classifier.pdf")), pl)
     else
-        save(File(format"PDF",joinpath(dir, "spatial_grid.pdf")), pl)
+        save(File(format"PDF",joinpath(dir, "spatial_grid_$classifier.pdf")), pl)
     end
 end
 
