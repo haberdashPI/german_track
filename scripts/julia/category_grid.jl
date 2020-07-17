@@ -12,7 +12,7 @@ num_cluster_procs = 16
 use_absolute_features = true
 use_slurm = gethostname() == "lcap.cluster"
 classifiers = :svm_radial, :svm_linear, :gradient_boosting, :logistic_l1
-classifier = classifiers[3] # gradient_boosting
+classifier = classifiers[4] # gradient_boosting
 classifier ∈ classifiers || error("Unexpected classifier $classifier")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -149,37 +149,39 @@ spatialdf = @_ classdf |> filter(_.condition in ["global", "spatial"], __)
         end
     end
 
+    function buildmodel(params, classifier)
+        model = if classifier == :svm_radial
+            SVC(;params...)
+        elseif classifier == :svm_linear
+            SVC(
+                kernel = "linear",
+                random_state = hash((params, seed)) & typemax(UInt32);
+                params...
+            )
+        elseif classifier == :gradient_boosting
+            GradientBoostingClassifier(
+                loss             = "deviance",
+                random_state     = hash((params, seed)) & typemax(UInt32),
+                n_iter_no_change = 10,
+                max_features     = "auto";
+                params...
+            )
+        elseif classifier == :logistic_l1
+            LogisticRegression(
+                penalty      = "l1",
+                random_state = hash((params, seed)) & typemax(UInt32),
+                solver       = "liblinear";
+                params...
+            )
+        end
+    end
+
     function modelacc((key, sdf), params)
         global classifier
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            model = if classifier == :svm_radial
-                SVC(;params...)
-            elseif classifier == :svm_linear
-                SVC(
-                    kernel = "linear",
-                    random_state = hash((params, seed)) & typemax(UInt32);
-                    params...
-                )
-            elseif classifier == :gradient_boosting
-                GradientBoostingClassifier(
-                    loss             = "deviance",
-                    random_state     = hash((params, seed)) & typemax(UInt32),
-                    n_iter_no_change = 10,
-                    max_features     = "auto";
-                    params...
-                )
-            elseif classifier == :logistic_l1
-                LogisticRegression(
-                    penalty      = "l1",
-                    random_state = hash((params, seed)) & typemax(UInt32),
-                    solver       = "liblinear";
-                    params...
-                )
-            end
-
-            result = testclassifier(model, data = sdf,
+            result = testclassifier(buildmodel(params, classifier), data = sdf,
                 y = :condition, X = r"channel", crossval = :sid, n_folds = inner_n_folds,
                 seed = hash((params, seed)))
 
@@ -220,6 +222,10 @@ elseif classifier == :gradient_boosting
     p, f
 else
     error("Unrecognized classifier: $classifier")
+end
+
+@everywhere begin
+    toparams(keyvals) = (;(p => keyvals[p] for p in keys($param_range))...)
 end
 
 opts = (
@@ -294,7 +300,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
             fold_params, fitness = best_candidate(optresult), best_fitness(optresult)
             fold_params_vals = @_ map(_1(_2), param_by, fold_params)
             fold_params = NamedTuple{keys(param_by)}(fold_params_vals)
-            result = append!!(result, DataFrame(sid = test, fitness = fitness; fold_params...))
+            result = append!!(result, DataFrame(sid = test, fold = k, fitness = fitness; fold_params...))
         end
 
         ProgressMeter.finish!(progress)
@@ -324,16 +330,18 @@ end
 
 if !use_slurm && !test_optimization
 
+    # TODO: create function to extract params
     @everywhere function modelresult((key, sdf))
-        params = (C = key[:C], gamma = key[:gamma])
-        testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
-            crossval = :sid, seed = hash((params, seed)), n_folds = inner_n_folds)
+        params = toparams(sdf[1,:])
+        testclassifier(buildmodel(params, classifier), data = sdf,
+            y = :condition, X = r"channel", crossval = :sid, seed = hash((params, seed)),
+            n_folds = inner_n_folds)
     end
 
     testgroups = @_ objectdf |>
         innerjoin(__, best_params, on = :sid) |>
-        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :C, :gamma])
-    object_classpredict = dreduce(append!!, Map(modelresult),
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :fold])
+    object_classpredict = foldl(append!!, Map(modelresult),
         collect(pairs(testgroups)), init = Empty(DataFrame))
 
     subj_means = @_ object_classpredict |>
@@ -376,19 +384,20 @@ end
 if !use_slurm && !test_optimization
 
     @everywhere function modelresult((key, sdf))
-        params = (C = key[:C], gamma = key[:gamma])
+        params = toparams(sdf[1,:])
         if length(unique(sdf.condition)) == 1
             @info "Skipping data with one class: $(first(sdf, 1))"
             Empty(DataFrame)
         else
-            testclassifier(SVC(;params...), data = sdf, y = :condition, X = r"channel",
-                crossval = :sid, seed = hash((params, seed)), n_folds = inner_n_folds)
+            testclassifier(buildmodel(params, classifier), data = sdf,
+                y = :condition, X = r"channel", crossval = :sid,
+                seed = hash((params, seed)), n_folds = inner_n_folds)
         end
     end
 
     testgroups = @_ spatialdf |>
         innerjoin(__, best_params, on = :sid) |>
-        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :C, :gamma])
+        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :fold])
     spatial_classpredict = foldl(append!!, Map(modelresult),
         collect(pairs(testgroups)), init = Empty(DataFrame))
 
@@ -428,6 +437,7 @@ if !use_slurm && !test_optimization
     else
         save(File(format"PDF",joinpath(dir, "spatial_grid_$classifier.pdf")), pl)
     end
+
 end
 
 # Find Best Window Length
