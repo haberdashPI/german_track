@@ -6,40 +6,52 @@ using DrWatson
 use_cache = true
 seed = 072189
 use_absolute_features = true
+classifier = :gradient_boosting
 n_winlens = 6
 n_winstarts = 64
 n_folds = 10
+n_procs = 6
 
-using EEGCoding,
-    GermanTrack,
-    DataFrames,
-    Statistics,
-    DataStructures,
-    Dates,
-    Underscores,
-    StatsBase,
-    Random,
-    Printf,
-    ProgressMeter,
-    VegaLite,
-    FileIO,
-    StatsBase,
-    RCall,
-    Bootstrap,
-    BangBang,
-    Transducers,
-    PyCall,
-    Distributions,
-    Alert,
-    JSON3,
-    JSONTables,
-    Formatting,
-    ScikitLearn,
-    Distributions
+using Distributed
 
-import GermanTrack: stim_info, speakers, directions, target_times, switch_times
+if !(nprocs() > 1) && n_procs > 1
+    addprocs(n_procs, exeflags = "--project=.")
+end
 
-@sk_import svm: SVC
+@everywhere begin
+    n_folds = $n_folds
+    classifier = Symbol($(string(classifier)))
+    seed = $seed
+
+    using EEGCoding,
+        GermanTrack,
+        DataFrames,
+        Statistics,
+        DataStructures,
+        Dates,
+        Underscores,
+        StatsBase,
+        Random,
+        Printf,
+        ProgressMeter,
+        VegaLite,
+        FileIO,
+        StatsBase,
+        RCall,
+        Bootstrap,
+        BangBang,
+        Transducers,
+        PyCall,
+        Distributions,
+        Alert,
+        JSON3,
+        JSONTables,
+        Formatting,
+        ScikitLearn,
+        Distributions
+
+    import GermanTrack: stim_info, speakers, directions, target_times, switch_times
+end
 
 dir = joinpath(plotsdir(),string("results_",Date(now())))
 isdir(dir) || mkdir(dir)
@@ -51,14 +63,16 @@ library(dplyr)
 library(Hmisc)
 """
 
-wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+@everywhere begin
+    wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+end
 
 # Freqmeans Analysis
 # =================================================================
 
 paramdir = processed_datadir("classifier_params")
 best_windows_file = joinpath(paramdir,savename("best-windows",
-    (absolute = use_absolute_features,), "json"))
+    (absolute = use_absolute_features, classifier = classifier), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 # we use the best window length (determined by average performance across all window starts)
@@ -100,6 +114,7 @@ end
 classdf_file = joinpath(cache_dir(),"data",
     savename("freqmeans_timeline",
         (absolute    = use_absolute_features,
+         classifier  = classifier,
          n_winlens   = n_winlens,
          n_winstarts = n_winstarts),
         "csv"))
@@ -121,6 +136,7 @@ else
         groupby(__,[:hit,:salience_label,:target_time_label,:sid,:condition])
 
     progress = Progress(length(classdf_groups),desc="Computing frequency bins...")
+    # TODO: parallelize these analyses
     classdf  = @_ classdf_groups |>
         combine(function(sdf)
             # setup the windows
@@ -151,7 +167,7 @@ end
 
 paramdir    = processed_datadir("classifier_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,),"json"))
+    (absolute = use_absolute_features, classifier = classifier),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -161,17 +177,17 @@ end
 # =================================================================
 
 classfile = joinpath(paramdir, savename("timeline-classify",
-    (absolute = use_absolute_features,), "csv"))
+    (absolute = use_absolute_features, classifier = classifier,), "csv"))
 
 if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
     predict = CSV.read(classfile)
 else
-    function modelresult((key,sdf))
+    @everywhere function modelresult((key,sdf))
         if length(unique(sdf.condition)) >= 2
-            params = (C = key[:C], gamma = key[:gamma])
-            testclassifier(SVC(;params...),
-                data=@_(filter(_.weight > 0,sdf)),y=:condition,X=r"channel",
-                crossval=:sid, seed=hash((params,seed)), n_folds=n_folds)
+            params = classifierparams(sdf[1,:], classifier)
+            testclassifier(buildmodel(params, classifier, seed),
+                data = @_(filter(_.weight > 0,sdf)),y = :condition,X = r"channel",
+                crossval = :sid, seed = hash((params,seed)), n_folds = n_folds)
         else
             # in the case where there is one condition, this means that the selected window
             # length has a condition for global but not the second category (object or spatial)
@@ -184,10 +200,12 @@ else
 
     function classpredict(df, params, condition, variables...)
         testgroups = @_ df |>
-            innerjoin(__, params, on=:sid) |>
-            groupby(__, [:winstart,:winlen, :wintype, variables...,:C,:gamma])
-        predictions = foldl(append!!, Map(modelresult),
-            collect(pairs(testgroups)), init=Empty(DataFrame))
+            innerjoin(__, params, on = :sid) |>
+            groupby(__, [:winstart, :winlen, :wintype, variables..., :fold])
+        testgroup_pairs = collect(pairs(testgroups))
+        predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
+            modelresult(key_sdf)
+        end
 
         processed = @_ predictions |>
             groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>
@@ -199,8 +217,8 @@ else
 
     objectdf = @_ classdf |>
         filter(_.condition in ["global","object"],__)
-    object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit, :salience_label,
-        :target_time_label)
+    object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit,
+        :salience_label, :target_time_label)
 
     spatialdf = @_ classdf |>
         filter(_.condition in ["global","spatial"],__)
@@ -252,139 +270,7 @@ pl
 """
 
 R"""
-ggsave(file.path($dir,"object_salience_timeline.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salience x target time - baseline
-# -----------------------------------------------------------------
-
-winstartish(wintype,winstart) = wintype == "baseline" ? -1.0 : winstart
-baseremove = @_ predict |>
-    transform!(__,[:wintype,:winstart] => ByRow(winstartish) => :winstartish) |>
-    unstack(__,[:salience_label,:target_time_label,:condition,:sid,:hit],:winstartish,:correct_mean,
-        renamecols = x -> Symbol("start",x))
-baseremove[:,r"start[0-9.]"] .-= Array(baseremove[:,r"start-1.0"])
-
-predict_baseline = @_ baseremove[:,Not(r"start-1.0")] |>
-    stack(__,All(r"start"),[:salience_label,:target_time_label,:condition,:sid,:hit],
-        variable_name=:winstart, value_name=:correct_mean) |>
-    transform!(__,:winstart =>
-        (x -> @.(parse(Float64, getindex(match(r"start([0-9.]+)",string(x)),1)))) =>
-        :winstart)
-
-band = @_ predict_baseline |>
-    filter(_.hit == "hit",__) |>
-    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band,
-        aes(    x = winstart,
-                y = correct,
-            color = interaction(salience_label, target_time_label))) +
-    geom_ribbon(
-        alpha = 0.4,
-        aes( ymin = low,
-             ymax = high,
-             fill = interaction(salience_label, target_time_label),
-            color = NULL)) +
-    geom_line() +
-    facet_grid(~condition) +
-    geom_abline(slope = 0, intercept = 0, linetype = 2) +
-    guides(fill  = guide_legend(title = "Salience x Target time"),
-           color = guide_legend(title = "Salience x Target time")) +
-    scale_fill_brewer( palette = 'Paired', direction = -1) +
-    scale_color_brewer(palette = 'Paired', direction = -1)
-    # coord_cartesian(ylim = c(40, 100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_timeline_baseline.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salineece x target-time - miss
-# -----------------------------------------------------------------
-
-predict_miss = @_ predict |>
-    filter(_.winstart ≥ 0,__) |>
-    unstack(__,[:salience_label,:target_time_label,:condition,:sid,:winstart],
-        :hit,:correct_mean) |>
-    transform!(__,[:hit,:miss] => (-) => :correct_mean)
-
-band = @_ predict_miss |>
-    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band,aes(x=winstart,y=correct,
-        color=interaction(salience_label,target_time_label))) +
-    geom_ribbon(aes(ymin=low,ymax=high,
-        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=0,linetype=2) +
-    guides(fill = guide_legend(title="Salience x Target time"),
-           color = guide_legend(title="Salience x Target time")) +
-    scale_fill_brewer( palette = 'Paired', direction = -1) +
-    scale_color_brewer(palette = 'Paired', direction = -1)
-    ylab('(Hit - Baseline) - (Miss - Baseline)')
-    # coord_cartesian(ylim=c(40,100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_timeline_miss.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salineece x target-time - baseline - miss
-# -----------------------------------------------------------------
-
-predict_base_miss = @_ predict_baseline |>
-    unstack(__,[:salience_label,:target_time_label,:condition,:sid,:winstart],
-        :hit,:correct_mean) |>
-    transform!(__,[:hit,:miss] => (-) => :correct_mean)
-
-
-band = @_ predict_base_miss |>
-    groupby(__,[:winstart,:salience_label,:target_time_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band,aes(x=winstart,y=correct,
-        color=interaction(salience_label,target_time_label))) +
-    geom_ribbon(aes(ymin=low,ymax=high,
-        fill=interaction(salience_label,target_time_label),color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=0,linetype=2) +
-    guides(fill = guide_legend(title="Salience x Target time"),
-           color = guide_legend(title="Salience x Target time")) +
-    scale_fill_brewer( palette = 'Paired', direction = -1) +
-    scale_color_brewer(palette = 'Paired', direction = -1)
-    ylab('(Hit - Baseline) - (Miss - Baseline)')
-    # coord_cartesian(ylim=c(40,100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_timeline_miss_base.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir,$("object_salience_timeline_$classifier.pdf")),pl,width=11,height=8)
 """
 
 # Timeline across salience
@@ -419,126 +305,7 @@ pl
 """
 
 R"""
-ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
-"""
-
-R"""
-pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
-    geom_ribbon(
-            alpha = 0.4,
-            aes(ymin  = low,
-                ymax  = high,
-                fill  = salience_label,
-                color = NULL)) +
-    geom_line() + facet_grid(~condition) +
-    scale_color_brewer(palette = 'Set1') +
-    scale_fill_brewer( palette = 'Set1') +
-    geom_abline(slope = 0, intercept = 50, linetype = 2) +
-    coord_cartesian(ylim = c(40, 70))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salience - baseline
-# -----------------------------------------------------------------
-
-band = @_ predict_baseline |>
-    groupby(__, [:winstart, :salience_label, :condition, :sid]) |> #, :before]) |>
-    combine(__, :correct_mean => mean => :correct_mean) |>
-    groupby(__, [:winstart, :salience_label, :condition]) |> #, :before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean, collect(skipmissing(correct)), BasicSampling(10_000))
-        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end, __) #|>
-
-R"""
-pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
-    geom_ribbon(
-            alpha = 0.4,
-            aes(ymin  = low,
-                ymax  = high,
-                fill  = salience_label,
-                color = NULL)) +
-    geom_line() + facet_grid(~condition) +
-    scale_color_brewer(palette = 'Set1') +
-    scale_fill_brewer( palette = 'Set1') +
-    geom_abline(slope = 0, intercept = 0, linetype = 2)
-    # coord_cartesian(ylim = c(40, 100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_baseline.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salineece - miss
-# -----------------------------------------------------------------
-
-band = @_ predict_miss |>
-    groupby(__,[:winstart,:salience_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band, aes(x = winstart, y = correct, color = salience_label)) +
-    geom_ribbon(
-            alpha = 0.4,
-            aes(ymin  = low,
-                ymax  = high,
-                fill  = salience_label,
-                color = NULL)) +
-    geom_line() + facet_grid(~condition) +
-    scale_color_brewer(palette = 'Set1') +
-    scale_fill_brewer( palette = 'Set1') +
-    geom_abline(slope = 0, intercept = 0, linetype = 2)
-    # coord_cartesian(ylim = c(40, 100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_miss.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across salience - baseline - miss
-# -----------------------------------------------------------------
-
-band = @_ predict_base_miss |>
-    groupby(__,[:winstart,:salience_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band,aes(x=winstart,y=correct,
-        color=salience_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,
-        fill=salience_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=0,linetype=2) +
-    guides(fill = guide_legend(title="Salience"),
-           color = guide_legend(title="Salience")) +
-    scale_fill_brewer(palette='Set1') +
-    scale_color_brewer(palette='Set1') +
-    ylab('(Hit - Baseline) - (Miss - Baseline)')
-    # coord_cartesian(ylim=c(40,100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_salience_miss_base.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir,$("object_salience_$classifier.pdf")),pl,width=11,height=8)
 """
 
 # Timeline across target time
@@ -575,107 +342,6 @@ pl
 """
 
 R"""
-ggsave(file.path($dir, "object_target_time.pdf"), pl, width = 11, height = 8)
+ggsave(file.path($dir, $("object_target_time_$classifier.pdf")), pl, width = 11, height = 8)
 """
 
-# Timeline across target time - baseline
-# -----------------------------------------------------------------
-
-band = @_ predict_baseline |>
-    # filter(_.before == "zero", __) |>
-    groupby(__, [:winstart, :target_time_label, :condition, :sid]) |> #, :before]) |>
-    combine(__, :correct_mean => mean => :correct_mean) |>
-    groupby(__, [:winstart, :target_time_label, :condition]) |> #, :before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean, collect(skipmissing(correct)), BasicSampling(10_000))
-        μ, low, high = 100 .* confint(bs, BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end, __) #|>
-    # transform!(__, [:salience, :before] =>
-    #     ((x, y) -> string.(x, "_", y)) => :salience_for)
-
-R"""
-pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
-    geom_ribbon(
-            alpha = 0.4,
-            aes(ymin  = low,
-                ymax  = high,
-                fill  = target_time_label,
-                color = NULL)) +
-    geom_line() + facet_grid(.~condition) +
-    scale_color_brewer(palette = 'Set2') +
-    scale_fill_brewer( palette = 'Set2') +
-    geom_abline(slope = 0, intercept = 0, linetype = 2)
-    # coord_cartesian(ylim = c(40, 100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir, "object_target_time_baseline.pdf"), pl, width = 11, height = 8)
-"""
-
-# Timeline across salineece - miss
-# -----------------------------------------------------------------
-
-band = @_ predict_miss |>
-    groupby(__,[:winstart,:target_time_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :target_time_for)
-
-R"""
-pl = ggplot($band, aes(x = winstart, y = correct, color = target_time_label)) +
-    geom_ribbon(
-            alpha = 0.4,
-            aes(ymin  = low,
-                ymax  = high,
-                fill  = target_time_label,
-                color = NULL)) +
-    geom_line() + facet_grid(~condition) +
-    scale_color_brewer(palette = 'Set1') +
-    scale_fill_brewer( palette = 'Set1') +
-    geom_abline(slope = 0, intercept = 0, linetype = 2)
-    # coord_cartesian(ylim = c(40, 100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_target_time_miss.pdf"),pl,width=11,height=8)
-"""
-
-# Timeline across target time - baseline - miss
-# -----------------------------------------------------------------
-
-band = @_ predict_base_miss |>
-    groupby(__,[:winstart,:target_time_label,:condition]) |> #,:before]) |>
-    combine(:correct_mean => function(correct)
-        bs = bootstrap(mean,collect(skipmissing(correct)),BasicSampling(10_000))
-        μ,low,high = 100 .* confint(bs,BasicConfInt(0.682))[1]
-        (correct = μ, low = low, high = high)
-    end,__) #|>
-    # transform!(__,[:salience,:before] =>
-    #     ((x,y) -> string.(x,"_",y)) => :salience_for)
-
-R"""
-pl = ggplot($band,aes(x=winstart,y=correct,
-        color=target_time_label)) +
-    geom_ribbon(aes(ymin=low,ymax=high,
-        fill=target_time_label,color=NULL),alpha=0.4) +
-    geom_line() + facet_grid(~condition) +
-    geom_abline(slope=0,intercept=0,linetype=2) +
-    guides(fill = guide_legend(title="Target Time"),
-           color = guide_legend(title="Target Time")) +
-    scale_fill_brewer(palette='Set2') +
-    scale_color_brewer(palette='Set2') +
-    ylab('(Hit - Baseline) - (Miss - Baseline)')
-    # coord_cartesian(ylim=c(40,100))
-pl
-"""
-
-R"""
-ggsave(file.path($dir,"object_target_time_miss_base.pdf"),pl,width=11,height=8)
-"""

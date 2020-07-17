@@ -4,7 +4,7 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5
+    JSON3, PyCall, HDF5, ScikitLearn
 
 using BSON: @save, @load
 export CSV, @save, @load
@@ -50,11 +50,21 @@ end
 
 const numpy = PyNULL()
 
+const SVC = PyNULL()
+const GradientBoostingClassifier = PyNULL()
+const LogisticRegression = PyNULL()
+
 function __init__()
     cache_dir = joinpath(projectdir(), "_research", "cache")
     EEGCoding.set_cache_dir!(cache_dir)
     copy!(numpy, pyimport_conda("numpy", "numpy"))
     isdir(cache_dir) || mkdir(cache_dir)
+
+    copy!(SVC, pyimport("sklearn.svm").SVC)
+    copy!(GradientBoostingClassifier,
+        pyimport("sklearn.ensemble").GradientBoostingClassifier)
+    copy!(LogisticRegression,
+        pyimport("sklearn.linear_model").LogisticRegression)
 end
 
 end

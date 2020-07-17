@@ -12,7 +12,7 @@ num_cluster_procs = 16
 use_absolute_features = true
 use_slurm = gethostname() == "lcap.cluster"
 classifiers = :svm_radial, :svm_linear, :gradient_boosting, :logistic_l1
-classifier = classifiers[4] # gradient_boosting
+classifier = classifiers[3] # gradient_boosting
 classifier ∈ classifiers || error("Unexpected classifier $classifier")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -43,7 +43,7 @@ using Distributed
     end
 else
     if !(nprocs() > 1) && num_local_procs > 1
-        addprocs(num_local_procs, exeflags = "--project = .")
+        addprocs(num_local_procs, exeflags = "--project=.")
     end
 end
 
@@ -149,39 +149,12 @@ spatialdf = @_ classdf |> filter(_.condition in ["global", "spatial"], __)
         end
     end
 
-    function buildmodel(params, classifier)
-        model = if classifier == :svm_radial
-            SVC(;params...)
-        elseif classifier == :svm_linear
-            SVC(
-                kernel = "linear",
-                random_state = hash((params, seed)) & typemax(UInt32);
-                params...
-            )
-        elseif classifier == :gradient_boosting
-            GradientBoostingClassifier(
-                loss             = "deviance",
-                random_state     = hash((params, seed)) & typemax(UInt32),
-                n_iter_no_change = 10,
-                max_features     = "auto";
-                params...
-            )
-        elseif classifier == :logistic_l1
-            LogisticRegression(
-                penalty      = "l1",
-                random_state = hash((params, seed)) & typemax(UInt32),
-                solver       = "liblinear";
-                params...
-            )
-        end
-    end
-
     function modelacc((key, sdf), params)
         global classifier
         # some values of nu may be infeasible, so we have to
         # catch those and return the worst possible fitness
         try
-            result = testclassifier(buildmodel(params, classifier), data = sdf,
+            result = testclassifier(buildmodel(params, classifier, seed), data = sdf,
                 y = :condition, X = r"channel", crossval = :sid, n_folds = inner_n_folds,
                 seed = hash((params, seed)))
 
@@ -222,10 +195,6 @@ elseif classifier == :gradient_boosting
     p, f
 else
     error("Unrecognized classifier: $classifier")
-end
-
-@everywhere begin
-    toparams(keyvals) = (;(p => keyvals[p] for p in keys($param_range))...)
 end
 
 opts = (
@@ -332,8 +301,8 @@ if !use_slurm && !test_optimization
 
     # TODO: create function to extract params
     @everywhere function modelresult((key, sdf))
-        params = toparams(sdf[1,:])
-        testclassifier(buildmodel(params, classifier), data = sdf,
+        params = classifierparams(sdf[1,:], classifier)
+        testclassifier(buildmodel(params, classifier, seed), data = sdf,
             y = :condition, X = r"channel", crossval = :sid, seed = hash((params, seed)),
             n_folds = inner_n_folds)
     end
@@ -384,12 +353,12 @@ end
 if !use_slurm && !test_optimization
 
     @everywhere function modelresult((key, sdf))
-        params = toparams(sdf[1,:])
+        params = classifierparams(sdf[1,:], classifier)
         if length(unique(sdf.condition)) == 1
             @info "Skipping data with one class: $(first(sdf, 1))"
             Empty(DataFrame)
         else
-            testclassifier(buildmodel(params, classifier), data = sdf,
+            testclassifier(buildmodel(params, classifier, seed), data = sdf,
                 y = :condition, X = r"channel", crossval = :sid,
                 seed = hash((params, seed)), n_folds = inner_n_folds)
         end
@@ -465,7 +434,7 @@ end
             ((len, val) -> len[argmax(val)]) => :winlen)
 
     best_windows_file = joinpath(paramdir, savename("best-windows",
-        (absolute = use_absolute_features, ), "json"))
+        (absolute = use_absolute_features, classifier = classifier), "json"))
 
     @tagsave best_windows_file Dict(
         :data => JSONTables.ObjectTable(Tables.columns(best_windows)),

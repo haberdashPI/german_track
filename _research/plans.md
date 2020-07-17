@@ -1,3 +1,11 @@
+- try different parmas or even a classifier for our "main" figure
+- classify spatial vs. object, wha'ts that look like
+
+- also keep working on windows near and far from switches
+- take a peak at the spectrograms
+
+## old
+
 lessons from today:
 - the interaction between salience and window time is fragile,
   many choices lead to a non-significant result with the simplified bar graph
