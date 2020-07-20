@@ -1,4 +1,3 @@
-- try different parmas or even a classifier for our "main" figure
 - classify spatial vs. object, wha'ts that look like
 
 - also keep working on windows near and far from switches
