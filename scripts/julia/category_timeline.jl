@@ -168,6 +168,7 @@ if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
     predict = CSV.read(classfile)
 else
     @everywhere function modelresult((key,sdf))
+        @infiltrate
         if length(unique(sdf.condition)) >= 2
             params = classifierparams(sdf[1,:], classifier)
             testclassifier(buildmodel(params, classifier, seed),
@@ -188,9 +189,11 @@ else
             innerjoin(__, params, on = :sid) |>
             groupby(__, [:winstart, :winlen, :wintype, variables..., :fold])
         testgroup_pairs = collect(pairs(testgroups))
-        predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
-            modelresult(key_sdf)
-        end
+
+        # predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
+        #     modelresult(key_sdf)
+        # end
+        predictions = foldl(append!!,Map(modelresult),testgroup_pairs)
 
         processed = @_ predictions |>
             groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>
@@ -210,7 +213,12 @@ else
     spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit,
         :salience_label, :target_time_label)
 
-    predict = vcat(object_predict,spatial_predict)
+    obj_v_spat_df = @_ classdf |>
+        filter(_.condition in ["object", "spatial"], __)
+    ovs_predict, ovs_raw = classpredict(obj_v_spat_df, best_params, "obj.v.spat", :hit,
+        :salience_label, :target_time_label)
+
+    predict = vcat(object_predict, spatial_predict, ovs_predict)
     CSV.write(classfile, predict)
 end
 

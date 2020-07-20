@@ -1,7 +1,7 @@
 - classify spatial vs. object, wha'ts that look like
+- take a peak at the spectrograms
 
 - also keep working on windows near and far from switches
-- take a peak at the spectrograms
 
 ## old
 
