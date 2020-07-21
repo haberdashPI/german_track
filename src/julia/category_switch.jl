@@ -65,6 +65,7 @@ library(Hmisc)
     wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 end
 
+# TODO: adapt the below analysis for switch
 # Baseline: object & spatial
 # =================================================================
 
