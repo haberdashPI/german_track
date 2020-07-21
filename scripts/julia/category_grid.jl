@@ -12,7 +12,7 @@ num_cluster_procs = 16
 use_absolute_features = true
 use_slurm = gethostname() == "lcap.cluster"
 classifiers = :svm_radial, :svm_linear, :gradient_boosting, :logistic_l1
-classifier = classifiers[3] # gradient_boosting
+classifier = classifiers[4]
 classifier ∈ classifiers || error("Unexpected classifier $classifier")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
@@ -299,7 +299,6 @@ end
 
 if !use_slurm && !test_optimization
 
-    # TODO: create function to extract params
     @everywhere function modelresult((key, sdf))
         params = classifierparams(sdf[1,:], classifier)
         testclassifier(buildmodel(params, classifier, seed), data = sdf,

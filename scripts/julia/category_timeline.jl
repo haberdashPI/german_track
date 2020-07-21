@@ -6,7 +6,7 @@ using DrWatson
 use_cache = true
 seed = 072189
 use_absolute_features = true
-classifier = :svm_radial
+classifier = :logistic_l1
 n_winlens = 6
 n_winstarts = 24
 winstart_max = 2
@@ -192,10 +192,10 @@ else
             groupby(__, [:winstart, :winlen, :wintype, variables..., :fold])
         testgroup_pairs = collect(pairs(testgroups))
 
-        # predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
-        #     modelresult(key_sdf)
-        # end
-        predictions = foldl(append!!,Map(modelresult),testgroup_pairs)
+        predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
+            modelresult(key_sdf)
+        end
+        # predictions = foldl(append!!,Map(modelresult),testgroup_pairs)
 
         processed = @_ predictions |>
             groupby(__,[:winstart, :wintype, variables...,:sid]) |> #,:before]) |>

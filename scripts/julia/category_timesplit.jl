@@ -5,7 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 seed = 072189
 use_absolute_features = true
-classifier = :gradient_boosting
+classifier = :logistic_l1
 
 using GermanTrack
 using EEGCoding
