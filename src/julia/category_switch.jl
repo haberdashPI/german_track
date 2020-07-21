@@ -170,7 +170,7 @@ else
     function classpredict(df, params, condition, variables...)
         testgroups = @_ df |>
             innerjoin(__, params, on=:sid) |>
-            groupby(__, [:winlen, variables..., :C, :gamma])
+            groupby(__, [:winlen, variables..., :fold])
         testgroup_pairs = collect(pairs(testgroups))
         predictions = @show progress @distributed (append!!) for key_sdf in testgroup_pairs
             modelresult(key_sdf)
