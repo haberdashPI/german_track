@@ -45,6 +45,7 @@ library(Hmisc)
 """
 
 wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+classifier = :svm_radial
 
 # Baseline: object & spatial
 # =================================================================
@@ -52,9 +53,9 @@ wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weight
 # Load SVM parameters
 # -----------------------------------------------------------------
 
-paramdir    = processed_datadir("svm_params")
+paramdir    = processed_datadir("classifier_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
-    (absolute=use_absolute_features,),"json"))
+    (absolute = use_absolute_features, classifier = classifier),"json"))
 best_params = jsontable(open(JSON3.read,paramfile,"r")[:data]) |> DataFrame
 if :subjects in propertynames(best_params) # some old files misnamed the sid column
     rename!(best_params,:subjects => :sid)
@@ -63,9 +64,9 @@ end
 # Compute frequincy bin power
 # -----------------------------------------------------------------
 
-paramdir = processed_datadir("svm_params")
+paramdir = processed_datadir("classifier_params")
 best_windows_file = joinpath(paramdir,savename("best-windows",
-    (absolute = use_absolute_features,), "json"))
+    (absolute = use_absolute_features, classifier = classifier), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 best_baseline = @_ best_windows |>
