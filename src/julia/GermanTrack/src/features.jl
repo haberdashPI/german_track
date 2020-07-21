@@ -1,6 +1,6 @@
 export compute_powerdiff_features, compute_powerbin_features, computebands
 
-function compute_powerdiff_features(eeg, data, region, window)
+function compute_powerdiff_features(eeg, data, windowfn, window)
     fs = framerate(eeg)
 
     freqdf = mapreduce(append!!, [:before, :after]) do timing
@@ -8,9 +8,7 @@ function compute_powerdiff_features(eeg, data, region, window)
             bounds = timing == :before ?
                 (window.before, window.before + window.len) :
                 (window.start, window.start + window.len)
-            region == "target" ?
-                windowtarget(eeg[row.trial_index], row, fs, bounds...) :
-                windowbaseline(eeg[row.trial_index], row, fs, bounds...)
+            windowfn(eeg[row.trial_index], row, fs, bounds...)
         end
         signal = reduce(hcat, windows)
         weight = sum(!isempty, windows)
@@ -42,14 +40,11 @@ function compute_powerdiff_features(eeg, data, region, window)
     end
 end
 
-function compute_powerbin_features(eeg, data, region, window;baseline=NamedTuple())
+function compute_powerbin_features(eeg, data, windowfn, window;baseline=NamedTuple())
     fs = framerate(eeg)
-
     windows = map(eachrow(data)) do row
         bounds = (window.start, window.start + window.len)
-        region == "target" ?
-            windowtarget(eeg[row.trial_index], row, fs, bounds...) :
-            windowbaseline(eeg[row.trial_index], row, fs, bounds...; baseline...)
+        windowfn(eeg[row.trial_index, row, fs, bounds...])
     end
     signal = reduce(hcat, windows)
     weight = sum(!isempty, windows)

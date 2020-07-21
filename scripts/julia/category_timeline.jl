@@ -132,10 +132,10 @@ else
             # compute features in each window
             x = mapreduce(append!!,windows) do (start,len,type)
                 result = if use_absolute_features
-                    compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf,"target",
+                    compute_powerbin_features(subjects[sdf.sid[1]].eeg,sdf, windowtarget,
                         (len = len, start = start))
                 else
-                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf,"target",
+                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg,sdf, windowtarget,
                         (len = len, start = start, before = -len))
                 end
                 result[!,:winstart] .= start

@@ -89,24 +89,20 @@ best_windows_file = joinpath(paramdir,savename("best-windows",
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 best_baseline = @_ best_windows |>
-    groupby(__,:condition) |>
     combine(__,:winlen => mean, :winlen => std)
-grouped_winlens = groupby(best_baseline, :condition)
 
 spread(scale,npoints)   = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
-function best_winlens_for(df)
-    best_winlen = df.condition[1] == "global" ? best_baseline :
-        grouped_winlens[(condition = df.condition[1],)]
-    winlens = reduce(vcat, spread.(best_winlen.winlen_mean, best_winlen.winlen_std,
-        n_winlens))
-end
-
-classdf_file = joinpath(cache_dir(), "data", savename("freqmeans_baseline",
+classdf_file = joinpath(cache_dir(), "data", savename("freqmeans_switch",
     (absolute  = use_absolute_features,
      n_winlens = n_winlens),
      "csv"))
+
+best_winlens = reduce(vcat, spread.(
+    only(best_baseline.winlen_mean),
+    only(best_baseline.winlen_std),
+    n_winlens))
 
 if use_cache && isfile(classdf_file) && mtime(classdf_file) > mtime(best_windows_file)
     classdf = CSV.read(classdf_file)
@@ -122,19 +118,14 @@ else
     classdf_groups = @_ events |> groupby(__,[:sid,:condition])
 
     progress = Progress(length(classdf_groups), desc="Computing frequency bins...")
-    classdf_groups = @_ events |>
-        filter(_.target_present,__) |>
-        insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
-        filter(_.hit ∈ ["hit", "miss"],__) |>
-        groupby(__,[:hit,:sid,:condition])
+    classdf_groups = @_ events |> groupby(__,[:sid,:condition])
 
     classdf = combine(classdf_groups) do sdf
-        winlens = best_winlens_for(sdf)
-
-        x = mapreduce(append!!, winlens) do winlen
+        x = mapreduce(append!!, best_winlens) do winlen
             si = sdf.sound_index
-            result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf, "baseline",
-                (len = winlen, start = -winlen), baseline = (mindist = 0.25, minlen = 0.5))
+            result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+                windowswitch(:near), (len = winlen, start = -winlen),
+                baseline = (mindist = 0.25, minlen = 0.5))
             result[!,:winlen] .= winlen
             result
         end

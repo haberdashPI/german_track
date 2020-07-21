@@ -72,6 +72,17 @@ function windowtarget(trial,event,fs,from,to)
     view(trial,:,start:stop)
 end
 
+function windowswitch(class)
+    function(trial, event, sid, trialnum, fs, from, to;mindist,minlen)
+        si = event.sound_index
+        times = switch_times[si]
+        ranges = class == :near ? only_near(times, fs, window = (from, to)) :
+            class == :far ? far_from(ttimes, fs, window = (from, to), mindist = mindist,
+                minlength = minlen) : nothing
+        # TODO: WIP find windows near or far from a switch
+    end
+end
+
 const baseline_seed = 2017_09_16
 function windowbaseline(trial,event,fs,from,to;mindist,minlen)
     si = event.sound_index
