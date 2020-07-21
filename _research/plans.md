@@ -1,7 +1,8 @@
 - classify spatial vs. object, wha'ts that look like
+- try highly regularized L1; look at coefficients
+- take a peak at the spectrograms
 
 - also keep working on windows near and far from switches
-- take a peak at the spectrograms
 
 ## old
 

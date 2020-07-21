@@ -84,6 +84,8 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 
 ### RBF SVM
 
+**OUTDATED**
+
 |                                                         |mean  |sd   |p-value |sig |
 |:--------------------------------------------------------|:-----|:----|:-------|:---|
 |(Intercept)                                              |0.44  |0.16 |0.006   |**  |
@@ -97,6 +99,8 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 |(phi)                                                    |5.66  |0.59 |<1e-3   |*** |
 
 ### L1 Regularized Logistic L1 classification
+
+**OUTDATED**
 
 |                                                         |mean  |sd   |p-value |sig |
 |:--------------------------------------------------------|:-----|:----|:-------|:---|
@@ -114,12 +118,16 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 
 |                                                         |mean  |sd   |p-value |sig |
 |:--------------------------------------------------------|:-----|:----|:-------|:---|
-|(Intercept)                                              |0.18  |0.13 |0.159   |    |
-|salience_labellow                                        |-0.11 |0.18 |0.55    |    |
-|target_time_labellate                                    |-0.01 |0.18 |0.976   |    |
-|conditionspatial                                         |1.02  |0.19 |<1e-3   |*** |
-|salience_labellow:target_time_labellate                  |1.01  |0.25 |<1e-3   |*** |
-|salience_labellow:conditionspatial                       |-0.77 |0.26 |0.006   |**  |
-|target_time_labellate:conditionspatial                   |0.1   |0.27 |0.722   |    |
-|salience_labellow:target_time_labellate:conditionspatial |1.22  |0.39 |<1e-3   |*** |
-|(phi)                                                    |9.33  |0.96 |<1e-3   |*** |
+|(Intercept)                                              |0.16  |0.13 |0.226   |    |
+|salience_labellow                                        |-0.01 |0.18 |0.959   |    |
+|target_time_labellate                                    |0.87  |0.19 |<1e-3   |*** |
+|conditionobject                                          |0.26  |0.18 |0.157   |    |
+|conditionspatial                                         |1.18  |0.2  |<1e-3   |*** |
+|salience_labellow:target_time_labellate                  |-0.48 |0.26 |0.062   |~   |
+|salience_labellow:conditionobject                        |-0.24 |0.25 |0.348   |    |
+|salience_labellow:conditionspatial                       |-0.97 |0.26 |<1e-3   |*** |
+|target_time_labellate:conditionobject                    |-1.45 |0.26 |<1e-3   |*** |
+|target_time_labellate:conditionspatial                   |-0.79 |0.28 |0.004   |**  |
+|salience_labellow:target_time_labellate:conditionobject  |1.98  |0.37 |<1e-3   |*** |
+|salience_labellow:target_time_labellate:conditionspatial |2.66  |0.4  |<1e-3   |*** |
+|(phi)                                                    |9.47  |0.79 |<1e-3   |*** |
