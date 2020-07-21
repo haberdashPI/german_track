@@ -6,7 +6,7 @@ library(dplyr)
 library(rstanarm)
 library(bayestestR)
 
-classifier = 'svm_radial'
+classifier = 'gradient_boosting'
 
 df = read.csv(file.path(processed_datadir,'analyses',
     paste0('salience-target-time_classifier=',classifier,'.csv')))
@@ -30,3 +30,4 @@ knitr::kable(cbind(
             ifelse(pval <= 0.05, "*",
             ifelse(pval <= 0.1,  "~",""))))))
 
+anova(model)

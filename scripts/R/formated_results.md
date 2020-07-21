@@ -114,12 +114,12 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 
 |                                                         |mean  |sd   |p-value |sig |
 |:--------------------------------------------------------|:-----|:----|:-------|:---|
-|(Intercept)                                              |0.18  |0.13 |0.159   |    |
-|salience_labellow                                        |-0.11 |0.18 |0.55    |    |
-|target_time_labellate                                    |-0.01 |0.18 |0.976   |    |
-|conditionspatial                                         |1.02  |0.19 |<1e-3   |*** |
-|salience_labellow:target_time_labellate                  |1.01  |0.25 |<1e-3   |*** |
-|salience_labellow:conditionspatial                       |-0.77 |0.26 |0.006   |**  |
-|target_time_labellate:conditionspatial                   |0.1   |0.27 |0.722   |    |
-|salience_labellow:target_time_labellate:conditionspatial |1.22  |0.39 |<1e-3   |*** |
-|(phi)                                                    |9.33  |0.96 |<1e-3   |*** |
+|(Intercept)                                              |0.4   |0.13 |0.002   |**  |
+|salience_labellow                                        |-0.29 |0.18 |0.107   |    |
+|target_time_labellate                                    |-0.4  |0.18 |0.028   |*   |
+|conditionspatial                                         |0.8   |0.2  |<1e-3   |*** |
+|salience_labellow:target_time_labellate                  |1.38  |0.27 |<1e-3   |*** |
+|salience_labellow:conditionspatial                       |-0.58 |0.27 |0.034   |*   |
+|target_time_labellate:conditionspatial                   |0.49  |0.27 |0.068   |~   |
+|salience_labellow:target_time_labellate:conditionspatial |0.82  |0.41 |0.05    |*   |
+|(phi)                                                    |8.94  |0.92 |<1e-3   |*** |

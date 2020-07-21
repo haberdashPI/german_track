@@ -5,7 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 seed = 072189
 use_absolute_features = true
-classifier = :svm_radial
+classifier = :gradient_boosting
 
 using GermanTrack
 using EEGCoding
@@ -56,7 +56,7 @@ boundary_selection_data = @_ predictdf |>
 
 start_times = @_ boundary_selection_data |>
     combine(__, [:correct_mean_lp, :winstart] =>
-        ((x, t) -> t[argmax(x)]) => :pos)
+        ((x, t) -> t[maxima(x)[1]]) => :pos)
 
 R"""
 pl1 = ggplot($boundary_selection_data, aes(x = winstart, y = correct_mean)) + geom_line() +
@@ -93,7 +93,7 @@ ggsave2(file.path($dir, $("window_time_selection_$(classifier).pdf")), pl)
 
 # find best performance for each condition before and after the selected split
 target_time_df = @_ predictdf |>
-    filter(_.winstart == only(startg[(condition = _.condition,)].pos),__) |>
+    filter(_.winstart == only(start_times.pos),__) |>
     groupby(__, [:condition, :target_time_label, :sid]) |>
     combine(__, :correct_mean => mean => :correct_mean)
 
@@ -123,7 +123,7 @@ ggsave(file.path($dir, $("target_time_bar_$(classifier).pdf")), pl, width = 8, h
 # -----------------------------------------------------------------
 
 salience_target_df = @_ predictdf |>
-    filter(_.winstart == only(startg[(condition = _.condition,)].pos),__) |>
+    filter(_.winstart == only(start_times.pos),__) |>
     groupby(__, [:condition, :target_time_label, :salience_label, :sid]) |>
     combine(__, :correct_mean => mean => :correct_mean)
 

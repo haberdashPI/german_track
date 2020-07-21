@@ -8,7 +8,7 @@ seed = 072189
 use_absolute_features = true
 classifier = :gradient_boosting
 n_winlens = 6
-n_winstarts = 64
+n_winstarts = 24
 n_folds = 10
 n_procs = 6
 
@@ -82,33 +82,18 @@ spread(scale,npoints)   = x -> spread(x,scale,npoints)
 spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 windowtypes = ["target", "baseline"]
 
-grouped_winlens = groupby(best_windows,[:salience_label,:target_time_label,:condition])
+grouped_winlens = groupby(best_windows,[:salience_label,:target_time_label])
 function best_windows_for(df)
-    best_winlen = if df.condition[1] == "global"
-        vcat(grouped_winlens[(
+    best_winlen = grouped_winlens[(
             salience_label    = df.salience_label[1],
             target_time_label = df.target_time_label[1],
-            condition         = "object"
-        )].winlen,
-        grouped_winlens[(
-            salience_label    = df.salience_label[1],
-            target_time_label = df.target_time_label[1],
-            condition         = "spatial"
-        )].winlen)
-    else
-        grouped_winlens[(
-            salience_label    = df.salience_label[1],
-            target_time_label = df.target_time_label[1],
-            condition   = df.condition[1]
         )].winlen
-    end
     winlens   = reduce(vcat,spread.(best_winlen,0.5,n_winlens))
-    winstarts =  range(0,3,length=n_winstarts)
+    winstarts =  range(0,2,length=n_winstarts)
 
     Iterators.flatten(
         [Iterators.product(winstarts, winlens,["target"]),
          zip(.-winlens, winlens, fill("baseline", length(winlens)))])
-
 end
 
 classdf_file = joinpath(cache_dir(),"data",

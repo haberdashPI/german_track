@@ -429,7 +429,7 @@ end
         insertcols!(__, :condition => "spatial")
 
     best_windows = @_ vcat(object_winlen_means, spatial_winlen_means) |>
-        groupby(__, [:salience_label, :target_time_label, :condition]) |>
+        groupby(__, [:salience_label, :target_time_label]) |>
         combine(__, [:winlen, :correct_mean] =>
             ((len, val) -> len[argmax(val)]) => :winlen)
 
