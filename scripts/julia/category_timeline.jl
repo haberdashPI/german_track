@@ -6,7 +6,7 @@ using DrWatson
 use_cache = true
 seed = 072189
 use_absolute_features = true
-classifier = :gradient_boosting
+classifier = :svm_radial
 n_winlens = 6
 n_winstarts = 24
 winstart_max = 2
@@ -105,6 +105,7 @@ classdf_file = joinpath(cache_dir(),"data",
          winstart_max  = winstart_max,
          n_winstarts = n_winstarts),
         "csv"))
+# TODO: save the current data with the new filename just above
 if use_cache && isfile(classdf_file) && mtime(classdf_file) > mtime(best_windows_file)
     classdf = CSV.read(classdf_file)
 else
