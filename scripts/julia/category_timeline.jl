@@ -9,6 +9,7 @@ use_absolute_features = true
 classifier = :gradient_boosting
 n_winlens = 6
 n_winstarts = 24
+winstart_max = 2
 n_folds = 10
 n_procs = 6
 
@@ -89,7 +90,7 @@ function best_windows_for(df)
             target_time_label = df.target_time_label[1],
         )].winlen
     winlens   = reduce(vcat,spread.(best_winlen,0.5,n_winlens))
-    winstarts =  range(0,2,length=n_winstarts)
+    winstarts =  range(0,winstart_max,length=n_winstarts)
 
     Iterators.flatten(
         [Iterators.product(winstarts, winlens,["target"]),
@@ -101,6 +102,7 @@ classdf_file = joinpath(cache_dir(),"data",
         (absolute    = use_absolute_features,
          classifier  = classifier,
          n_winlens   = n_winlens,
+         winstart_max  = winstart_max,
          n_winstarts = n_winstarts),
         "csv"))
 if use_cache && isfile(classdf_file) && mtime(classdf_file) > mtime(best_windows_file)
@@ -168,7 +170,6 @@ if isfile(classfile) && mtime(classfile) > mtime(classdf_file)
     predict = CSV.read(classfile)
 else
     @everywhere function modelresult((key,sdf))
-        @infiltrate
         if length(unique(sdf.condition)) >= 2
             params = classifierparams(sdf[1,:], classifier)
             testclassifier(buildmodel(params, classifier, seed),
