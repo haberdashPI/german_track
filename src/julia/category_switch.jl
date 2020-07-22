@@ -120,18 +120,25 @@ else
     progress = Progress(length(classdf_groups), desc="Computing frequency bins...")
     classdf_groups = @_ events |> groupby(__,[:sid,:condition])
 
-    classdf = combine(classdf_groups) do sdf
-        x = mapreduce(append!!, best_winlens) do winlen
-            si = sdf.sound_index
-            result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                windowswitch(:near), (len = winlen, start = -winlen),
-                baseline = (mindist = 0.25, minlen = 0.5))
-            result[!,:winlen] .= winlen
-            result
+    classdf = Empty(DataFrame)
+    for (key, sdf) in pairs(classdf_groups)
+        global classdf
+        for class in [:near,:far]
+            x = mapreduce(append!!, best_winlens) do winlen
+                si = sdf.sound_index
+                result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+                    windowswitch(class, mindist = 0.5, minlength = 0.25),
+                    (len = winlen, start = -winlen))
+                result[!,:winlen] .= winlen
+                result[!,:switchclass] .= string(class)
+                for (k,v) in pairs(key)
+                    result[!,k] .= v
+                end
+                result
+            end
+            next!(progress)
+            classdf = append!!(classdf, x)
         end
-        next!(progress)
-
-        x
     end
     ProgressMeter.finish!(progress)
 
@@ -163,7 +170,7 @@ else
             innerjoin(__, params, on=:sid) |>
             groupby(__, [:winlen, variables..., :fold])
         testgroup_pairs = collect(pairs(testgroups))
-        predictions = @show progress @distributed (append!!) for key_sdf in testgroup_pairs
+        predictions = @showprogress @distributed (append!!) for key_sdf in testgroup_pairs
             modelresult(key_sdf)
         end
 
@@ -177,13 +184,20 @@ else
 
     objectdf = @_ classdf |>
         filter(_.condition in ["global", "object"],__)
-    object_predict, object_raw = classpredict(objectdf, best_params, "object", :hit)
+    object_predict, object_raw = classpredict(objectdf, best_params, "object",
+        :switchclass)
 
     spatialdf = @_ classdf |>
         filter(_.condition in ["global", "spatial"],__)
-    spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial", :hit)
+    spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial",
+        :switchclass)
 
-    predict = vcat(object_predict,spatial_predict)
+    obj_v_spat_df = @_ classdf |>
+        filter(_.condition in ["object", "spatial"], __)
+    ovs_predict, ovs_raw = classpredict(obj_v_spat_df, best_params, "obj.v.spat",
+        :switchclass)
+
+    predict = vcat(object_predict,spatial_predict,ovs_predict)
     CSV.write(classfile, predict)
 end
 
@@ -195,7 +209,7 @@ isdir(dir) || mkdir(dir)
 
 R"""
 pos = position_dodge(width=0.8)
-pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = hit)) +
+pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = switchclass)) +
     stat_summary(fun.data = 'mean_cl_boot',
         geom = 'bar', width = 0.5, position = pos) +
     stat_summary(fun.data = 'mean_cl_boot',
@@ -205,5 +219,5 @@ pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = hit)) +
 """
 
 R"""
-ggsave(file.path($dir,"baseline_classify.pdf"),pl,width=6,height=4)
+ggsave(file.path($dir,"switch_classify.pdf"),pl,width=6,height=4)
 """

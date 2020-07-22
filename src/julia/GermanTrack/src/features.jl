@@ -40,11 +40,11 @@ function compute_powerdiff_features(eeg, data, windowfn, window)
     end
 end
 
-function compute_powerbin_features(eeg, data, windowfn, window;baseline=NamedTuple())
+function compute_powerbin_features(eeg, data, windowfn, window)
     fs = framerate(eeg)
     windows = map(eachrow(data)) do row
         bounds = (window.start, window.start + window.len)
-        windowfn(eeg[row.trial_index, row, fs, bounds...])
+        windowfn(eeg[row.trial_index], row, fs, bounds...)
     end
     signal = reduce(hcat, windows)
     weight = sum(!isempty, windows)

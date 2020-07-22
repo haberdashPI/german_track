@@ -133,8 +133,8 @@ else
         x = mapreduce(append!!, winlens) do winlen
             si = sdf.sound_index
             result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                windowbaseline, (len = winlen, start = -winlen),
-                baseline = (mindist = 0.25, minlen = 0.5))
+                windowbaseline(mindist = 0.25, minlen = 0.5),
+                (len = winlen, start = -winlen))
             result[!,:winlen] .= winlen
             result
         end
