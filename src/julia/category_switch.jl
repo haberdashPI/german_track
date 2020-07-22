@@ -118,7 +118,9 @@ else
     classdf_groups = @_ events |> groupby(__,[:sid,:condition])
 
     progress = Progress(length(classdf_groups), desc="Computing frequency bins...")
-    classdf_groups = @_ events |> groupby(__,[:sid,:condition])
+    classdf_groups = @_ events |>
+        insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
+        groupby(__,[:sid,:condition,:hit])
 
     classdf = Empty(DataFrame)
     for (key, sdf) in pairs(classdf_groups)
@@ -127,7 +129,9 @@ else
             x = mapreduce(append!!, best_winlens) do winlen
                 si = sdf.sound_index
                 result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                    windowswitch(class, mindist = 0.5, minlength = 0.25),
+                    class == :near ?
+                        windowswitch(mindist = 0.25, minlength = 0.5) :
+                        windowbaseline(mindist = 0.25, minlength = 0.5),
                     (len = winlen, start = -winlen))
                 result[!,:winlen] .= winlen
                 result[!,:switchclass] .= string(class)
@@ -185,17 +189,17 @@ else
     objectdf = @_ classdf |>
         filter(_.condition in ["global", "object"],__)
     object_predict, object_raw = classpredict(objectdf, best_params, "object",
-        :switchclass)
+        :switchclass, :hit)
 
     spatialdf = @_ classdf |>
         filter(_.condition in ["global", "spatial"],__)
     spatial_predict, spatial_raw = classpredict(spatialdf, best_params, "spatial",
-        :switchclass)
+        :switchclass, :hit)
 
     obj_v_spat_df = @_ classdf |>
         filter(_.condition in ["object", "spatial"], __)
     ovs_predict, ovs_raw = classpredict(obj_v_spat_df, best_params, "obj.v.spat",
-        :switchclass)
+        :switchclass, :hit)
 
     predict = vcat(object_predict,spatial_predict,ovs_predict)
     CSV.write(classfile, predict)
@@ -215,8 +219,17 @@ pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = switchclass)) 
     stat_summary(fun.data = 'mean_cl_boot',
         geom = 'linerange', fun.args = list(conf.int = 0.682), position = pos) +
     coord_cartesian(ylim = c(0.4, 1)) +
-    geom_hline(yintercept = 0.5, linetype = 2)
+    geom_hline(yintercept = 0.5, linetype = 2) +
+    geom_point(alpha = 0.4,
+               position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8)) +
+    facet_wrap(~hit)
 """
+
+CSV.write(
+    joinpath(processed_datadir("analyses"),
+    savename("baseline-switch-by-hit", (classifier = classifier,), "csv")),
+    predict
+)
 
 R"""
 ggsave(file.path($dir,"switch_classify.pdf"),pl,width=6,height=4)

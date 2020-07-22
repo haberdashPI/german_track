@@ -73,26 +73,14 @@ function windowtarget(trial,event,fs,from,to)
 end
 
 const switch_seed = 2016_09_11
-function windowswitch(class; kwds...)
+function windowswitch(;kwds...)
     function(trial, event, fs, from, to)
         seed = hash((switch_seed, event.sid, event.trial))
         si = event.sound_index
         stimes = switch_times[si]
-        window = if class == :near
-            options = only_near(stimes, max_trial_length, window = (from, to))
-            rand(MersenneTwister(seed), options)
-        elseif class == :far
-            ranges = far_from(vcat(stimes, target_times[si]), max_trial_length;
-                kwds...)
-            if isempty(ranges)
-                error("Could not find any valid region $(class == :near ? "near" : "far from")"+
-                    " a switch.")
-            end
-            at = sample_from_ranges(MersenneTwister(seed), ranges)
-            only_near(at, fs, window = (from, to))
-        else
-            error("Unexpected window class `$class`.")
-        end
+
+        options = only_near(stimes, max_trial_length, window = (from, to))
+        window = rand(MersenneTwister(seed), options)
 
         start = max(1, round(Int, window[1]*fs))
         stop = min(round(Int, window[2]*fs), size(trial, 2))
@@ -101,12 +89,12 @@ function windowswitch(class; kwds...)
 end
 
 const baseline_seed = 2017_09_16
-function windowbaseline(;mindist, minlen)
-    function(trial,event,fs,from,to;mindist,minlen)
+function windowbaseline(;mindist, minlength)
+    function(trial,event,fs,from,to)
         si = event.sound_index
         times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
             switch_times[si]
-        ranges = far_from(times, max_trial_length, mindist=mindist, minlength=minlen)
+        ranges = far_from(times, max_trial_length, mindist=mindist, minlength=minlength)
         if isempty(ranges)
             error("Could not find any valid region for baseline ",
                 "'target'. Times: $(times)")
