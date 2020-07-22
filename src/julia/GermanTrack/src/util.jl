@@ -65,7 +65,7 @@ function find_decoder_training_trials(subject,trial;eeg_sr,final_sr,target_sampl
 end
 
 function windowtarget(trial,event,fs,from,to)
-    window = only_near(event.target_time,fs,window=(from,to))
+    window = only_near(event.target_time, max_trial_length, window=(from, to))
 
     start = max(1,round(Int,window[1]*fs))
     stop = min(round(Int,window[2]*fs),size(trial,2))
