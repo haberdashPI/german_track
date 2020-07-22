@@ -105,7 +105,6 @@ classdf_file = joinpath(cache_dir(),"data",
          winstart_max  = winstart_max,
          n_winstarts = n_winstarts),
         "csv"))
-# TODO: save the current data with the new filename just above
 if use_cache && isfile(classdf_file) && mtime(classdf_file) > mtime(best_windows_file)
     classdf = CSV.read(classdf_file)
 else
