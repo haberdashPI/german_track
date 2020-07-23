@@ -1,4 +1,121 @@
-export compute_powerdiff_features, compute_powerbin_features, computebands
+export compute_powerdiff_features, compute_powerbin_features, computebands,
+    windowtarget, windowbaseline, windowswitch
+
+only_near(time::Number,max_time;kwds...) =
+    only_near((time,),max_time;kwds...)[1]
+function only_near(times,max_time;window=(-0.250,0.250))
+    result = Array{Tuple{Float64,Float64}}(undef,length(times))
+
+    i = 0
+    stop = 0
+    for time in times
+        new_stop = min(time+window[2],max_time)
+        if stop < time+window[1]
+            i = i+1
+            result[i] = (time+window[1],new_stop)
+        elseif i > 0
+            result[i] = (result[i][1], new_stop)
+        else
+            i = i+1
+            result[i] = (0,new_stop)
+        end
+        stop = new_stop
+    end
+
+    view(result,1:i)
+end
+
+function not_near(times,max_time;window=(0,0.5))
+    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
+
+    start = 0
+    i = 0
+    for time in times
+        if start < time
+            i = i+1
+            result[i] = (start,time+window[1])
+        end
+        start = time+window[2]
+    end
+    if start < max_time
+        i = i+1
+        result[i] = (start,max_time)
+    end
+
+    view(result,1:i)
+end
+
+function far_from(times,max_time;mindist=0.5,minlength=0.5)
+    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
+    start = 0
+    i = 0
+    for time in times
+        if start < time
+            if time-mindist-minlength > start
+                i = i+1
+                result[i] = (start,time-mindist)
+            end
+            start = time + mindist
+        end
+    end
+    if start < max_time
+        i = i+1
+        result[i] = (start,max_time)
+    end
+    view(result,1:i)
+end
+
+sample_from_ranges(ranges) = sample_from_ranges(Random.GLOBAL_RNG,ranges)
+function sample_from_ranges(rng,ranges)
+    weights = Weights(map(x -> x[2]-x[1],ranges))
+    range = StatsBase.sample(rng,ranges,weights)
+    rand(Distributions.Uniform(range...))
+end
+
+
+function windowtarget(trial,event,fs,from,to)
+    window = only_near(event.target_time, max_trial_length, window=(from, to))
+
+    start = max(1, round(Int, window[1]*fs))
+    stop = min(round(Int, window[2]*fs), size(trial, 2))
+    view(trial, :, start:stop)
+end
+
+const switch_seed = 2016_09_11
+function windowswitch(;kwds...)
+    function(trial, event, fs, from, to)
+        seed = hash((switch_seed, event.sid, event.trial))
+        si = event.sound_index
+        stimes = switch_times[si]
+
+        options = only_near(stimes, max_trial_length, window = (from, to))
+        window = rand(MersenneTwister(seed), options)
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
+end
+
+const baseline_seed = 2017_09_16
+function windowbaseline(;mindist, minlength)
+    function(trial,event,fs,from,to)
+        si = event.sound_index
+        times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
+            switch_times[si]
+        ranges = far_from(times, max_trial_length, mindist=mindist, minlength=minlength)
+        if isempty(ranges)
+            error("Could not find any valid region for baseline ",
+                "'target'. Times: $(times)")
+        end
+        at = sample_from_ranges(MersenneTwister(hash((baseline_seed,event.sid,event.trial))),ranges)
+        window = only_near(at,fs,window=(from,to))
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
+end
 
 function compute_powerdiff_features(eeg, data, windowfn, window)
     fs = framerate(eeg)
