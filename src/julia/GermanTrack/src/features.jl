@@ -98,18 +98,20 @@ function windowswitch(;kwds...)
 end
 
 const baseline_seed = 2017_09_16
-function windowbaseline(;mindist, minlength)
-    function(trial,event,fs,from,to)
+function windowbaseline(;mindist, minlength, onempty = error)
+    handleempty(onempty::Missing, times) = missing
+    handleempty(onempty::Function, times) = onempty()
+    function handleempty(onempty::typeof(error), times)
+        error("Could not find any valid region for baseline ",
+            "window. Times: $(times)")
+    end
+
+    function(trial, event, fs, from, to)
         si = event.sound_index
         times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
             switch_times[si]
-        ranges = far_from(times, max_trial_length, mindist=mindist, minlength=minlength)
-        if isempty(ranges)
-            error("Could not find any valid region for baseline ",
-                "'target'. Times: $(times)")
-        end
-        at = sample_from_ranges(MersenneTwister(hash((baseline_seed,event.sid,event.trial))),ranges)
-        window = only_near(at,fs,window=(from,to))
+        ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+        isempty(ranges) && return handleempty(onempty, times)
 
         start = max(1, round(Int, window[1]*fs))
         stop = min(round(Int, window[2]*fs), size(trial, 2))
@@ -127,7 +129,7 @@ function compute_powerdiff_features(eeg, data, windowfn, window)
                 (window.start, window.start + window.len)
             windowfn(eeg[row.trial_index], row, fs, bounds...)
         end
-        signal = reduce(hcat, windows)
+        signal = reduce(append!!, windows)
         weight = sum(!isempty, windows)
         freqdf = computebands(signal, fs)
         freqdf[!, :window_timing] .= string(timing)
