@@ -1,4 +1,4 @@
-export testclassifier, buildmodel, classifierparams
+export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names
 
 const __classifierparams__ = (
     svm_radial        = (:C,:gamma),
@@ -6,6 +6,7 @@ const __classifierparams__ = (
     gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
     logistic_l1       = (:C,),
 )
+classifier_param_names(classifier) = __classifierparams__[classifier]
 function classifierparams(obj, classifier)
     (;(p => obj[p] for p in __classifierparams__[classifier])...)
 end
@@ -37,11 +38,7 @@ function buildmodel(params, classifier, seed)
     end
 end
 
-function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing, kwds...)
-    if !isnothing(seed)
-        numpy.random.seed(typemax(UInt32) & seed)
-    end
-
+function formulafn(data, y, X)
     # model formula (starts empty)
     formula = term(0)
 
@@ -51,6 +48,33 @@ function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing
     end
     # include `y` as the dependent variable (the class to be learned)
     formula = term(y) ~ formula
+    f = apply_schema(formula, schema(formula, data))
+
+    subdata -> modelcols(f, subdata), f.lhs.contrasts.levels
+end
+
+function runclassifier(model; data, y, X, seed = nothing, kwds...)
+    getxy, levels = formulafn(data, y, X)
+
+    _y, _X = getxy(data)
+    coefs = ScikitLearn.fit!(model, _X, vec(_y); kwds...)
+
+    level = ScikitLearn.predict(coefs, _X)
+    _labels = levels[round.(Int, level).+1]
+
+    result = copy(data)
+    result[!,:label] = convert(Array{Union{String, Missing}}, _labels)
+    result[!,:correct] = convert(Array{Union{Bool, Missing}}, _labels .== data[:, y])
+
+    model, result
+end
+
+function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing, kwds...)
+    if !isnothing(seed)
+        numpy.random.seed(typemax(UInt32) & seed)
+    end
+
+    getxy, levels = formulafn(data, y, X)
 
     # the results of classification (starts empty)
     result = Empty(DataFrame)
@@ -66,9 +90,7 @@ function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing
             @warn "Degenerate classification (1 class), bypassing training" maxlog = 1
             fill(missing, size(test, 1))
         else
-            # setup the model and fit it
-            f = apply_schema(formula, schema(formula, data))
-            _y, _X = modelcols(f, train)
+            _y, _X = getxy(train)
             local coefs
             try
                 coefs = ScikitLearn.fit!(model, _X, vec(_y);kwds...)
@@ -77,9 +99,9 @@ function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing
             end
 
             # test the model
-            _y, _X = modelcols(f, test)
+            _y, _X = getxy(test)
             level = ScikitLearn.predict(coefs, _X)
-            f.lhs.contrasts.levels[round.(Int, level).+1]
+            levels[round.(Int, level).+1]
         end
 
         # add to the results
