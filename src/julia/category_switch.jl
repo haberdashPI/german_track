@@ -65,7 +65,6 @@ library(Hmisc)
     wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 end
 
-# TODO: adapt the below analysis for switch
 # Baseline: object & spatial
 # =================================================================
 
@@ -129,10 +128,9 @@ else
             x = mapreduce(append!!, best_winlens) do winlen
                 si = sdf.sound_index
                 result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                    class == :near ?
-                        windowswitch(mindist = 0.25, minlength = 0.5) :
-                        windowbaseline(mindist = 0.25, minlength = 0.5),
-                    (len = winlen, start = -winlen))
+                    class == :near ? windowswitch :
+                        windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing),
+                    (len = winlen, start = 0))
                 result[!,:winlen] .= winlen
                 result[!,:switchclass] .= string(class)
                 for (k,v) in pairs(key)
@@ -232,5 +230,5 @@ CSV.write(
 )
 
 R"""
-ggsave(file.path($dir,"switch_classify.pdf"),pl,width=6,height=4)
+ggsave(file.path($dir,"switch_classify.pdf"),pl,width=8,height=6)
 """
