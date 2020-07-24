@@ -172,7 +172,7 @@ else
     @everywhere function modelresult((key,sdf))
         if length(unique(sdf.condition)) >= 2
             params = classifierparams(sdf[1,:], classifier)
-            testclassifier(buildmodel(params, classifier, seed),
+            classifier(buildmodel(params, classifier, seed),
                 data = @_(filter(_.weight > 0,sdf)),y = :condition,X = r"channel",
                 crossval = :sid, seed = hash((params,seed)), n_folds = n_folds)
         else
