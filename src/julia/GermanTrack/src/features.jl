@@ -1,6 +1,9 @@
 export compute_powerdiff_features, compute_powerbin_features, computebands,
     windowtarget, windowbaseline, windowswitch
 
+using Random123 # counter-based random number generators, this lets use reliably map
+# trial and subject id's to a random sequence
+
 only_near(time::Number,max_time;kwds...) =
     only_near((time,),max_time;kwds...)[1]
 function only_near(times,max_time;window=(-0.250,0.250))
@@ -81,37 +84,43 @@ function windowtarget(trial,event,fs,from,to)
     view(trial, :, start:stop)
 end
 
-const switch_seed = 2016_09_11
-function windowswitch(;kwds...)
-    function(trial, event, fs, from, to)
-        seed = hash((switch_seed, event.sid, event.trial))
-        si = event.sound_index
-        stimes = switch_times[si]
+function windowswitch(trial, event, fs, from, to)
+    seed = hash((switch_seed, event.sid, event.trial))
+    si = event.sound_index
+    stimes = switch_times[si]
 
-        options = only_near(stimes, max_trial_length, window = (from, to))
-        window = rand(MersenneTwister(seed), options)
+    options = only_near(stimes, max_trial_length, window = (from, to))
+    window = rand(trialrng(:windowswitch, event), options)
 
-        start = max(1, round(Int, window[1]*fs))
-        stop = min(round(Int, window[2]*fs), size(trial, 2))
-        view(trial, :, start:stop)
-    end
+    start = max(1, round(Int, window[1]*fs))
+    stop = min(round(Int, window[2]*fs), size(trial, 2))
+    view(trial, :, start:stop)
+end
+
+const max_sid = 200
+function trialrng(id,event)
+    seed = hash(id)
+    event.sid < max_sid || error("Subject ids above $max_sid are not supported")
+    Threefry2x((seed, max_sid*event.trial + event.sid))
 end
 
 const baseline_seed = 2017_09_16
 function windowbaseline(;mindist, minlength, onempty = error)
-    handleempty(onempty::Missing, times) = missing
-    handleempty(onempty::Function, times) = onempty()
-    function handleempty(onempty::typeof(error), times)
-        error("Could not find any valid region for baseline ",
-            "window. Times: $(times)")
-    end
+    handleempty(onempty::Missing) = missing
+    handleempty(onempty::Function) = onempty()
+    handleempty(onempty::typeof(error)) =
+        error("Could not find any valid region for baseline window.")
 
     function(trial, event, fs, from, to)
         si = event.sound_index
         times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
             switch_times[si]
         ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
-        isempty(ranges) && return handleempty(onempty, times)
+        isempty(ranges) && return handleempty(onempty)
+
+        seed = hash((baseline_seed, event.sid, event.trial))
+        at = sample_from_ranges(trialrng(:windowbaseline, event), ranges)
+        window = only_near(at, fs, window = (from, to))
 
         start = max(1, round(Int, window[1]*fs))
         stop = min(round(Int, window[2]*fs), size(trial, 2))
@@ -165,8 +174,8 @@ function compute_powerbin_features(eeg, data, windowfn, window)
         bounds = (window.start, window.start + window.len)
         windowfn(eeg[row.trial_index], row, fs, bounds...)
     end
-    signal = reduce(hcat, windows)
-    weight = sum(!isempty, windows)
+    signal = reduce(hcat, skipmissing(windows))
+    weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs)
     freqdf[!, :weight] .= weight
 
