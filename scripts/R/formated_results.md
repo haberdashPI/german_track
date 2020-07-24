@@ -131,3 +131,33 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 |salience_labellow:target_time_labellate:conditionobject  |1.98  |0.37 |<1e-3   |*** |
 |salience_labellow:target_time_labellate:conditionspatial |2.66  |0.4  |<1e-3   |*** |
 |(phi)                                                    |9.47  |0.79 |<1e-3   |*** |
+
+## Near/Far from Switch
+
+| coef                                      |mean  |sd   |p-value |sig |
+|:------------------------------------------|:-----|:----|:-------|:---|
+|(Intercept)                                |0.53  |0.21 |0.01    |**  |
+|hithit                                     |0.08  |0.3  |0.811   |    |
+|hitmiss                                    |-0.68 |0.31 |0.021   |*   |
+|hitreject                                  |-0.27 |0.3  |0.378   |    |
+|switchclassnear                            |-0.14 |0.29 |0.633   |    |
+|conditionobject                            |0.17  |0.31 |0.567   |    |
+|conditionspatial                           |0.68  |0.3  |0.022   |*   |
+|hithit:switchclassnear                     |0.14  |0.42 |0.745   |    |
+|hitmiss:switchclassnear                    |0.13  |0.43 |0.762   |    |
+|hitreject:switchclassnear                  |0.02  |0.42 |0.966   |    |
+|hithit:conditionobject                     |-0.57 |0.44 |0.196   |    |
+|hitmiss:conditionobject                    |0.23  |0.44 |0.604   |    |
+|hitreject:conditionobject                  |0.15  |0.43 |0.731   |    |
+|hithit:conditionspatial                    |0.52  |0.42 |0.208   |    |
+|hitmiss:conditionspatial                   |-0.73 |0.44 |0.091   |~   |
+|hitreject:conditionspatial                 |-0.28 |0.43 |0.506   |    |
+|switchclassnear:conditionobject            |0.42  |0.42 |0.313   |    |
+|switchclassnear:conditionspatial           |0.74  |0.41 |0.073   |~   |
+|hithit:switchclassnear:conditionobject     |0.5   |0.59 |0.391   |    |
+|hitmiss:switchclassnear:conditionobject    |-0.37 |0.6  |0.532   |    |
+|hitreject:switchclassnear:conditionobject  |0.64  |0.6  |0.292   |    |
+|hithit:switchclassnear:conditionspatial    |-0.44 |0.57 |0.435   |    |
+|hitmiss:switchclassnear:conditionspatial   |0.28  |0.61 |0.631   |    |
+|hitreject:switchclassnear:conditionspatial |0.56  |0.59 |0.339   |    |
+|(phi)                                      |2.06  |0.11 |<1e-3   |*** |
