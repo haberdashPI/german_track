@@ -219,8 +219,7 @@ pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = switchclass)) 
     coord_cartesian(ylim = c(0.4, 1)) +
     geom_hline(yintercept = 0.5, linetype = 2) +
     geom_point(alpha = 0.4,
-               position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8)) +
-    facet_wrap(~hit)
+               position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8))
 """
 
 CSV.write(
