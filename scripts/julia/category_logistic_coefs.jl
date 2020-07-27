@@ -55,7 +55,7 @@ best_params = @_ jsontable(open(JSON3.read, paramfile, "r")[:data]) |> DataFrame
     combine(__, (params .=> first .=> params)...) |>
     combine(__, (params .=> mean  .=> params)...)
 # select_params = best_params[1,:]
-select_params = (C = 5.0, )
+select_params = (C = 0.05, )
 
 isdir(processed_datadir("features")) || mkdir(processed_datadir("features"))
 classdf_file = joinpath(processed_datadir("features"), savename("freaqmeans",
@@ -71,6 +71,20 @@ classdf_file = joinpath(cache_dir(),"data",
         "csv"))
 
 classdf = @_ CSV.File(classdf_file) |> DataFrame! |> filter(_.winstart == 0, __)
+
+coef_names = names(classdf[:,r"channel"])
+function parsecoef(coef)
+    parsed = match(r"channel_([0-9]+)_([a-z]+)",coef_names[coef])
+    chanstr, freqbin = parsed[1], parsed[2]
+    chan = parse(Int,chanstr)
+    chan, freqbin
+end
+
+# TODO: z-score by freqbin
+
+for freqbin in unique(getindex.(parsecoef.(1:length(coef_names)),2))
+    classdf[:,Regex(freqbin)] .= zscore(Array(classdf[:,Regex(freqbin)]))
+end
 
 function findcoefs(sdf)
     model, result = runclassifier(
@@ -102,23 +116,19 @@ coefs = vcat(
 # do the classification accuracies look right
 
 R"""
-ggplot($coefs, aes(x = target_time_label, y = correct, fill = salience_label)) +
+pl = ggplot($coefs, aes(x = target_time_label, y = correct, fill = salience_label)) +
     geom_bar(stat = 'identity', pos = position_dodge(width = 0.6), width = 0.6) +
     facet_wrap(hit~condition) +
     coord_cartesian(ylim=c(0.5,1))
 """
 
+R"""
+ggsave(file.path($dir,"logistic_correct.pdf"),pl,width=11,height=8)
+"""
+
 # sort of...??
 
 # let's look a the coefficients
-
-coef_names = names(classdf[:,r"channel"])
-function parsecoef(coef)
-    parsed = match(r"channel_([0-9]+)_([a-z]+)",coef_names[coef])
-    chanstr, freqbin = parsed[1], parsed[2]
-    chan = parse(Int,chanstr)
-    chan, freqbin
-end
 
 coefs_spread = @_ coefs |>
     stack(__, All(r"coef"), [:hit, :salience_label, :target_time_label,:condition],
@@ -133,7 +143,7 @@ coefs_spread_pl = @_ coefs_spread |>
 
 
 R"""
-df = $coefs_spread
+df = $coefs_spread_pl
 df$freqbin = factor(df$freqbin, levels = unique(df$freqbin), ordered = T)
 df %>% arrange(freqbin)
 pl = ggplot(df, aes(x = channel, y = value, color = salience_label)) + geom_line() +
@@ -147,6 +157,6 @@ ggsave(file.path($dir,"logistic_coefs.pdf"),pl,width=11,height=8)
 # NOTE:
 # - maybe z-score the features by frequency bin?
 # - use a larger sparsity coefficient?
-# -
-
-# TODO: use runclassifier across the various conditions and then inspect coefficients
+# - Both those things seemed to help; we need to check that this works
+#   from a cross-validation standpoint; re-run logistic with fixed C
+#   using a cross-val approach
