@@ -209,9 +209,13 @@ isdir(dir) || mkdir(dir)
 # Plots
 # -----------------------------------------------------------------
 
+means = @_ predict |>
+    groupby(__,[:condition, :switchclass, :sid]) |>
+    combine(__, :correct_mean => mean => :correct_mean)
+
 R"""
 pos = position_dodge(width=0.8)
-pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = switchclass)) +
+pl = ggplot($means, aes(x = condition, y = correct_mean, fill = switchclass)) +
     stat_summary(fun.data = 'mean_cl_boot',
         geom = 'bar', width = 0.5, position = pos) +
     stat_summary(fun.data = 'mean_cl_boot',
@@ -225,7 +229,7 @@ pl = ggplot($predict, aes(x = condition, y = correct_mean, fill = switchclass)) 
 CSV.write(
     joinpath(processed_datadir("analyses"),
     savename("baseline-switch-by-hit", (classifier = classifier,), "csv")),
-    predict
+    means
 )
 
 R"""

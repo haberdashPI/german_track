@@ -12,7 +12,7 @@ df = read.csv(file.path(processed_datadir,'analyses',
     paste0('baseline-switch-by-hit_classifier=',classifier,'.csv')))
 df$correct_mean = (df$correct_mean - 0.5)*0.99 + 0.5
 
-model = stan_glmer(correct_mean ~ hit * switchclass * condition + (1 | sid),
+model = stan_glmer(correct_mean ~ switchclass * condition + (1 | sid),
     family = mgcv::betar, data = df)
 
 coefnames = p_direction(model)[[1]]
