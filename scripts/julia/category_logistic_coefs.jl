@@ -116,14 +116,16 @@ coefs = vcat(
 # do the classification accuracies look right
 
 R"""
-pl = ggplot($coefs, aes(x = target_time_label, y = correct, fill = salience_label)) +
+pl = ggplot(filter($coefs, hit == 'hit'),
+        aes(x = target_time_label, y = correct, fill = salience_label)) +
     geom_bar(stat = 'identity', pos = position_dodge(width = 0.6), width = 0.6) +
-    facet_wrap(hit~condition) +
-    coord_cartesian(ylim=c(0.5,1))
+    facet_wrap(~condition) +
+    geom_hline(yintercept=0.5, linetype=2) +
+    coord_cartesian(ylim=c(0.4,1))
 """
 
 R"""
-ggsave(file.path($dir,"logistic_correct.pdf"),pl,width=11,height=8)
+ggsave(file.path($dir,"logistic_correct.pdf"),pl,width=9,height=6)
 """
 
 # sort of...??
@@ -138,16 +140,17 @@ coefs_spread = @_ coefs |>
     transform!(__, :coef => ByRow(x -> parsecoef(x)[2]) => :freqbin)
 
 
-coefs_spread_pl = @_ coefs_spread |>
-    filter(_.hit == "hit" && _.condition != "object-v-spatial",__)
+coefs_spread_pl = @_ coefs_spread |> filter(_.hit == "hit",__)
 
 
 R"""
 df = $coefs_spread_pl
 df$freqbin = factor(df$freqbin, levels = unique(df$freqbin), ordered = T)
 df %>% arrange(freqbin)
-pl = ggplot(df, aes(x = channel, y = value, color = salience_label)) + geom_line() +
-    facet_grid(condition~target_time_label+freqbin)
+pl = ggplot(df, aes(x = channel, y = value, fill = salience_label)) +
+    geom_bar(stat='identity', pos = 'dodge') +
+    xlab('MCCA Component') + ylab('Weight') +
+    facet_grid(condition~target_time_label+freqbin, labeller = 'label_both')
 """
 
 R"""
@@ -157,6 +160,5 @@ ggsave(file.path($dir,"logistic_coefs.pdf"),pl,width=11,height=8)
 # NOTE:
 # - maybe z-score the features by frequency bin?
 # - use a larger sparsity coefficient?
-# - Both those things seemed to help; we need to check that this works
-#   from a cross-validation standpoint; re-run logistic with fixed C
+# - Both those things seemed to help; we need to check that this works#   from a cross-validation standpoint; re-run logistic with fixed C
 #   using a cross-val approach
