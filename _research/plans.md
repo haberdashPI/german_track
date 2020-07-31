@@ -1,3 +1,14 @@
+- near far classification, within condition (just global, just object, just spatil)
+- one classifier for obj, spatial, global (3-way) (high level, no high low sal)
+- do z-score
+  check window again
+- look at projected MCCA components (for high level conditions: global, spatial object)
+- look at spectrogram components of MCCA
+
+- maybe presetn obj v spatial a separate point
+  no split by variablen
+- classify far v near
+
 - classify spatial vs. object, wha'ts that look like
 - try highly regularized L1; look at coefficients
 - take a peak at the spectrograms
