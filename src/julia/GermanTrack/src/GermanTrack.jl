@@ -21,7 +21,11 @@ include("train_test.jl")
 
 export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
 
-processed_datadir(args...) = joinpath(datadir(), "processed", args...)
+function processed_datadir(args...)
+    dir = joinpath(datadir(), "processed", args...)
+    isdir(dir) || mkdir(dir)
+    dir
+end
 raw_datadir(args...) = joinpath(datadir(), "raw", args...)
 stimulus_dir() = processed_datadir("stimuli")
 raw_stim_dir() = raw_datadir("stimuli")

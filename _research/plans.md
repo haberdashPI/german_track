@@ -1,6 +1,7 @@
 - near far classification, within condition (just global, just object, just spatil)
 - one classifier for obj, spatial, global (3-way) (high level, no high low sal)
 - do z-score
+  - not just optimizing for accuracy, also something about interpretability
   check window again
 - look at projected MCCA components (for high level conditions: global, spatial object)
 - look at spectrogram components of MCCA

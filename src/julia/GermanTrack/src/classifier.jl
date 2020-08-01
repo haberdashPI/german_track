@@ -1,15 +1,63 @@
-export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names
+export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names,
+    LassoPathClassifiers
 
 const __classifierparams__ = (
     svm_radial        = (:C,:gamma),
     svm_linear        = (:C,),
     gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
-    logistic_l1       = (:C,),
+    logistic_l1       = (:lambda,),
 )
 classifier_param_names(classifier) = __classifierparams__[classifier]
 function classifierparams(obj, classifier)
     (;(p => obj[p] for p in __classifierparams__[classifier])...)
 end
+
+struct LassoClassifier
+    lambda::Float64
+end
+struct LassoClassifierFit{T}
+    result::T
+    μ::Array{Float64,2}
+    σ::Array{Float64,2}
+end
+
+zscorecol(X, μ, σ) = zscorecol!(copy(X), μ, σ)
+function zscorecol!(X, μ, σ)
+    for col in 1:size(X,2)
+        X[:,col] .= zscore(view(X,:,col), view(μ, :, col), view(σ, :, col))
+    end
+    X
+end
+
+function ScikitLearn.fit!(model::LassoClassifier, X, y; kwds...)
+    μ = mean(X, dims = 1)
+    σ = std(X, dims = 1)
+
+    fit = StatsBase.fit(LassoModel, zscorecol(X, μ, σ), y,
+        Bernoulli(), λ = [model.lambda], standardize = false; kwds...)
+    LassoClassifierFit(fit, μ, σ)
+end
+ScikitLearn.predict(model::LassoClassifierFit, X) =
+    StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ))
+
+struct LassoPathClassifiers
+    lambdas::Vector{Float64}
+end
+struct LassoPathFits{T}
+    result::T
+    μ::Array{Float64,2}
+    σ::Array{Float64,2}
+end
+function ScikitLearn.fit!(model::LassoPathClassifiers, X, y; kwds...)
+    μ = mean(X, dims = 1)
+    σ = std(X, dims = 1)
+
+    fits = StatsBase.fit(LassoPath, zscorecol(X, μ, σ), y,
+        Bernoulli(), λ = model.lambdas, standardize = false; kwds...)
+    LassoPathFits(fits, μ, σ)
+end
+ScikitLearn.predict(model::LassoPathFits, X) =
+    StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ), select = AllSeg())
 
 function buildmodel(params, classifier, seed)
     model = if classifier == :svm_radial
@@ -29,12 +77,10 @@ function buildmodel(params, classifier, seed)
             params...
         )
     elseif classifier == :logistic_l1
-        LogisticRegression(
-            penalty      = "l1",
-            random_state = hash((params, seed)) & typemax(UInt32),
-            solver       = "liblinear";
-            params...
-        )
+        @assert s(params) == __classifierparams__[:logistic_l1]
+        LassoClassifier(values(params)...)
+    else
+        error("Unknown classifier $classifier.")
     end
 end
 
@@ -66,13 +112,24 @@ function runclassifier(model; data, y, X, seed = nothing, kwds...)
     result[!,:label] = convert(Array{Union{String, Missing}}, _labels)
     result[!,:correct] = convert(Array{Union{Bool, Missing}}, _labels .== data[:, y])
 
-    model, result
+    coefs, coefvals(coefs), result
+end
+coefvals(coefs::LassoClassifierFit) = StatsBase.coef(coefs.result)
+function coefvals(coefs::PyObject)
+    # TODO!!!
+    coefs
 end
 
-function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing, kwds...)
-    if !isnothing(seed)
-        numpy.random.seed(typemax(UInt32) & seed)
-    end
+seedmodel(model, seed) = Random.seed!(seed)
+seedmodel(model::PyObject, seed) = numpy.random.seed(typemax(UInt32) & seed)
+
+paramvals(model::LassoPathClassifiers) = model.lambdas
+paramname(model::LassoPathClassifiers) = :λ
+
+function testclassifier(model; data, y, X, crossval, n_folds = 10,
+    seed  = nothing, weight = nothing, debug_model_errors = true, kwds...)
+
+    if !isnothing(seed);   seedmodel(model, seed); end
 
     getxy, levels = formulafn(data, y, X)
 
@@ -86,16 +143,32 @@ function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing
         test = @_ filter(_[crossval] in testids, data)
 
         # check for at least 2 classes
-        _labels = if length(unique(train[:, y])) < 2
-            @warn "Degenerate classification (1 class), bypassing training" maxlog = 1
-            fill(missing, size(test, 1))
-        else
+        function predictlabels()
+            if length(unique(train[:, y])) < 2
+                @warn "Degenerate classification (1 class), bypassing training" maxlog = 1
+                return fill(missing, size(test, 1))
+            end
+
             _y, _X = getxy(train)
+            weigths_kwds = isnothing(weight) ? kwds : (wts = float(train[:,weight]), kwds...)
+
             local coefs
             try
-                coefs = ScikitLearn.fit!(model, _X, vec(_y);kwds...)
+                coefs = ScikitLearn.fit!(model, _X, vec(_y); weigths_kwds...)
             catch e
-                @infiltrate
+                if debug_model_errors
+                    @info "Model fitting threw an error: opening debug to troubleshoot..."
+                    @infiltrate
+                    rethrow(e)
+                else
+                    buffer = IOBuffer()
+                    for (exc, bt) in Base.catch_stack()
+                        showerror(buffer, exc, bt)
+                        println(buffer)
+                    end
+                    @error "Exception while fitting model: $(String(take!(bufer)))"
+                    return fill(missing, size(test,1))
+                end
             end
 
             # test the model
@@ -103,14 +176,29 @@ function testclassifier(model;data, y, X, crossval, n_folds = 10, seed = nothing
             level = ScikitLearn.predict(coefs, _X)
             levels[round.(Int, level).+1]
         end
+        _labels = predictlabels()
 
         # add to the results
         keepvars = propertynames(view(data, :, Not(X)))
-        result = append!!(result, DataFrame(
-            label = convert(Array{Union{String, Missing}}, _labels),
-            correct = convert(Array{Union{Bool, Missing}}, _labels .== test[:, y]);
-            (keepvars .=> eachcol(test[:, keepvars]))...
-        ))
+        label    = convert(Array{Union{String, Missing}}, _labels)
+        correct  = convert(Array{Union{Bool, Missing}},   _labels .== test[:, y])
+
+        if size(_labels,2) > 1
+            for col in 1:size(_labels,2)
+                result = append!!(result, DataFrame(
+                    label             =  @view(label[:,col]),
+                    correct           =  @view(correct[:,col]);
+                    paramname(model)  => paramvals(model)[col],
+                    (keepvars        .=> eachcol(test[:, keepvars]))...
+                ))
+            end
+        else
+            result = append!!(result, DataFrame(
+                label      =  label,
+                correct    =  correct;
+                (keepvars .=> eachcol(test[:, keepvars]))...
+            ))
+        end
     end
 
     result

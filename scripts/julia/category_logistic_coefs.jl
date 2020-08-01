@@ -1,8 +1,11 @@
+# Setup
+# =================================================================
+
 using DrWatson
 @quickactivate("german_track")
 seed = 072189
 use_absolute_features = true
-classifier = :logistic_l1
+classifier = :julia_logistic_l1
 n_winlens = 6
 
 using EEGCoding,
@@ -42,12 +45,12 @@ isdir(dir) || mkdir(dir)
 
 paramdir = processed_datadir("classifier_params")
 best_windows_file = joinpath(paramdir,savename("best-windows",
-    (absolute = use_absolute_features, classifier = classifier), "json"))
+    (absolute = use_absolute_features, classifier = :logistic_l1), "json"))
 best_windows = jsontable(open(JSON3.read,best_windows_file,"r")[:data]) |> DataFrame
 
 paramdir    = processed_datadir("classifier_params")
 paramfile   = joinpath(paramdir,savename("hyper-parameters",
-    (absolute = use_absolute_features, classifier = classifier),"json"))
+    (absolute = use_absolute_features, classifier = :logistic_l1),"json"))
 
 params = classifier_param_names(classifier)
 best_params = @_ jsontable(open(JSON3.read, paramfile, "r")[:data]) |> DataFrame |>
@@ -55,7 +58,8 @@ best_params = @_ jsontable(open(JSON3.read, paramfile, "r")[:data]) |> DataFrame
     combine(__, (params .=> first .=> params)...) |>
     combine(__, (params .=> mean  .=> params)...)
 # select_params = best_params[1,:]
-select_params = (C = 0.05, )
+# select_params = (C = 0.05, )
+select_params = (lambda = 0.01)
 
 isdir(processed_datadir("features")) || mkdir(processed_datadir("features"))
 classdf_file = joinpath(processed_datadir("features"), savename("freaqmeans",
@@ -64,13 +68,16 @@ classdf_file = joinpath(processed_datadir("features"), savename("freaqmeans",
 classdf_file = joinpath(cache_dir(),"data",
     savename("freqmeans_timeline",
         (absolute    = use_absolute_features,
-         classifier  = classifier,
+         classifier  = :logistic_l1, #classifier,
          n_winlens   = n_winlens,
          winstart_max  = 2,
          n_winstarts = 24),
         "csv"))
 
 classdf = @_ CSV.File(classdf_file) |> DataFrame! |> filter(_.winstart == 0, __)
+
+# Compute coefs
+# =================================================================
 
 coef_names = names(classdf[:,r"channel"])
 function parsecoef(coef)
@@ -80,21 +87,19 @@ function parsecoef(coef)
     chan, freqbin
 end
 
-# TODO: z-score by freqbin
-
 for freqbin in unique(getindex.(parsecoef.(1:length(coef_names)),2))
     classdf[:,Regex(freqbin)] .= zscore(Array(classdf[:,Regex(freqbin)]))
 end
 
 function findcoefs(sdf)
-    model, result = runclassifier(
+    model, coefs, result = runclassifier(
         buildmodel(select_params, classifier, 2017_09_16),
         data = sdf, X = r"channel", y = :condition, seed = seed
     )
     DataFrame(
         correct = wmeanish(result.correct, result.weight),
-        bias = model.intercept_;
-        (Symbol("coef$(fmt("03d",i))") => c for (i,c) in enumerate(model.coef_))...
+        bias = coefs[1];
+        (Symbol("coef$(fmt("03d",i))") => c for (i,c) in enumerate(coefs[2:end]))...
     )
 end
 
@@ -113,6 +118,12 @@ coefs = vcat(
         insertcols!(__, :condition => "object-v-spatial") )
 )
 
+# Results
+# =================================================================
+
+# Classification Accuracy
+# -----------------------------------------------------------------
+
 # do the classification accuracies look right
 
 R"""
@@ -128,9 +139,40 @@ R"""
 ggsave(file.path($dir,"logistic_correct.pdf"),pl,width=9,height=6)
 """
 
-# sort of...??
+# Display class proportions
+# -----------------------------------------------------------------
+
+props = vcat(
+    @_( classdf |> filter(_.condition in ["global","object"],__) |>
+        groupby(__, [:hit, :salience_label, :target_time_label]) |>
+        combine(AsTable(:) => (x -> (nbase = wmeanish(x.condition .== "global",x.weight), N = sum(x.weight))), __) |>
+        insertcols!(__, :condition => "global-v-object") ),
+    @_( classdf |> filter(_.condition in ["global","spatial"],__) |>
+        groupby(__, [:hit, :salience_label, :target_time_label]) |>
+        combine(AsTable(:) => (x -> (nbase = wmeanish(x.condition .== "global",x.weight), N = sum(x.weight))), __) |>
+        insertcols!(__, :condition => "global-v-spatial") ),
+    @_( classdf |> filter(_.condition in ["object","spatial"],__) |>
+        groupby(__, [:hit, :salience_label, :target_time_label]) |>
+        combine(AsTable(:) => (x -> (nbase = wmeanish(x.condition .== "object",x.weight), N = sum(x.weight))), __) |>
+        insertcols!(__, :condition => "object-v-spatial") )
+)
+
+R"""
+pl = ggplot(filter($props, hit == 'hit'),
+        aes(x = target_time_label, y = nbase, fill = salience_label)) +
+    geom_bar(stat = 'identity', pos = position_dodge(width = 0.6), width = 0.6) +
+    facet_wrap(~condition) +
+    geom_hline(yintercept=0.5, linetype=2) +
+    coord_cartesian(ylim=c(0.4,1))
+"""
+
+println(props.nbase .- coefs.correct)
+
+# Coefficient values
+# -----------------------------------------------------------------
 
 # let's look a the coefficients
+# TODO: include bias coef in here
 
 coefs_spread = @_ coefs |>
     stack(__, All(r"coef"), [:hit, :salience_label, :target_time_label,:condition],
