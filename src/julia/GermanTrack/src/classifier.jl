@@ -123,8 +123,11 @@ end
 seedmodel(model, seed) = Random.seed!(seed)
 seedmodel(model::PyObject, seed) = numpy.random.seed(typemax(UInt32) & seed)
 
-paramvals(model::LassoPathClassifiers) = model.lambdas
-paramname(model::LassoPathClassifiers) = :λ
+paramvals(model::LassoPathClassifiers, fit::LassoPathFits, col) =
+    model.lambdas[col], sum(!iszero, @view(fit.result.coefs[:, col]))
+paramnames(model::LassoPathClassifiers, fit) = :λ, :nzcoef
+paramvals(model::LassoPathClassifiers, fit::Nothing) =
+    missing, missing
 
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
     seed  = nothing, weight = nothing, debug_model_errors = true, kwds...)
@@ -146,7 +149,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
         function predictlabels()
             if length(unique(train[:, y])) < 2
                 @warn "Degenerate classification (1 class), bypassing training" maxlog = 1
-                return fill(missing, size(test, 1))
+                return fill(missing, size(test, 1)), nothing
             end
 
             _y, _X = getxy(train)
@@ -167,16 +170,16 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                         println(buffer)
                     end
                     @error "Exception while fitting model: $(String(take!(bufer)))"
-                    return fill(missing, size(test,1))
+                    return fill(missing, size(test,1)), nothing
                 end
             end
 
             # test the model
             _y, _X = getxy(test)
             level = ScikitLearn.predict(coefs, _X)
-            levels[round.(Int, level).+1]
+            levels[round.(Int, level).+1], coefs
         end
-        _labels = predictlabels()
+        _labels, coefs = predictlabels()
 
         # add to the results
         keepvars = propertynames(view(data, :, Not(X)))
@@ -186,17 +189,18 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
         if size(_labels,2) > 1
             for col in 1:size(_labels,2)
                 result = append!!(result, DataFrame(
-                    label             =  @view(label[:,col]),
-                    correct           =  @view(correct[:,col]);
-                    paramname(model)  => paramvals(model)[col],
-                    (keepvars        .=> eachcol(test[:, keepvars]))...
+                    label                       =  @view(label[:,col]),
+                    correct                     =  @view(correct[:,col]);
+                    (paramnames(model, coefs)  .=> paramvals(model, coefs, col))...,
+                    (keepvars                  .=> eachcol(test[:, keepvars]))...
                 ))
             end
         else
             result = append!!(result, DataFrame(
-                label      =  label,
-                correct    =  correct;
-                (keepvars .=> eachcol(test[:, keepvars]))...
+                label                      =  label,
+                correct                    =  correct;
+                (paramnames(model, coefs) .=> paramvals(model, coefs))...,
+                (keepvars                 .=> eachcol(test[:, keepvars]))...
             ))
         end
     end
