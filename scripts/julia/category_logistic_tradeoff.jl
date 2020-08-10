@@ -49,8 +49,8 @@ if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     windows = [(len = len, start = start, before = -len)
-        for len in 2.0 .^ range(-1, 1, length = 7),
-            start in [0; 2.0 .^ range(-2, 2, length = 6)]]
+        for len in 2.0 .^ range(-1, 3, length = 14),
+            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
         filter(occursin(r".h5$", _), __)
     subjects = Dict(
@@ -115,7 +115,7 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
 
         result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
             X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
-            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 200,
+            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
             debug_model_errors = false)
 
         result[!, keys(key)] .= permutedims(collect(values(key)))
@@ -185,7 +185,7 @@ function pickλ(df)
 end
 λs = @_ grandmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
 λs[!,:fold_text] .= string.("Fold: ",λs.fold)
-λs[!,:yoff] = [0.22, 0.20]
+λs[!,:yoff] = [0.24, 0.26]
 
 pl = @vlplot() +
     vcat(

@@ -169,7 +169,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                         showerror(buffer, exc, bt)
                         println(buffer)
                     end
-                    @error "Exception while fitting model: $(String(take!(bufer)))"
+                    @error "Exception while fitting model: $(String(take!(buffer)))"
                     return fill(missing, size(test,1)), nothing
                 end
             end
