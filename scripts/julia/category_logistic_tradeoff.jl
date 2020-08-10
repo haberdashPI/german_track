@@ -49,7 +49,7 @@ if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     windows = [(len = len, start = start, before = -len)
-        for len in 2.0 .^ range(-1, 3, length = 14),
+        for len in 2.0 .^ range(-1, 1, length = 10),
             start in [0; 2.0 .^ range(-2, 2, length = 10)]]
     eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
         filter(occursin(r".h5$", _), __)
@@ -227,78 +227,13 @@ pl = @vlplot() +
 pl |> save(joinpath(dir, "relative_lambdas_by_condition.pdf"))
 pl |> save(joinpath(dir, "relative_lambdas_by_condition.html"))
 
-# Save best window length and  λ
+# Save best window length and λ
 # -----------------------------------------------------------------
 
-allmeandiff = @_ filter(_.λ == 1.0, means) |>
-    deletecols!(__, [:λ, :nzcoef]) |>
-    rename(__, :mean => :nullmean) |>
-    innerjoin(__, means, on = [:winlen, :winstart, :comparison, :sid, :fold]) |>
-    transform!(__, [:mean,:nullmean] => (-) => :meandiff)
+final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
+    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
+    for sid in first(λ_fold))...)
 
-λfold = groupby(λs,:fold)
-
-winlen_meandiff = @_ allmeandiff |>
-    filter(_.λ == only(λfold[(fold = _.fold,)].λ),__) |>
-    groupby(__, [:winlen, :comparison, :sid, :fold]) |>
-    combine(__, :meandiff => mean => :meandiff)
-
-winlen_meandiff |>
-    @vlplot(facet = {column = {field = "fold", type = :ordinal}}) +
-    (@vlplot(x = :winlen, color = :comparison) +
-     @vlplot({:line, point = true},
-        y = {:meandiff, type = :quantitative, aggregate = :mean}) +
-    @vlplot({:errorband, point = true},
-        y = {:meandiff, type = :quantitative, aggregate = :ci}))
-
-winlen_byfold = @_ winlen_meandiff |>
-    groupby(__, [:winlen, :fold, :sid]) |>
-    combine(__, :meandiff => mean => :meandiff)
-
-winlen_byfold |>
-    @vlplot(facet = {column = {field = "fold", type = :ordinal}}) +
-    (@vlplot(x = :winlen) +
-     @vlplot({:line, point = true},
-        y = {:meandiff, type = :quantitative, aggregate = :mean}) +
-    @vlplot({:errorband, point = true},
-        y = {:meandiff, type = :quantitative, aggregate = :ci}))
-
-bestwinlens = @_ winlen_byfold |>
-    groupby(__, :fold) |>
-    combine(__, [:winlen, :meandiff] => ((len,x) -> len[argmax(x)]) => :winlen)
-
-# TODO: automate and then cross validate λ selection
-# NOTE: code below is all old, an unchanged from copied file (category_grid.jl)
-
-# Find Best Window Length
-# =================================================================
-
-@static if !use_slurm && !test_optimization
-
-    object_winlen_means = @_ object_classpredict |>
-        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
-        combine(__, [:correct, :weight] => wmeanish => :correct) |>
-        groupby(__, [:winlen, :salience_label, :target_time_label]) |>
-        combine(__, :correct => mean) |>
-        insertcols!(__, :condition => "object")
-
-    spatial_winlen_means = @_ spatial_classpredict |>
-        groupby(__, [:winstart, :winlen, :salience_label, :target_time_label, :sid]) |>
-        combine(__, [:correct, :weight] => wmeanish => :correct) |>
-        groupby(__, [:winlen, :salience_label, :target_time_label]) |>
-        combine(__, :correct => mean) |>
-        insertcols!(__, :condition => "spatial")
-
-    best_windows = @_ vcat(object_winlen_means, spatial_winlen_means) |>
-        groupby(__, [:salience_label, :target_time_label]) |>
-        combine(__, [:winlen, :correct_mean] =>
-            ((len, val) -> len[argmax(val)]) => :winlen)
-
-    best_windows_file = joinpath(paramdir, savename("best-windows",
-        (absolute = use_absolute_features, classifier = classifier), "json"))
-
-    @tagsave best_windows_file Dict(
-        :data => JSONTables.ObjectTable(Tables.columns(best_windows)),
-        :seed => seed
-    ) safe = true
-end
+paramdir = processed_datadir("classifier_params")
+λfile = joinpath(paramdir, "best-lambdas.json")
+CSV.write(λfile, final_λs)
