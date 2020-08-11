@@ -1,5 +1,5 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
-    load_directions
+    load_directions, load_all_subjects
 
 function read_eeg_binary(filename)
     open(filename) do file
@@ -90,6 +90,18 @@ const subject_cache = Dict()
 Base.@kwdef struct SubjectData
     eeg::EEGData
     events::DataFrame
+end
+
+function load_all_subjects(dir, ext)
+    eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
+    subjects = Dict(
+        sidfor(file) => load_subject(
+            joinpath(processed_datadir("eeg"), file), stim_info,
+            encoding = RawEncoding()
+        ) for file in eeg_files)
+    events = @_ mapreduce(_.events, append!!, values(subjects))
+
+    subjects, events
 end
 
 function load_subject(file, stim_info;encoding = RawEncoding(), framerate = missing)

@@ -1,5 +1,5 @@
 export compute_powerdiff_features, compute_powerbin_features, computebands,
-    windowtarget, windowbaseline, windowswitch
+    windowtarget, windowbaseline, windowswitch, compute_freqbins
 
 using Random123 # counter-based random number generators, this lets use reliably map
 # trial and subject id's to a random sequence
@@ -232,3 +232,25 @@ function computebands(signal, fs;freqbins = OrderedDict(
 
     result
 end
+
+function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt)
+    progress = Progress(length(groupdf), desc = "Computing frequency bins...")
+    classdf = @_ groupdf |>
+        combine(function(sdf)
+            # compute features in each window
+            function findwindows(window)
+                result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+                    windowfn, window)
+                result[!, :winstart] .= window.start
+                result[!, :winlen] .= window.len
+                result
+            end
+            x = reducerfn(append!!, Map(findwindows), windows)
+            next!(progress)
+            x
+        end, __)
+    ProgressMeter.finish!(progress)
+
+    classdf
+end
+

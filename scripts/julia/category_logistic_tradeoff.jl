@@ -51,43 +51,15 @@ else
     windows = [(len = len, start = start, before = -len)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    eeg_files = dfhit = @_ readdir(processed_datadir("eeg")) |>
-        filter(occursin(r".h5$", _), __)
-    subjects = Dict(
-        sidfor(file) => load_subject(
-            joinpath(processed_datadir("eeg"), file), stim_info,
-            encoding = RawEncoding()
-        ) for file in eeg_files)
 
-    events = @_ mapreduce(_.events, append!!, values(subjects))
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classdf_groups = @_ events |>
         filter(_.target_present, __) |>
         filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition])
 
-    progress = Progress(length(classdf_groups), desc = "Computing frequency bins...")
-    classdf = @_ classdf_groups |>
-        combine(function(sdf)
-            # compute features in each window
-            function findwindows(window)
-                result = if use_absolute_features
-                    compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                        windowtarget, window)
-                else
-                    compute_powerdiff_features(subjects[sdf.sid[1]].eeg, sdf,
-                        windowtarget, window)
-                end
-                result[!, :winstart] .= window.start
-                result[!, :winlen] .= window.len
-                result
-            end
-            x = foldxt(append!!, Map(findwindows), windows)
-            next!(progress)
-            x
-        end, __)
-    ProgressMeter.finish!(progress)
+    classdf = computefreqbins(subjects, classdf_groups, windowtarget, windows)
     CSV.write(classdf_file, classdf)
-
 end
 
 # Model evaluation
