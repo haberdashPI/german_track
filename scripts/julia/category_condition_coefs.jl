@@ -115,3 +115,95 @@ pl = meandiff |>
 
 pl |> save(joinpath(dir, "condition_timeline.pdf"))
 pl |> save(joinpath(dir, "condition_timeline.html"))
+
+# Display of model coefficients
+# =================================================================
+
+# Compare coefficients across folds
+# -----------------------------------------------------------------
+
+## the point here is not easy visualization, but just to determine
+## how consistent coeffcieints are across the folds (if they are
+## consistent, maybe we do use it to visualize??)
+
+centerlen = @_ classdf.winlen |> unique |> sort! |> __[4]
+centerstart = @_ classdf.winstart |> unique |> __[argmin(abs.(__ .- 0.0))]
+
+classdf_atlen = @_ classdf |> filter(_.winlen == centerlen && _.winstart == centerstart, __)
+
+classcomps_atlen = [
+    "global-v-object"  => @_(classdf_atlen |> filter(_.condition in ["global", "object"],  __)),
+    "global-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["global", "spatial"], __)),
+    "object-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["object", "spatial"], __))
+]
+
+coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
+    function findclass((key, sdf))
+        result = testclassifier(LassoClassifier(sdf.λ |> first),
+            data = sdf, y = :condition, X = r"channel",
+            crossval = :sid, n_folds = 10,
+            seed = hash((:cond_coef_timeline,2019_11_18)),
+            irls_maxiter = 100, include_model_coefs = true,
+            weight = :weight, on_model_exception = :throw)
+
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        result[!, :comparison] .= comp
+
+        result
+    end
+
+    groups = pairs(groupby(data, :fold))
+    foldl(append!!, Map(findclass), collect(groups)[1:1])
+end
+
+coefnames_ = pushfirst!(propertynames(coefdf[:,r"channel"]), :C)
+
+coefvals = @_ coefdf |>
+    groupby(__, [:label_fold, :fold, :comparison]) |>
+    combine(__, coefnames_ .=> (only ∘ unique) .=> coefnames_)
+
+function parsecoef(coef)
+    parsed = match(r"channel_([0-9]+)_([a-z]+)",string(coef))
+    if !isnothing(parsed)
+        chanstr, freqbin = parsed[1], parsed[2]
+        chan = parse(Int,chanstr)
+        chan, freqbin
+    elseif string(coef) == "C"
+        missing, missing
+    else
+        error("Unexpected coefficient $coef")
+    end
+end
+
+coef_spread = @_ coefvals |>
+    stack(__, coefnames_, [:label_fold, :fold, :comparison],
+        variable_name = :coef) |>
+    transform!(__, :coef => ByRow(x -> parsecoef(x)[1]) => :channel) |>
+    transform!(__, :coef => ByRow(x -> parsecoef(x)[2]) => :freqbin)
+
+minabs(x) = x[argmin(abs.(x))]
+
+coef_spread_means = @_ coef_spread |>
+    filter(!ismissing(_.channel), __) |>
+    groupby(__, [:freqbin, :channel, :comparison]) |>
+    combine(__, :value => median => :value,
+                :value => length => :N,
+                :value => (x -> quantile(x, 0.75)) => :valuehigh,
+                :value => (x -> quantile(x, 0.25)) => :valuelow)
+
+pl = coef_spread_means |>
+    @vlplot(
+        facet = {
+            column = {field = :freqbin, type = :ordinal,
+            sort = ["delta","theta","alpha","beta","gamma"]}}) +
+    (@vlplot(x = :channel) +
+     @vlplot(:rule,
+        y = :valuelow,
+        y2 = :valuehigh, color = :comparison) +
+     @vlplot({:point, filled = true},
+        y = :value,
+        color = {
+            field = :comparison,
+            condition = {test = "datum.value == 0", value = "rgba(0,0,0,0)"}}))
+
+pl |> save(joinpath(dir,"coef_spread_means.png"))

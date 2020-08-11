@@ -123,20 +123,29 @@ end
 seedmodel(model, seed) = Random.seed!(seed)
 seedmodel(model::PyObject, seed) = numpy.random.seed(typemax(UInt32) & seed)
 
-paramvals(model::LassoPathClassifiers, fit::LassoPathFits, col) =
+function paramvals(model::LassoPathClassifiers, fit::LassoPathFits, col, coefnames)
+    @assert isempty(coefnames) "Model coefficient report is not supported"
     model.lambdas[col], sum(!iszero, @view(fit.result.coefs[:, col]))
-paramnames(model::LassoPathClassifiers, fit) = :λ, :nzcoef
-paramvals(model::LassoPathClassifiers, fit::Nothing) =
+end
+function paramnames(model::LassoPathClassifiers, fit, coefnames)
+    @assert isempty(coefnames) "Model coefficient report is not supported"
+    :λ, :nzcoef
+end
+function paramvals(model::LassoPathClassifiers, fit::Nothing, coefnames)
     missing, missing
+end
 
-paramnames(model::LassoClassifier, fit) = ()
-paramvals(model::LassoClassifier, fit) = ()
+paramnames(model::LassoClassifier, fit, coefnames) = coefnames
+function paramvals(model::LassoClassifier, fit, coefnames)
+    isempty(coefnames) ? () : coef(fit.result)
+end
 
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
-    seed  = nothing, weight = nothing, on_model_exception = :debug, kwds...)
+    seed  = nothing, weight = nothing, on_model_exception = :debug,
+    include_model_coefs = false, kwds...)
     @assert on_model_exception ∈ [:debug, :print, :throw]
 
-    if !isnothing(seed);   seedmodel(model, seed); end
+    if !isnothing(seed); seedmodel(model, seed); end
 
     getxy, levels = formulafn(data, y, X)
 
@@ -192,21 +201,26 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
         label    = convert(Array{Union{String, Missing}}, _labels)
         correct  = convert(Array{Union{Bool, Missing}},   _labels .== test[:, y])
 
+        coefnames = include_model_coefs ? pushfirst!(propertynames(data[:,X]),:C) : []
         if size(_labels,2) > 1
             for col in 1:size(_labels,2)
                 result = append!!(result, DataFrame(
-                    label                       =  @view(label[:,col]),
-                    correct                     =  @view(correct[:,col]);
-                    (keepvars                  .=> eachcol(test[:, keepvars]))...,
-                    (paramnames(model, coefs)  .=> paramvals(model, coefs, col))...
+                    label      =  @view(label[:,col]),
+                    correct    =  @view(correct[:,col]),
+                    label_fold =  i;
+                    (keepvars .=> eachcol(test[:, keepvars]))...,
+                    (paramnames(model, coefs, coefnames) .=>
+                        paramvals(model, coefs, col, coefnames))...,
                 ))
             end
         else
             result = append!!(result, DataFrame(
-                label                      =  label,
-                correct                    =  correct;
-                (keepvars                 .=> eachcol(test[:, keepvars]))...,
-                (paramnames(model, coefs) .=> paramvals(model, coefs))...
+                label       =  label,
+                correct     =  correct,
+                label_fold  =  i;
+                (keepvars  .=> eachcol(test[:, keepvars]))...,
+                (paramnames(model, coefs, coefnames) .=>
+                    paramvals(model, coefs, coefnames))...,
             ))
         end
     end
