@@ -187,23 +187,54 @@ coef_spread_means = @_ coef_spread |>
     filter(!ismissing(_.channel), __) |>
     groupby(__, [:freqbin, :channel, :comparison]) |>
     combine(__, :value => median => :value,
-                :value => length => :N,
-                :value => (x -> quantile(x, 0.75)) => :valuehigh,
-                :value => (x -> quantile(x, 0.25)) => :valuelow)
+                :value => (x -> quantile(x, 0.75)) => :innerhigh,
+                :value => (x -> quantile(x, 0.25)) => :innerlow,
+                :value => (x -> quantile(x, 0.975)) => :outerhigh,
+                :value => (x -> quantile(x, 0.025)) => :outerlow)
 
-pl = coef_spread_means |>
-    @vlplot(
-        facet = {
-            column = {field = :freqbin, type = :ordinal,
-            sort = ["delta","theta","alpha","beta","gamma"]}}) +
-    (@vlplot(x = :channel) +
-     @vlplot(:rule,
-        y = :valuelow,
-        y2 = :valuehigh, color = :comparison) +
-     @vlplot({:point, filled = true},
+compnames = Dict(
+    "global-v-object"  => "Global vs. Object",
+    "global-v-spatial" => "Global vs. Spatial",
+    "object-v-spatial" => "Object vs. Spatial")
+
+coefmeans_rank = @_ coef_spread_means |>
+    groupby(__, [:comparison, :channel]) |>
+    combine(__, :value => minimum => :minvalue,
+                :outerlow => minimum => :minouter) |>
+    sort!(__, [:comparison, :minvalue, :minouter]) |>
+    groupby(__, [:comparison]) |>
+    transform!(__, :minvalue => (x -> 1:length(x)) => :rank) |>
+    innerjoin(coef_spread_means, __, on = [:comparison, :channel]) |>
+    transform!(__, :channel => ByRow(x -> string("channel ",x)) => :channelstr) |>
+    filter(!(_.value == 0 && _.outerlow == 0 && _.outerhigh == 0), __) |>
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :comparisonstr)
+
+ytitle = "Median cross-validated coefficient value"
+pl = coefmeans_rank |>
+    @vlplot(facet =
+        {column = {field = :comparisonstr, title = "Comparison", type = :ordinal}}) +
+     (@vlplot(x = {:rank, title = "Coefficient Rank (low-to-high)"},
+        color = {:freqbin, type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"],
+                 scale = {scheme = "tableau10"}}) +
+      @vlplot(
+        transform = [{filter = "(datum.rank <= 3) && (datum.value != 0)"}],
+        mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
+        y = {field = :value, title = ytitle},
+        color = {value = "black"}) +
+      @vlplot({:rule, size = 3}, y = :innerlow, y2 = :innerhigh) +
+      @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+        y = {:outerlow, title = ytitle}, y2 = :outerhigh) +
+      @vlplot({:point, filled = true, size = 75},
         y = :value,
         color = {
-            field = :comparison,
-            condition = {test = "datum.value == 0", value = "rgba(0,0,0,0)"}}))
+            field = :freqbin,
+            type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"]}))
 
-pl |> save(joinpath(dir,"coef_spread_means.png"))
+pl |> save(joinpath(dir,"coefficients.svg"))
+
+# MCCA visualization
+# =================================================================
+
+# plot the spectrum
+
+coef_spread_means

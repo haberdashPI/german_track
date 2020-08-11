@@ -1,20 +1,15 @@
-- near far classification, within condition (just global, just object, just spatil)
-- one classifier for obj, spatial, global (3-way) (high level, no high low sal)
-- do z-score
-  - not just optimizing for accuracy, also something about interpretability
-  check window again
-- look at projected MCCA components (for high level conditions: global, spatial object)
+
++ one classifier for obj, spatial, global (3-way) (high level, no high low sal)
++ do z-score
+  + not just optimizing for accuracy, also something about interpretability
 - look at spectrogram components of MCCA
+- (lower priority) look at projected MCCA components (for high level conditions: global, spatial object)
+
+- check interaction of salience, target time, window timing
+- near far classification, within condition (just global, just object, just spatil)
 
 - maybe presetn obj v spatial a separate point
-  no split by variablen
-- classify far v near
-
-- classify spatial vs. object, wha'ts that look like
-- try highly regularized L1; look at coefficients
-- take a peak at the spectrograms
-
-- also keep working on windows near and far from switches
+  (probably no split by variables salience/target-time)
 
 ## old
 
