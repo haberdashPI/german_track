@@ -1,5 +1,5 @@
 export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names,
-    LassoPathClassifiers
+    LassoPathClassifiers, LassoClassifier
 
 const __classifierparams__ = (
     svm_radial        = (:C,:gamma),
@@ -129,8 +129,12 @@ paramnames(model::LassoPathClassifiers, fit) = :λ, :nzcoef
 paramvals(model::LassoPathClassifiers, fit::Nothing) =
     missing, missing
 
+paramnames(model::LassoClassifier, fit) = ()
+paramvals(model::LassoClassifier, fit) = ()
+
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
-    seed  = nothing, weight = nothing, debug_model_errors = true, kwds...)
+    seed  = nothing, weight = nothing, on_model_exception = :debug, kwds...)
+    @assert on_model_exception ∈ [:debug, :print, :throw]
 
     if !isnothing(seed);   seedmodel(model, seed); end
 
@@ -159,11 +163,11 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             try
                 coefs = ScikitLearn.fit!(model, _X, vec(_y); weigths_kwds...)
             catch e
-                if debug_model_errors
+                if on_model_exception == :debug
                     @info "Model fitting threw an error: opening debug to troubleshoot..."
                     @infiltrate
                     rethrow(e)
-                else
+                elseif on_model_exception == :print
                     buffer = IOBuffer()
                     for (exc, bt) in Base.catch_stack()
                         showerror(buffer, exc, bt)
@@ -171,6 +175,8 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                     end
                     @error "Exception while fitting model: $(String(take!(buffer)))"
                     return fill(missing, size(test,1)), nothing
+                elseif on_model_exception == :throw
+                    rethrow(e)
                 end
             end
 
@@ -191,16 +197,16 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                 result = append!!(result, DataFrame(
                     label                       =  @view(label[:,col]),
                     correct                     =  @view(correct[:,col]);
-                    (paramnames(model, coefs)  .=> paramvals(model, coefs, col))...,
-                    (keepvars                  .=> eachcol(test[:, keepvars]))...
+                    (keepvars                  .=> eachcol(test[:, keepvars]))...,
+                    (paramnames(model, coefs)  .=> paramvals(model, coefs, col))...
                 ))
             end
         else
             result = append!!(result, DataFrame(
                 label                      =  label,
                 correct                    =  correct;
-                (paramnames(model, coefs) .=> paramvals(model, coefs))...,
-                (keepvars                 .=> eachcol(test[:, keepvars]))...
+                (keepvars                 .=> eachcol(test[:, keepvars]))...,
+                (paramnames(model, coefs) .=> paramvals(model, coefs))...
             ))
         end
     end

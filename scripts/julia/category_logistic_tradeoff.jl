@@ -116,7 +116,7 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
         result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
             X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
             weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
-            debug_model_errors = false)
+            on_model_exception = :print)
 
         result[!, keys(key)] .= permutedims(collect(values(key)))
         result[!, :comparison] .= comp
