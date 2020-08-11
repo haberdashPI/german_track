@@ -54,6 +54,12 @@ An iterable object of folds. Each fold is a tuple of train and then test indices
 """
 function folds(K, indices, test_indices = indices;on_all_empty_test = :error,
         filter_empty_test = on_all_empty_test == :error, filter_empty_train = true)
+
+    if K == 1
+        @warn "Requested a single fold: non cross-validation performed."
+        return [(indices, indices)]
+    end
+
     len = length(indices)
     fold_size = len / K
 
