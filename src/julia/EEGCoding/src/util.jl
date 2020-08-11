@@ -5,7 +5,11 @@ using ProgressMeter
 
 cache_dir_ = Ref("")
 set_cache_dir!(str) = cache_dir_[] = str
-cache_dir() = cache_dir_[]
+function cache_dir(args...)
+    dir = joinpath(cache_dir_[], args...)
+    isdir(dir) || mkdir(dir)
+    dir
+end
 
 progress_update!(prog::Progress, n = 1) =
     ProgressMeter.update!(prog, prog.counter+n)
