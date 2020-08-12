@@ -128,7 +128,15 @@ function windowbaseline(;mindist, minlength, onempty = error)
     end
 end
 
-function compute_powerdiff_features(eeg, data, windowfn, window)
+const default_freqbins = OrderedDict(
+    :delta => (1, 3),
+    :theta => (3, 7),
+    :alpha => (7, 15),
+    :beta => (15, 30),
+    :gamma => (30, 100)
+)
+
+function compute_powerdiff_features(eeg, data, windowfn, window; kwds...)
     fs = framerate(eeg)
 
     freqdf = mapreduce(append!!, [:before, :after]) do timing
@@ -140,7 +148,7 @@ function compute_powerdiff_features(eeg, data, windowfn, window)
         end
         signal = reduce(append!!, windows)
         weight = sum(!isempty, windows)
-        freqdf = computebands(signal, fs)
+        freqdf = computebands(signal, fs; kwds...)
         freqdf[!, :window_timing] .= string(timing)
         freqdf[!, :weight] .= weight
 
@@ -168,7 +176,7 @@ function compute_powerdiff_features(eeg, data, windowfn, window)
     end
 end
 
-function compute_powerbin_features(eeg, data, windowfn, window)
+function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
     fs = framerate(eeg)
     windows = map(eachrow(data)) do row
         bounds = (window.start, window.start + window.len)
@@ -176,14 +184,15 @@ function compute_powerbin_features(eeg, data, windowfn, window)
     end
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
-    freqdf = computebands(signal, fs)
+    freqdf = computebands(signal, fs; kwds...)
     freqdf[!, :weight] .= weight
 
     freqdf
 
     if size(freqdf, 1) > 0
+        nbins = size(freqdf, 2)-2
         powerdf = @_ freqdf |>
-            stack(__, Between(:delta, :gamma),
+            stack(__, 1:nbins,
                 variable_name = :freqbin, value_name = :power) |>
             groupby(__, :channel) |>
             transform!(__, :weight => minimum => :weight) |>
@@ -197,12 +206,7 @@ function compute_powerbin_features(eeg, data, windowfn, window)
     end
 end
 
-function computebands(signal, fs;freqbins = OrderedDict(
-        :delta => (1, 3),
-        :theta => (3, 7),
-        :alpha => (7, 15),
-        :beta => (15, 30),
-        :gamma => (30, 100)))
+function computebands(signal, fs; freqbins = default_freqbins, channels = Colon())
 
     function freqrange(spect, (from, to))
         freqs = range(0, fs/2, length = size(spect, 2))
@@ -218,29 +222,35 @@ function computebands(signal, fs;freqbins = OrderedDict(
         newsignal[:, (size(signal, 2)+1):end] .= 0
         signal = newsignal
     end
-    spect = abs.(rfft(signal, 2))
+    spect = abs.(rfft(view(signal, channels, :), 2))
     # totalpower = mean(spect, dims = 2)
     result = mapreduce(hcat, keys(freqbins)) do bin
         mfreq = mean(freqrange(spect, freqbins[bin]), dims = 2) #./ totalpower
         DataFrame(Symbol(bin) => vec(mfreq))
     end
-    result[!, :channel] .= 1:size(result, 1)
+    if channels isa Colon
+        result[!, :channel] .= 1:size(result, 1)
+    else
+        result[!, :channel] .= channels
+    end
 
     if @_ all(0 ≈ _, signal)
-        result[!, Between(:delta, :gamma)] .= 0.0
+        result[!, Symbol.(keys(freqbins))] .= 0.0
     end
 
     result
 end
 
-function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt)
+function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt;
+    kwds...)
+
     progress = Progress(length(groupdf), desc = "Computing frequency bins...")
     classdf = @_ groupdf |>
         combine(function(sdf)
             # compute features in each window
             function findwindows(window)
                 result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                    windowfn, window)
+                    windowfn, window; kwds...)
                 result[!, :winstart] .= window.start
                 result[!, :winlen] .= window.len
                 result

@@ -235,6 +235,109 @@ pl |> save(joinpath(dir,"coefficients.svg"))
 # MCCA visualization
 # =================================================================
 
-# plot the spectrum
+# plot the spectrum of top two components
 
-coef_spread_means
+best_channel_df = @_ coef_spread_means |>
+    groupby(__, :comparison) |>
+    combine(__,
+        [:channel, :value] =>
+            ((chan,x) -> (channel = chan[sortperm(x)[1:2]])) => :channel,
+        :channel => (x -> 1:2) => :rank)
+
+
+best_channels = skipmissing(best_channel_df.channel) |> unique |> sort!
+spectdf_file = joinpath(cache_dir("features"), savename("cond-freaqmeans-spect",
+    (channels = best_channels,), "csv", allowedtypes = [Array]))
+
+if use_cache && isfile(spectdf_file)
+    spectdf = CSV.read(spectdf_file)
+else
+    binsize = 100 / 128
+    finebins = OrderedDict(string("bin",i) => ((i-1)*binsize, i*binsize) for i in 1:128)
+    windows = [(len = 2.0, start = 0.0)]
+
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+    spectdf_groups = @_ events |>
+        filter(_.target_present, __) |>
+        filter(ishit(_, region = "target") == "hit", __) |>
+        groupby(__, [:sid, :condition]);
+
+    spectdf = compute_freqbins(subjects, spectdf_groups, windowtarget, windows, foldxt,
+        freqbins = finebins, channels = @_ best_channel_df.channel |> unique |> sort! |>
+            push!(__, 1, 2))
+
+    CSV.write(spectdf_file,spectdf)
+end
+
+chpat = r"channel_([0-9]+)_bin([0-9]+)"
+spectdf_long = @_ spectdf |>
+    stack(__, r"channel", [:sid, :condition, :weight], variable_name = "channelbin") |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[2])) => :bin) |>
+    transform!(__, :bin => ByRow(bin -> (bin-1)*binsize + binsize/2) => :frequency)
+
+@_ spectdf_long |>
+    filter(_.frequency > 3, __) |>
+    @vlplot(:line, column = :channel, color = :condition,
+        x = {:frequency},
+        y = {:value, aggregate = :median, type = :quantitative})
+
+# maybe divide by median value
+
+spectdf_norm = @_ spectdf_long |>
+    groupby(__, [:frequency]) |>
+    transform!(__, :value => (x -> x ./ median(x)) => :normvalue)
+
+@_ spectdf_norm |>
+    filter(_.frequency > 1, __) |>
+    @vlplot(facet = {column = {field = :channel}}) +
+    (@vlplot() +
+        @vlplot(:line, color = :condition,
+            x = {:frequency, scale = {type = :log}},
+            y = {:normvalue, aggregate = :mean, type = :quantitative}) +
+        @vlplot(:errorband, color = :condition,
+            x = {:frequency, scale = {type = :log}},
+            y = {:normvalue, aggregate = :ci, type = :quantitative}))
+
+chpat = r"channel_([0-9]+)_([a-z]+)"
+bincenter(x) = @_ GermanTrack.default_freqbins[Symbol(x)] |> log.(__) |> mean |> exp
+classdf_long = @_ classdf_atlen |>
+    stack(__, r"channel", [:sid, :condition, :weight], variable_name = "channelbin") |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
+    transform!(__, :channelbin => ByRow(x -> match(chpat, x)[2])            => :bin) |>
+    transform!(__, :bin        => ByRow(bincenter)                          => :frequency) |>
+    groupby(__, :bin) |>
+    transform!(__, :value => zscore => :zvalue)
+
+classdf_summary = @_ classdf_long |>
+    groupby(__, [:channel, :frequency, :condition]) |>
+    combine(__, :zvalue => median => :medvalue,
+                :zvalue => minimum => :minvalue,
+                :zvalue => maximum => :maxvalue,
+                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
+                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
+                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
+                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
+
+ytitle = "Median Power"
+classdf_summary |>
+    @vlplot(facet = {
+            field = :channel,
+            type = :ordinal
+        },
+            config = {facet = {columns = 5}}) + (
+        @vlplot() +
+        @vlplot(:line, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:point, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:errorband, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q50u, title = ytitle}, y2 = :q50l) +
+        @vlplot(:errorbar, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
+    )
+
+
+# seems weird: do all the channels look like this?
+# is it that each would work, but the lasso removes useful coefficients (do
+# we need an elastic net?)
