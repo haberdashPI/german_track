@@ -75,7 +75,7 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
         result = testclassifier(LassoPathClassifiers([1.0, sdf.λ |> first]),
             data = sdf, y = :condition, X = r"channel",
             crossval = :sid, n_folds = 10,
-            seed = hash((:cond_coef_timeline,2019_11_18)),
+            seed = stablehash(:cond_coef_timeline,2019_11_18),
             irls_maxiter = 100,
             weight = :weight, on_model_exception = :throw)
 
@@ -142,7 +142,7 @@ coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
         result = testclassifier(LassoClassifier(sdf.λ |> first),
             data = sdf, y = :condition, X = r"channel",
             crossval = :sid, n_folds = 10,
-            seed = hash((:cond_coef_timeline,2019_11_18)),
+            seed = stablehash(:cond_coef_timeline,2019_11_18),
             irls_maxiter = 100, include_model_coefs = true,
             weight = :weight, on_model_exception = :throw)
 
@@ -205,17 +205,18 @@ coefmeans_rank = @_ coef_spread_means |>
     groupby(__, [:comparison]) |>
     transform!(__, :minvalue => (x -> 1:length(x)) => :rank) |>
     innerjoin(coef_spread_means, __, on = [:comparison, :channel]) |>
-    transform!(__, :channel => ByRow(x -> string("channel ",x)) => :channelstr) |>
+    transform!(__, :channel => ByRow(x -> string("MCCA ",x)) => :channelstr) |>
     filter(!(_.value == 0 && _.outerlow == 0 && _.outerhigh == 0), __) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :comparisonstr)
 
 ytitle = "Median cross-validated coefficient value"
-pl = coefmeans_rank |>
+plcoefs = coefmeans_rank |>
     @vlplot(facet =
-        {column = {field = :comparisonstr, title = "Comparison", type = :ordinal}}) +
+        {column = {field = :comparisonstr, title = "Comparison", type = :ordinal}},
+        spacing = {column = 45}) +
      (@vlplot(x = {:rank, title = "Coefficient Rank (low-to-high)"},
         color = {:freqbin, type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"],
-                 scale = {scheme = "tableau10"}}) +
+                 scale = {scheme = "magma"}}) +
       @vlplot(
         transform = [{filter = "(datum.rank <= 3) && (datum.value != 0)"}],
         mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
@@ -223,7 +224,7 @@ pl = coefmeans_rank |>
         color = {value = "black"}) +
       @vlplot({:rule, size = 3}, y = :innerlow, y2 = :innerhigh) +
       @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
-        y = {:outerlow, title = ytitle}, y2 = :outerhigh) +
+        y = {:outerlow, title = ytitle, type = :quantitative}, y2 = "outerhigh:q") +
       @vlplot({:point, filled = true, size = 75},
         y = :value,
         color = {
@@ -235,69 +236,8 @@ pl |> save(joinpath(dir,"coefficients.svg"))
 # MCCA visualization
 # =================================================================
 
-# plot the spectrum of top two components
-
-best_channel_df = @_ coef_spread_means |>
-    groupby(__, :comparison) |>
-    combine(__,
-        [:channel, :value] =>
-            ((chan,x) -> (channel = chan[sortperm(x)[1:2]])) => :channel,
-        :channel => (x -> 1:2) => :rank)
-
-
-best_channels = skipmissing(best_channel_df.channel) |> unique |> sort!
-spectdf_file = joinpath(cache_dir("features"), savename("cond-freaqmeans-spect",
-    (channels = best_channels,), "csv", allowedtypes = [Array]))
-
-if use_cache && isfile(spectdf_file)
-    spectdf = CSV.read(spectdf_file)
-else
-    binsize = 100 / 128
-    finebins = OrderedDict(string("bin",i) => ((i-1)*binsize, i*binsize) for i in 1:128)
-    windows = [(len = 2.0, start = 0.0)]
-
-    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-    spectdf_groups = @_ events |>
-        filter(_.target_present, __) |>
-        filter(ishit(_, region = "target") == "hit", __) |>
-        groupby(__, [:sid, :condition]);
-
-    spectdf = compute_freqbins(subjects, spectdf_groups, windowtarget, windows, foldxt,
-        freqbins = finebins, channels = @_ best_channel_df.channel |> unique |> sort! |>
-            push!(__, 1, 2))
-
-    CSV.write(spectdf_file,spectdf)
-end
-
-chpat = r"channel_([0-9]+)_bin([0-9]+)"
-spectdf_long = @_ spectdf |>
-    stack(__, r"channel", [:sid, :condition, :weight], variable_name = "channelbin") |>
-    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
-    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[2])) => :bin) |>
-    transform!(__, :bin => ByRow(bin -> (bin-1)*binsize + binsize/2) => :frequency)
-
-@_ spectdf_long |>
-    filter(_.frequency > 3, __) |>
-    @vlplot(:line, column = :channel, color = :condition,
-        x = {:frequency},
-        y = {:value, aggregate = :median, type = :quantitative})
-
-# maybe divide by median value
-
-spectdf_norm = @_ spectdf_long |>
-    groupby(__, [:frequency]) |>
-    transform!(__, :value => (x -> x ./ median(x)) => :normvalue)
-
-@_ spectdf_norm |>
-    filter(_.frequency > 1, __) |>
-    @vlplot(facet = {column = {field = :channel}}) +
-    (@vlplot() +
-        @vlplot(:line, color = :condition,
-            x = {:frequency, scale = {type = :log}},
-            y = {:normvalue, aggregate = :mean, type = :quantitative}) +
-        @vlplot(:errorband, color = :condition,
-            x = {:frequency, scale = {type = :log}},
-            y = {:normvalue, aggregate = :ci, type = :quantitative}))
+# plot the features of top two components
+# -----------------------------------------------------------------
 
 chpat = r"channel_([0-9]+)_([a-z]+)"
 bincenter(x) = @_ GermanTrack.default_freqbins[Symbol(x)] |> log.(__) |> mean |> exp
@@ -337,7 +277,123 @@ classdf_summary |>
             x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
     )
 
+# plot individual for two best dimensions
 
-# seems weird: do all the channels look like this?
-# is it that each would work, but the lasso removes useful coefficients (do
-# we need an elastic net?)
+function bestchan_features(classdf)
+    function (row)
+        result = @_ filter(occursin(_.condition,row.comparison) &&
+                  _.channel == row.channel &&
+                  _.bin == row.freqbin, classdf)
+        for col in propertynames(row)
+            result[:,col] = row[col]
+        end
+        result
+    end
+end
+
+classdf_best = @_ foldl(append!!, Map(bestchan_features(classdf_long)),
+    eachrow(best_channel_df))
+
+classdf_best_long = @_ classdf_best |>
+    unstack(__, [:sid, :condition, :comparison], :rank, :zvalue,
+        renamecols = x -> Symbol(:value,x)) |>
+    innerjoin(__, unstack(classdf_best, [:sid, :condition, :comparison], :rank, :channelbin,
+        renamecols = x -> Symbol(:feat,x)), on = [:sid, :condition, :comparison]) |>
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :comparisonstr) |>
+    transform!(__, :feat1 => ByRow(string) => :feat1) |>
+    transform!(__, :feat2 => ByRow(string) => :feat2)
+
+function maketitle(x)
+    m = match(r"channel_([0-9]+)_([a-z]+)", x)
+    chn, bin = m[1], m[2]
+    "MCCA Component $chn $(uppercasefirst(bin))"
+end
+titles = @_ classdf_best_long |>
+    groupby(__, :comparison) |>
+    combine(__, :feat1 => (maketitle ∘ first) => :title1,
+                :feat2 => (maketitle ∘ first) => :title2) |>
+    groupby(__, :comparison)
+
+plfeats = @vlplot() + hcat(
+    (classdf_best_long |> @vlplot(
+        transform = [{filter = "datum.comparison == '$comparison'"}],
+        {:point, filled = true},
+        x = {:value1, title = titles[(comparison = comparison,)].title1[1],
+            scale = {domain = [-2.5, 2.5]}},
+        y = {:value2, title = titles[(comparison = comparison,)].title2[1],
+            scale = {domain = [-2.5, 2.5]}},
+        shape = :condition,
+        color = {:condition, scale = {scheme = "dark2"}})
+        for comparison in unique(classdf_best_long.comparison))...)
+
+pl = @vlplot(align = "all",
+        resolve = {scale = {color = "independent", shape = "independent"}}) +
+    vcat(plcoefs, plfeats)
+
+pl |> save(joinpath(dir, "condition_timeline.svg"))
+pl |> save(joinpath(dir, "condition_timeline.png"))
+
+# Plot spectrum of all components
+# -----------------------------------------------------------------
+
+best_channel_df = @_ coef_spread_means |>
+    groupby(__, :comparison) |>
+    combine(__,
+        [:channel, :value] =>
+            ((chan,x) -> chan[sortperm(x)[1:2]]) => :channel,
+        [:freqbin, :value] =>
+            ((bin,x) -> bin[sortperm(x)][1:2]) => :freqbin,
+        :channel => (x -> 1:2) => :rank)
+
+
+best_channels = skipmissing(best_channel_df.channel) |> unique |> sort!
+spectdf_file = joinpath(cache_dir("features"), savename("cond-freaqmeans-spect",
+    (channels = best_channels,), "csv", allowedtypes = [Array]))
+
+binsize = 100 / 128
+finebins = OrderedDict(string("bin",i) => ((i-1)*binsize, i*binsize) for i in 1:128)
+windows = [(len = 2.0, start = 0.0)]
+
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+spectdf_groups = @_ events |>
+    filter(_.target_present, __) |>
+    filter(ishit(_, region = "target") == "hit", __) |>
+    groupby(__, [:sid, :condition]);
+
+spectdf = compute_freqbins(subjects, spectdf_groups, windowtarget, windows, foldxt,
+    freqbins = finebins, channels = @_ best_channel_df.channel |> unique |> sort! |>
+        push!(__, 1, 2))
+
+chpat = r"channel_([0-9]+)_bin([0-9]+)"
+spectdf_long = @_ spectdf |>
+    stack(__, r"channel", [:sid, :condition, :weight], variable_name = "channelbin") |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[2])) => :bin) |>
+    transform!(__, :bin => ByRow(bin -> (bin-1)*binsize + binsize/2) => :frequency)
+
+@_ spectdf_long |>
+    filter(_.frequency > 3, __) |>
+    @vlplot(:line, column = :channel, color = :condition,
+        x = {:frequency},
+        y = {:value, aggregate = :median, type = :quantitative})
+
+# maybe divide by median value
+
+spectdf_norm = @_ spectdf_long |>
+    groupby(__, [:frequency]) |>
+    transform!(__, :value => (x -> x ./ median(x)) => :normvalue)
+
+@_ spectdf_norm |>
+    filter(_.frequency > 1, __) |>
+    @vlplot(facet = {column = {field = :channel}}) +
+    (@vlplot() +
+        @vlplot(:line, color = :condition,
+            x = {:frequency, scale = {type = :log}},
+            y = {:normvalue, aggregate = :mean, type = :quantitative}) +
+        @vlplot(:errorband, color = :condition,
+            x = {:frequency, scale = {type = :log}},
+            y = {:normvalue, aggregate = :ci, type = :quantitative}))
+
+
+
+# TODO: can we look at the feature values in the absence of hits?

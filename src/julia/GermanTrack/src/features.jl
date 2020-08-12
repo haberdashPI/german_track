@@ -85,7 +85,7 @@ function windowtarget(trial,event,fs,from,to)
 end
 
 function windowswitch(trial, event, fs, from, to)
-    seed = hash((switch_seed, event.sid, event.trial))
+    seed = stablehash(switch_seed, event.sid, event.trial)
     si = event.sound_index
     stimes = switch_times[si]
 
@@ -118,7 +118,7 @@ function windowbaseline(;mindist, minlength, onempty = error)
         ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
         isempty(ranges) && return handleempty(onempty)
 
-        seed = hash((baseline_seed, event.sid, event.trial))
+        seed = stablehash(baseline_seed, event.sid, event.trial)
         at = sample_from_ranges(trialrng(:windowbaseline, event), ranges)
         window = only_near(at, fs, window = (from, to))
 

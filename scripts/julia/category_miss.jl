@@ -63,7 +63,7 @@ rename!(best_params,:subjects => :sid)
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
+    np.random.seed(typemax(UInt32) & stablehash(params,seed))
     testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 testgroups = @_ objectdf |>
@@ -186,7 +186,7 @@ ggplot($image, aes(x=channel,y=freqbin,fill=value)) + geom_raster() +
 
 function modelresult((key,sdf))
     params = (nu = key[:nu], gamma = key[:gamma])
-    np.random.seed(typemax(UInt32) & hash((params,seed)))
+    np.random.seed(typemax(UInt32) & stablehash(params,seed))
     testclassifier(sdf,NuSVC(;params...),:sid,:condition,r"channel")
 end
 

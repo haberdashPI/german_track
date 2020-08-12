@@ -156,7 +156,7 @@ spatialdf = @_ classdf |> filter(_.condition in ["global", "spatial"], __)
         try
             result = testclassifier(buildmodel(params, classifier, seed), data = sdf,
                 y = :condition, X = r"channel", crossval = :sid, n_folds = inner_n_folds,
-                seed = hash((params, seed)))
+                seed = stablehash(params, seed))
 
             return (
                 mean   = wmeanish(result.correct, result.weight),
@@ -228,7 +228,7 @@ if test_optimization || use_slurm || !use_cache || !isfile(paramfile)
     let result = Empty(DataFrame)
         for (k, (train, test)) in enumerate(folds(n_folds, objectdf.sid |> unique))
             reducefn = test_optimization ? foldl : dreduce
-            Random.seed!(hash((seed, :object, k)))
+            Random.seed!(stablehash(seed, :object, k))
 
             optresult = bboptimize(;all_opts...) do params
                 tparams_vals = @_ map(_1(_2), param_by, params)
@@ -302,7 +302,7 @@ if !use_slurm && !test_optimization
     @everywhere function modelresult((key, sdf))
         params = classifierparams(sdf[1,:], classifier)
         testclassifier(buildmodel(params, classifier, seed), data = sdf,
-            y = :condition, X = r"channel", crossval = :sid, seed = hash((params, seed)),
+            y = :condition, X = r"channel", crossval = :sid, seed = stablehash(params, seed),
             n_folds = inner_n_folds)
     end
 
@@ -359,7 +359,7 @@ if !use_slurm && !test_optimization
         else
             testclassifier(buildmodel(params, classifier, seed), data = sdf,
                 y = :condition, X = r"channel", crossval = :sid,
-                seed = hash((params, seed)), n_folds = inner_n_folds)
+                seed = stablehash(params, seed), n_folds = inner_n_folds)
         end
     end
 

@@ -4,7 +4,7 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5, ScikitLearn
+    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers
 
 using BSON: @save, @load
 export CSV, @save, @load
@@ -18,6 +18,7 @@ include("classifier.jl")
 include("stimuli.jl")
 include("files.jl")
 include("train_test.jl")
+include("random.jl")
 
 export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
 

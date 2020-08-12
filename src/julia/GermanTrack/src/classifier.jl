@@ -65,13 +65,13 @@ function buildmodel(params, classifier, seed)
     elseif classifier == :svm_linear
         SVC(
             kernel = "linear",
-            random_state = hash((params, seed)) & typemax(UInt32);
+            random_state = stablehash(params, seed) & typemax(UInt32);
             params...
         )
     elseif classifier == :gradient_boosting
         GradientBoostingClassifier(
             loss             = "deviance",
-            random_state     = hash((params, seed)) & typemax(UInt32),
+            random_state     = stablehash(params, seed) & typemax(UInt32),
             n_iter_no_change = 10,
             max_features     = "auto";
             params...
