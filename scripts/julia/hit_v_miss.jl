@@ -232,8 +232,7 @@ function classacc(sdf,cols)
     DataFrame(N=N,correct=correct)
 end
 
-rnd = MersenneTwister(1983)
-rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
+rseqs = [sort!(sample(stableRNG(1983),1:30,5,replace=false)) for _ in 1:10]
 channel_groups = OrderedDict(
     "1-5" => 1:5,
     "1-10" => 1:10,
@@ -317,8 +316,7 @@ classpredict = @_ by(classacc(_,[:powerdiff]),classdf,
     [:winstart,:winlen,:channel,:salience,:freqbin])
 classpredict[!,:channelgroup] = @_ map(@sprintf("channel%02d",_),classpredict.channel)
 
-rnd = MersenneTwister(1983)
-rseqs = [sort!(sample(rnd,1:30,5,replace=false)) for _ in 1:10]
+rseqs = [sort!(sample(stableRNG(1983),1:30,5,replace=false)) for _ in 1:10]
 channel_groups = OrderedDict(
     "1-5" => 1:5,
     "1-10" => 1:10,

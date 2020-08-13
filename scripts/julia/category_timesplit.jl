@@ -41,7 +41,7 @@ predictdf = CSV.read(classfile)
 # Window start selection
 # -----------------------------------------------------------------
 
-validation_ids = StatsBase.sample(MersenneTwister(stablehash(seed, :winstart)),
+validation_ids = StatsBase.sample(stableRNG(seed, :winstart),
     unique(predictdf.sid), round(Int, 0.1length(unique(predictdf.sid))), replace = false)
 # validation_ids = unique(predictdf.sid)
 lowpass = digitalfilter(Lowpass(0.5), Butterworth(5))

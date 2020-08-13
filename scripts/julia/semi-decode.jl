@@ -134,7 +134,7 @@ end
 # don't include them as part of the training
 N = size(weights,2)
 testsize = round(Int,0.2N)
-testset = sample(MersenneTwister(1983_11_09), 1:N, testsize, replace=false) |>
+testset = sample(stableRNG(1983_11_09), 1:N, testsize, replace=false) |>
     sort!
 
 testweights = weights[:,testset]
