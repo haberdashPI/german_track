@@ -242,6 +242,7 @@ plcoefs = coefmeans_rank |>
 # plot the features of top two components
 # -----------------------------------------------------------------
 
+
 chpat = r"channel_([0-9]+)_([a-z]+)"
 bincenter(x) = @_ GermanTrack.default_freqbins[Symbol(x)] |> log.(__) |> mean |> exp
 classdf_long = @_ classdf_atlen |>
@@ -251,34 +252,6 @@ classdf_long = @_ classdf_atlen |>
     transform!(__, :bin        => ByRow(bincenter)                          => :frequency) |>
     groupby(__, :bin) |>
     transform!(__, :value => zscore => :zvalue)
-
-classdf_summary = @_ classdf_long |>
-    groupby(__, [:channel, :frequency, :condition]) |>
-    combine(__, :zvalue => median => :medvalue,
-                :zvalue => minimum => :minvalue,
-                :zvalue => maximum => :maxvalue,
-                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
-                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
-                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
-                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
-
-ytitle = "Median Power"
-classdf_summary |>
-    @vlplot(facet = {
-            field = :channel,
-            type = :ordinal
-        },
-            config = {facet = {columns = 5}}) + (
-        @vlplot() +
-        @vlplot(:line, color = :condition,
-            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
-        @vlplot(:point, color = :condition,
-            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
-        @vlplot(:errorband, color = :condition,
-            x = {:frequency, scale = {type = :log}}, y = {:q50u, title = ytitle}, y2 = :q50l) +
-        @vlplot(:errorbar, color = :condition,
-            x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
-    )
 
 # plot individual for two best dimensions
 
@@ -293,6 +266,15 @@ function bestchan_features(classdf)
         result
     end
 end
+
+best_channel_df = @_ coef_spread_means |>
+    groupby(__, :comparison) |>
+    combine(__,
+        [:channel, :value] =>
+            ((chan,x) -> chan[sortperm(x)[1:2]]) => :channel,
+        [:freqbin, :value] =>
+            ((bin,x) -> bin[sortperm(x)][1:2]) => :freqbin,
+        :channel => (x -> 1:2) => :rank)
 
 classdf_best = @_ foldl(append!!, Map(bestchan_features(classdf_long)),
     eachrow(best_channel_df))
@@ -338,16 +320,6 @@ pl |> save(joinpath(dir, "condition_features.png"))
 
 # Plot spectrum of all components
 # -----------------------------------------------------------------
-
-best_channel_df = @_ coef_spread_means |>
-    groupby(__, :comparison) |>
-    combine(__,
-        [:channel, :value] =>
-            ((chan,x) -> chan[sortperm(x)[1:2]]) => :channel,
-        [:freqbin, :value] =>
-            ((bin,x) -> bin[sortperm(x)][1:2]) => :freqbin,
-        :channel => (x -> 1:2) => :rank)
-
 
 best_channels = skipmissing(best_channel_df.channel) |> unique |> sort!
 spectdf_file = joinpath(cache_dir("features"), savename("cond-freaqmeans-spect",
@@ -398,5 +370,32 @@ spectdf_norm = @_ spectdf_long |>
             y = {:normvalue, aggregate = :ci, type = :quantitative}))
 
 
+classdf_summary = @_ classdf_long |>
+    groupby(__, [:channel, :frequency, :condition]) |>
+    combine(__, :zvalue => median => :medvalue,
+                :zvalue => minimum => :minvalue,
+                :zvalue => maximum => :maxvalue,
+                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
+                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
+                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
+                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
+
+ytitle = "Median Power"
+classdf_summary |>
+    @vlplot(facet = {
+            field = :channel,
+            type = :ordinal
+        },
+            config = {facet = {columns = 5}}) + (
+        @vlplot() +
+        @vlplot(:line, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:point, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:errorband, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q50u, title = ytitle}, y2 = :q50l) +
+        @vlplot(:errorbar, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
+    )
 
 # TODO: can we look at the feature values in the absence of hits?
