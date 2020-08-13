@@ -65,7 +65,8 @@ end
 # Model evaluation
 # =================================================================
 
-λ_folds = folds(2, unique(classdf.sid))
+shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds), __)
+λ_folds = folds(2, shuffled_sids)
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 classcomps = [
@@ -134,7 +135,7 @@ pl = @vlplot() +
         )
     )
 
-pl |> save(joinpath(dir, "lambdas_by_condition.pdf"))
+pl |> save(joinpath(dir, "lambdas_by_condition.svg"))
 pl |> save(joinpath(dir, "lambdas_by_condition.html"))
 
 meandiff = @_ filter(_.λ == 1.0, bestmeans) |>
@@ -196,8 +197,7 @@ pl = @vlplot() +
         )
     )
 
-pl |> save(joinpath(dir, "relative_lambdas_by_condition.pdf"))
-pl |> save(joinpath(dir, "relative_lambdas_by_condition.html"))
+pl |> save(joinpath(dir, "relative_lambdas_by_condition.svg"))
 
 # Save best window length and λ
 # -----------------------------------------------------------------

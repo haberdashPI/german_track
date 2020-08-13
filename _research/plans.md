@@ -1,8 +1,8 @@
-
 + one classifier for obj, spatial, global (3-way) (high level, no high low sal)
 + do z-score
   + not just optimizing for accuracy, also something about interpretability
 - look at spectrogram components of MCCA
+  - can we compare hittype? maybe the differences across condition are specific to that...
 - (lower priority) look at projected MCCA components (for high level conditions: global, spatial object)
 
 - check interaction of salience, target time, window timing

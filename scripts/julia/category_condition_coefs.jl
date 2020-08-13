@@ -113,8 +113,7 @@ pl = meandiff |>
     @vlplot(:line,  y = {:meandiff, aggregate = :mean, type = :quantitative}) +
     @vlplot(:errorband,  y = {:meandiff, aggregate = :ci, type = :quantitative})
 
-pl |> save(joinpath(dir, "condition_timeline.pdf"))
-pl |> save(joinpath(dir, "condition_timeline.html"))
+pl |> save(joinpath(dir, "condition_timeline.svg"))
 
 # Display of model coefficients
 # =================================================================
@@ -153,7 +152,7 @@ coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
     end
 
     groups = pairs(groupby(data, :fold))
-    foldl(append!!, Map(findclass), collect(groups)[1:1])
+    foldl(append!!, Map(findclass), collect(groups))
 end
 
 coefnames_ = pushfirst!(propertynames(coefdf[:,r"channel"]), :C)
@@ -186,11 +185,12 @@ minabs(x) = x[argmin(abs.(x))]
 coef_spread_means = @_ coef_spread |>
     filter(!ismissing(_.channel), __) |>
     groupby(__, [:freqbin, :channel, :comparison]) |>
-    combine(__, :value => median => :value,
+    combine(__, :value => mean => :value,
+                :value => length => :N,
                 :value => (x -> quantile(x, 0.75)) => :innerhigh,
                 :value => (x -> quantile(x, 0.25)) => :innerlow,
-                :value => (x -> quantile(x, 0.975)) => :outerhigh,
-                :value => (x -> quantile(x, 0.025)) => :outerlow)
+                :value => (x -> quantile(x, 0.95)) => :outerhigh,
+                :value => (x -> quantile(x, 0.05)) => :outerlow)
 
 compnames = Dict(
     "global-v-object"  => "Global vs. Object",
@@ -217,11 +217,6 @@ plcoefs = coefmeans_rank |>
      (@vlplot(x = {:rank, title = "Coefficient Rank (low-to-high)"},
         color = {:freqbin, type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"],
                  scale = {scheme = "magma"}}) +
-      @vlplot(
-        transform = [{filter = "(datum.rank <= 3) && (datum.value != 0)"}],
-        mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
-        y = {field = :value, title = ytitle},
-        color = {value = "black"}) +
       @vlplot({:rule, size = 3}, y = :innerlow, y2 = :innerhigh) +
       @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
         y = {:outerlow, title = ytitle, type = :quantitative}, y2 = "outerhigh:q") +
@@ -229,9 +224,17 @@ plcoefs = coefmeans_rank |>
         y = :value,
         color = {
             field = :freqbin,
-            type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"]}))
-
-pl |> save(joinpath(dir,"coefficients.svg"))
+            legend = {title = nothing},
+            type = :ordinal, sort = ["delta","theta","alpha","beta","gamma"]}) +
+      @vlplot(
+          transform = [
+            {aggregate = [{op = :min, field = :value, as = :min_mvalue}],
+             groupby = [:channelstr, :rank]},
+            {filter = "(datum.rank <= 3) && (datum.min_mvalue != 0)"}],
+          x = :rank,
+          mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
+          y = {field = :min_mvalue, title = ytitle},
+          color = {value = "black"}))
 
 # MCCA visualization
 # =================================================================
@@ -330,8 +333,8 @@ pl = @vlplot(align = "all",
         resolve = {scale = {color = "independent", shape = "independent"}}) +
     vcat(plcoefs, plfeats)
 
-pl |> save(joinpath(dir, "condition_timeline.svg"))
-pl |> save(joinpath(dir, "condition_timeline.png"))
+pl |> save(joinpath(dir, "condition_features.svg"))
+pl |> save(joinpath(dir, "condition_features.png"))
 
 # Plot spectrum of all components
 # -----------------------------------------------------------------
