@@ -369,9 +369,30 @@ spectdf_norm = @_ spectdf_long |>
             x = {:frequency, scale = {type = :log}},
             y = {:normvalue, aggregate = :ci, type = :quantitative}))
 
+# Examine the power across bins/channels near a target
+# -----------------------------------------------------------------
 
-classdf_summary = @_ classdf_long |>
-    groupby(__, [:channel, :frequency, :condition]) |>
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+classhitdf_groups = @_ events |>
+    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    groupby(__, [:sid, :condition, :hittype])
+
+windows = [(len = 2.0, start = 0.0)]
+classhitdf = compute_freqbins(subjects, classhitdf_groups, windowtarget, windows)
+
+chpat = r"channel_([0-9]+)_([a-z]+)"
+bincenter(x) = @_ GermanTrack.default_freqbins[Symbol(x)] |> log.(__) |> mean |> exp
+classhitdf_long = @_ classhitdf |>
+    stack(__, r"channel", [:sid, :condition, :weight, :hittype], variable_name = "channelbin") |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
+    transform!(__, :channelbin => ByRow(x -> match(chpat, x)[2])            => :bin) |>
+    transform!(__, :bin        => ByRow(bincenter)                          => :frequency) |>
+    groupby(__, :bin) |>
+    transform!(__, :value => zscore => :zvalue)
+
+classhitdf_summary = @_ classhitdf_long |>
+    groupby(__, [:hittype, :channel, :frequency, :condition]) |>
     combine(__, :zvalue => median => :medvalue,
                 :zvalue => minimum => :minvalue,
                 :zvalue => maximum => :maxvalue,
@@ -381,12 +402,12 @@ classdf_summary = @_ classdf_long |>
                 :zvalue => (x -> quantile(x, 0.025)) => :q95l)
 
 ytitle = "Median Power"
-classdf_summary |>
+@_ classhitdf_summary |>
+    filter(_.channel in 1:5, __) |>
     @vlplot(facet = {
-            field = :channel,
-            type = :ordinal
-        },
-            config = {facet = {columns = 5}}) + (
+            column = {field = :hittype, type = :ordinal},
+            row = {field = :channel, type = :ordinal}
+        }) + (
         @vlplot() +
         @vlplot(:line, color = :condition,
             x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
@@ -398,4 +419,71 @@ classdf_summary |>
             x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
     )
 
-# TODO: can we look at the feature values in the absence of hits?
+ytitle = "Median Power"
+@_ classhitdf_summary |>
+    @vlplot(facet = {
+            field = :channel,
+            type = :ordinal
+        },
+        config = {facet = {columns = 10}}
+    )+(@vlplot() +
+        @vlplot(:point, color = :condition,
+            x = :hittype,
+            y = {:medvalue, title = ytitle, aggregate = :mean, type = :quantitative}) +
+        @vlplot(:errorbar, color = :condition,
+            x = :hittype,
+            y = {:q95u, title = ytitle, aggregate = :mean, type = :quantitative},
+            y2 = :q95l)
+    )
+
+
+classhitdf_summary = @_ classhitdf_long |>
+    groupby(__, [:hittype, :condition]) |>
+    combine(__, :zvalue => median => :medvalue,
+                :zvalue => minimum => :minvalue,
+                :zvalue => maximum => :maxvalue,
+                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
+                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
+                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
+                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
+
+ytitle = "Median Power"
+@_ classhitdf_summary |>
+    @vlplot(facet = {
+            field = :hittype,
+            type = :ordinal
+        },
+        config = {facet = {columns = 10}}
+    )+(@vlplot() +
+        @vlplot(:point, color = :condition,
+            x = :condition, y = {:medvalue, title = ytitle}) +
+        @vlplot(:errorbar, color = :condition,
+            x = :condition, y = {:q95u, title = ytitle}, y2 = :q95l)
+    )
+
+classhitdf_stats = @_ classhitdf_long |>
+    groupby(__, [:hittype, :condition, :sid]) |>
+    combine(__, :zvalue => median => :medvalue)
+
+pl = @_ classhitdf_stats |>
+    @vlplot(facet = {
+        field = :hittype,
+        type = :ordinal
+    },
+    config = {legend = {disable = true}, facet = {columns = 10}}
+    )+(@vlplot(width = 50, height = 300) +
+    @vlplot({:point, filled = true, size = 75}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
+    @vlplot({:errorbar, ticks = {size = 5}}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :ci}) +
+    @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -5},
+        color = {value = "black"},
+        x = :condition, y = {:medvalue, title = ytitle})
+    )
+
+pl |> save(joinpath(dir, "medpower_hittype.svg"))
+pl |> save(joinpath(dir, "medpower_hittype.png"))
+
+
