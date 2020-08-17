@@ -84,13 +84,13 @@ function windowtarget(trial,event,fs,from,to)
     view(trial, :, start:stop)
 end
 
+const switch_seed = 2018_11_18
 function windowswitch(trial, event, fs, from, to)
-    seed = stablehash(switch_seed, event.sid, event.trial)
     si = event.sound_index
     stimes = switch_times[si]
 
     options = only_near(stimes, max_trial_length, window = (from, to))
-    window = rand(trialrng(:windowswitch, event), options)
+    window = rand(trialrng((:windowswitch, switch_seed), event), options)
 
     start = max(1, round(Int, window[1]*fs))
     stop = min(round(Int, window[2]*fs), size(trial, 2))
@@ -98,8 +98,8 @@ function windowswitch(trial, event, fs, from, to)
 end
 
 const max_sid = 200
-function trialrng(id,event)
-    seed = hash(id)
+function trialrng(id, event)
+    seed = stablehash(id)
     event.sid < max_sid || error("Subject ids above $max_sid are not supported")
     Threefry2x((seed, max_sid*event.trial + event.sid))
 end
@@ -118,8 +118,7 @@ function windowbaseline(;mindist, minlength, onempty = error)
         ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
         isempty(ranges) && return handleempty(onempty)
 
-        seed = stablehash(baseline_seed, event.sid, event.trial)
-        at = sample_from_ranges(trialrng(:windowbaseline, event), ranges)
+        at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
         window = only_near(at, fs, window = (from, to))
 
         start = max(1, round(Int, window[1]*fs))
