@@ -166,6 +166,10 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             end
 
             _y, _X = getxy(train)
+            if size(_y, 2) > 1
+                error("The value for `y` ($y) should only reference a single, two-category column.")
+            end
+
             weigths_kwds = isnothing(weight) ? kwds : (wts = float(train[:,weight]), kwds...)
 
             local coefs
