@@ -1,12 +1,33 @@
-+ one classifier for obj, spatial, global (3-way) (high level, no high low sal)
-+ do z-score
-  + not just optimizing for accuracy, also something about interpretability
-- look at spectrogram components of MCCA
-  - can we compare hittype? maybe the differences across condition are specific to that...
-- (lower priority) look at projected MCCA components (for high level conditions: global, spatial object)
+
+The overall results
+
+1. main result: the different conditions have different brain responses
+  a. power analysis
+  b. subpanel broken down by different response types
+  c. establish a baseline: null model? shuffled labels? hit type?
+  d. regression components
+
+2. salience classifier: (low v high classification)
+  a. global alone
+  b. object alone
+  c. spatial alone
+  maybe t-test? something simple anyways
+
+3. buildup and switching: near v far classification
+  a. by condition: near v far, early v late, salience? (high low), 
+    maybe have different panels, main results
+
+send the plots as I go
+also start figuring out the behavioral result analyses
+start trying to put this all together
+
+## oldish
+
+- classify low/high salience
 
 - check interaction of salience, target time, window timing
 - near far classification, within condition (just global, just object, just spatil)
+  - early/late
 
 - maybe presetn obj v spatial a separate point
   (probably no split by variables salience/target-time)
