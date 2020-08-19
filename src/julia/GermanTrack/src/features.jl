@@ -102,12 +102,17 @@ function windowswitch(trial, event, fs, from, to)
     stop = min(round(Int, window[2]*fs), size(trial, 2))
     view(trial, :, start:stop)
 end
-
-const max_sid = 200
+const NUM_STIMULI = 50
+const COND_ID = Dict(
+    "global"  => 0,
+    "object"  => 1,
+    "spatial" => 2,
+)
+# the random value is determined by the stimulus and condition:
+# if it is the same stimulus and condition, the same window is used
 function trialrng(id, event)
     seed = stablehash(id)
-    event.sid < max_sid || error("Subject ids above $max_sid are not supported")
-    Threefry2x((seed, max_sid*event.trial + event.sid))
+    Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
 end
 
 const baseline_seed = 2017_09_16
