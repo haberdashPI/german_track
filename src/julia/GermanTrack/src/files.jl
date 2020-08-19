@@ -155,8 +155,8 @@ function events_for_eeg(file, stim_info)
     si = stim_events.sound_index
     stim_events[!, :target_source] = get.(Ref(source_names), Int.(source_indices[si]),
         missing)
-    stim_events[!, :target_time] = target_times[si]
     stim_events[!, :target_present] .= target_times[si] .> 0
+    stim_events[!, :target_time] = ifelse.(target_times[si] .> 0, target_times[si], missing)
     stim_events[!, :target_detected] .= stim_events.target_present .==
         (stim_events.response .== 2)
     if :bad_trial ∈ propertynames(stim_events)

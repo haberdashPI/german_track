@@ -76,9 +76,15 @@ function sample_from_ranges(rng,ranges)
 end
 
 
+const target_seed = 1983_11_09
 function windowtarget(trial,event,fs,from,to)
-    window = only_near(event.target_time, max_trial_length, window=(from, to))
+    time = !ismissing(event.target_time) ? event.target_time : begin
+        maxlen = floor(Int, size(trial,2) / fs)
+        rand(trialrng((:windowtarget_missing, target_seed), event),
+            Distributions.Uniform(0,maxlen - to))
+    end
 
+    window = only_near(time, max_trial_length, window=(from, to))
     start = max(1, round(Int, window[1]*fs))
     stop = min(round(Int, window[2]*fs), size(trial, 2))
     view(trial, :, start:stop)
