@@ -29,7 +29,7 @@ else
 end
 
 function target_label(row)::Union{Missing,Int}
-    if row.correct && row.target_present
+    if row.target_detected && row.target_present
         if row.condition == "global"
             row.target_source
         elseif row.condition == "object" && row.target_source == 1

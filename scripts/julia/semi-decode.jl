@@ -108,10 +108,10 @@ else
 
     # define known labels (or weights) for each segment
     hits = @_ segment_definitions |>
-        filter(_.target && subjects[_.sid].events[_.trial,:correct],__)
+        filter(_.target && subjects[_.sid].events[_.trial,:target_detected],__)
     weights = Array{Float32}(undef,nsources,size(hits,1))
     ii = @_ segment_definitions |> eachrow |>
-        findall(_.target && subjects[_.sid].events[_.trial,:correct],__)
+        findall(_.target && subjects[_.sid].events[_.trial,:target_detected],__)
     for (i,segdef) in enumerate(eachrow(hits))
         label = subjects[segdef.sid].events[segdef.trial,:target_source]
         if label == 1.0

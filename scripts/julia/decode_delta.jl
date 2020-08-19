@@ -83,7 +83,7 @@ N = groupby(dftarget, [:condition,:source,:target_source]) |> length
 progress = Progress(K*N,desc="Building decoders: ")
 models = by(dftarget, [:condition,:source,:target_source]) do sdf
     test_indices = sdf.index
-    train_indices = sdf.index[(sdf.correct .== true),:]
+    train_indices = sdf.index[(sdf.target_detected .== true),:]
     mapreduce(vcat,folds(K,train_indices,test_indices)) do (trainfold,testfold)
         ix = findall(in.(sdf.index,Ref(trainfold)))
         model = decoder(NormL2(0.2),reduce(vcat,sdf.stim[ix]),

@@ -48,7 +48,7 @@ conditions = Dict((
 
     function(row)
         if (row.condition == cond_label[condition] &&
-            ((label == "detected") == row.correct) &&
+            ((label == "detected") == row.target_detected) &&
             sid == row.sid &&
             speakers[row.sound_index] == tindex[target])
 

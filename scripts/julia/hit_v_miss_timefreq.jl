@@ -28,7 +28,7 @@ df = mapreduce(vcat,values(subjects)) do subject
 
     mapreduce(vcat,rows) do row
         si = subject.events.sound_index[row]
-        event = subject.events[row,[:correct,:target_present,:target_source,
+        event = subject.events[row,[:target_detected,:target_present,:target_source,
             :condition,:trial,:sound_index,:target_time]] |> copy
 
         mapreduce(vcat,regions) do region
