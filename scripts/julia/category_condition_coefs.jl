@@ -120,10 +120,7 @@ pl = meandiff |>
 
 pl |> save(joinpath(dir, "condition_timeline.svg"))
 
-# Display of model coefficients
-# =================================================================
-
-# Compare coefficients across folds
+# select data at the central time point (and length)
 # -----------------------------------------------------------------
 
 centerlen = @_ classdf.winlen |> unique |> sort! |> __[4]
@@ -136,6 +133,236 @@ classcomps_atlen = [
     "global-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["global", "spatial"], __)),
     "object-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["object", "spatial"], __))
 ]
+
+# test accuracy
+# -----------------------------------------------------------------
+
+nullmodels = mapreduce(append!!, classcomps_atlen) do (comp, data)
+    function findclass((key, sdf))
+        result = testclassifier(LassoClassifier(0.5),
+            data = sdf, y = :condition, X = r"channel",
+            crossval = :sid, n_folds = 10,
+            seed = stablehash(:cond_coef_timeline,2019_11_18),
+            irls_maxiter = 100,
+            weight = :weight, on_model_exception = :throw)
+
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        result[!, :comparison] .= comp
+
+        result
+    end
+
+    groups = pairs(groupby(data, :fold))
+    foldl(append!!, Map(findclass), collect(groups))
+end
+
+nullmeans = @_ nullmodels |>
+    groupby(__, [:sid, :comparison]) |>
+    combine(__, [:correct, :weight] => wmeanish => :correct)
+
+nullmeans |>
+    @vlplot(:bar,
+        x = :comparison,
+        y = {:correct, aggregate = :mean, type = :quantitative,
+            scale = {domain = [0.4, 1]}})
+
+
+# Different baseline models
+# =================================================================
+
+# Features
+# -----------------------------------------------------------------
+
+classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans",
+    (n_winlens = n_winlens, ), "csv"))
+
+spread(scale,npoints)   = x -> spread(x,scale,npoints)
+spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+
+if use_cache && isfile(classbasedf_file)
+    classbasedf = CSV.read(classbasedf_file)
+else
+    windows = [(len = len, start = 0.0)
+        for len in spread(1, 0.5, n_winlens)]
+
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+    classbasedf_groups = @_ events |>
+        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        groupby(__, [:sid, :condition, :hittype])
+
+    windowtypes = [
+        "target"   => windowtarget,
+        "baseline" => windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
+    ]
+    classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
+        result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
+        result[!, :windowtype] .= windowtype
+        result
+    end
+    CSV.write(classbasedf_file, classbasedf)
+    alert("Feature computation complete!")
+end
+
+classbasedf = innerjoin(classbasedf, best_λs, on = [:sid])
+
+# Classification for different baselines
+# -----------------------------------------------------------------
+
+modeltype = [
+    "full"            => (
+        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        λfn = df -> df.λ |> first
+    ),
+    "null"            => (
+        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        λfn = df -> 1.0,
+    ),
+    "random-labels" => (
+        filterfn = df ->
+            @_(df |> filter(_.windowtype == "target" && _.hittype == "hit", __) |>
+                     groupby(__, [:sid, :winlen, :windowtype]) |>
+                     transform!(__, :condition => shuffle => :condition)),
+        λfn = df -> df.λ |> first
+    ),
+    "random-window"   => (
+        filterfn = @_(filter(_.windowtype == "baseline" && _.hittype == "hit", __)),
+        λfn = df -> df.λ |> first
+    ),
+    "random-trialtype" => (
+        filterfn = df ->
+            @_(df |> filter(_.windowtype == "target", __) |>
+                     groupby(__, [:sid, :condition, :winlen, :windowtype]) |>
+                     transform!(__, :hittype => shuffle => :hittype) |>
+                     filter(_.hittype == "hit", __)),
+        λfn = df -> df.λ |> first
+    )
+]
+
+comparisons = [
+    "global-v-object"  => @_(filter(_.condition ∈ ["global", "object"],  __)),
+    "global-v-spatial" => @_(filter(_.condition ∈ ["global", "spatial"], __)),
+    "object-v-spatial" => @_(filter(_.condition ∈ ["object", "spatial"], __)),
+]
+
+function bymodeltype(((key, df), type, comp))
+    df = df |> comp[2] |> type[2].filterfn
+
+    result = testclassifier(LassoClassifier(type[2].λfn(df)),
+        data = df, y = :condition, X = r"channel",
+        crossval = :sid, n_folds = 10,
+        seed = stablehash(:cond_baseline,2019_11_18),
+        irls_maxiter = 100,
+        weight = :weight, on_model_exception = :throw
+    )
+    result[!, :modeltype]  .= type[1]
+    result[!, :comparison] .= comp[1]
+    result[!, keys(key)] .= permutedims(collect(values(key)))
+
+    result
+end
+
+predictbasedf = @_ classbasedf |>
+    groupby(__, [:fold, :winlen]) |> pairs |>
+    Iterators.product(__, modeltype, comparisons) |>
+    collect |> foldxt(append!!, Map(bymodeltype), __)
+
+# Plot results
+# -----------------------------------------------------------------
+
+predictmeans = @_ predictbasedf |>
+    groupby(__, [:sid, :comparison, :modeltype, :winlen]) |>
+    combine(__, [:correct, :weight] => wmeanish => :correct) |>
+    groupby(__, [:sid, :comparison, :modeltype]) |>
+    combine(__, :correct => mean => :correct)
+
+
+predictmeans |>
+    @vlplot(:bar,
+        column = :modeltype,
+        x = :comparison,
+        y = {:correct, aggregate = :mean, type = :quantitative,
+            scale = {domain = [0.2, 1]}})
+
+baselines = @_ predictmeans |>
+    filter(_.modeltype != "full", __) |>
+    rename!(__, :correct => :baseline)
+
+refline = DataFrame(x = repeat([0,1],3), y = repeat([0,1],3),
+    modeltype = repeat(baselines.modeltype |> unique, inner=2))
+refline = @_ refline |>
+    repeat(__, 3) |>
+    insertcols!(__, :comparison => repeat(baselines.comparison |> unique, inner=6))
+
+compnames = Dict(
+    "global-v-object"  => "Global vs. Object",
+    "global-v-spatial" => "Global vs. Spatial",
+    "object-v-spatial" => "Object vs. Spatial")
+
+modelnames = OrderedDict(
+    "random-window" => "Random\nWindow",
+    "null" => "Null Model",
+    "random-labels" => "Random\nLabels",
+    "random-trialtype" => "Random\nTrial Type"
+)
+
+plotmeans = @_ predictmeans |>
+    filter(_.modeltype == "full", __) |>
+    deletecols(__, :modeltype) |>
+    innerjoin(__, baselines, on = [:sid, :comparison]) |>
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
+    transform!(__, :modeltype => ByRow(x -> modelnames[x]) => :mtypename) |>
+    transform!(__, [:correct, :baseline] => ((x,y) -> 100(x-y)) => :correctdiff)
+
+xtitle = "Baseline Accuracy"
+ytitle = "Full-model Accuracy"
+pl = @vlplot(data = plotmeans,
+    facet = {column = {field = :mtypename, title = "Basline Method",
+                       sort = values(modelnames)}}) + (
+        @vlplot() +
+        @vlplot(:point,
+            color = :comparison,
+            y = {:correct, title = ytitle}, x = {:baseline, title = xtitle}) +
+        @vlplot(data = refline, mark = {:line, strokeDash = [2, 2], size = 2},
+            y = {:y, title = ytitle},
+            x = {:x, title = xtitle},
+            color = {value = "black"})
+    )
+
+pl = plotmeans |>
+    @vlplot(
+        facet = {
+            column = {
+                field = :mtypename, sort = collect(values(modelnames)),
+                header = {
+                    title = "Baseline Method",
+                    labelExpr = "split(datum.value, '\\n')"
+                }
+            }
+        }) + (
+        @vlplot(x = {:compname, axis = nothing},
+            color = {
+                :compname, title = nothing,
+                legend = {legendX = 5, legendY = 5, orient = "none"}}) +
+        @vlplot(:bar,
+            y = {:correctdiff, aggregate = :mean, type = :quantitative,
+                 title = "% Correct (Full Model - Baseline)"}) +
+        @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+            color = {value = "black"},
+            y = {:correctdiff, aggregate = :ci, type = :quantitative,
+                title = "% Correct (Full Model - Baseline)"}) +
+        @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -2},
+            color = {value = "black"},
+            y = :correctdiff)
+    )
+
+save(joinpath(dir, "baseline_models.png"), pl)
+save(joinpath(dir, "baseline_models.svg"), pl)
+
+# Display of model coefficients
+# =================================================================
+
+# Compare coefficients across folds
+# -----------------------------------------------------------------
 
 coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
     function findclass((key, sdf))

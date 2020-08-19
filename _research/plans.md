@@ -5,6 +5,10 @@ The overall results
   a. power analysis
   b. subpanel broken down by different response types
   c. establish a baseline: null model? shuffled labels? hit type?
+     - shuffled labels: better than random chance (yes)
+     - null model: do features matter (yes)
+     - random window: does window timing matter (no)
+     - random trial type: does the response type matter (yes)
   d. regression components
 
 2. salience classifier: (low v high classification)
@@ -12,10 +16,12 @@ The overall results
   b. object alone
   c. spatial alone
   maybe t-test? something simple anyways
+  d. can these be down with the median power?
 
 3. buildup and switching: near v far classification
-  a. by condition: near v far, early v late, salience? (high low), 
+  a. by condition: near v far, early v late, salience? (high low),
     maybe have different panels, main results
+  b. can these been done with the median power?
 
 send the plots as I go
 also start figuring out the behavioral result analyses
@@ -47,7 +53,8 @@ trials. More convincing for the object condition than spatial condition
 
 overall low-salience shows a classification advantage at later times for the object condition,
 
-things are less clear for the spatial condition, but maybe high is doing better here??? (depends on whether we consider baseline, and miss corrections)
+things are less clear for the spatial condition, but maybe high is doing better here???
+(depends on whether we consider baseline, and miss corrections)
 
 the early-trial targets have less classification accuracy, regardless of condition (but
 this does depend on whether we consider baseline and miss corrections), the time course
