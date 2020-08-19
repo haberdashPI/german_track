@@ -3,8 +3,6 @@ The overall results
 
 1. main result: the different conditions have different brain responses
   a. power analysis
-    - issue: does it matter that the "target" in the 
-        non-target trials is always at 0?
   b. subpanel broken down by different response types
   c. establish a baseline: null model? shuffled labels? hit type?
   d. regression components
