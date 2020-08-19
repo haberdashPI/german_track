@@ -1,6 +1,11 @@
 # Setup
 # =================================================================
 
+if Threads.nthreads() == 1
+    @warn "This script is designed to working using multiple threads; start julia using "*
+        "`julia -t auto`"
+end
+
 using DrWatson
 @quickactivate("german_track")
 use_cache = true
@@ -120,10 +125,6 @@ pl |> save(joinpath(dir, "condition_timeline.svg"))
 
 # Compare coefficients across folds
 # -----------------------------------------------------------------
-
-## the point here is not easy visualization, but just to determine
-## how consistent coeffcieints are across the folds (if they are
-## consistent, maybe we do use it to visualize??)
 
 centerlen = @_ classdf.winlen |> unique |> sort! |> __[4]
 centerstart = @_ classdf.winstart |> unique |> __[argmin(abs.(__ .- 0.0))]
