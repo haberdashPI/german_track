@@ -12,13 +12,13 @@ The overall results
   d. regression components
 
 2. salience classifier: (low v high classification)
-  a. global alone
-  b. object alone
-  c. spatial alone
+  a. global alone x
+  b. object alone x
+  c. spatial alone x
   maybe t-test? something simple anyways
-  d. can these be down with the median power?
+  d. can these be do with the median power?
 
-3. buildup and switching: near v far classification
+3. build-up and switching: near v far classification
   a. by condition: near v far, early v late, salience? (high low),
     maybe have different panels, main results
   b. can these been done with the median power?

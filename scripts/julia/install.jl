@@ -10,16 +10,17 @@ cp("Project.toml.install","Project.toml")
 cp("Manifest.toml.local","Manifest.toml")
 quickactivate(@__DIR__,"german_track")
 
-pkg"dev src/julia/GermanTrack"
 pkg"dev src/julia/EEGCoding"
+pkg"dev src/julia/GermanTrack"
 Pkg.instantiate()
 
 # using Conda
-# Conda.add("r-ggplot2",  channel = "conda-forge")
-# Conda.add("r-dplyr",    channel = "conda-forge")
-# Conda.add("r-cowplot",  channel = "conda-forge")
-# Conda.add("r-hmisc",    channel = "conda-forge")
-# Conda.add("r-lsr",      channel = "conda-forge")
-# Conda.add("r-multcomp", channel = "conda-forge")
-# Conda.add("r-rstanarm", channel = "conda-forge")
-# Conda.add("r-knitr",    channel = "conda-forge")
+using Conda
+Conda.add("r-ggplot2",  channel = "conda-forge")
+Conda.add("r-dplyr",    channel = "conda-forge")
+Conda.add("r-cowplot",  channel = "conda-forge")
+Conda.add("r-hmisc",    channel = "conda-forge")
+Conda.add("r-lsr",      channel = "conda-forge")
+Conda.add("r-multcomp", channel = "conda-forge")
+Conda.add("r-rstanarm", channel = "conda-forge")
+Conda.add("r-knitr",    channel = "conda-forge")

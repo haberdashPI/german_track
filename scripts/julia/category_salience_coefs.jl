@@ -13,7 +13,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
     StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
     JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim, RCall, Peaks, Formatting,
-    Distributions
+    Distributions, DSP
 
 R"library(ggplot2)"
 R"library(dplyr)"
@@ -33,11 +33,7 @@ isdir(dir) || mkdir(dir)
 # Mean Frequency Bin Analysis
 # =================================================================
 
-classdf_file = joinpath(cache_dir("features"), savename("salience-freqmeans",
-    (n_winlens = n_winlens, n_winstarts = n_winstarts), "csv"))
-
-spread(scale,npoints)   = x -> spread(x,scale,npoints)
-spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
 
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -46,12 +42,12 @@ else
 
     classdf_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_label, :target_time_label])
+        groupby(__, [:sid, :condition, :salience_label])
 
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget,
-            [(len = winlen, start = winstart)
-                for winlen in spread(1, 0.5, n_winlens)
-                for winstart in range(0, 3, length = n_winstarts)])
+    windows = [(len = len, start = start, before = -len)
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
+    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
 
     CSV.write(classdf_file, classdf)
 end
@@ -59,10 +55,9 @@ end
 # Find λ
 # =================================================================
 
-resultdf_file = joinpath(cache_dir("models"), savename("salience-target-time",
-    (n_winlens = n_winlens, n_winstarts = n_winstarts,), "csv"))
+resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
 
-shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds), __)
+shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds, :salience), __)
 λ_folds = folds(2, shuffled_sids)
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
@@ -70,58 +65,48 @@ if use_cache && isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_fi
     resultdf = CSV.read(resultdf_file)
 else
     lambdas = 10.0 .^ range(-2, 0, length=100)
+    factors = [:fold, :winlen, :winstart, :condition]
+    groups = groupby(classdf, factors)
 
-    classcomps = [
-        "global-v-object"  => @_(classdf |> filter(_.condition in ["global", "object"],  __)),
-        "global-v-spatial" => @_(classdf |> filter(_.condition in ["global", "spatial"], __)),
-    ]
+    progress = Progress(length(groups))
+    function findclass((key, sdf))
+        result = testclassifier(LassoPathClassifiers(lambdas),
+            data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
+            n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
+            maxncoef = size(sdf[:,r"channel"], 2),
+            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        next!(progress)
 
-    factors = [:fold, :winlen, :winstart, :salience_label, :target_time_label]
-
-    progress = Progress(2*length(groupby(classdf, factors)))
-    resultdf = mapreduce(append!!, classcomps) do (comp, data)
-        function findclass((key, sdf))
-            result = testclassifier(LassoPathClassifiers(lambdas),
-                data = sdf, y = :condition, X = r"channel", crossval = :sid,
-                n_folds = n_folds, seed = stablehash(:salience_target_time, 2019_11_18),
-                maxncoef = size(sdf[:,r"channel"], 2),
-                irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-            result[!, keys(key)] .= permutedims(collect(values(key)))
-            result[!, :comparison] .= comp
-            next!(progress)
-
-            result
-        end
-
-        factors = [:fold, :winlen, :winstart, :salience_label, :target_time_label]
-        @_ data |>
-            groupby(__, factors) |> pairs |> collect |>
-            foldxt(append!!, Map(findclass), __)
+        result
     end
-    ProgressMeter.finish!(progress)
-    alert("Completed salience/target-time classification!")
 
+    resultdf = @_ groups |> pairs |> collect |>
+        foldxt(append!!, Map(findclass), __)
+
+    ProgressMeter.finish!(progress)
     CSV.write(resultdf_file, resultdf)
+
+    alert("Completed salience/target-time classification!")
 end
 
-# collapse over windows
+# display lambdas
 # -----------------------------------------------------------------
 
 means = @_ resultdf |>
-    groupby(__,[:winlen, :winstart, :comparison, :λ, :nzcoef, :sid, :fold]) |>
+    groupby(__, [:condition, :λ, :nzcoef, :sid, :fold, :winstart, :winlen]) |>
     combine(__, [:correct, :weight] => wmeanish => :mean)
+
 bestmeans = @_ means |>
-    groupby(__, [:comparison, :winstart, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__ , :mean => mean => :mean) |>
-    groupby(__, [:comparison, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__ , :mean => maximum => :mean)
+    groupby(__, [:condition, :λ, :nzcoef, :sid, :fold]) |>
+    combine(__, :mean => maximum => :mean)
 
 pl = @vlplot() +
 vcat(
     bestmeans |> @vlplot(
         width = 750, height = 100,
         :line,
-        color = {field = :comparison, type = :nominal},
+        color = {field = :condition, type = :nominal},
         x = {:λ, scale = {type = :log}},
         y = {:nzcoef, aggregate = :max, type = :quantitative}
     ),
@@ -129,7 +114,7 @@ vcat(
         bestmeans |> @vlplot(
             width = 750, height = 400,
             x = {:λ, scale = {type = :log}},
-            color = {field = :comparison, type = :nominal},
+            color = {field = :condition, type = :nominal},
         ) +
         @vlplot(
             :line,
@@ -148,14 +133,14 @@ vcat(
 meandiff = @_ filter(_.λ == 1.0, bestmeans) |>
     deletecols!(__, [:λ, :nzcoef]) |>
     rename!(__, :mean => :nullmean) |>
-    innerjoin(__, bestmeans, on = [:comparison, :sid, :fold]) |>
+    innerjoin(__, bestmeans, on = [:condition, :sid, :fold]) |>
     transform!(__, [:mean,:nullmean] => (-) => :meandiff)
 
 grandmeandiff = @_ meandiff |>
     groupby(__, [:λ, :fold]) |>
     combine(__, :meandiff => mean => :meandiff) |>
     sort!(__, [:λ]) |>
-    transform!(__, :meandiff => (x -> filtfilt(digitalfilter(Lowpass(0.2), Butterworth(5)), x)) => :meandiff)
+    transform!(__, :meandiff => (x -> filtfilt(digitalfilter(Lowpass(0.1), Butterworth(5)), x)) => :meandiff)
 
 pl = grandmeandiff |> @vlplot() +
     @vlplot(:line,
@@ -182,7 +167,7 @@ pl = @vlplot() +
     vcat(
         meandiff |> @vlplot(
         :line, width = 750, height = 100,
-            color = {field = :comparison, type = :nominal},
+            color = {field = :condition, type = :nominal},
             x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
                      title = "Regularization Parameter (λ)"},
             y     = {:nzcoef, aggregate = :max, type = :quantitative,
@@ -194,7 +179,7 @@ pl = @vlplot() +
                     width = 750, height = 400,
                     x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
                              title = "Regularization Parameter (λ)"},
-                    color = {field = :comparison, type = :nominal}) +
+                    color = {field = :condition, type = :nominal}) +
                 @vlplot(:errorband,
                     y = {:meandiff, aggregate = :ci,   type = :quantitative,
                          title = "% Correct - % Correct of Null Model (Intercept Only)"}) +
@@ -215,66 +200,124 @@ pl = @vlplot() +
         )
     )
 
+pl |> save(joinpath(dir, "salience_lambdas.svg"))
+pl |> save(joinpath(dir, "salience_lambdas.png"))
+
 final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
     for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
     for sid in λ_fold[2])...)
 
-# Plot performance by salience / target time / window
+# Plot best lambda across window grid
+# -----------------------------------------------------------------
+
+λsid = groupby(final_λs, :sid)
+
+windowmeans = @_ resultdf |>
+    filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
+    groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
+    combine(__, [:correct, :weight] => wmeanish => :mean)
+
+nullmeans = @_ windowmeans |>
+    filter(_.λ == 1.0, __) |>
+    deletecols!(__, :λ) |>
+    rename!(__, :mean => :nullmean)
+
+windowdiff = @_ windowmeans |>
+    filter(_.λ != 1.0, __) |>
+    innerjoin(nullmeans, __, on = [:condition, :sid, :fold, :winlen, :winstart]) |>
+    transform!(__, [:mean, :nullmean] => (-) => :meandiff)
+
+pl = windowdiff |>
+    @vlplot(:rect,
+        config =  {view = {stroke = :transparent}},
+        column = :condition,
+        row = :fold,
+        y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
+            title = "Length (s)"},
+        x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
+        color = {:meandiff, aggregate = :mean, type = :quantitative,
+            scale = {scheme = "redblue", domainMid = 0}})
+
+pl |> save(joinpath(dir, "salience_windows.svg"))
+pl |> save(joinpath(dir, "salience_windows.png"))
+
+windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
+    combine(__, :meandiff => mean => :meandiff) |>
+    groupby(__, [:fold, :winlen, :condition]) |>
+    combine(__, :meandiff => maximum => :meandiff)
+
+pl = windavg |>
+    @vlplot(:rect,
+        config =  {view = {stroke = :transparent}},
+        column = :condition,
+        row = :fold,
+        y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
+            title = "Length (s)"},
+        # x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
+        color = {:meandiff, aggregate = :mean, type = :quantitative,
+            scale = {scheme = "redblue", domainMid = 0}})
+
+bestlens = @_ windavg |>
+    groupby(__, [:winlen, :fold]) |>
+    combine(__, :meandiff => mean => :meandiff) |>
+    groupby(__, [:fold]) |>
+    combine(__, [:meandiff, :winlen] =>
+        ((m,l) -> l[argmax(m)]) => :winlen,
+        :meandiff => maximum => :meandiff)
+
+# TODO: match sids to folds
+bestlen_bysid = @_ bestlens |>
+    groupby(__, [:fold, :winlen, :meandiff]) |>
+    combine(__, :fold => (f -> λ_folds[1][2]) => :sid) |>
+    groupby(__, :sid)
+
+# Compute frequency bins
+# -----------------------------------------------------------------
+
+classdf_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
+
+spread(scale,npoints)   = x -> spread(x,scale,npoints)
+spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+
+if use_cache && isfile(classdf_file)
+    classdf = CSV.read(classdf_file)
+else
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    classdf_groups = @_ events |>
+        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+        groupby(__, [:sid, :condition, :salience_label])
+    winbounds(start) = trial -> (start = start,
+        len = bestlen_bysid[(sid = trial.sid,)].winlen |> first |> spread(0.5,6))
+
+    windows = [winbounds(st) for st in range(0, 3, length = 64)]
+    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+
+    CSV.write(classdf_file, classdf)
+end
+
+# Plot performance of salience for each condition
 # =================================================================
 
 λsid = groupby(final_λs, :sid)
 
 salmeans = @_ resultdf |>
     filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
-    groupby(__,[:winlen, :winstart, :salience_label, :target_time_label,
-        :comparison, :sid, :fold, :λ]) |>
+    groupby(__,[:condition, :sid, :fold, :λ]) |>
     combine(__, [:correct, :weight] => wmeanish => :mean)
 
-salmeans_timeline = @_ salmeans |>
-    groupby(__, [:comparison, :salience_label, :target_time_label, :winstart, :sid, :fold, :λ]) |>
-    combine(__ , :mean => mean => :mean)
+nullmeans = @_ salmeans |>
+    filter(_.λ == 1.0, __) |> deletecols!(__, :λ) |>
+    rename!(__, :mean => :nullmean)
 
-interact(x,y) = ismissing(x) || ismissing(y) ? missing : string(x,y)
+saldiff = @_ salmeans |>
+    filter(_.λ != 1.0, __) |>
+    innerjoin(nullmeans, __, on = [:condition, :sid, :fold]) |>
+    transform!(__, [:mean, :nullmean] => (-) => :meandiff)
 
-@_ salmeans_timeline |>
-    filter(_.λ < 1.0, __) |>
-    transform!(__, [:salience_label, :target_time_label] => ByRow(string) => :salience_target_time) |>
-    filter(!ismissing(_.salience_label), __) |>
-    @vlplot(facet = {column = {field = :comparison}}) +
-    (
-        @vlplot() +
-        @vlplot(:line,
-            x = :winstart, y = {:mean, type = :quantitative, aggregate = :mean},
-            color = {:salience_target_time, type = :nominal}
-        )
-    )
-
-salmeans_diff  = @_ salmeans_timeline |>
-    filter(_.λ == 1.0, __) |>
-    deletecols!(__, [:λ]) |>
-    rename!(__, :mean => :nullmean) |>
-    innerjoin(__, salmeans_timeline, on = [:comparison, :sid, :fold, :winstart,
-        :salience_label, :target_time_label]) |>
-    transform!(__, [:mean,:nullmean] => (-) => :meandiff)
-
-pl = @_ salmeans_diff |>
-    filter(_.λ < 1.0, __) |>
-    transform!(__, [:salience_label, :target_time_label] => ByRow(string) => :salience_target_time) |>
-    filter(!ismissing(_.salience_label), __) |>
-    @vlplot(facet = {column = {field = :comparison}}) +
-    (
-        @vlplot(width = 300, height = 300,
-            color = {:salience_target_time, type = :nominal, scale = {scheme = "paired"}}
-        ) +
-        @vlplot(:line,
-            x = :winstart, y = {:meandiff, type = :quantitative, aggregate = :mean},
-        ) +
-        @vlplot(:errorband,
-            x = :winstart, y = {:meandiff, type = :quantitative, aggregate = :ci},
-        )
-    )
-
-pl |> save(joinpath(dir, "salience_target_window.svg"))
-pl |> save(joinpath(dir, "salience_target_window.png"))
-
-# TODO: why is there a missing salience label?
+saldiff |>
+    @vlplot() +
+    @vlplot(:bar,
+        x = :condition, y = {:meandiff, aggregate = :mean, type = :quantitative}) +
+    @vlplot(:errorbar,
+        x = :condition, y = {:meandiff, aggregate = :stderr, type = :quantitative})

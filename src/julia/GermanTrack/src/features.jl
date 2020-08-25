@@ -77,7 +77,8 @@ end
 
 
 const target_seed = 1983_11_09
-function windowtarget(trial,event,fs,from,to)
+function windowtarget(trial,event,fs,(from,to))
+
     time = !ismissing(event.target_time) ? event.target_time : begin
         maxlen = floor(Int, size(trial,2) / fs)
         rand(trialrng((:windowtarget_missing, target_seed), event),
@@ -91,7 +92,7 @@ function windowtarget(trial,event,fs,from,to)
 end
 
 const switch_seed = 2018_11_18
-function windowswitch(trial, event, fs, from, to)
+function windowswitch(trial, event, fs, (from, to))
     si = event.sound_index
     stimes = switch_times[si]
 
@@ -122,7 +123,7 @@ function windowbaseline(;mindist, minlength, onempty = error)
     handleempty(onempty::typeof(error)) =
         error("Could not find any valid region for baseline window.")
 
-    function(trial, event, fs, from, to)
+    function(trial, event, fs, (from, to))
         si = event.sound_index
         times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
             switch_times[si]
@@ -149,12 +150,14 @@ const default_freqbins = OrderedDict(
 windowbounds(x::NamedTuple,_) = (x.start, x.start + x.len)
 windowbounds(fn::Function, event) = windowbounds(fn(event), event)
 
+windowbounds(x::NamedTuple,_) = (x.start, x.start + x.len)
+windowbounds(fn::Function, event) = windowbounds(fn(event), event)
+
 function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
     fs = framerate(eeg)
-    windows = map(eachrow(data)) do row
-        bounds = (window.start, window.start + window.len)
-        windowfn(eeg[row.trial_index], row, fs, bounds...)
-    end
+    @infiltrate
+    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs,
+        windowbounds(window,_1)), eachrow(data))
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs; kwds...)

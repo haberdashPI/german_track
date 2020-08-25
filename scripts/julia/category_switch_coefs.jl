@@ -31,8 +31,6 @@ isdir(dir) || mkdir(dir)
 
 # is freq means always the same?
 
-best_λs = CSV.read(joinpath(processed_datadir("classifier_params"),"best-lambdas.json"))
-
 # Mean Frequency Bin Analysis
 # =================================================================
 
