@@ -17,6 +17,7 @@ The overall results
   c. spatial alone x
   maybe t-test? something simple anyways
   d. can these be do with the median power?
+  e. it would be interesting to see the features at the earlier and later timepoints
 
 3. build-up and switching: near v far classification
   a. by condition: near v far, early v late, salience? (high low),
