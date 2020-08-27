@@ -369,18 +369,24 @@ ytitle = "% Correct - % Correct of Null"
 pl = classdiffs |>
     @vlplot(
         title = "Low/High Salience Classification Accuracy",
-        x = {:winstart, title = "Time (s) Relative to Target Onset"},
         color = {field = :condition, type = :nominal},
         config = {legend = {disable = true}}
     ) +
     @vlplot(:line,
+        x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
         y = {:meandiff, aggregate = :mean, type = :quantitative, title = ytitle}) +
     @vlplot(:errorband,
+        x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
         y = {:meandiff, aggregate = :ci, type = :quantitative, title = ytitle}) +
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter = "datum.winstart == '$annotate'"}],
-        x = {:winstart},
+        transform = [{filter = "datum.winstart > 2.2"}],
+        x = {datum = 3.0},
         y = {:meandiff, aggregate = :mean, type = :quantitative},
         text = :condition
-    )
+    ) +
+    (
+        @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0.0}}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            color = {value = "black"})
+    );
 pl |> save(joinpath(dir, "salience_timeline.svg"))
