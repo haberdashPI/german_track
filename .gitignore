@@ -26,6 +26,7 @@ data/processed/features
 
 # vega lite html output is large and messy, don't save it to git
 plots/**/*.html
+plots/**/*.png
 
 data/raw
 _research/cache

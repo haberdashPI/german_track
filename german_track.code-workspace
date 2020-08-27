@@ -16,7 +16,6 @@
 		]
 	},
 	"settings": {
-		"workbench.colorCustomizations": {},
-		"julia.environmentPath": "${workspaceFolder}"
+		"workbench.colorCustomizations": {}
 	}
 }

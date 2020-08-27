@@ -147,17 +147,22 @@ const default_freqbins = OrderedDict(
     :gamma => (30, 100)
 )
 
-windowbounds(x::NamedTuple,_) = (x.start, x.start + x.len)
-windowbounds(fn::Function, event) = windowbounds(fn(event), event)
+
+windowbounds(x) = (x.start, x.start + x.len)
+windowparams(x::NamedTuple,_) = x
+windowparams(fn::Function, event) = windowparams(fn(event), event)
 
 windowbounds(x::NamedTuple,_) = (x.start, x.start + x.len)
 windowbounds(fn::Function, event) = windowbounds(fn(event), event)
 
 function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
+    @assert data.sid |> unique |> length == 1 "Expected one subject's data"
+    sid = data.sid |> first
+
     fs = framerate(eeg)
-    @infiltrate
-    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs,
-        windowbounds(window,_1)), eachrow(data))
+    wparams = windowparams(window,sid)
+    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs, windowbounds(wparams)),
+        eachrow(data))
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs; kwds...)
@@ -176,7 +181,12 @@ function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
 
         chstr = @_(map(@sprintf("%02d", _), powerdf.channel))
         features = Symbol.("channel_", chstr, "_", powerdf.freqbin)
-        DataFrame(weight = minimum(powerdf.weight);(features .=> powerdf.power)...)
+        DataFrame(
+            winlen     =  wparams.len,
+            winstart   =  wparams.start,
+            weight     =  minimum(powerdf.weight);
+            (features .=> powerdf.power)...
+        )
     else
         Empty(DataFrame)
     end
@@ -227,8 +237,6 @@ function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = fold
             function findwindows(window)
                 result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
                     windowfn, window; kwds...)
-                result[!, :winstart] .= window.start
-                result[!, :winlen] .= window.len
                 result
             end
             x = reducerfn(append!!, Map(findwindows), windows)

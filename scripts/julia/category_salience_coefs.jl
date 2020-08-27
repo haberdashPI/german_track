@@ -5,7 +5,7 @@ using DrWatson
 @quickactivate("german_track")
 use_cache = true
 seed = 11_18_2019
-n_winlens = 6
+n_winlens = 12
 n_winstarts = 32
 n_folds = 10
 
@@ -27,11 +27,13 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
 wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 
-dir = joinpath(plotsdir(), string("results_", Date(now())))
-isdir(dir) || mkdir(dir)
+dir = mkpath(plotsdir("category_salience"))
+
+# Find λ
+# =================================================================
 
 # Mean Frequency Bin Analysis
-# =================================================================
+# -----------------------------------------------------------------
 
 classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
 
@@ -52,8 +54,8 @@ else
     CSV.write(classdf_file, classdf)
 end
 
-# Find λ
-# =================================================================
+# Compute classification accuracy
+# -----------------------------------------------------------------
 
 resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
 
@@ -149,6 +151,8 @@ pl = grandmeandiff |> @vlplot() +
         y     = {:meandiff, aggregate = :mean, type = :quantitative,
                 title = "# of non-zero coefficients (max)"})
 
+pl |> save(joinpath(dir, "grandmean.svg"))
+
 # Show final λ selection
 # -----------------------------------------------------------------
 
@@ -231,7 +235,7 @@ pl = windowdiff |>
     @vlplot(:rect,
         config =  {view = {stroke = :transparent}},
         column = :condition,
-        row = :fold,
+        # row = :fold,
         y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
             title = "Length (s)"},
         x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
@@ -240,6 +244,12 @@ pl = windowdiff |>
 
 pl |> save(joinpath(dir, "salience_windows.svg"))
 pl |> save(joinpath(dir, "salience_windows.png"))
+
+# Plot timeline
+# =================================================================
+
+# Compute best window length
+# -----------------------------------------------------------------
 
 windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
     combine(__, :meandiff => mean => :meandiff) |>
@@ -256,6 +266,7 @@ pl = windavg |>
         # x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
         color = {:meandiff, aggregate = :mean, type = :quantitative,
             scale = {scheme = "redblue", domainMid = 0}})
+pl |> save(joinpath(dir, "salience_winavg.svg"))
 
 bestlens = @_ windavg |>
     groupby(__, [:winlen, :fold]) |>
@@ -265,19 +276,19 @@ bestlens = @_ windavg |>
         ((m,l) -> l[argmax(m)]) => :winlen,
         :meandiff => maximum => :meandiff)
 
-# TODO: match sids to folds
 bestlen_bysid = @_ bestlens |>
     groupby(__, [:fold, :winlen, :meandiff]) |>
-    combine(__, :fold => (f -> λ_folds[1][2]) => :sid) |>
+    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
     groupby(__, :sid)
+winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 
 # Compute frequency bins
 # -----------------------------------------------------------------
 
 classdf_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
 
-spread(scale,npoints)   = x -> spread(x,scale,npoints)
-spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+spread(scale,npoints,k)   = x -> spread(x,scale,npoints,k)
+spread(x,scale,npoints,k) = quantile(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
 
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -287,37 +298,89 @@ else
     classdf_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label])
-    winbounds(start) = trial -> (start = start,
-        len = bestlen_bysid[(sid = trial.sid,)].winlen |> first |> spread(0.5,6))
+    winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
+        spread(0.5,n_winlens,k))
 
-    windows = [winbounds(st) for st in range(0, 3, length = 64)]
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+    windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
+    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows, foldl)
 
     CSV.write(classdf_file, classdf)
 end
 
-# Plot performance of salience for each condition
-# =================================================================
+# Compute classification accuracy
+# -----------------------------------------------------------------
 
 λsid = groupby(final_λs, :sid)
 
-salmeans = @_ resultdf |>
-    filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
-    groupby(__,[:condition, :sid, :fold, :λ]) |>
+resultdf_file = joinpath(cache_dir("models"), "salience-timeline.csv")
+classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+if use_cache && isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)
+    resultdf = CSV.read(resultdf_file)
+else
+    factors = [:fold, :winlen, :winstart, :condition]
+    groups = groupby(classdf, factors)
+
+    progress = Progress(length(groups))
+    function findclass((key, sdf))
+        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        result = testclassifier(LassoPathClassifiers([1.0, λ]),
+            data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
+            n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
+            maxncoef = size(sdf[:,r"channel"], 2),
+            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        next!(progress)
+
+        result
+    end
+
+    resultdf = @_ groups |> pairs |> collect |>
+        foldxt(append!!, Map(findclass), __)
+
+    ProgressMeter.finish!(progress)
+    CSV.write(resultdf_file, resultdf)
+
+    alert("Completed salience timeline classification!")
+end
+
+# Display classification timeline
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition]) |>
     combine(__, [:correct, :weight] => wmeanish => :mean)
 
-nullmeans = @_ salmeans |>
-    filter(_.λ == 1.0, __) |> deletecols!(__, :λ) |>
-    rename!(__, :mean => :nullmean)
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition]) |>
+    combine(__, :mean => mean => :mean)
 
-saldiff = @_ salmeans |>
-    filter(_.λ != 1.0, __) |>
-    innerjoin(nullmeans, __, on = [:condition, :sid, :fold]) |>
-    transform!(__, [:mean, :nullmean] => (-) => :meandiff)
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, :λ)
 
-saldiff |>
-    @vlplot() +
-    @vlplot(:bar,
-        x = :condition, y = {:meandiff, aggregate = :mean, type = :quantitative}) +
-    @vlplot(:errorbar,
-        x = :condition, y = {:meandiff, aggregate = :stderr, type = :quantitative})
+classdiffs = @_ classmeans_sum |>
+    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold]) |>
+    transform!(__, [:mean, :nullmean] => ((x,y) -> 100*(x-y)) => :meandiff)
+
+annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
+ytitle = "% Correct - % Correct of Null"
+pl = classdiffs |>
+    @vlplot(
+        title = "Low/High Salience Classification Accuracy",
+        x = {:winstart, title = "Time (s) Relative to Target Onset"},
+        color = {field = :condition, type = :nominal},
+        config = {legend = {disable = true}}
+    ) +
+    @vlplot(:line,
+        y = {:meandiff, aggregate = :mean, type = :quantitative, title = ytitle}) +
+    @vlplot(:errorband,
+        y = {:meandiff, aggregate = :ci, type = :quantitative, title = ytitle}) +
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter = "datum.winstart == '$annotate'"}],
+        x = {:winstart},
+        y = {:meandiff, aggregate = :mean, type = :quantitative},
+        text = :condition
+    )
+pl |> save(joinpath(dir, "salience_timeline.svg"))
