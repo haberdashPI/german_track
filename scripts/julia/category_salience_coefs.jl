@@ -372,21 +372,50 @@ pl = classdiffs |>
         color = {field = :condition, type = :nominal},
         config = {legend = {disable = true}}
     ) +
+    # data lines
     @vlplot(:line,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
         y = {:meandiff, aggregate = :mean, type = :quantitative, title = ytitle}) +
+    # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
         y = {:meandiff, aggregate = :ci, type = :quantitative, title = ytitle}) +
+    # condition labels
     @vlplot({:text, align = :left, dx = 5},
         transform = [{filter = "datum.winstart > 2.2"}],
         x = {datum = 3.0},
         y = {:meandiff, aggregate = :mean, type = :quantitative},
         text = :condition
     ) +
+    # Basline (0 %) dotted line
     (
-        @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0.0}}) +
+        @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = 0.0},
             color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = 10, dir = 270},
+            {x = 0.95, y = 10, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
+            x = {datum = 0.5}, y = {datum = 10},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
     );
 pl |> save(joinpath(dir, "salience_timeline.svg"))
