@@ -285,26 +285,26 @@ winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 # Compute frequency bins
 # -----------------------------------------------------------------
 
-classdf_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
+classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
 
 spread(scale,npoints,k)   = x -> spread(x,scale,npoints,k)
 spread(x,scale,npoints,k) = quantile(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
 
-if use_cache && isfile(classdf_file)
-    classdf = CSV.read(classdf_file)
+if use_cache && isfile(classdf_timeline_file)
+    classdf_timeline = CSV.read(classdf_timeline_file)
 else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf_groups = @_ events |>
+    classdf_timeline_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label])
     winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
         spread(0.5,n_winlens,k))
 
     windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows, foldl)
+    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windowtarget, windows, foldl)
 
-    CSV.write(classdf_file, classdf)
+    CSV.write(classdf_timeline_file, classdf_timeline)
 end
 
 # Compute classification accuracy
@@ -312,14 +312,14 @@ end
 
 λsid = groupby(final_λs, :sid)
 
-resultdf_file = joinpath(cache_dir("models"), "salience-timeline.csv")
-classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
+classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
-if use_cache && isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)
-    resultdf = CSV.read(resultdf_file)
+if use_cache && isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
+    resultdf_timeline = CSV.read(resultdf_timeline_file)
 else
     factors = [:fold, :winlen, :winstart, :condition]
-    groups = groupby(classdf, factors)
+    groups = groupby(classdf_timeline, factors)
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
@@ -335,11 +335,11 @@ else
         result
     end
 
-    resultdf = @_ groups |> pairs |> collect |>
+    resultdf_timeline = @_ groups |> pairs |> collect |>
         foldxt(append!!, Map(findclass), __)
 
     ProgressMeter.finish!(progress)
-    CSV.write(resultdf_file, resultdf)
+    CSV.write(resultdf_timeline_file, resultdf_timeline)
 
     alert("Completed salience timeline classification!")
 end
@@ -347,7 +347,7 @@ end
 # Display classification timeline
 # -----------------------------------------------------------------
 
-classmeans = @_ resultdf |>
+classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition]) |>
     combine(__, [:correct, :weight] => wmeanish => :mean)
 
@@ -419,3 +419,143 @@ pl = classdiffs |>
         )
     );
 pl |> save(joinpath(dir, "salience_timeline.svg"))
+
+# Early/late targets
+# =================================================================
+
+# Select best window time
+# -----------------------------------------------------------------
+
+timemean = @_ classdiffs |>
+    groupby(__, [:fold, :winstart, :condition]) |>
+    combine(__, :meandiff => mean => :meandiff) |>
+    groupby(__, [:fold, :winstart]) |>
+    combine(__, :meandiff => maximum => :meandiff) |>
+    sort!(__, :winstart) |>
+    groupby(__, [:fold]) |>
+    transform!(__, :meandiff =>
+        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :meandiff)
+pl = timemean |>
+    @vlplot(:line, x = :winstart, y = :meandiff, row = {:fold, type = :nominal},
+        color = :condition);
+pl |> save(joinpath(dir, "salience_winstart_avg.svg"))
+
+beststart = @_ timemean|>
+    groupby(__, [:fold]) |>
+    combine(__, [:meandiff, :winstart] =>
+        ((m,l) -> l[argmax(m)]) => :winstart,
+        :meandiff => maximum => :meandiff)
+
+beststart_bysid = @_ beststart |>
+    groupby(__, [:fold, :winstart, :meandiff]) |>
+    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
+    groupby(__, :sid)
+winstart_bysid(sid) = beststart_bysid[(sid = sid,)].winstart |> first
+
+# Compute frequency bins
+# -----------------------------------------------------------------
+
+classdf_earlylate_file = joinpath(cache_dir("features"), "salience-freqmeans-earlylate-timeline.csv")
+
+spread(scale,npoints,k)   = x -> spread(x,scale,npoints,k)
+spread(x,scale,npoints,k) = quantile(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
+
+if use_cache && isfile(classdf_earlylate_file)
+    classdf_earlylate = CSV.read(classdf_earlylate_file)
+else
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    classdf_earlylate_groups = @_ events |>
+        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+        groupby(__, [:sid, :condition, :salience_label, :target_time_label])
+    winbounds(start,k) = sid -> (
+        start = winstart_bysid(sid),
+        len = winlen_bysid(sid) |> spread(0.5,n_winlens,k)
+    )
+
+    windows = [winbounds(2.25,k) for k in 1:n_winlens]
+    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windowtarget, windows, foldl)
+
+    CSV.write(classdf_earlylate_file, classdf_earlylate)
+end
+
+# Compute classification accuracy
+# -----------------------------------------------------------------
+
+λsid = groupby(final_λs, :sid)
+
+resultdf_earlylate_file = joinpath(cache_dir("models"), "salience-earlylate-timeline.csv")
+classdf_earlylate[!,:fold] = in.(classdf_earlylate.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+if use_cache && isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
+    resultdf_earlylate = CSV.read(resultdf_earlylate_file)
+else
+    factors = [:fold, :winlen, :winstart, :condition, :target_time_label]
+    groups = groupby(classdf_earlylate, factors)
+
+    progress = Progress(length(groups))
+    function findclass((key, sdf))
+        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        result = testclassifier(LassoPathClassifiers([1.0, λ]),
+            data               = sdf,
+            y                  = :salience_label,
+            X                  = r"channel",
+            crossval           = :sid,
+            n_folds            = n_folds,
+            seed               = stablehash(:salience_classification,
+                                            :target_time, 2019_11_18),
+            maxncoef           = size(sdf[:,r"channel"], 2),
+            irls_maxiter       = 600,
+            weight             = :weight,
+            on_model_exception = :throw,
+        )
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        next!(progress)
+
+        result
+    end
+
+    resultdf_earlylate = @_ groups |> pairs |> collect |>
+        foldxt(append!!, Map(findclass), __)
+
+    ProgressMeter.finish!(progress)
+    CSV.write(resultdf_earlylate_file, resultdf_earlylate)
+end
+
+# Plot salience by early/late targets
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf_earlylate |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, [:correct, :weight] => wmeanish => :mean)
+
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, :mean => mean => :mean)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, :λ)
+
+classdiffs = @_ classmeans_sum |>
+    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :target_time_label]) |>
+    transform!(__, [:mean, :nullmean] => ((x,y) -> 100*(x-y)) => :meandiff)
+
+ytitle = "% Correct - % Correct of Null"
+pl = classdiffs |>
+    @vlplot(
+        facet = {column = {field = :condition, title = nothing}},
+        title = ["Low/High Classification ","Accuracy by Target Time"],
+        config = {legend = {disable = true}}
+    ) + (
+        @vlplot(color = :condition, x = {:target_time_label, title = ["Target", "Time"]}) +
+        @vlplot(:bar,
+            y = {:meandiff, aggregate = :mean, type = :quantitative, title = ytitle}
+        ) +
+        @vlplot(:errorbar,
+            color = {value = "black"},
+            y = {:meandiff, aggregate = :ci, type = :quantitative, title = ytitle}
+        )
+    );
+pl |> save(joinpath(dir, "salience_earlylate_timeline.svg"))
