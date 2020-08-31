@@ -43,7 +43,15 @@ dvc pull
 
 ## Installation
 
-To setup these analysis scripts on a new computer:
+If you are using [`asdf`](https://asdf-vm.com/#/), you can follow these steps:
+
+1. Run `asdf install` in this project's directory
+2. Install [MATALB](https://www.mathworks.com)
+3. Download and install [fieldtrip](http://www.fieldtriptoolbox.org/download/),
+following the directions there to add fieldtrip to your path.
+4. Run the script `scripts/julia/install.jl` in Julia.
+
+Otherwise, follow the steps below.
 
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
