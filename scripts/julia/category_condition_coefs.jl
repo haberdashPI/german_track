@@ -53,7 +53,7 @@ if use_cache && isfile(classdf_file)
 else
     windows = [(len = len, start = start, before = -len)
         for len in spread(1, 0.5, n_winlens),
-            start in range(-2.5, 2.5, length = 64)]
+            start in [0.0]]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classdf_groups = @_ events |>
@@ -190,9 +190,12 @@ else
         transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
         groupby(__, [:sid, :condition, :hittype])
 
+    baseparams = (mindist = 0.5, minlength = 0.5, onempty = missing)
     windowtypes = [
-        "target"   => windowtarget,
-        "baseline" => windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
+        "target"    => windowtarget,
+        "rndbefore" => windowbase_bytarget(>; baseparams...),
+        "rndafter"  => windowbase_bytarget(<; baseparams...),
+        "baseline"  => windowbaseline(; baseparams...)
     ]
     classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
         result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
@@ -226,6 +229,14 @@ modeltype = [
     ),
     "random-window"   => (
         filterfn = @_(filter(_.windowtype == "baseline" && _.hittype == "hit", __)),
+        λfn = df -> df.λ |> first
+    ),
+    "random-window-before"   => (
+        filterfn = @_(filter(_.windowtype == "rndbefore" && _.hittype == "hit", __)),
+        λfn = df -> df.λ |> first
+    ),
+    "random-window-after"   => (
+        filterfn = @_(filter(_.windowtype == "rndafter" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
     "random-trialtype" => (
@@ -287,11 +298,13 @@ baselines = @_ predictmeans |>
     filter(_.modeltype != "full", __) |>
     rename!(__, :correct => :baseline)
 
-refline = DataFrame(x = repeat([0,1],3), y = repeat([0,1],3),
+Nmtypes = length(baselines.modeltype |> unique)
+refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
     modeltype = repeat(baselines.modeltype |> unique, inner=2))
+nrefs = size(refline,1)
 refline = @_ refline |>
     repeat(__, 3) |>
-    insertcols!(__, :comparison => repeat(baselines.comparison |> unique, inner=6))
+    insertcols!(__, :comparison => repeat(baselines.comparison |> unique, inner=nrefs))
 
 compnames = Dict(
     "global-v-object"  => "Global vs. Object",
@@ -300,9 +313,11 @@ compnames = Dict(
 
 modelnames = OrderedDict(
     "random-window" => "Random\nWindow",
+    "random-window-before" => "Random\nPre-target Window",
+    "random-window-after" => "Random\nPost-target Window",
     "null" => "Null Model",
     "random-labels" => "Random\nLabels",
-    "random-trialtype" => "Random\nTrial Type"
+    "random-trialtype" => "Random\nTrial Type",
 )
 
 plotmeans = @_ predictmeans |>
@@ -316,8 +331,10 @@ plotmeans = @_ predictmeans |>
 xtitle = "Baseline Accuracy"
 ytitle = "Full-model Accuracy"
 pl = @vlplot(data = plotmeans,
-    facet = {column = {field = :mtypename, title = "Basline Method",
-                       sort = values(modelnames)}}) + (
+        facet = {field = :mtypename, title = "Basline Method",
+                sort = values(modelnames)},
+        config = {facet = {columns = 3}}
+    ) + (
         @vlplot() +
         @vlplot(:point,
             color = :comparison,
@@ -326,7 +343,8 @@ pl = @vlplot(data = plotmeans,
             y = {:y, title = ytitle},
             x = {:x, title = xtitle},
             color = {value = "black"})
-    )
+    );
+pl |> save(joinpath(dir, "baseline_individual.svg"))
 
 pl = plotmeans |>
     @vlplot(
@@ -353,9 +371,8 @@ pl = plotmeans |>
         @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -2},
             color = {value = "black"},
             y = :correctdiff)
-    )
+    );
 
-save(joinpath(dir, "baseline_models.png"), pl)
 save(joinpath(dir, "baseline_models.svg"), pl)
 
 # Display of model coefficients

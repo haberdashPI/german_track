@@ -23,9 +23,19 @@ function hashwrite(io, x, ::UseProperties)
     end
 end
 
+struct UseStringify; end
+function hashwrite(io, x, ::UseStringify)
+    str = string(x)
+    if startswith(str, "#")
+        error("Unnamed function objects cannot be hashed to a reliable value")
+    end
+    hashwrite(io, str)
+end
+
 hashmethod(x) = UseWrite()
 hashmethod(x::Union{Tuple,Array}) = UseIterate()
 hashmethod(x::NamedTuple) = UseProperties()
+hashmethod(x::Function) = UseStringify()
 
 hashwrite(io, x) = hashwrite(io, x, hashmethod(x))
 

@@ -1,5 +1,5 @@
 export compute_powerdiff_features, compute_powerbin_features, computebands,
-    windowtarget, windowbaseline, windowswitch, compute_freqbins
+    windowtarget, windowbaseline, windowswitch, compute_freqbins, windowbase_bytarget
 
 using Random123 # counter-based random number generators, this lets use reliably map
 # trial and subject id's to a random sequence
@@ -125,7 +125,8 @@ function windowbaseline(;mindist, minlength, onempty = error)
 
     function(trial, event, fs, (from, to))
         si = event.sound_index
-        times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
+        times = !ismissing(event.target_time) ?
+            vcat(switch_times[si], event.target_time) |> sort! :
             switch_times[si]
         ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
         isempty(ranges) && return handleempty(onempty)
@@ -138,6 +139,34 @@ function windowbaseline(;mindist, minlength, onempty = error)
         view(trial, :, start:stop)
     end
 end
+
+function windowbase_bytarget(filterfn;mindist, minlength, onempty = error)
+    handleempty(onempty::Missing) = missing
+    handleempty(onempty::Function) = onempty()
+    handleempty(onempty::typeof(error)) =
+        error("Could not find any valid region for baseline window.")
+
+    function(trial, event, fs, (from, to))
+        si = event.sound_index
+        times = if !ismissing(event.target_time)
+            @_ vcat(switch_times[si], target_times[si]) |> sort! |>
+                filter(filterfn(event.target_time,_),__)
+        else
+            switch_times[si]
+        end
+
+        ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+        isempty(ranges) && return handleempty(onempty)
+
+        at = sample_from_ranges(trialrng((:baseby, filterfn, baseline_seed), event), ranges)
+        window = only_near(at, fs, window = (from, to))
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
+end
+
 
 const default_freqbins = OrderedDict(
     :delta => (1, 3),
