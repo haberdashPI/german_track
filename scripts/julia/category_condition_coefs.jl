@@ -1,8 +1,11 @@
 # Setup
 # =================================================================
 
+# TODO: integrate finding the labmdas into this figure
+# cleanup, use as documention of the code
+
 if Threads.nthreads() == 1
-    @warn "This script is designed to working using multiple threads; start julia using "*
+    @warn "This script is designed to work using multiple threads; start julia using "*
         "`julia -t auto`"
 end
 
@@ -34,8 +37,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
 wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 
-dir = joinpath(plotsdir(), string("results_", Date(now())))
-isdir(dir) || mkdir(dir)
+dir = mkpath(plotsdir("category_condition"))
 
 best_λs = CSV.read(joinpath(processed_datadir("classifier_params"),"best-lambdas.json"))
 
