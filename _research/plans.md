@@ -22,8 +22,16 @@ The overall results
     this appears to be a relatively disperrsed signal: it is not easy to pin it down to
     a specific location (though window see *some* target specific differences) 
     this suggests that some of what is being captured by this classifier some high level
-    "vigiliance"; does it matter if the window occurs before the target? (it should...)
+    "vigiliance"; does it matter if the window occurs before the target? (it should...:
+    it sort of does: it matters for the G v O; a little confusing... basically
+    it says that we can easily tell if we're in the spatial condition, regardless
+    of what window we're observing... ah okay, that seems reaonsable, since that
+    may have some low level thing happening that really is vigialance)
     alterantively it is some signal that shifts when the target is heard; 
+    
+    the window timing here is really quite messy, we can see some hints of things
+    but it isn't super clear what's going on, the salience classification tells a much
+    clearer story
 
 2. salience classifier: (low v high classification)
   - [X] a. global alone x
