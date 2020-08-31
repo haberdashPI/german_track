@@ -47,7 +47,8 @@ clearer story
 - [ ] g. what does this look like with both hits and misses?
 - [X] h. it would be good to know if there is a build up effect for salience: do 
   we see the same effect for early/late targets?
-  
+- [ ] i. can we see any of these effects at an individual/trial-by-trial level?
+
 ### story:
 
 there's a slow (1s +) response to the saliency of a target
