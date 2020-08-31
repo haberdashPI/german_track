@@ -312,9 +312,9 @@ compnames = Dict(
     "object-v-spatial" => "Object vs. Spatial")
 
 modelnames = OrderedDict(
-    "random-window" => "Random\nWindow",
-    "random-window-before" => "Random\nPre-target Window",
-    "random-window-after" => "Random\nPost-target Window",
+    # "random-window" => "Random\nWindow",
+    "random-window-before" => "Random\nPre-target\nWindow",
+    # "random-window-after" => "Random\nPost-target Window",
     "null" => "Null Model",
     "random-labels" => "Random\nLabels",
     "random-trialtype" => "Random\nTrial Type",
@@ -324,6 +324,7 @@ plotmeans = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
     deletecols(__, :modeltype) |>
     innerjoin(__, baselines, on = [:sid, :comparison]) |>
+    filter(_.modeltype ∈ keys(modelnames), __) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
     transform!(__, :modeltype => ByRow(x -> modelnames[x]) => :mtypename) |>
     transform!(__, [:correct, :baseline] => ((x,y) -> 100(x-y)) => :correctdiff)
@@ -360,6 +361,7 @@ pl = plotmeans |>
         @vlplot(x = {:compname, axis = nothing},
             color = {
                 :compname, title = nothing,
+                scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
                 legend = {legendX = 5, legendY = 5, orient = "none"}}) +
         @vlplot(:bar,
             y = {:correctdiff, aggregate = :mean, type = :quantitative,
@@ -373,7 +375,31 @@ pl = plotmeans |>
             y = :correctdiff)
     );
 
-save(joinpath(dir, "baseline_models.svg"), pl)
+plotfile = joinpath(dir, "baseline_models.svg")
+pl |> save(plotfile)
+
+# customize the fill with some low-level svg coding
+let blue = "#4c78a8", orange = "#f58518", red = "#e45756"
+    stripes = @_ """
+    <defs>
+        <pattern id="blue_orange" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
+            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
+        </pattern>
+        <pattern id="blue_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
+            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
+        </pattern>
+        <pattern id="orange_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
+            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
+        </pattern>
+    </defs>
+    """ |> parsexml |> __.node |> elements |> first |> unlink!
+    vgplot = readxml(plotfile)
+    @_ vgplot.root |> elements |> first |> linkprev!(__, stripes)
+    open(io -> prettyprint(io, vgplot), joinpath(dir, "baseline_models.svg"), write = true)
+end
 
 # Display of model coefficients
 # =================================================================
