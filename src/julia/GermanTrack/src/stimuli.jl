@@ -5,6 +5,41 @@ const encodings = Dict{Any, Array{Float64}}()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus
 
+function load_stimulus_metadata()
+    # load and organize metadata about the stimuli
+    stim_file = open(joinpath(stimulus_dir(), "config.json"))
+    stim_info = JSON3.read(stim_file)
+    onexit(() -> close(stim_file))
+    salience_csv = CSV.read(joinpath(stimulus_dir(), "target_salience.csv"))
+
+    @warn "TODO: compute length of each trial"
+
+    return (
+        speakers         = stim_info.test_block_cfg.trial_target_speakers,
+        directions       = stim_info.test_block_cfg.trial_target_dir,
+        target_times     = stim_info.test_block_cfg.target_times,
+        target_salience  = salience_csv.salience |> Array,
+        switch_times     = map(times -> times ./ stim_info.fs,
+                              stim_info.test_block_cfg.switch_times),
+        stimulus_lengths = fill(10, 50),
+
+        # define some useful categories for these stimuli,
+        salience_label = begin
+            med = median(target_salience)
+            ifelse.(target_salience .< med, "low", "high")
+        end,
+
+        target_time_label = begin
+            early = @_ DataFrame(
+                time = target_times,
+                switches = switch_times,
+                row = 1:length(target_times)) |>
+            map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
+        end
+    )
+    end
+end
+
 abstract type StimMethod
 end
 

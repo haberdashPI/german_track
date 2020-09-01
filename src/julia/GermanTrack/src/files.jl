@@ -1,6 +1,12 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
     load_directions, load_all_subjects
 
+processed_datadir(args...) =
+    mkpath(joinpath(datadir(), "processed", args...))
+raw_datadir(args...) = joinpath(datadir(), "raw", args...)
+stimulus_dir() = processed_datadir("stimuli")
+raw_stim_dir() = raw_datadir("stimuli")
+
 function read_eeg_binary(filename)
     open(filename) do file
         # number of channels

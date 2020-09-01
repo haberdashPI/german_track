@@ -8,29 +8,14 @@ end
 
 using DrWatson
 @quickactivate("german_track")
-use_cache = true
-seed = 072189
-use_absolute_features = true
+
 n_winlens = 6
 
-using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
-    JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim, RCall, Peaks,
-    Distributions
-
-R"library(ggplot2)"
-R"library(dplyr)"
+using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
+    Printf, ProgressMeter, VegaLite, Bootstrap, BangBang, Transducers, PyCall, JSON3,
+    Infiltrator, RCall, Distributions
 
 DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
-
-# local only pac kages
-using Formatting
-
-import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-
-# then, whatever choice we make, run an analysis  to evaluate
-# the tradeoff of λ and % correct
 
 wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 

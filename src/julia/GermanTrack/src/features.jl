@@ -1,102 +1,116 @@
-export compute_powerdiff_features, compute_powerbin_features, computebands,
-    windowtarget, windowbaseline, windowswitch, compute_freqbins
+export windowtarget, windowbaseline, windowswitch, compute_freqbins
 
-using Random123 # counter-based random number generators, this lets use reliably map
-# trial and subject id's to a random sequence
+# Windowing Functions
+# =================================================================
 
-only_near(time::Number,max_time;kwds...) =
-    only_near((time,),max_time;kwds...)[1]
-function only_near(times,max_time;window=(-0.250,0.250))
-    result = Array{Tuple{Float64,Float64}}(undef,length(times))
+"""
+    windowsat(times, max_time; from, to)
+
+Find all possible windows starting at `from` and ending at `to`, relative to each of the
+times in `times`, mering any overlapping windows.
+
+In the simplest case, where no overlap occurs between adjacent windows, this is equivalent
+to `map(x -> (from + x, to + x), times)`. When windows overlap, they are merged into a
+single window.
+
+"""
+windowsat(time::Number, max_time; kwds...) = windowsat((time,), max_time; kwds...)[1]
+function windowsat(times, max_time; from, to)
+    result = Array{Tuple{Float64, Float64}}(undef, length(times))
 
     i = 0
     stop = 0
     for time in times
-        new_stop = min(time+window[2],max_time)
-        if stop < time+window[1]
-            i = i+1
-            result[i] = (time+window[1],new_stop)
+        new_stop = min(time + to, max_time)
+        if stop < time + from
+            i = i + 1
+            result[i] = (time + from, new_stop)
         elseif i > 0
             result[i] = (result[i][1], new_stop)
         else
-            i = i+1
-            result[i] = (0,new_stop)
+            i = i + 1
+            result[i] = (0, new_stop)
         end
         stop = new_stop
     end
 
-    view(result,1:i)
+    view(result, 1:i)
 end
 
-function not_near(times,max_time;window=(0,0.5))
-    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
-
+"""
+    windows_far_from(times, max_time; mindist, minlength)
+"""
+function windows_far_from(times, max_time; mindist, minlength)
+    result = Array{Tuple{Float64, Float64}}(undef, length(times) + 1)
     start = 0
     i = 0
     for time in times
         if start < time
-            i = i+1
-            result[i] = (start,time+window[1])
-        end
-        start = time+window[2]
-    end
-    if start < max_time
-        i = i+1
-        result[i] = (start,max_time)
-    end
-
-    view(result,1:i)
-end
-
-function far_from(times,max_time;mindist=0.5,minlength=0.5)
-    result = Array{Tuple{Float64,Float64}}(undef,length(times)+1)
-    start = 0
-    i = 0
-    for time in times
-        if start < time
-            if time-mindist-minlength > start
-                i = i+1
-                result[i] = (start,time-mindist)
+            if time - mindist - minlength > start
+                i = i + 1
+                result[i] = (start, time - mindist)
             end
             start = time + mindist
         end
     end
     if start < max_time
-        i = i+1
-        result[i] = (start,max_time)
+        i = i + 1
+        result[i] = (start, max_time)
     end
-    view(result,1:i)
+    view(result, 1:i)
 end
 
-sample_from_ranges(ranges) = sample_from_ranges(Random.GLOBAL_RNG,ranges)
-function sample_from_ranges(rng,ranges)
-    weights = Weights(map(x -> x[2]-x[1],ranges))
-    range = StatsBase.sample(rng,ranges,weights)
+"""
+    sampe_from_ranges(rng, ranges)
+
+Given a list of windows (array of 2-ary tuples), randomly select a time point within
+one of these windows.
+"""
+function sample_from_ranges(rng, ranges)
+    weights = Weights(map(x -> x[2] - x[1], ranges))
+    range = StatsBase.sample(rng, ranges, weights)
     rand(Distributions.Uniform(range...))
 end
 
+"""
+    windowtrial(trial, fs, (from, to))
 
-const target_seed = 1983_11_09
-function windowtarget(trial,event,fs,(from,to))
-
-    time = !ismissing(event.target_time) ? event.target_time : begin
-        maxlen = floor(Int, size(trial,2) / fs)
-        rand(trialrng((:windowtarget_missing, target_seed), event),
-            Distributions.Uniform(0,maxlen - to))
-    end
-
-    window = only_near(time, max_trial_length, window=(from, to))
-    start = max(1, round(Int, window[1]*fs))
-    stop = min(round(Int, window[2]*fs), size(trial, 2))
+Given a a window (from, to) in seconds, return the frames of `trial` in this range.
+"""
+function windowtrial(trial, fs, (from, to))
+    start, stop = clamp.(round.(Int, fs.*((from, to) .+ time)), 1, size(trial, 2))
     view(trial, :, start:stop)
 end
 
+"""
+    windowtarget(trial, event, fs, (from, to))
+
+A windowing function (can be passed to [`compute_freqbins`](#)) which selects a window
+relative to the target, if present. If the target isn't present, selects a random window.
+"""
+const target_seed = 1983_11_09
+function windowtarget(trial, event, fs, (from, to))
+    time = !ismissing(event.target_time) ? event.target_time : begin
+        maxlen = floor(Int, size(trial, 2) / fs)
+        rand(trialrng((:windowtarget_missing, target_seed), event),
+            Distributions.Uniform(0, maxlen - to))
+    end
+
+    windowtrial(trial, fs, (from, to))
+end
+
+"""
+    windowswitch(trial, event, fs, (from, to))
+
+A windowing function (can be passed to [`compute_freqbins`](#)) which selects
+a random window near a switch.
+"""
 const switch_seed = 2018_11_18
 function windowswitch(trial, event, fs, (from, to))
     si = event.sound_index
     stimes = switch_times[si]
 
-    options = only_near(stimes, max_trial_length, window = (from, to))
+    options = windowsat(stimes, max_trial_length, window = (from, to))
     window = rand(trialrng((:windowswitch, switch_seed), event), options)
 
     start = max(1, round(Int, window[1]*fs))
@@ -116,6 +130,15 @@ function trialrng(id, event)
     Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
 end
 
+"""
+    windowbaseline(trial, event, fs, (from, to))
+
+A windowing function (can be passed to [`compute_freqbins`](#)) which selects a random
+window far from a switch; this is called a baseline, because these regions are generally
+used as a control to compare to the target. We avoid switches because we have a priori
+reason to think the response might be different during these disorienting moments.
+
+"""
 const baseline_seed = 2017_09_16
 function windowbaseline(;mindist, minlength, onempty = error)
     handleempty(onempty::Missing) = missing
@@ -127,17 +150,20 @@ function windowbaseline(;mindist, minlength, onempty = error)
         si = event.sound_index
         times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
             switch_times[si]
-        ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+        ranges = windows_far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
         isempty(ranges) && return handleempty(onempty)
 
         at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
-        window = only_near(at, fs, window = (from, to))
+        window = windowsat(at, fs, window = (from, to))
 
         start = max(1, round(Int, window[1]*fs))
         stop = min(round(Int, window[2]*fs), size(trial, 2))
         view(trial, :, start:stop)
     end
 end
+
+# Feature Extraction
+# =================================================================
 
 const default_freqbins = OrderedDict(
     :delta => (1, 3),
@@ -146,7 +172,6 @@ const default_freqbins = OrderedDict(
     :beta => (15, 30),
     :gamma => (30, 100)
 )
-
 
 windowbounds(x) = (x.start, x.start + x.len)
 windowparams(x::NamedTuple,_) = x
