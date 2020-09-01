@@ -3,9 +3,9 @@
 
 using DrWatson; @quickactivate("german_track")
 
-using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
+using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap
+    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -127,9 +127,9 @@ classdf_file = joinpath(processed_datadir("features"), "cond-freaqmeans.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    windows = [(len = len, start = start, before = -len)
-        for len in 2.0 .^ range(-1, 1, length = 10),
-            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
+    windows = [windowtarget(len = len, start = start)
+    for len in 2.0 .^ range(-1, 1, length = 10),
+        start in [0; 2.0 .^ range(-2, 2, length = 10)]]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classdf_groups = @_ events |>
@@ -137,7 +137,7 @@ else
         filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition])
 
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
     CSV.write(classdf_file, classdf)
 end
 
@@ -161,9 +161,6 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
     function findclass((key,sdf))
         result = Empty(DataFrame)
 
-        # if sdf.condition |> unique |> length == 1
-        #     @infiltrate
-        # end
         result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
             X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
             weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
@@ -293,8 +290,6 @@ classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans"
 if isfile(classbasedf_file)
     classbasedf = CSV.read(classbasedf_file)
 else
-    windows = [(len = len, start = 0.0)
-        for len in GreamnTrack.spread(1, 0.5, n_winlens)]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classbasedf_groups = @_ events |>
@@ -303,14 +298,17 @@ else
 
     baseparams = (mindist = 0.5, minlength = 0.5, onempty = missing)
     windowtypes = [
-        "target"    => windowtarget,
-        "rndbefore" => windowbase_bytarget(>; baseparams...),
+        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
+        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
+            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
-    classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
-        result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
-        result[!, :windowtype] .= windowtype
-        result
-    end
+
+    windows = [
+        winfn(len = len, start = 0.0) for len in GermanTrack.spread(1, 0.5, n_winlens)
+        for (name, winfn) in windowtypes
+    ]
+
+    classbasedf = compute_freqbins(subjects, classbasedf_groups, windows)
     CSV.write(classbasedf_file, classbasedf)
     alert("Feature computation complete!")
 end
@@ -355,8 +353,8 @@ comparisons = [
     "object-v-spatial" => @_(filter(_.condition ∈ ["object", "spatial"], __)),
 ]
 
-function bymodeltype(((key, df), type, comp))
-    df = df |> comp[2] |> type[2].filterfn
+function bymodeltype(((key, df_), type, comp))
+    df = df_ |> comp[2] |> type[2].filterfn
 
     result = testclassifier(LassoClassifier(type[2].λfn(df)),
         data = df, y = :condition, X = r"channel",
@@ -365,11 +363,15 @@ function bymodeltype(((key, df), type, comp))
         irls_maxiter = 100,
         weight = :weight, on_model_exception = :throw
     )
-    result[!, :modeltype]  .= type[1]
-    result[!, :comparison] .= comp[1]
-    result[!, keys(key)] .= permutedims(collect(values(key)))
+    if !isempty(result)
+        result[!, :modeltype]  .= type[1]
+        result[!, :comparison] .= comp[1]
+        for (k,v) in pairs(key)
+            result[!, k] .= v
+        end
+    end
 
-    result
+    return result
 end
 
 predictbasedf = @_ classbasedf |>
@@ -872,7 +874,7 @@ plcoefs = coefmeans_rank |>
           x = :rank,
           mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
           y = {field = :min_mvalue, title = ytitle},
-          color = {value = "black"}))
+          color = {value = "black"}));
 
 # MCCA visualization
 # =================================================================
@@ -947,7 +949,7 @@ plfeats = @vlplot() + hcat(
             scale = {domain = [-2.5, 2.5]}},
         shape = :condition,
         color = {:condition, scale = {scheme = "dark2"}})
-        for comparison in unique(classdf_best_long.comparison))...)
+        for comparison in unique(classdf_best_long.comparison))...);
 
 pl = @vlplot(align = "all",
         resolve = {scale = {color = "independent", shape = "independent"}}) +
@@ -1135,7 +1137,7 @@ classdf_chgroup_file = joinpath(processed_datadir("features"), "cond-freaqmeans-
 if isfile(classdf_chgroup_file)
     classdf_chgroup = CSV.read(classdf_chgroup_file)
 else
-    windows = [(len = len, start = 0.0)
+    windows = [windowtarget(len = len, start = 0.0)
         for len in GermanTrack.spread(1, 0.5, n_winlens)]
 
     classdf_chgroup = mapreduce(append!!, ["frontal", "central", "mixed"]) do group
@@ -1145,7 +1147,7 @@ else
             filter(ishit(_, region = "target") == "hit", __) |>
             groupby(__, [:sid, :condition])
 
-        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget, windows)
+        result = compute_freqbins(subjects, classdf_chgroup_groups, windows)
         result[!,:chgroup] .= group
 
         result

@@ -8,7 +8,7 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns
+    StatsFuns, CSV
 
 dir = mkpath(plotsdir("category_nearfar_target"))
 
@@ -97,10 +97,10 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :target_switch_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
 
     CSV.write(classdf_file, classdf)
 end
@@ -324,11 +324,10 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :target_time_label, :target_switch_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in range(0, 2.5, length = 12)]
-    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windowtarget,
-        windows)
+    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windows)
 
     CSV.write(classdf_earlylate_file, classdf_earlylate)
 end
@@ -432,11 +431,10 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :target_time_label, :target_switch_label, :salience_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in range(0, 2.5, length = 12)]
-    classdfsal_earlylate_ = compute_freqbins(subjects, classdf_sal_earlylate_groups, windowtarget,
-        windows)
+    classdfsal_earlylate_ = compute_freqbins(subjects, classdf_sal_earlylate_groups, windows)
 
     CSV.write(classdf_sal_earlylate_file, classdfsal_earlylate_)
 end
@@ -481,8 +479,8 @@ else
     end
 
     resultdf_sal_earlylate = @_ groups |> pairs |> collect |>
-        foldl(append!!, Map(findclass), __)
-        # foldxt(append!!, Map(findclass), __)
+        # foldl(append!!, Map(findclass), __)
+        foldxt(append!!, Map(findclass), __)
 
     ProgressMeter.finish!(progress)
     CSV.write(resultdf_sal_earlylate_file, resultdf_sal_earlylate)
@@ -492,11 +490,11 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf_sal_earlylate |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label, :salience_label]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean, :salience_label)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label, :salience_label]) |>
     combine(__, :mean => mean => :mean)
 
 nullmeans = @_ classmeans_sum |>
@@ -506,7 +504,7 @@ nullmeans = @_ classmeans_sum |>
 
 classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
     @_ classmeans_sum |>
-        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :salience_label]) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
 end
 

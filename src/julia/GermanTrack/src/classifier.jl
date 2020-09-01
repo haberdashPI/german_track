@@ -1,20 +1,15 @@
-export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names,
-    LassoPathClassifiers, LassoClassifier
+export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier
 
 import StatsModels: DummyCoding, FullDummyCoding
 export DummyCoding, FullDummyCoding
 
-# const __classifierparams__ = (
-#     svm_radial        = (:C,:gamma),
-#     svm_linear        = (:C,),
-#     gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
-#     logistic_l1       = (:lambda,),
-# )
-# classifier_param_names(classifier) = __classifierparams__[classifier]
-# function classifierparams(obj, classifier)
-#     (;(p => obj[p] for p in __classifierparams__[classifier])...)
-# end
+"""
+    LassoClassifier(λ)
 
+Define a single, logistic regression classifier with L1 regularization λ. Use this once
+you've used cross-validation to pick λ. Handles z-scoring of all input variables
+using the data from a call to `fit`.
+"""
 struct LassoClassifier
     lambda::Float64
 end
@@ -32,7 +27,7 @@ function zscorecol!(X, μ, σ)
     X
 end
 
-function ScikitLearn.fit!(model::LassoClassifier, X, y; kwds...)
+function StatsBase.fit(model::LassoClassifier, X, y; kwds...)
     μ = mean(X, dims = 1)
     σ = std(X, dims = 1)
 
@@ -40,9 +35,16 @@ function ScikitLearn.fit!(model::LassoClassifier, X, y; kwds...)
         Bernoulli(), λ = [model.lambda], standardize = false; kwds...)
     LassoClassifierFit(fit, μ, σ)
 end
-ScikitLearn.predict(model::LassoClassifierFit, X) =
+StatsBase.predict(model::LassoClassifierFit, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ))
 
+"""
+    LassoPathClassifiers(λs)
+
+Define a series of logistic regression classifiers using the given values for λ. Use this
+to pick a λ via cross-validation. Handles z-scoring of all input variables using
+the data from a call to `fit`.
+"""
 struct LassoPathClassifiers
     lambdas::Vector{Float64}
 end
@@ -51,7 +53,7 @@ struct LassoPathFits{T}
     μ::Array{Float64,2}
     σ::Array{Float64,2}
 end
-function ScikitLearn.fit!(model::LassoPathClassifiers, X, y; kwds...)
+function StatsBase.fit(model::LassoPathClassifiers, X, y; kwds...)
     μ = mean(X, dims = 1)
     σ = std(X, dims = 1)
 
@@ -59,34 +61,18 @@ function ScikitLearn.fit!(model::LassoPathClassifiers, X, y; kwds...)
         Bernoulli(), λ = model.lambdas, standardize = false; kwds...)
     LassoPathFits(fits, μ, σ)
 end
-ScikitLearn.predict(model::LassoPathFits, X) =
+StatsBase.predict(model::LassoPathFits, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ), select = AllSeg())
 
-function buildmodel(params, classifier, seed)
-    model = if classifier == :svm_radial
-        SVC(;params...)
-    elseif classifier == :svm_linear
-        SVC(
-            kernel = "linear",
-            random_state = stablehash(params, seed) & typemax(UInt32);
-            params...
-        )
-    elseif classifier == :gradient_boosting
-        GradientBoostingClassifier(
-            loss             = "deviance",
-            random_state     = stablehash(params, seed) & typemax(UInt32),
-            n_iter_no_change = 10,
-            max_features     = "auto";
-            params...
-        )
-    elseif classifier == :logistic_l1
-        @assert s(params) == __classifierparams__[:logistic_l1]
-        LassoClassifier(values(params)...)
-    else
-        error("Unknown classifier $classifier.")
-    end
-end
+"""
+    formulafn(data, y, X, Coding = DummyCoding)
 
+Helper function to handle organizating data into a matrix. Returns a function getxy
+which can extract the y and X matrices for a given subset of data and a list of all
+levels of y.
+
+You can customize how y is coded, as per [`StatModels`](https://github.com/JuliaStats/StatsModels.jl).
+"""
 function formulafn(data, y, X, Coding = DummyCoding)
     if @_ any(eltype(_) >: Missing, eachcol(view(data,:, X)))
         @warn "Some data columns have a missing type which will result in dummy coding. "*
@@ -109,13 +95,19 @@ function formulafn(data, y, X, Coding = DummyCoding)
     subdata ->  modelcols(f, subdata), levels
 end
 
+"""
+    runclassifier(model; data, y, X, seed, fit_kwds...)
+
+Fit the given model using data from `data` for column `y` and columns `X`. Use the given
+`seed` to ensure reproducability. `fit_kwds` will be model specific parameters.
+"""
 function runclassifier(model; data, y, X, seed = nothing, kwds...)
     getxy, levels = formulafn(data, y, X)
 
     _y, _X = getxy(data)
-    coefs = ScikitLearn.fit!(model, _X, vec(_y); kwds...)
+    coefs = fit(model, _X, vec(_y); kwds...)
 
-    level = ScikitLearn.predict(coefs, _X)
+    level = predict(coefs, _X)
     _labels = levels[round.(Int, level).+1]
 
     result = copy(data)
@@ -125,13 +117,8 @@ function runclassifier(model; data, y, X, seed = nothing, kwds...)
     coefs, coefvals(coefs), result
 end
 coefvals(coefs::LassoClassifierFit) = StatsBase.coef(coefs.result)
-function coefvals(coefs::PyObject)
-    # TODO!!!
-    coefs
-end
 
 seedmodel(model, seed) = Random.seed!(seed)
-seedmodel(model::PyObject, seed) = numpy.random.seed(typemax(UInt32) & seed)
 
 function paramvals(model::LassoPathClassifiers, fit::LassoPathFits, col, coefnames)
     @assert isempty(coefnames) "Model coefficient report is not supported"
@@ -150,6 +137,29 @@ function paramvals(model::LassoClassifier, fit, coefnames)
     isempty(coefnames) ? () : coef(fit.result)
 end
 
+"""
+    runclassifier(model; data, y, X, seed, crossval, n_folds = 10, weight,
+        on_model_exception = :debug, include_model_coefs = false,
+        fit_kwds...)
+
+Fit the given model using data from `data` for column `y` and columns `X`, then test it
+using cross validation with `n_folds` folds. Use the given `seed` to ensure reproducability. `fit_kwds` will be
+model specific parameters.
+
+Results are returned as a data frame, with appropriately named columns.
+
+## Additional keyword args
+- `weight`: a column to weight individual observations in `data`
+- `on_model_exception`: what to do when an exception occurs in the mode; options include:
+    - `:debug` (default): runs @infiltrate at the site of the error allowing user
+        to examine data (refer to `runclassifier` source for other relevant variables).
+        **NOT THREAD SAFE**
+    - `:print`: display the error, but use missing values for the particular fold
+        where the error occured.
+    - `:throw`: throw an exception
+- `include_model_coefs`: Return the coefficients as columns in the resulting data, useful
+ for display and interpretation of the model.
+"""
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
     seed  = nothing, weight = nothing, on_model_exception = :debug,
     on_missing_case = :error, include_model_coefs = false, ycoding = DummyCoding, kwds...)
@@ -212,7 +222,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                     vals = sort!(unique(_y[:, col]))
                     yidx = indexin(_y[:, col], vals)
                     yt = [0.0, 1.0][yidx]
-                    (coefs = ScikitLearn.fit!(model, _X, yt; weigths_kwds...), vals = vals)
+                    (coefs = fit(model, _X, yt; weigths_kwds...), vals = vals)
                 end
             catch e
                 if on_model_exception == :debug
@@ -236,11 +246,11 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             _y, _X = getxy(test)
             predicted = if length(coefs_for_code) > 1
                 mapreduce((x, y) -> cat(x, y, dims = 3), coefs_for_code) do cfs
-                    cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
+                    cfs.vals[1 .+ round.(Int, predict(cfs.coefs, _X))]
                 end
             else
                 cfs = first(coefs_for_code)
-                p = cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
+                p = cfs.vals[1 .+ round.(Int, predict(cfs.coefs, _X))]
                 reshape(p, :, size(p, 2), 1)
             end
             C = StatsModels.ContrastsMatrix(ycoding(), levels)

@@ -8,9 +8,9 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, Colors
+    StatsFuns, Colors, CSV
 
-using GermanTrack: colors, gray, darkgray, patterns
+using GermanTrack: colors, gray, patterns
 
 dir = mkpath(plotsdir("category_salience"))
 
@@ -95,10 +95,11 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
 
     CSV.write(classdf_file, classdf)
 end
@@ -323,12 +324,14 @@ else
         transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         groupby(__, [:sid, :condition, :salience_label, :hittype])
-    winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
-        GermanTrack.spread(0.5,n_winlens,indices=k))
 
-    windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
-    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windowtarget,
-        windows)
+    windows = [
+        windowtarget(windowfn = event -> (
+            start = start,
+            len = winlen_bysid(event.sid[1]) |> GermanTrack.spread(0.5,n_winlens,indices=k)))
+        for start in range(0, 3, length = 64) for k in 1:n_winlens
+    ]
+    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windows)
 
     CSV.write(classdf_timeline_file, classdf_timeline)
 end
@@ -632,12 +635,13 @@ else
             filter(_.hittype ∈ ["hit", "miss"], __) |>
             groupby(__, [:sid, :condition, :salience_label, :hittype])
 
-        winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
-            GermanTrack.spread(0.5,n_winlens,indices=k))
-
-        windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
-        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget,
-            windows)
+        windows = [
+            windowtarget(windowfn = event -> (
+                start = start,
+                len = winlen_bysid(event.sid[1]) |> GermanTrack.spread(0.5,n_winlens,indices=k)))
+            for start in range(0, 3, length = 64) for k in 1:n_winlens
+        ]
+        result = compute_freqbins(subjects, classdf_chgroup_groups, windows)
         result[!, :chgroup] .= group
 
         result
@@ -798,11 +802,10 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label, :target_time_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in range(0, 2.5, length = 12)]
-    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windowtarget,
-        windows)
+    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windows)
 
     CSV.write(classdf_earlylate_file, classdf_earlylate)
 end
@@ -908,12 +911,15 @@ else
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         filter(_.condition == "global", __) |>
         groupby(__, [:sid, :condition, :salience_4level, :trial, :hittype])
-    winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
-        GermanTrack.spread(0.5,n_winlens,indices=k))
 
-    windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
-    classdf_sal4_timeline = compute_freqbins(subjects, classdf_sal4_timeline_groups,
-        windowtarget, windows)
+    windows = [
+        windowtarget(windowfn = event -> (
+            start = start,
+            len = winlen_bysid(event.sid[1]) |> GermanTrack.spread(0.5,n_winlens,indices=k)))
+        for start in range(0, 3, length = 64) for k in 1:n_winlens
+    ]
+    classdf_sal4_timeline =
+        compute_freqbins(subjects, classdf_sal4_timeline_groups, windows)
 
     CSV.write(classdf_sal4_timeline_file, classdf_sal4_timeline)
 end

@@ -1,7 +1,8 @@
 export stablehash, stableRNG
 
-# These methods make random number generation well defined and reproduciable
-# across julia versions
+# These methods help to make random number generation well defined and reproduciable across
+# julia versions. Note: Julia can change the methods by which particular random sequences
+# of more complex objects are created, so this is not *perfectly* stable.
 
 const crc32 = crc(CRC_32)
 
@@ -39,11 +40,28 @@ hashmethod(x::Function) = UseStringify()
 
 hashwrite(io, x) = hashwrite(io, x, hashmethod(x))
 
+"""
+    stablehash(arg1, arg2, ...)
+
+Create a stable hash of the given objects. You can customize how an object is hashed using
+`hashmethod(::MyType)`. There are three methods: `UseWrite`, which writes the object to a
+binary format and takes a hash of that, `UseIterate`, which assumes the object is iterable
+and finds a hash of all elements, and `UseProperties` which assumed a struct of some type
+and uses `propertynames` and `getproperty` to compute a hash of all fields.
+
+"""
 function stablehash(obj...)
     io = IOBuffer()
     hashwrite(io,obj)
     crc32(take!(io))
 end
+
+"""
+    stableRNG(obj1, obj2, ...)
+
+Use stablehash to find a seed value from the given objects and return a fast, reliable
+random number generator.
+"""
 
 function stableRNG(obj...)
     RandomNumbers.Xorshifts.Xoroshiro128Plus(stablehash(obj))

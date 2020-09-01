@@ -1,6 +1,43 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
-    load_directions, load_all_subjects
+    load_directions, load_all_subjects, processed_datadir, raw_datadir,
+    stimulus_dir, raw_stim_dir
 
+"""
+    processed_datadir(subdir1,subdir2,....)
+
+Get (and possibly create) a directory for processed data.
+"""
+processed_datadir(args...) =
+    mkpath(joinpath(datadir(), "processed", args...))
+"""
+    raw_datadir(subdir1,subdri2,...)
+
+Get a directory of raw data.
+"""
+raw_datadir(args...) = joinpath(datadir(), "raw", args...)
+
+"""
+    stimulus_dir()
+
+Get the directory where processed stimuli data are stored.
+"""
+stimulus_dir() = processed_datadir("stimuli")
+
+"""
+    raw_stim_dir()
+
+Get the directory where raw stimuli data are stored.
+"""
+raw_stim_dir() = raw_datadir("stimuli")
+
+
+"""
+    read_eeg_binary(filename)
+
+Helper function that loads binary EEG data stored in custom format.
+
+See also [`load_subject`](#).
+"""
 function read_eeg_binary(filename)
     open(filename) do file
         # number of channels
@@ -31,6 +68,13 @@ function read_eeg_binary(filename)
     end
 end
 
+"""
+    read_mcca_proj(filename)
+
+Helper function, load mcca projects from custom binary format.
+
+See also [`load_subject`](#).
+"""
 function read_mcca_proj(filename)
     @info "Reading projected components"
     open(filename) do file
@@ -70,6 +114,13 @@ function read_mcca_proj(filename)
     end
 end
 
+"""
+    read_h5_subj(filename)
+
+Helper function. Load HDF5 formated subject data.
+
+See also [`load_subject`](#).
+"""
 function read_h5_subj(filename)
     h5open(filename, "r") do file
         channels   = read(file, "channels")
@@ -86,13 +137,23 @@ function read_h5_subj(filename)
     end
 end
 
+# Store subject data in a cache for easy loading later on.
 const subject_cache = Dict()
 Base.@kwdef struct SubjectData
     eeg::EEGData
     events::DataFrame
 end
 
-function load_all_subjects(dir, ext)
+"""
+    load_all_subjects(dir, ext, metadata = load_stimulus_metadata())
+
+Load all subjects located under `dir` with extension `ext`. This includes
+a comperhensive dictionary from subject ids to all subject data and an aggregate
+dataframe of all event data.
+
+Caches subject loading to speed it up.
+"""
+function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata())
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
     subjects = Dict(
         sidfor(file) => load_subject(
@@ -104,7 +165,17 @@ function load_all_subjects(dir, ext)
     subjects, events
 end
 
-function load_subject(file, stim_info;encoding = RawEncoding(), framerate = missing)
+"""
+    load_subject(file, metadata = load_stimulus_metadata(); encoding = RawEncoding(),
+        framerate = missing)
+
+Load the given subject, encoding the EEG data acording to `encoding` (which by default
+just uses the raw data). The variable `metdata` must contain the stimulus meta-data.
+It can be loaded using `load_stimulus_metadata`.
+"""
+function load_subject(file, stim_info = load_stimulus_metadata();
+    encoding = RawEncoding(), framerate = missing)
+
     if !isfile(file)
         error("File '$file' does not exist.")
     end
@@ -112,13 +183,7 @@ function load_subject(file, stim_info;encoding = RawEncoding(), framerate = miss
     stim_events = events_for_eeg(file, stim_info)
 
     data = get!(subject_cache, (file, encoding, framerate)) do
-        # data = if endswith(file, ".mat")
-        #     mf = MatFile(file)
-        #     get_mvariable(mf, :dat)
-        data = if endswith(file, ".bson")
-            @load file data
-            data
-        elseif endswith(file, ".mcca_proj") || endswith(file, ".mcca")
+        data = if endswith(file, ".mcca_proj") || endswith(file, ".mcca")
             read_mcca_proj(file)
         elseif endswith(file, ".eeg")
             read_eeg_binary(file)
@@ -140,45 +205,60 @@ function load_subject(file, stim_info;encoding = RawEncoding(), framerate = miss
     SubjectData(eeg = data, events = stim_events)
 end
 
+"""
+    events(filename, metadata)
+
+Load the given file of stimulus events; requires metadata loaded via
+`load_stimulus_metadata`.
+"""
+
 function events(event_file, stim_info)
     stim_events = DataFrame(CSV.File(event_file))
 
-    target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
-    source_indices = convert(Array{Float64},
-        stim_info["test_block_cfg"]["trial_target_speakers"])
-    source_names = ["male", "fem1", "fem2"]
+    source_names =
 
     # columns that are determined by the stimulus (and thus derived using the index of the
     # stimulus: sound_index)
     si = stim_events.sound_index
-    stim_events[!, :target_source] = get.(Ref(source_names), Int.(source_indices[si]),
-        missing)
-    stim_events[!, :target_present] .= target_times[si] .> 0
-    stim_events[!, :target_time] = ifelse.(target_times[si] .> 0, target_times[si], missing)
-    if :bad_trial ∈ propertynames(stim_events)
-        stim_events[!, :bad_trial] = convert.(Bool, stim_events.bad_trial)
-    else
-        @warn "Could not find `bad_trial` column in file '$event_file'."
-        stim_events[!, :bad_trial] .= false
-    end
-    stim_events[!, :sid] .= sidfor(event_file)
-    stim_events[!, :trial_index] .= 1:size(stim_events, 1)
-    stim_events[!, :salience] .= get.(Ref(target_salience), si, missing)
-    stim_events[!, :direction] .= get.(Ref(directions), si, missing)
-    stim_events[!, :target_switch_label] .= get.(Ref(target_switch_label), si, missing)
-    stim_events[!, :salience_label] .= get.(Ref(salience_label), si, missing)
-    stim_events[!, :salience_4level] .= get.(Ref(salience_4level), si, missing)
-    stim_events[!, :target_time_label] .= get.(Ref(target_time_label), si, missing)
+    info(sym) = get.(Ref(getproperty(stim_info, sym)), si, missing)
+
+    target_times = stim_info.target_times
+    stim_events[!, :target_present]      .= target_times[si] .> 0
+    stim_events[!, :target_source]        = get.(Ref(["male", "fem1", "fem2"]),
+                                                 Int.(stim_info.speakers[si]), missing)
+    stim_events[!, :target_time]          = ifelse.(target_times[si] .> 0,
+                                                    target_times[si], missing)
+    stim_events[!, :sid]                 .= sidfor(event_file)
+    stim_events[!, :trial_index]         .= 1:size(stim_events, 1)
+    stim_events[!, :salience]            .= info(:target_salience)
+    stim_events[!, :direction]           .= info(:directions)
+    stim_events[!, :target_switch_label] .= info(:target_switch_label)
+    stim_events[!, :salience_label]      .= info(:salience_label)
+    stim_events[!, :salience_4level]     .= info(:salience_4level)
+    stim_events[!, :target_time_label]   .= info(:target_time_label)
+    stim_events[!, :switch_times]        .= info(:switch_times)
+    stim_events[!, :trial_length]        .= info(:trial_lengths)
 
     stim_events
 end
 
+"""
+    events_for_eeg(filename, metadata)
+
+Like `events` but first translate the filename, which should be an eeg file,
+to the corresponding CSV file of events.
+"""
 function events_for_eeg(file, stim_info)
     sid = sidfor(file)
     @_ joinpath(processed_datadir("eeg"), @sprintf("sound_events_%03d.csv", sid)) |>
         events(__, stim_info)
 end
 
+"""
+    sidfor(filename)
+
+Using the naming conventions of this project, extact the subject ID from the given filename.
+"""
 function sidfor(filepath)
     file = splitdir(filepath)[2]
     pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_0-9]+$"
@@ -201,6 +281,13 @@ struct Directions
     framerate::Float64
 end
 
+"""
+    load_directions(file)
+
+Read a file with phase directions for three sources, with the extenion `.dir` (by
+convention). These are metadata that indicate the location of each speaker in space as a
+phase value, sampled at a given framerate.
+"""
 function load_directions(file)
     open(file, read = true) do stream
         framerate = read(stream, Float64)

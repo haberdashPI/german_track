@@ -1,4 +1,4 @@
-export select_windows, shrinktowards
+export select_windows, shrinktowards, ishit
 
 """
     wmean(vals, weights, [default = one(eltype(vals))/2])
@@ -55,7 +55,7 @@ function select_windows_helper((condition, boundfn), subjects)
     bounds = Dict((file, i) => bounds
         for file in keys(subjects)
         for (i, bounds) in enumerate(boundfn.(eachrow(subjects[file].events))))
-    indices = filter(@λ(!isempty(bounds[_])), keys(bounds)) |> collect |> sort!
+    indices = @_ filter(!isempty(bounds[_]), keys(bounds)) |> collect |> sort!
 
     if !isempty(indices)
         mapreduce(vcat, indices) do (file, i)
@@ -73,5 +73,33 @@ function select_windows_helper((condition, boundfn), subjects)
         end
     else
         DataFrame()
+    end
+end
+
+
+"""
+    ishit(row; kwds...)
+
+Correctly interprets a given row of the data as a hit, correct rejection, false positive
+or miss. Since the directions are different for each condition, how we interpret a an
+indication of a detected target depends on the condition.
+"""
+function ishit(row; kwds...)
+    vals = merge(row,kwds)
+    if vals.target_present
+        if vals.condition == "global"
+            vals.reported_target ? "hit" : "miss"
+        elseif vals.condition == "object"
+            vals.target_source == "male" ?
+                (vals.reported_target ? "hit" : "miss") :
+                (vals.reported_target ? "falsep" : "reject")
+        else
+            @assert vals.condition == "spatial"
+            vals.direction == "right" ?
+                (vals.reported_target ? "hit" : "miss") :
+                (vals.reported_target ? "falsep" : "reject")
+        end
+    else
+        vals.reported_target ? "reject" : "falsep"
     end
 end

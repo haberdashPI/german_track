@@ -2,6 +2,14 @@ export addpatterns, xmlpatterns
 
 colorstr(x::String) = x
 colorstr(x::Color) = "#"*hex(x)
+
+"""
+    xmlpatterns(patterns; size = 4)
+
+Create a SVG `<defs>` section containing a series of diangonal striped patterns.
+Each pattern is defined by a `name => (color1, color2)` pair, and `patterns` should
+be an iterable of such pairs (e.g. a `Dict`). Stripes will be `size` pixels wide.
+"""
 function xmlpatterns(patterns::Dict{String,<:Any}; size=4)
     stripes = prod(patterns) do (name, colors)
         """
@@ -19,6 +27,12 @@ function xmlpatterns(patterns::Dict{String,<:Any}; size=4)
         elements |> first |> unlink!
 end
 
+"""
+    addpatterns(filename, patterns; size=4)
+
+Use `xmlpatterns` to define some SVG patterns. Inject these patterns into the SVG
+file located at `filename`.
+"""
 function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     stripes_xml = xmlpatterns(patterns, size = size)
     vgplot = readxml(filename)
@@ -26,9 +40,21 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
+"""
+    gray
+
+The gray color used in our plots.
+"""
 gray = RGB(0.6,0.6,0.6)
+
 darkgray = RGB(0.3,0.3,0.3)
 
+
+"""
+    colors
+
+The three colors used to distinguish between the three conditions (Global, Object & Spatial)
+"""
 colors = @_ distinguishable_colors(2, [colorant"black", colorant"white", gray, darkgray],
     hchoices = range(0, 375, length = 15),
     lchoices = range(30, 70, length = 15),
@@ -37,6 +63,12 @@ colors = @_ distinguishable_colors(2, [colorant"black", colorant"white", gray, d
     transform = deuteranopic ∘ tritanopic # color-blind transform
 ) |> vcat(darkgray, __)
 
+"""
+    patterns
+
+The patterns used to represent classification between: Global v. Object, Global v. Spatial
+and Object v. Spatial.
+"""
 patterns = begin
     Dict(
         "mix1_2" => colors[1:2],
@@ -44,4 +76,3 @@ patterns = begin
         "mix2_3"  => colors[2:3]
     )
 end
-
