@@ -312,9 +312,9 @@ compnames = Dict(
     "object-v-spatial" => "Object vs. Spatial")
 
 modelnames = OrderedDict(
-    "random-window" => "Random\nWindow",
-    "random-window-before" => "Random\nPre-target Window",
-    "random-window-after" => "Random\nPost-target Window",
+    # "random-window" => "Random\nWindow",
+    "random-window-before" => "Random\nPre-target\nWindow",
+    # "random-window-after" => "Random\nPost-target Window",
     "null" => "Null Model",
     "random-labels" => "Random\nLabels",
     "random-trialtype" => "Random\nTrial Type",
@@ -324,6 +324,7 @@ plotmeans = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
     deletecols(__, :modeltype) |>
     innerjoin(__, baselines, on = [:sid, :comparison]) |>
+    filter(_.modeltype ∈ keys(modelnames), __) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
     transform!(__, :modeltype => ByRow(x -> modelnames[x]) => :mtypename) |>
     transform!(__, [:correct, :baseline] => ((x,y) -> 100(x-y)) => :correctdiff)
