@@ -273,12 +273,7 @@ function testdecode(stim_response_for,train_method,test_method;prefix,
     results
 end
 
-function single(x::Array)
-    @assert(length(x) == 1)
-    first(x)
-end
-single(x::Number) = x
-apply_method(::typeof(cor),pred,stim) = (value = single(cor(vec(pred),vec(stim))),)
+apply_method(::typeof(cor),pred,stim) = (value = only(cor(vec(pred),vec(stim))),)
 apply_method(fn,pred,stim) = fn(pred,stim)
 
 function testdecode_(stim_response_for,method::ProximableFunction,test_method;

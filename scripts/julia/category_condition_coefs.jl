@@ -127,9 +127,9 @@ classdf_file = joinpath(processed_datadir("features"), "cond-freaqmeans.csv")
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    windows = [(len = len, start = start, before = -len)
-        for len in 2.0 .^ range(-1, 1, length = 10),
-            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
+    windows = [windowtarget(len = len, start = start)
+    for len in 2.0 .^ range(-1, 1, length = 10),
+        start in [0; 2.0 .^ range(-2, 2, length = 10)]]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classdf_groups = @_ events |>
@@ -137,7 +137,7 @@ else
         filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition])
 
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
     CSV.write(classdf_file, classdf)
 end
 
@@ -293,8 +293,6 @@ classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans"
 if isfile(classbasedf_file)
     classbasedf = CSV.read(classbasedf_file)
 else
-    windows = [(len = len, start = 0.0)
-        for len in GreamnTrack.spread(1, 0.5, n_winlens)]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classbasedf_groups = @_ events |>
@@ -303,14 +301,17 @@ else
 
     baseparams = (mindist = 0.5, minlength = 0.5, onempty = missing)
     windowtypes = [
-        "target"    => windowtarget,
-        "rndbefore" => windowbase_bytarget(>; baseparams...),
+        "target"   => (;kwds...) -> windowtarget(name = "target")
+        "baseline" => (;kwds...) -> windowbaseline(name = "baseline",
+            mindist = 0.5, minlength = 0.5, onempty = missing; kwds...)
     ]
-    classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
-        result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
-        result[!, :windowtype] .= windowtype
-        result
-    end
+
+    windows = [
+        winfn(len = len, start = 0.0) for len in spread(1, 0.5, n_winlens)
+        for (name, winfn) in windowtypes
+    ]
+
+    result = compute_freqbins(subjects, classbasedf_groups, windows)
     CSV.write(classbasedf_file, classbasedf)
     alert("Feature computation complete!")
 end

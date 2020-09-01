@@ -14,8 +14,20 @@ Stimulus(data,framerate,file,target_time) =
 abstract type StimEncoding <: Encoding
 end
 
+"""
+    encode(stim::Stimulus, tofs, [encoding])
+
+Encode a stimulus so that we can use EEG encoding/decoding. Th default encoding
+is `RMSEnvelope`, but there are a variety of other options.
+"""
 encode(x::Stimulus,tofs) = encode(x,tofs,RMSEnvelope())
 
+"""
+    RMSEnvelope()
+
+Specifies a root-mean-squared envelope encoding. For each window of the stimulus
+(1.5 seconds in length) find the RMS amplitude and return this series of amplitudes.
+"""
 struct RMSEnvelope <: StimEncoding end
 Base.string(::RMSEnvelope) = "rms_envelope"
 
@@ -35,6 +47,12 @@ function encode(stim::Stimulus,tofs,::RMSEnvelope)
     result
 end
 
+"""
+    ASEnvelope
+
+Compute an envelope using the auditory spectrogram. Roughly equivalent to computing
+power in log-frequency bins and summing across all bins.
+"""
 struct ASEnvelope <: StimEncoding end
 Base.string(::ASEnvelope) = "audiospect_envelope"
 
@@ -49,6 +67,12 @@ function encode(stim::Stimulus,tofs,::ASEnvelope)
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
 
+"""
+    ASBins(bounds)
+
+Compute power within multiple bands of frequency, returning a matrix of time x bin.
+The `bounds` should specific the frequency ranges to cut the bins at.
+"""
 struct ASBins <: StimEncoding
     bounds::Vector{Float64}
 end
@@ -69,6 +93,8 @@ function encode(stim::Stimulus,tofs,method::ASBins)
     hcat(bins)
 end
 
+# The JointEncoding shares the same definition as that for EEG data
+# It simply concatenates representations along the columns.
 function encode(stim::Stimulus,tofs,method::JointEncoding)
     encodings = map(x -> encode(stim,tofs,x),method.children)
 
@@ -85,6 +111,12 @@ function encode(stim::Stimulus,tofs,method::JointEncoding)
     result
 end
 
+"""
+    WeightedEncoding(weights, child)
+
+Weight the features of `chidl` by `weights`. Changes the emphasis of a feature in the final
+representation.
+"""
 struct WeightedEncoding{T} <: StimEncoding
     weights::Vector{Float64}
     child::T
@@ -97,6 +129,11 @@ function encode(stim::Stimulus,tofs,method::WeightedEncoding)
     enc .* method.weights'
 end
 
+"""
+    DiffEncoding(child)
+
+For each feature in `child`, compute `abs.(diff(x))` across time.
+"""
 struct DiffEncoding{T} <: StimEncoding
     child::T
 end
@@ -106,6 +143,12 @@ function encode(stim::Stimulus,tofs,method::DiffEncoding)
     abs.(diff(enc,dims=1))
 end
 
+"""
+    PitchEncoding()
+
+Use a pre-computed pitch encoding of the stimulus, uses an auxilarly file ending in
+`.f0.csv` to find the pitches.
+"""
 struct PitchEncoding <: StimEncoding
 end
 Base.string(::PitchEncoding) = "pitch"
@@ -132,6 +175,12 @@ function encode(stim::Stimulus,file::String,tofs,method::PitchEncoding)::Array{F
         pitch_resample_helper(pitches.frequency,tofs,pitches)
 end
 
+"""
+    PitchSurpriseEncoding()
+
+Use a pre-computed pitch encoding of the stimulus to compute pitch-surprisal, uses an
+auxilarly file ending in `.f0.csv` to find the pitches.
+"""
 struct PitchSurpriseEncoding <: StimEncoding
 end
 Base.string(::PitchSurpriseEncoding) = "pitchsur"

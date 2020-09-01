@@ -1,101 +1,35 @@
 module GermanTrack
 
-using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
-    Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
-    Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
-    ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays,
-    Underscores, EzXML, Colors
+# # GermanTrack
+#
+# This module organizes a variety of re-usable functions specific to the current expeirment
+# It is not intended to be used independant of the present analysis.
 
-using BSON: @save, @load
-export CSV, @save, @load
+# ## Module dependencies
 
-const max_trial_length = 10
+using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, Dates,
+    Unitful, Distributions, CSV, Random, Statistics, JSON3, HDF5, CRC, RandomNumbers,
+    Colors, EzXML, Underscores
 
-include("analyses.jl")
-include("plots.jl")
-include("util.jl")
-include("features.jl")
-include("classifier.jl")
-include("stimuli.jl")
-include("files.jl")
-include("train_test.jl")
-include("random.jl")
+# ## Files
 
-export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
+include("analyses.jl")   ## for analyzing data
+include("plots.jl")      ## for plotting
+include("features.jl")   ## for computing classification features
+include("classifier.jl") ## for classification
+include("stimuli.jl")    ## for encoding stimuli
+include("files.jl")      ## for loading files
+include("random.jl")     ## for pseudo-random number generation
 
-processed_datadir(args...) =
-    mkpath(joinpath(datadir(), "processed", args...))
-raw_datadir(args...) = joinpath(datadir(), "raw", args...)
-stimulus_dir() = processed_datadir("stimuli")
-raw_stim_dir() = raw_datadir("stimuli")
-
-# load and organize metadata about the stimuli
-const stim_file = open(joinpath(stimulus_dir(), "config.json"))
-const stim_info = JSON3.read(stim_file)
-atexit(() -> close(stim_file))
-const speakers = stim_info.test_block_cfg.trial_target_speakers
-const directions = stim_info.test_block_cfg.trial_target_dir
-const target_times = stim_info.test_block_cfg.target_times
-const target_salience =
-    CSV.read(joinpath(stimulus_dir(), "target_salience.csv")).salience |> Array
-const switch_times = map(times -> times ./ stim_info.fs, stim_info.test_block_cfg.switch_times)
-
-# define some useful categories for these stimuli
-const salience_label = begin
-    med = median(target_salience)
-    ifelse.(target_salience .< med, "low", "high")
-end
-
-const salience_4level = begin
-    quants = quantile(target_salience, [0.25,0.5,0.75])
-    sum(target_salience .< quants', dims = 2) .+ 1
-end
-
-const target_time_label = begin
-    early = @_ DataFrame(
-        time = target_times,
-        switches = switch_times,
-        row = 1:length(target_times)) |>
-    map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
-end
-
-const target_switch_label = begin
-    switch_distance = map(zip(switch_times,target_times)) do (switches, target)
-        if target == 0
-            return missing
-        end
-        before = @_ target .- switches |> filter(_ > 0, __)
-        if isempty(before)
-            Inf
-        else
-            last(before)
-        end
-    end
-    med = median(skipmissing(switch_distance))
-    map(switch_distance) do dist
-        ismissing(dist) && return missing
-        dist < med ? "near" : "far"
-    end
-end
-
-const numpy = PyNULL()
-
-const SVC = PyNULL()
-const GradientBoostingClassifier = PyNULL()
-const LogisticRegression = PyNULL()
+# ## Caching
+# Let `EEGCoding` know where it can cache an intermediate results it generates
+#
+# !!! NOTE
+#       We may delete this, since right now we aren't doing any decoding
 
 function __init__()
-    cache_dir = joinpath(projectdir(), "_research", "cache")
+    cache_dir = mkpath(joinpath(projectdir(), "_research", "cache"))
     EEGCoding.set_cache_dir!(cache_dir)
-    copy!(numpy, pyimport_conda("numpy", "numpy"))
-    isdir(cache_dir) || mkdir(cache_dir)
-
-    copy!(SVC, pyimport("sklearn.svm").SVC)
-    copy!(GradientBoostingClassifier,
-        pyimport("sklearn.ensemble").GradientBoostingClassifier)
-    copy!(LogisticRegression,
-        pyimport("sklearn.linear_model").LogisticRegression)
 end
 
 end
