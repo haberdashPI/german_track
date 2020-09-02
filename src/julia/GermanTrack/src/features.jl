@@ -3,6 +3,39 @@ export windowtarget, windowbaseline, windowswitch, compute_freqbins
 # Windowing Functions
 # =================================================================
 
+# Utility
+# -----------------------------------------------------------------
+
+const NUM_STIMULI = 50
+const COND_ID = Dict(
+    "global"  => 0,
+    "object"  => 1,
+    "spatial" => 2,
+)
+"""
+    trialrng(id, event)
+
+Random number genration as a function of the individual trials. The same random
+number gets picked for the same stimulus and the same condition.
+"""
+function trialrng(id, event)
+    seed = stablehash(id)
+    Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
+end
+
+"""
+    windowtrial(trial, fs, (from, to))
+
+Given a a window (from, to) in seconds, return the frames of `trial` in this range.
+"""
+function windowtrial(trial, fs, (from, to))
+    start, stop = clamp.(round.(Int, fs.*((from, to) .+ time)), 1, size(trial, 2))
+    view(trial, :, start:stop)
+end
+
+# Window Selection
+# -----------------------------------------------------------------
+
 """
     windowsat(times, max_time; from, to)
 
@@ -61,7 +94,7 @@ function windows_far_from(times, max_time; mindist, minlength)
 end
 
 """
-    sampe_from_ranges(rng, ranges)
+    sample_from_ranges(rng, ranges)
 
 Given a list of windows (array of 2-ary tuples), randomly select a time point within
 one of these windows.
@@ -72,15 +105,8 @@ function sample_from_ranges(rng, ranges)
     rand(Distributions.Uniform(range...))
 end
 
-"""
-    windowtrial(trial, fs, (from, to))
-
-Given a a window (from, to) in seconds, return the frames of `trial` in this range.
-"""
-function windowtrial(trial, fs, (from, to))
-    start, stop = clamp.(round.(Int, fs.*((from, to) .+ time)), 1, size(trial, 2))
-    view(trial, :, start:stop)
-end
+# Windowing Functions
+# -----------------------------------------------------------------
 
 """
     windowtarget(trial, event, fs, (from, to))
@@ -116,18 +142,6 @@ function windowswitch(trial, event, fs, (from, to))
     start = max(1, round(Int, window[1]*fs))
     stop = min(round(Int, window[2]*fs), size(trial, 2))
     view(trial, :, start:stop)
-end
-const NUM_STIMULI = 50
-const COND_ID = Dict(
-    "global"  => 0,
-    "object"  => 1,
-    "spatial" => 2,
-)
-# the random value is determined by the stimulus and condition:
-# if it is the same stimulus and condition, the same window is used
-function trialrng(id, event)
-    seed = stablehash(id)
-    Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
 end
 
 """
@@ -165,6 +179,7 @@ end
 # Feature Extraction
 # =================================================================
 
+# First, define the frequency bin names and boundaries
 const default_freqbins = OrderedDict(
     :delta => (1, 3),
     :theta => (3, 7),
@@ -173,27 +188,44 @@ const default_freqbins = OrderedDict(
     :gamma => (30, 100)
 )
 
+# Utilities
+# -----------------------------------------------------------------
+
+# `windowbounds` converts from start,len to from,to format
 windowbounds(x) = (x.start, x.start + x.len)
+
+# Most windows are defined by a start,len named tuple, but some need
+# more information about the individual trial to pick the right time;
+# these are represented as an anoymouse function which is passed the
+# individual time
 windowparams(x::NamedTuple,_) = x
 windowparams(fn::Function, event) = windowparams(fn(event), event)
 
-windowbounds(x::NamedTuple,_) = (x.start, x.start + x.len)
-windowbounds(fn::Function, event) = windowbounds(fn(event), event)
+# Helper Functions
+# -----------------------------------------------------------------
 
+"""
+    compute_powerbin_features(eeg, data, windowfn, window; freqbins = default_freqbins,
+        channels = Colon())
+
+For a given subset of data and windowing (defined by `windowfn` and `window`) compute a
+single feature vector; there are nchannels x nfreqbins total features. The
+features are computed using [`computebands`](#).
+
+Features are weighted by the number of observations (valid windows) they represent.
+"""
 function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
     @assert data.sid |> unique |> length == 1 "Expected one subject's data"
     sid = data.sid |> first
 
     fs = framerate(eeg)
-    wparams = windowparams(window,sid)
+    wparams = windowparams(window, sid)
     windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs, windowbounds(wparams)),
         eachrow(data))
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs; kwds...)
     freqdf[!, :weight] .= weight
-
-    freqdf
 
     if size(freqdf, 1) > 0
         nbins = size(freqdf, 2)-2
@@ -217,6 +249,11 @@ function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
     end
 end
 
+"""
+    computebands(signal, fs; freqbins = default_freqbins, channels = Colon())
+
+For a given signal (and sample rate `fs`), compute the power in each frequency bin.
+"""
 function computebands(signal, fs; freqbins = default_freqbins, channels = Colon())
 
     function freqrange(spect, (from, to))
