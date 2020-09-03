@@ -47,6 +47,11 @@ for i = 1:length(sounds)
     sound_lengths(i) = size(x,1) / fs;
 end
 
+sound_length = sound_lengths
+stimulus_index = (1:length(sounds))'
+writetable(table(stimulus_index,sound_length),...
+    fullfile(stim_datadir,'stimuli_lengths.csv'));
+
 % setup data cleaning parameters for individual participants
 % -----------------------------------------------------------------
 %%
