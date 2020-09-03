@@ -28,6 +28,8 @@ data/processed/features
 plots/**/*.html
 plots/**/*.png
 
+src/matlab/external/**/*.mat
+
 data/raw
 _research/cache
 _research/results
