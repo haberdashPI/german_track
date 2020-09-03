@@ -17,7 +17,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
     Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
     StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
     JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim, RCall, Peaks,
-    Distributions
+    Distributions, EzXML
 
 R"library(ggplot2)"
 R"library(dplyr)"
@@ -34,8 +34,7 @@ import GermanTrack: stim_info, speakers, directions, target_times, switch_times
 
 wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
 
-dir = joinpath(plotsdir(), string("results_", Date(now())))
-isdir(dir) || mkdir(dir)
+dir = mkpath(plotsdir("condition"))
 
 best_λs = CSV.read(joinpath(processed_datadir("classifier_params"),"best-lambdas.json"))
 
@@ -212,11 +211,11 @@ classbasedf = innerjoin(classbasedf, best_λs, on = [:sid])
 # -----------------------------------------------------------------
 
 modeltype = [
-    "full"            => (
+    "full" => (
         filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
-    "null"            => (
+    "null" => (
         filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
         λfn = df -> 1.0,
     ),
@@ -227,15 +226,15 @@ modeltype = [
                      transform!(__, :condition => shuffle => :condition)),
         λfn = df -> df.λ |> first
     ),
-    "random-window"   => (
+    "random-window" => (
         filterfn = @_(filter(_.windowtype == "baseline" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
-    "random-window-before"   => (
+    "random-window-before" => (
         filterfn = @_(filter(_.windowtype == "rndbefore" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
-    "random-window-after"   => (
+    "random-window-after" => (
         filterfn = @_(filter(_.windowtype == "rndafter" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
@@ -287,13 +286,6 @@ predictmeans = @_ predictbasedf |>
     combine(__, :correct => mean => :correct)
 
 
-predictmeans |>
-    @vlplot(:bar,
-        column = :modeltype,
-        x = :comparison,
-        y = {:correct, aggregate = :mean, type = :quantitative,
-            scale = {domain = [0.2, 1]}})
-
 baselines = @_ predictmeans |>
     filter(_.modeltype != "full", __) |>
     rename!(__, :correct => :baseline)
@@ -319,6 +311,32 @@ modelnames = OrderedDict(
     "random-labels" => "Random\nLabels",
     "random-trialtype" => "Random\nTrial Type",
 )
+
+plotfull = @_ predictmeans |>
+    filter(_.modeltype == "full", __) |>
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
+
+ytitle= "% Correct"
+pl = plotfull |>
+    @vlplot(x = {:compname, axis = nothing},
+        transform = [{calculate = "datum.correct * 100", as = :correct}],
+        color = {
+            :compname, title = nothing,
+            scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
+            legend = {legendX = 5, legendY = 5, orient = "none"}}) +
+    @vlplot(:bar,
+        y = {:correct, aggregate = :mean, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle}) +
+    @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+        color = {value = "black"},
+        y = {:correct, aggregate = :ci, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle});
+
+plotfile = joinpath(dir, "category.svg")
+pl |> save(plotfile)
+addpatterns(plotfile)
 
 plotmeans = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
@@ -377,9 +395,13 @@ pl = plotmeans |>
 
 plotfile = joinpath(dir, "baseline_models.svg")
 pl |> save(plotfile)
+addpatterns(plotfile)
 
-# customize the fill with some low-level svg coding
-let blue = "#4c78a8", orange = "#f58518", red = "#e45756"
+function addpatterns(filename)
+    blue = "#4c78a8"
+    orange = "#f58518"
+    red = "#e45756"
+
     stripes = @_ """
     <defs>
         <pattern id="blue_orange" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -396,10 +418,11 @@ let blue = "#4c78a8", orange = "#f58518", red = "#e45756"
         </pattern>
     </defs>
     """ |> parsexml |> __.node |> elements |> first |> unlink!
-    vgplot = readxml(plotfile)
+    vgplot = readxml(filename)
     @_ vgplot.root |> elements |> first |> linkprev!(__, stripes)
-    open(io -> prettyprint(io, vgplot), joinpath(dir, "baseline_models.svg"), write = true)
+    open(io -> prettyprint(io, vgplot), joinpath(dir, filename), write = true)
 end
+# customize the fill with some low-level svg coding
 
 # Display of model coefficients
 # =================================================================
