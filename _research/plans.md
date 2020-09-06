@@ -3,33 +3,33 @@
 
 ## 1. Main result: the different conditions have different brain responses
 
-- [X] a. power analysis
-- [X] b. subpanel broken down by different response types
-- [X] c. establish a baseline: null model? shuffled labels? hit type?
-    - [ ] show all categorizations in terms of globa v (object&spatial), object v spatial
-    - [ ] random pre-target window
-    - [ ] random post-target window
+- [X] power analysis
+- [X] subpanel broken down by different response types
+- [X] establish a baseline: null model? shuffled labels? hit type?
+    - [X] random pre-target window
+    - [X] random post-target window
     - [X] shuffled labels: better than random chance (yes)
     - [X] null model: do features matter (yes)
     - [X] random window: does window timing matter (no)
     - [X] random trial type: does the response type matter (yes)
-- [X] d. regression components
-- [ ] e. stats
-- [ ] g. MCCA scalp maps
-  
+- [X] regression components
+- [ ] subset of channels !!
+- [ ] stats
+- [ ] integrate with behavioral results
+
 ### story:
 
 there's an overall difference in the response across the conditions
 that depends on whether there actually is a target (not whether listeners respond to it)
 this appears to be a relatively disperrsed signal: it is not easy to pin it down to
-a specific location (though window see *some* target specific differences) 
+a specific location (though window see *some* target specific differences)
 this suggests that some of what is being captured by this classifier some high level
 "vigiliance"; does it matter if the window occurs before the target? (it should...:
 it sort of does: it matters for the G v O; a little confusing... basically
 it says that we can easily tell if we're in the spatial condition, regardless
 of what window we're observing... ah okay, that seems reaonsable, since that
 may have some low level thing happening that really is vigialance)
-alterantively it is some signal that shifts when the target is heard; 
+alterantively it is some signal that shifts when the target is heard;
 
 the window timing here is really quite messy, we can see some hints of things
 but it isn't super clear what's going on, the salience classification tells a much
@@ -37,17 +37,19 @@ clearer story
 
 ## 2. salience classifier: (low v high classification)
 
-- [X] a. global alone x
-- [X] b. object alone x
-- [X] c. spatial alone x
-- [X] d. look at these across time?
-- [ ] e. it would be interesting to see the features at the earlier and later timepoints
-- [ ] f. can these be do with the median power?
-    - [ ] i. do these show up across time?
-- [ ] g. what does this look like with both hits and misses?
-- [X] h. it would be good to know if there is a build up effect for salience: do 
+- [X] global alone x
+- [X] object alone x
+- [X] spatial alone x
+- [X] look at these across time?
+- [ ] break salience down into four categories, to see gradient of timeline !!
+- [ ] stats
+- [ ] it would be interesting to see the features at the earlier and later timepoints
+- [ ] can these be with the median power?
+    - [ ] do these show up across time?
+- [ ] what does this look like with both hits and misses?
+- [X] it would be good to know if there is a build up effect for salience: do
   we see the same effect for early/late targets?
-- [ ] i. can we see any of these effects at an individual/trial-by-trial level?
+- [ ] can we see any of these effects at an individual/trial-by-trial level?
 
 ### story:
 
@@ -55,7 +57,7 @@ there's a slow (1s +) response to the saliency of a target
 specific to the global condition; there is an advantage for
 high-salience targets in this condition, maybe
 the top-down signal is in response to the low salience
-targets? how can we tell? 
+targets? how can we tell?
 
 what can we say with more certainty? a top-down signal shows a differential response (could
 respond to both targets) when targets arise in the early part of a trial: that it goes away
@@ -70,7 +72,7 @@ but this is only needed for early targets, late-trial targets
 look similar for high and low latency; behaviorally, are there
 more low salience targets that get detected? that would
 be consistent with the proposal, that the top-down signal
-has changed the state of processing and 
+has changed the state of processing and
 
 what do we say about the weird possible change for object? I think we can speculate that the
 greater variation here might indicate that as the scene becomes built-up the there might be
@@ -79,10 +81,13 @@ this and we can't say much with any confidence about this without furthe expeirm
 
 ## 3. build-up and switching: near v far classification
 
-- [X] a. by condition: near v far, early v late, salience? (high low),
+- [X] by condition: near v far, early v late, salience? (high low),
   maybe have different panels, main results
-- [ ] b. can these been done with the median power?
-  
+- [ ] redo near/far to use *just* the switch before a target !!
+- [ ] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows) !!
+- [ ] stats
+- [ ] can these been done with the median power?
+
 ### story
 
 The stability of the response across switches would be an indication
