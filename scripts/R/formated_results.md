@@ -143,3 +143,16 @@ target_time_labellate:conditionspatial |  0.7 | 0.3 | 0.4 |  0.7 |  1.0 | 0.004
 |switchclassnear:conditionobject  |0.57  |0.24 |0.022   |*   |
 |switchclassnear:conditionspatial |1.14  |0.26 |<1e-3   |*** |
 |(phi)                            |11.79 |1.4  |<1e-3   |*** |
+
+## Channel Groups
+
+| coef                                             |mean  |sd   |p-value |sig |
+|:-------------------------------------------------|:-----|:----|:-------|:---|
+|(Intercept)                                       |0.62  |0.24 |0.008   |**  |
+|chgroup: frontal                                  |-0.1  |0.28 |0.716   |    |
+|chgroup: mixed                                    |-0.17 |0.28 |0.542   |    |
+|comparison: global-v-spatial                      |-0.21 |0.33 |0.514   |    |
+|logit(nullmean)                                   |1.42  |0.23 |<1e-3   |*** |
+|(chgroup: frontal)x(comparison: global-v-spatial) |0.06  |0.41 |0.888   |    |
+|(chgroup: mixed)x(comparison: global-v-spatial)   |-0.21 |0.41 |0.606   |    |
+|(phi)                                             |3.75  |0.51 |<1e-3   |*** |

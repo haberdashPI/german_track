@@ -112,3 +112,5 @@ pf %>%
     write.csv(file.path(processed_datadir,'eeg',
         sprintf("sound_events_%03d.csv",sid)),
         row.names=FALSE)
+
+}

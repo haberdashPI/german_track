@@ -1,6 +1,21 @@
 export select_windows
 
-wmean(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+"""
+    wmean(vals, weights, [default = one(eltype(vals))/2])
+
+Compute a weighted mean, treating missing values as `default`.
+"""
+wmean(x, w, default = one(eltype(x))/2) =
+    iszero(sum(w)) ? default : mean(coalesce.(x, default), weights(w))
+
+"""
+    spread([x,]scale,npoints)
+
+Create a spread of `npoints` values placed evenly along the Normal distribution
+with a standard deviation of scale/2. Leaving out `x` returns curried function.
+"""
+spread(scale,npoints)   = x -> spread(x,scale,npoints)
+spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
 
 """
     select_windows(conditions, subjects)

@@ -17,6 +17,7 @@ global raw_datadir;
 global stim_datadir;
 global stimulus_dir;
 global raw_stim_dir;
+global plot_dir;
 
 fprintf('Base directory is %s\n',base_dir);
 addpath(fullfile(base_dir,'src','matlab','external','noisetools','NoiseTools'));
@@ -35,3 +36,4 @@ raw_stim_dir = fullfile(base_dir,'data','raw','stimuli');
 stim_datadir = fullfile(base_dir,'data','processed','stimuli');
 stimulus_dir = fullfile(base_dir,'src','matlab','stimuli');
 raw_datadir = fullfile(base_dir,'data','raw','eeg');
+plot_dir = fullfile(base_dir,'plots');

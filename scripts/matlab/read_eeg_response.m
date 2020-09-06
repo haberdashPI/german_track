@@ -24,14 +24,39 @@ plot_cfg.preproc.detrend = 'no';
 plot_cfg.preproc.demean = 'no';
 plot_cfg.blocksize = 10;
 
-% topographic alyout
+% plot directory
+pldir = fullfile(plot_dir, 'mcca');
+if exist(pldir,'dir')
+    mkdir(plot_dir, 'mcca');
+end
+
+% topographic layout
 elec = ft_read_sens(fullfile(raw_datadir,'biosemi64.txt'));
 cfg = [];
 cfg.elec = elec;
 lay = ft_prepare_layout(cfg);
 if interactive
-    ft_layoutplot(cfg);
+    fig = ft_layoutplot(cfg);
+    saveas(gcf, fullfile(pldir, 'layout'), 'png');
 end
+
+% old layout groups
+
+% smaller:
+% frontal = { 'A2','A1' ,'B1' ,'B2' ,'A3' ,'B5' ,'B4' ,'B3' };
+% central = {'A11','B15','B14','A12','B16','B17','A19','A32','B24'};
+
+% larger:
+% frontal = { 'A2','A1' ,'B1' ,'B2' ,'A3' ,'B5' ,'B4' ,'B3', 'A7', 'A6', 'A5', 'A4', 'B6', ...
+%             'B7', 'B8', 'B9', 'B10'};
+% central = {'A8','A9','A10','A11','B15','B14','B13','B12','B11','A15','A14','A13','A12', ...
+%            'B16','B17','B18','B19','B20','A16','A17','A18','A19','A32','B24','B23', ...
+%            'B23','B22','B21','A24','A23','A22','A21','A20','A31','A25','B25','B26', ...
+%            'B27','B28','B29','A25','A26','A30','B31','B30','A27','A29','B32','A28'};
+
+% layout groups
+frontal = { 'A2','A1' ,'B1' ,'B2' ,'A3' ,'B5' ,'B4' ,'B3', 'A7', 'A6', 'A5', 'A4', 'B6', 'B7', 'B8', 'B9', 'B10'};
+central = {'A10','A11','B15','B14','B13','A13','A12','B16','B17','B18','A18','A19','A32','B24','B23','A22','A21','A20','A31','A25','B25','B26','B27'};
 
 [closest,dists]=nt_proximity('biosemi64.lay',63);
 
@@ -339,12 +364,67 @@ end
 
 [A,score,AA] = nt_mcca(C,64);
 
+% create the MCCA subsets
+rng        = RandStream('threefry4x64_20', 'Seed', 11091983);
+frontalixs = gt_channel_indices(frontal, eeg.label);
+centralixs = gt_channel_indices(central, eeg.label);
+allixs     = [frontalixs centralixs];
+mixedixs   = datasample(allixs, min(length(frontalixs), length(centralixs)), 'Replace', false);
+
+nsubj       = length(cleaned_files);
+nchannels   = length(ft_channelselection({'A*','B*'}, eeg));
+frontalmcca = repmat(frontalixs, 1, nsubj) + ...
+                    nchannels*repelem((1:nsubj) - 1, 1, length(frontalixs));
+centralmcca = repmat(centralixs, 1, nsubj) + ...
+                    nchannels*repelem((1:nsubj) - 1, 1, length(centralixs));
+mixedmcca   = repmat(mixedixs, 1, nsubj) + ...
+                    nchannels*repelem((1:nsubj) - 1, 1, length(mixedixs));
+
+[frontalA, frontal_score, frontalAA] = nt_mcca(C(frontalmcca, frontalmcca), ...
+    length(frontal));
+[centralA, central_score, centralAA] = nt_mcca(C(centralmcca, centralmcca), ...
+    length(central));
+[mixedA, mixed_score, mixedAA]     = nt_mcca(C(mixedmcca, mixedmcca), ...
+    length(mixedixs));
+
 if interactive
-    imagesc(log(abs(C)));
+    % TODO: visualize the mean of the MCCA components
+    fig = imagesc(log(abs(C)));
+    saveas(fig, fullfile(pldir, 'Cmat'), 'png');
     imagesc(C);
+
+    fig = figure; tiledlayout(2,2);
+    nexttile;
+    imagesc(log(abs(A)));
+    title('Full');
+    nexttile;
+    imagesc(log(abs(frontalA)));
+    title('Frontal');
+    nexttile;
+    imagesc(log(abs(centralA)));
+    title('Central');
+    nexttile;
+    imagesc(log(abs(mixedA)));
+    title('Mixed');
+    saveas(fig, fullfile(pldir, 'mccA'), 'png');
 
     plot(score(1:60),'.-');
     plot(score,'.-');
+
+    fig = figure; tiledlayout(2,2);
+    nexttile;
+    plot(score(1:60),'.-');
+    title('Full');
+    nexttile;
+    plot(frontal_score,'.-');
+    title('Frontal');
+    nexttile;
+    plot(central_score,'.-');
+    title('Central');
+    nexttile;
+    plot(mixed_score,'.-');
+    title('Mixed');
+    saveas(fig, fullfile(pldir, 'scores'), 'png');
 
     total = 0;
     for i = 1:length(cleaned_files)
@@ -364,7 +444,7 @@ if interactive
     end
 
     % plot components of all particiapnts
-    figure; tiledlayout(5,5);
+    fig = figure; tiledlayout(5,5);
     for i = 1:length(cleaned_files)
         nexttile;
 
@@ -375,6 +455,7 @@ if interactive
         imagesc(im);
         title(sprintf("Subject %d",sid));
     end
+    saveas(fig, fullfile(pldir, 'components'), 'png');
 
     % examine MCCA cleaned data of selected individual participants
     i = 24; % select participant here
@@ -418,10 +499,29 @@ for i = 1:length(cleaned_files)
 
     [trial,label,w] = load_subject_binary(filepath);
     raw = gt_eeg_to_ft(trial,label,256);
-    mcca = project_mcca(raw,w,nkeep,1:64,AA{i},0);
 
+    full_dat = project_mcca(raw,w,nkeep,1:64,AA{i},0);
     savename = regexprep(cleaned_files(i).name,'_cleaned.mat$','.h5');
     mccafile = fullfile(processed_datadir,'eeg',savename);
+    save_subject_components(full_dat,mccafile);
 
-    save_subject_components(mcca,mccafile)
+    % save the channel subset mcca
+    subset_keep = 10;
+    frontal_dat = project_mcca(raw,w,subset_keep,frontalixs,frontalAA{i},0);
+    savename = regexprep(cleaned_files(i).name,'_cleaned.mat$','_frontal.h5');
+    mkdir(fullfile(processed_datadir, 'eeg', 'frontal'));
+    mccafile = fullfile(processed_datadir,'eeg', 'frontal', savename);
+    save_subject_components(frontal_dat,mccafile)
+
+    central_dat = project_mcca(raw,w,subset_keep,centralixs,centralAA{i},0);
+    savename = regexprep(cleaned_files(i).name,'_cleaned.mat$','_central.h5');
+    mkdir(fullfile(processed_datadir, 'eeg', 'central'));
+    mccafile = fullfile(processed_datadir,'eeg', 'central', savename);
+    save_subject_components(central_dat,mccafile)
+
+    mixed_dat = project_mcca(raw,w,subset_keep,mixedixs,mixedAA{i},0);
+    savename = regexprep(cleaned_files(i).name,'_cleaned.mat$','_mixed.h5');
+    mkdir(fullfile(processed_datadir, 'eeg', 'mixed'));
+    mccafile = fullfile(processed_datadir,'eeg', 'mixed', savename);
+    save_subject_components(mixed_dat,mccafile)
 end

@@ -1,58 +1,30 @@
 # Setup
 # =================================================================
 
-if Threads.nthreads() == 1
-    @warn "This script is designed to working using multiple threads; start julia using "*
-        "`julia -t auto`"
-end
+using DrWatson; @quickactivate("german_track")
 
-using DrWatson
-@quickactivate("german_track")
-use_cache = true
-seed = 072189
-use_absolute_features = true
+using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
+    ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
+    StatsFuns, Distributions, DSP
+wmean = GermanTrack.wmean
 n_winlens = 6
 
-using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
-    JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim, RCall, Peaks,
-    Distributions, EzXML
+dir = mkpath(joinpath(plotsdir(), "condition"))
 
-R"library(ggplot2)"
-R"library(dplyr)"
-
-DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
-
-# local only pac kages
-using Formatting
-
-import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-
-# then, whatever choice we make, run an analysis  to evaluate
-# the tradeoff of λ and % correct
-
-wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
-
-dir = mkpath(plotsdir("condition"))
-
-best_λs = CSV.read(joinpath(processed_datadir("classifier_params"),"best-lambdas.json"))
-
-# Mean Frequency Bin Analysis (Timeline)
+# Findb best λs
 # =================================================================
 
-classdf_file = joinpath(cache_dir("features"), savename("cond-freaqmeans-timeline",
-    (absolute = use_absolute_features, n_winlens = n_winlens), "csv"))
+# Mean Frequency Bin Analysis
+# -----------------------------------------------------------------
 
-spread(scale,npoints)   = x -> spread(x,scale,npoints)
-spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+classdf_file = joinpath(processed_datadir("features"), "cond-freaqmeans.csv")
 
-if use_cache && isfile(classdf_file)
+if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     windows = [(len = len, start = start, before = -len)
-        for len in spread(1, 0.5, n_winlens),
-            start in [0.0]]
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classdf_groups = @_ events |>
@@ -63,108 +35,242 @@ else
     classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
     CSV.write(classdf_file, classdf)
 end
-classdf = innerjoin(classdf, best_λs, on = [:sid])
 
-# Timeline Plots
-# =================================================================
+# Model evaluation
+# -----------------------------------------------------------------
+
+shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds), __)
+λ_folds = folds(2, shuffled_sids)
+classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 classcomps = [
     "global-v-object"  => @_(classdf |> filter(_.condition in ["global", "object"],  __)),
     "global-v-spatial" => @_(classdf |> filter(_.condition in ["global", "spatial"], __)),
-    "object-v-spatial" => @_(classdf |> filter(_.condition in ["object", "spatial"], __))
 ]
 
+lambdas = 10.0 .^ range(-2, 0, length=100)
 resultdf = mapreduce(append!!, classcomps) do (comp, data)
-    function findclass((key, sdf))
-        result = testclassifier(LassoPathClassifiers([1.0, sdf.λ |> first]),
-            data = sdf, y = :condition, X = r"channel",
-            crossval = :sid, n_folds = 10,
-            seed = stablehash(:cond_coef_timeline,2019_11_18),
-            irls_maxiter = 100,
-            weight = :weight, on_model_exception = :throw)
+    groups = pairs(groupby(data, [:winstart, :winlen, :fold]))
+
+    progress = Progress(length(groups))
+    function findclass((key,sdf))
+        result = Empty(DataFrame)
+
+        result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
+            X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
+            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
+            on_model_exception = :print)
 
         result[!, keys(key)] .= permutedims(collect(values(key)))
         result[!, :comparison] .= comp
+        next!(progress)
 
         result
     end
-
-    groups = pairs(groupby(data, [:winstart, :winlen, :fold]))
     foldxt(append!!, Map(findclass), collect(groups))
 end
 
+# λ selection
+# -----------------------------------------------------------------
+
 means = @_ resultdf |>
-    groupby(__, [:winlen, :winstart, :comparison, :sid, :fold, :λ]) |>
-    combine(__, [:correct, :weight] => wmeanish => :mean)
+    groupby(__,[:winlen, :winstart, :comparison, :λ, :nzcoef, :sid, :fold]) |>
+    combine(__, [:correct, :weight] => wmean => :mean)
+bestmeans = @_ means |>
+    groupby(__, [:comparison, :λ, :nzcoef, :sid, :fold]) |>
+    combine(__ , :mean => maximum => :mean) # |>
 
-winstart_means = @_ means |>
-    groupby(__, [:winstart, :comparison, :sid, :fold, :λ]) |>
-    combine(__, :mean => mean => :mean)
+logitmeans = @_ bestmeans |>
+    DataFrames.transform(__, :mean => ByRow(x-> logit(0.99(x-0.5) + 0.5)) => :mean)
+logitmeandiff = @_ filter(_.λ == 1.0, logitmeans) |>
+    deletecols!(__, [:λ, :nzcoef]) |>
+    rename!(__, :mean => :nullmean) |>
+    innerjoin(__, logitmeans, on = [:comparison, :sid, :fold]) |>
+    transform!(__, [:mean,:nullmean] => (-) => :meandiff)
 
-nullmeans = @_ winstart_means |>
-    filter(_.λ == 1.0, __) |>
-    deletecols!(__, :λ) |>
-    rename!(__, :mean => :nullmean)
+grandmeandiff = @_ logitmeandiff |>
+    groupby(__, [:λ, :fold]) |>
+    combine(__, :meandiff => mean => :meandiff) |>
+    sort!(__, [:λ]) |>
+    groupby(__, :fold) |>
+    transform!(__, :meandiff =>
+        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :meandiff)
 
-meandiff = @_ winstart_means |>
-    filter(_.λ != 1.0, __) |>
-    innerjoin(nullmeans, __, on = [:comparison, :sid, :fold, :winstart]) |>
-    transform!(__, [:mean, :nullmean] => (-) => :meandiff)
+@_ grandmeandiff |> @vlplot(:line,
+        x = {:λ, scale = {type = :log}},
+        y = :meandiff,
+        color = {:fold, type = :nominal}) |>
+    save(joinpath(dir,"lambdapick.svg"))
 
-pl = meandiff |>
-    @vlplot(width = 600, height = 300,
-        color = {field = :comparison, type = :nominal}, x = :winstart) +
-    @vlplot(:line,  y = {:meandiff, aggregate = :mean, type = :quantitative}) +
-    @vlplot(:errorband,  y = {:meandiff, aggregate = :ci, type = :quantitative})
+# pick the largest valued λ, with a non-negative peak for meandiff
+function pickλ(df)
+    peaks = @_ maxima(df.meandiff) |>
+        filter(df.meandiff[_] > 0.05, __)
+    maxλ = argmax(df[peaks,:λ])
+    df[peaks[maxλ],[:λ]]
+end
+λs = @_ grandmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
+λs[!,:fold_text] .= string.("Fold: ",λs.fold)
+λs[!,:yoff] = [0.5, 1.5]
 
-pl |> save(joinpath(dir, "condition_timeline.svg"))
+pl = @vlplot() +
+    vcat(
+        logitmeandiff |> @vlplot(
+            :line, width = 750, height = 100,
+            color = {field = :comparison, type = :nominal},
+            x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
+                     title = "Regularization Parameter (λ)"},
+            y     = {:nzcoef, aggregate = :max, type = :quantitative,
+                     title = "# of non-zero coefficients (max)"}
+        ),
+        (
+            bestmeans |> @vlplot(
+                width = 750, height = 200,
+                x = {:λ, scale = {type = :log}},
+                color = {field = :comparison, type = :nominal},
+            ) +
+            @vlplot(
+                :line,
+                y = {:mean, aggregate = :mean, type = :quantitative, scale = {domain = [0.5, 1]}},
+            ) +
+            @vlplot(
+                :errorband,
+                y = {:mean, aggregate = :ci, type = :quantitative}
+            )
+        ),
+        (
+            @vlplot() +
+            (
+                logitmeandiff |> @vlplot(
+                    width = 750, height = 200,
+                    x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
+                             title = "Regularization Parameter (λ)"},
+                    color = {field = :comparison, type = :nominal}) +
+                @vlplot(:errorband,
+                    y = {:meandiff, aggregate = :ci,   type = :quantitative,
+                         title = "Logistic Unit Advantage over Baseline"}) +
+                @vlplot(:line,
+                    y = {:meandiff, aggregate = :mean, type = :quantitative})
+            ) +
+            (
+                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
+                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
+            ) +
+            (
+                @vlplot(data = λs) +
+                @vlplot({:rule, strokeDash = [4, 4], size = 3}, x = :λ,
+                    color = {value = "green"}) +
+                @vlplot({:text, align = :left, dy = -8, size =  12, angle = 90},
+                    text = :fold_text, x = :λ, y = :yoff)
+            )
+        )
+    );
 
-# select data at the central time point (and length)
+pl |> save(joinpath(dir, "relative_logit_lambdas.svg"))
+
+final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
+    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
+    for sid in first(λ_fold))...)
+
+# Different channel groups
+# =================================================================
+
+# Mean Frequency Bin Analysis
 # -----------------------------------------------------------------
 
-centerlen = @_ classdf.winlen |> unique |> sort! |> __[4]
-centerstart = @_ classdf.winstart |> unique |> __[argmin(abs.(__ .- 0.0))]
+classdf_chgroup_file = joinpath(processed_datadir("features"), "cond-freaqmeans-chgroups.csv")
 
-classdf_atlen = @_ classdf |> filter(_.winlen == centerlen && _.winstart == centerstart, __)
+if isfile(classdf_chgroup_file)
+    classdf_chgroup = CSV.read(classdf_chgroup_file)
+else
+    windows = [(len = len, start = 0.0)
+        for len in GermanTrack.spread(1, 0.5, n_winlens)]
 
-classcomps_atlen = [
-    "global-v-object"  => @_(classdf_atlen |> filter(_.condition in ["global", "object"],  __)),
-    "global-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["global", "spatial"], __)),
-    "object-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["object", "spatial"], __))
-]
+    classdf_chgroup = mapreduce(append!!, ["frontal", "central", "mixed"]) do group
+        subjects, events = load_all_subjects(processed_datadir("eeg", group), "h5")
+        classdf_chgroup_groups = @_ events |>
+            filter(_.target_present, __) |>
+            filter(ishit(_, region = "target") == "hit", __) |>
+            groupby(__, [:sid, :condition])
 
-# test accuracy
-# -----------------------------------------------------------------
-
-nullmodels = mapreduce(append!!, classcomps_atlen) do (comp, data)
-    function findclass((key, sdf))
-        result = testclassifier(LassoClassifier(0.5),
-            data = sdf, y = :condition, X = r"channel",
-            crossval = :sid, n_folds = 10,
-            seed = stablehash(:cond_coef_timeline,2019_11_18),
-            irls_maxiter = 100,
-            weight = :weight, on_model_exception = :throw)
-
-        result[!, keys(key)] .= permutedims(collect(values(key)))
-        result[!, :comparison] .= comp
+        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget, windows)
+        result[!,:chgroup] .= group
 
         result
     end
+    CSV.write(classdf_chgroup_file, classdf_chgroup)
+end
 
-    groups = pairs(groupby(data, :fold))
+# Model evaluation
+# -----------------------------------------------------------------
+
+λfold = groupby(final_λs, :fold)
+classdf_chgroup[!,:fold] = in.(classdf_chgroup.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+classcomps = [
+    "global-v-object"  => @_(classdf_chgroup |> filter(_.condition in ["global", "object"],  __)),
+    "global-v-spatial" => @_(classdf_chgroup |> filter(_.condition in ["global", "spatial"], __)),
+]
+
+resultdf_chgroups = mapreduce(append!!, classcomps) do (comp, data)
+    groups = pairs(groupby(data, [:winlen, :fold, :chgroup]))
+
+    progress = Progress(length(groups))
+    function findclass((key,sdf))
+        result = Empty(DataFrame)
+        λ = first(λfold[(fold = first(sdf.fold),)].λ)
+        result = testclassifier(LassoPathClassifiers([1.0, λ]), data = sdf, y = :condition,
+            X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
+            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
+            on_model_exception = :debug)
+
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        result[!, :comparison] .= comp
+        next!(progress)
+
+        result
+    end
     foldl(append!!, Map(findclass), collect(groups))
 end
 
-nullmeans = @_ nullmodels |>
-    groupby(__, [:sid, :comparison]) |>
-    combine(__, [:correct, :weight] => wmeanish => :correct)
+# Plot performance
+# -----------------------------------------------------------------
 
-nullmeans |>
-    @vlplot(:bar,
-        x = :comparison,
-        y = {:correct, aggregate = :mean, type = :quantitative,
-            scale = {domain = [0.4, 1]}})
+classmeans = @_ resultdf_chgroups |>
+    groupby(__, [:winlen, :sid, :λ, :fold, :comparison, :chgroup]) |>
+    combine(__, [:correct, :weight] => wmean => :mean)
 
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:sid, :λ, :fold, :comparison, :chgroup]) |>
+    combine(__, :mean => mean => :mean) |>
+    transform!(__, :mean => ByRow(x -> logit(0.99(x - 0.5) + 0.5)) => :meanlogit)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean, :meanlogit => :nullmeanlogit) |>
+    deletecols!(__, :λ)
+
+classdiffs = @_ classmeans_sum |>
+    filter(_.λ != 1.0, __) |>
+    deletecols!(__, :λ) |>
+    innerjoin(__, nullmeans, on = [:comparison, :chgroup, :sid, :fold]) |>
+    transform!(__, [:meanlogit, :nullmeanlogit] => (-) => :meandifflogit)
+
+classdiffs |>
+    @vlplot(facet = {column = {field = :comparison, type = :nominal}}) + (
+        @vlplot(x = {:chgroup, type = :nominal},
+            color = {:chgroup, scale = {scheme = :dark2}}) +
+        @vlplot(:bar,
+            y = {:meandifflogit, aggregate = :mean, type=  :quantitative},
+        ) +
+        @vlplot(:errorbar,
+            color = {value = "black"},
+            y = {:meandifflogit, aggregate = :stderr, type=  :quantitative},
+        )
+    ) |>
+    save(joinpath(dir, "chgroups.svg"))
+
+CSV.write(joinpath(processed_datadir("analyses"), "chgroup-accuracy.csv"), classdiffs)
 
 # Different baseline models
 # =================================================================
@@ -175,14 +281,11 @@ nullmeans |>
 classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans",
     (n_winlens = n_winlens, ), "csv"))
 
-spread(scale,npoints)   = x -> spread(x,scale,npoints)
-spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
-
 if use_cache && isfile(classbasedf_file)
     classbasedf = CSV.read(classbasedf_file)
 else
     windows = [(len = len, start = 0.0)
-        for len in spread(1, 0.5, n_winlens)]
+        for len in GreamnTrack.spread(1, 0.5, n_winlens)]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classbasedf_groups = @_ events |>
@@ -193,8 +296,6 @@ else
     windowtypes = [
         "target"    => windowtarget,
         "rndbefore" => windowbase_bytarget(>; baseparams...),
-        "rndafter"  => windowbase_bytarget(<; baseparams...),
-        "baseline"  => windowbaseline(; baseparams...)
     ]
     classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
         result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
@@ -226,16 +327,8 @@ modeltype = [
                      transform!(__, :condition => shuffle => :condition)),
         λfn = df -> df.λ |> first
     ),
-    "random-window" => (
-        filterfn = @_(filter(_.windowtype == "baseline" && _.hittype == "hit", __)),
-        λfn = df -> df.λ |> first
-    ),
     "random-window-before" => (
         filterfn = @_(filter(_.windowtype == "rndbefore" && _.hittype == "hit", __)),
-        λfn = df -> df.λ |> first
-    ),
-    "random-window-after" => (
-        filterfn = @_(filter(_.windowtype == "rndafter" && _.hittype == "hit", __)),
         λfn = df -> df.λ |> first
     ),
     "random-trialtype" => (

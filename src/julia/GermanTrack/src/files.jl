@@ -96,7 +96,7 @@ function load_all_subjects(dir, ext)
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
     subjects = Dict(
         sidfor(file) => load_subject(
-            joinpath(processed_datadir("eeg"), file), stim_info,
+            joinpath(dir, file), stim_info,
             encoding = RawEncoding()
         ) for file in eeg_files)
     events = @_ mapreduce(_.events, append!!, values(subjects))
