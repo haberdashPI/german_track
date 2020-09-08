@@ -22,11 +22,8 @@ include("random.jl")
 
 export processed_datadir, raw_datadir, stimulus_dir, raw_stim_dir, plotsdir
 
-function processed_datadir(args...)
-    dir = joinpath(datadir(), "processed", args...)
-    isdir(dir) || mkdir(dir)
-    dir
-end
+processed_datadir(args...) =
+    mkpath(joinpath(datadir(), "processed", args...))
 raw_datadir(args...) = joinpath(datadir(), "raw", args...)
 stimulus_dir() = processed_datadir("stimuli")
 raw_stim_dir() = raw_datadir("stimuli")
