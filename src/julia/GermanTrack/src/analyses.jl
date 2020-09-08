@@ -1,5 +1,7 @@
 export select_windows
 
+wmean(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+
 """
     select_windows(conditions, subjects)
 
