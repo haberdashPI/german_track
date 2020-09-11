@@ -13,9 +13,11 @@
     - [X] random window: does window timing matter (no)
     - [X] random trial type: does the response type matter (yes)
 - [X] regression components
-- [ ] subset of channels !!
+- [X] subset of channels !!
 - [ ] stats
+- [ ] get human data
 - [ ] integrate with behavioral results
+- [ ] try MCCA averaging???
 
 ### story:
 
@@ -43,7 +45,11 @@ clearer story
 - [X] look at these across time?
 - [ ] break salience down into four categories, to see gradient of timeline !!
 - [ ] stats
+- [ ] get human data
+- [ ] what do the correct rejection trials early v. late in the trial look like?
+      build-up would predict a change
 - [ ] it would be interesting to see the features at the earlier and later timepoints
+- [ ] do the frontal v central features matter?
 - [ ] can these be with the median power?
     - [ ] do these show up across time?
 - [ ] what does this look like with both hits and misses?
@@ -86,6 +92,7 @@ this and we can't say much with any confidence about this without furthe expeirm
 - [ ] redo near/far to use *just* the switch before a target !!
 - [ ] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows) !!
 - [ ] stats
+- [ ] get human data
 - [ ] can these been done with the median power?
 
 ### story
