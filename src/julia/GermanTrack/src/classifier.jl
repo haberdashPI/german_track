@@ -1,16 +1,19 @@
 export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names,
     LassoPathClassifiers, LassoClassifier
 
-const __classifierparams__ = (
-    svm_radial        = (:C,:gamma),
-    svm_linear        = (:C,),
-    gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
-    logistic_l1       = (:lambda,),
-)
-classifier_param_names(classifier) = __classifierparams__[classifier]
-function classifierparams(obj, classifier)
-    (;(p => obj[p] for p in __classifierparams__[classifier])...)
-end
+import StatsModels: DummyCoding, FullDummyCoding
+export DummyCoding, FullDummyCoding
+
+# const __classifierparams__ = (
+#     svm_radial        = (:C,:gamma),
+#     svm_linear        = (:C,),
+#     gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
+#     logistic_l1       = (:lambda,),
+# )
+# classifier_param_names(classifier) = __classifierparams__[classifier]
+# function classifierparams(obj, classifier)
+#     (;(p => obj[p] for p in __classifierparams__[classifier])...)
+# end
 
 struct LassoClassifier
     lambda::Float64
@@ -84,7 +87,7 @@ function buildmodel(params, classifier, seed)
     end
 end
 
-function formulafn(data, y, X)
+function formulafn(data, y, X, Coding = DummyCoding)
     if @_ any(eltype(_) >: Missing, eachcol(view(data,:, X)))
         @warn "Some data columns have a missing type which will result in dummy coding. "*
             "This may not be what you intend."
@@ -98,10 +101,12 @@ function formulafn(data, y, X)
         formula += term(col)
     end
     # include `y` as the dependent variable (the class to be learned)
-    formula = term(y) ~ formula
+    levels = unique(data[:, y])
+    yterm = StatsModels.CategoricalTerm(y, StatsModels.ContrastsMatrix(Coding(), levels))
+    formula = yterm ~ formula
     f = apply_schema(formula, schema(formula, data))
 
-    subdata -> modelcols(f, subdata), f.lhs.contrasts.levels
+    subdata ->  modelcols(f, subdata), levels
 end
 
 function runclassifier(model; data, y, X, seed = nothing, kwds...)
@@ -147,12 +152,12 @@ end
 
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
     seed  = nothing, weight = nothing, on_model_exception = :debug,
-    include_model_coefs = false, kwds...)
+    include_model_coefs = false, ycoding = DummyCoding, kwds...)
     @assert on_model_exception ∈ [:debug, :print, :throw]
 
     if !isnothing(seed); seedmodel(model, seed); end
 
-    getxy, levels = formulafn(data, y, X)
+    getxy, levels = formulafn(data, y, X, ycoding)
 
     # the results of classification (starts empty)
     result = Empty(DataFrame)
@@ -172,15 +177,17 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             end
 
             _y, _X = getxy(train)
-            if size(_y, 2) > 1
-                error("The value for `y` ($y) should only reference a single, two-category column.")
-            end
+            # if size(_y, 2) > 1
+            #     error("The value for `y` ($y) should only reference a single, two-category column.")
+            # end
 
             weigths_kwds = isnothing(weight) ? kwds : (wts = float(train[:,weight]), kwds...)
 
-            local coefs
+            local coefs_for_code
             try
-                coefs = ScikitLearn.fit!(model, _X, vec(_y); weigths_kwds...)
+                coefs_for_code = map(1:size(_y,2)) do col
+                    ScikitLearn.fit!(model, _X, _y[:,col]; weigths_kwds...)
+                end
             catch e
                 if on_model_exception == :debug
                     @info "Model fitting threw an error: opening debug to troubleshoot..."
@@ -201,10 +208,14 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
             # test the model
             _y, _X = getxy(test)
-            level = ScikitLearn.predict(coefs, _X)
-            levels[round.(Int, level).+1], coefs
+            predicted = mapreduce(hcat,coefs_for_code) do coefs
+                round.(Int,ScikitLearn.predict(coefs, _X))
+            end
+            C = StatsModels.ContrastsMatrix(ycoding(), levels)
+            indices = map(x -> findfirst(==(x), collect(eachrow(C.matrix))), eachrow(predicted))
+            levels[indices], coefs_for_code
         end
-        _labels, coefs = predictlabels()
+        _labels, coefs_for_code = predictlabels()
 
         # add to the results
         keepvars = propertynames(view(data, :, Not(X)))
@@ -212,26 +223,30 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
         correct  = convert(Array{Union{Bool, Missing}},   _labels .== test[:, y])
 
         coefnames = include_model_coefs ? pushfirst!(propertynames(data[:,X]),:C) : []
-        if size(_labels,2) > 1
-            for col in 1:size(_labels,2)
+        for (mcol, coefs) in enumerate(coefs_for_code)
+            if size(_labels,2) > 1
+                for col in 1:size(_labels,2)
+                    result = append!!(result, DataFrame(
+                        modelcol   =  mcol,
+                        label      =  @view(label[:,col]),
+                        correct    =  @view(correct[:,col]),
+                        label_fold =  i;
+                        (keepvars .=> eachcol(test[:, keepvars]))...,
+                        (paramnames(model, coefs, coefnames) .=>
+                            paramvals(model, coefs, col, coefnames))...,
+                    ))
+                end
+            else
                 result = append!!(result, DataFrame(
-                    label      =  @view(label[:,col]),
-                    correct    =  @view(correct[:,col]),
-                    label_fold =  i;
-                    (keepvars .=> eachcol(test[:, keepvars]))...,
+                    modelcol    =  mcol,
+                    label       =  label,
+                    correct     =  correct,
+                    label_fold  =  i;
+                    (keepvars  .=> eachcol(test[:, keepvars]))...,
                     (paramnames(model, coefs, coefnames) .=>
-                        paramvals(model, coefs, col, coefnames))...,
+                        paramvals(model, coefs, coefnames))...,
                 ))
             end
-        else
-            result = append!!(result, DataFrame(
-                label       =  label,
-                correct     =  correct,
-                label_fold  =  i;
-                (keepvars  .=> eachcol(test[:, keepvars]))...,
-                (paramnames(model, coefs, coefnames) .=>
-                    paramvals(model, coefs, coefnames))...,
-            ))
         end
     end
 

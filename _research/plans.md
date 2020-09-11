@@ -44,6 +44,7 @@ clearer story
 - [X] spatial alone x
 - [X] look at these across time?
 - [ ] break salience down into four categories, to see gradient of timeline !!
+    - [ ] handle multi-class y-values in `testmodel`
 - [ ] stats
 - [ ] get human data
 - [ ] what do the correct rejection trials early v. late in the trial look like?

@@ -44,6 +44,13 @@ const salience_label = begin
     med = median(target_salience)
     ifelse.(target_salience .< med, "low", "high")
 end
+
+const salience_4level = begin
+    quants = quantile(target_salience, [0.25,0.5,0.75])
+    level = sum(target_salience .< quants', dims = 2)
+    ["lowest","low","high","highest"]
+end
+
 const target_time_label = begin
     early = @_ DataFrame(
         time = target_times,

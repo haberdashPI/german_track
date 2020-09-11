@@ -536,3 +536,21 @@ pl = classdiffs |>
         )
     );
 pl |> save(joinpath(dir, "salience_earlylate_timeline.svg"))
+
+# Plot 4-salience-level timeline
+# =================================================================
+
+# TODO: setup new features using sal4 and then run classifier with
+# different coding schemes (start with the sequential one)
+
+# test out 3-class classifier
+X = [[4, 0, 0]' .+ rand(Normal(0,0.1), 20, 3);
+     [0, 4, 0]' .+ rand(Normal(0,0.1), 20, 3);
+     [0, 0, 4]' .+ rand(Normal(0,0.1), 20, 3)];
+y = [fill("A", 20); fill("B", 20); fill("C", 20)];
+df = DataFrame(x1 = X[:,1], x2 = X[:,2], x3 = X[:,3], y = y, id = repeat(1:20, outer=3))
+
+result = testclassifier(LassoClassifier(0.0), data = df, X = r"x[0-9]+", y = :y,
+    n_folds = 5, crossval = :id, seed = stablehash(:test), irls_maxiter = 600, ycoding = DummyCoding)
+
+# Compute frequency bins
