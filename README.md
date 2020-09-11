@@ -15,8 +15,20 @@ TODO: more details about the project should eventually go here.
 
 The project uses [git](https://git-scm.com/) to manage versions of the source code and
 [dvc](https://dvc.org/doc/start/data-versioning) to manage versions of the data. You will
-need to install both to use this project. Once you have these tools installed, set up the
-project as follows:
+need to install both to use this project.
+
+> If you use
+[Pipenv](https://pipenv-fork.readthedocs.io/en/latest/), German Track has a Pipfile you can
+use to install dvc as follows:
+> ```shell
+> pipenv install
+> pipenv shell
+> ```
+>
+> From there you should be able to run the `dvc` commands below within this shell. This
+> approach will ensure reproducibility of the commands below.
+
+Once you have these tools installed, set up the project as follows:
 
 ```bash
 git clone https://github.com/haberdashPI/german_track
