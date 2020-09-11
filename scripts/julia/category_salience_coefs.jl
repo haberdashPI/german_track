@@ -1,31 +1,13 @@
 # Setup
 # =================================================================
 
-using DrWatson
-@quickactivate("german_track")
-use_cache = true
-seed = 11_18_2019
 n_winlens = 12
-n_winstarts = 32
 n_folds = 10
 
-using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures,
-    Dates, Underscores, Random, Printf, ProgressMeter, VegaLite, FileIO,
-    StatsBase, Bootstrap, BangBang, Transducers, PyCall, ScikitLearn, Flux,
-    JSON3, JSONTables, Tables, Infiltrator, FileIO, BlackBoxOptim, RCall, Peaks, Formatting,
-    Distributions, DSP
-
-R"library(ggplot2)"
-R"library(dplyr)"
-
-DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
-
-import GermanTrack: stim_info, speakers, directions, target_times, switch_times
-
-# then, whatever choice we make, run an analysis  to evaluate
-# the tradeoff of λ and % correct
-
-wmeanish(x,w) = iszero(sum(w)) ? 0.0 : mean(coalesce.(x,one(eltype(x))/2),weights(w))
+using DrWatson; @quickactivate("german_track")
+using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
+    Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
+    Infiltrator, Peaks, Distributions, DSP, Random
 
 dir = mkpath(plotsdir("category_salience"))
 
@@ -37,7 +19,7 @@ dir = mkpath(plotsdir("category_salience"))
 
 classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
 
-if use_cache && isfile(classdf_file)
+if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
@@ -59,11 +41,12 @@ end
 
 resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
 
-shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds, :salience), __)
+shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds,
+    :salience), __)
 λ_folds = folds(2, shuffled_sids)
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
-if use_cache && isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)
+if isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)
     resultdf = CSV.read(resultdf_file)
 else
     lambdas = 10.0 .^ range(-2, 0, length=100)
@@ -97,7 +80,7 @@ end
 
 means = @_ resultdf |>
     groupby(__, [:condition, :λ, :nzcoef, :sid, :fold, :winstart, :winlen]) |>
-    combine(__, [:correct, :weight] => wmeanish => :mean)
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 bestmeans = @_ means |>
     groupby(__, [:condition, :λ, :nzcoef, :sid, :fold]) |>
@@ -219,7 +202,7 @@ final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
 windowmeans = @_ resultdf |>
     filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
     groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
-    combine(__, [:correct, :weight] => wmeanish => :mean)
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 nullmeans = @_ windowmeans |>
     filter(_.λ == 1.0, __) |>
@@ -287,10 +270,7 @@ winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 
 classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
 
-spread(scale,npoints,k)   = x -> spread(x,scale,npoints,k)
-spread(x,scale,npoints,k) = quantile(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
-
-if use_cache && isfile(classdf_timeline_file)
+if isfile(classdf_timeline_file)
     classdf_timeline = CSV.read(classdf_timeline_file)
 else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
@@ -299,7 +279,7 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label])
     winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
-        spread(0.5,n_winlens,k))
+        GermanTrack.spread(0.5,n_winlens,k))
 
     windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
     classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windowtarget, windows, foldl)
@@ -315,7 +295,7 @@ end
 resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
 classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
-if use_cache && isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
+if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
     resultdf_timeline = CSV.read(resultdf_timeline_file)
 else
     factors = [:fold, :winlen, :winstart, :condition]
@@ -349,7 +329,7 @@ end
 
 classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition]) |>
-    combine(__, [:correct, :weight] => wmeanish => :mean)
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:winstart, :sid, :λ, :fold, :condition]) |>
@@ -457,10 +437,7 @@ winstart_bysid(sid) = beststart_bysid[(sid = sid,)].winstart |> first
 
 classdf_earlylate_file = joinpath(cache_dir("features"), "salience-freqmeans-earlylate-timeline.csv")
 
-spread(scale,npoints,k)   = x -> spread(x,scale,npoints,k)
-spread(x,scale,npoints,k) = quantile(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
-
-if use_cache && isfile(classdf_earlylate_file)
+if isfile(classdf_earlylate_file)
     classdf_earlylate = CSV.read(classdf_earlylate_file)
 else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
@@ -470,7 +447,7 @@ else
         groupby(__, [:sid, :condition, :salience_label, :target_time_label])
     winbounds(start,k) = sid -> (
         start = winstart_bysid(sid),
-        len = winlen_bysid(sid) |> spread(0.5,n_winlens,k)
+        len = winlen_bysid(sid) |> GermanTrack.spread(0.5,n_winlens,k)
     )
 
     windows = [winbounds(2.25,k) for k in 1:n_winlens]
@@ -487,7 +464,7 @@ end
 resultdf_earlylate_file = joinpath(cache_dir("models"), "salience-earlylate-timeline.csv")
 classdf_earlylate[!,:fold] = in.(classdf_earlylate.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
-if use_cache && isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
+if isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
     resultdf_earlylate = CSV.read(resultdf_earlylate_file)
 else
     factors = [:fold, :winlen, :winstart, :condition, :target_time_label]
@@ -527,7 +504,7 @@ end
 
 classmeans = @_ resultdf_earlylate |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
-    combine(__, [:correct, :weight] => wmeanish => :mean)
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:winstart, :sid, :λ, :fold, :condition, :target_time_label]) |>
