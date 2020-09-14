@@ -4,7 +4,7 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers
+    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays
 
 using BSON: @save, @load
 export CSV, @save, @load
@@ -47,8 +47,7 @@ end
 
 const salience_4level = begin
     quants = quantile(target_salience, [0.25,0.5,0.75])
-    level = sum(target_salience .< quants', dims = 2)
-    ["lowest","low","high","highest"]
+    sum(target_salience .< quants', dims = 2) .+ 1
 end
 
 const target_time_label = begin

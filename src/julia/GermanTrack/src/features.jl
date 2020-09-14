@@ -208,6 +208,10 @@ function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
             transform!(__, :weight => minimum => :weight) |>
             filter(all(!isnan, _.power), __)
 
+        if any(ismissing, Array(powerdf))
+            @infiltrate
+        end
+
         chstr = @_(map(@sprintf("%02d", _), powerdf.channel))
         features = Symbol.("channel_", chstr, "_", powerdf.freqbin)
         DataFrame(

@@ -101,7 +101,7 @@ function formulafn(data, y, X, Coding = DummyCoding)
         formula += term(col)
     end
     # include `y` as the dependent variable (the class to be learned)
-    levels = unique(data[:, y])
+    levels = CategoricalArrays.levels(data[:, y])
     yterm = StatsModels.CategoricalTerm(y, StatsModels.ContrastsMatrix(Coding(), levels))
     formula = yterm ~ formula
     f = apply_schema(formula, schema(formula, data))
@@ -177,16 +177,22 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             end
 
             _y, _X = getxy(train)
+            if eltype(_y) >: Missing
+                error("The `y` variable ($y) has missing values")
+            end
             # if size(_y, 2) > 1
             #     error("The value for `y` ($y) should only reference a single, two-category column.")
             # end
 
-            weigths_kwds = isnothing(weight) ? kwds : (wts = float(train[:,weight]), kwds...)
+            weigths_kwds = isnothing(weight) ? kwds : (wts = float(train[:, weight]), kwds...)
 
             local coefs_for_code
             try
-                coefs_for_code = map(1:size(_y,2)) do col
-                    ScikitLearn.fit!(model, _X, _y[:,col]; weigths_kwds...)
+                coefs_for_code = map(1:size(_y, 2)) do col
+                    vals = sort!(unique(_y[:, col]))
+                    yidx = indexin(_y[:, col], vals)
+                    yt = [0.0, 1.0][yidx]
+                    (coefs = ScikitLearn.fit!(model, _X, yt; weigths_kwds...), vals = vals)
                 end
             catch e
                 if on_model_exception == :debug
@@ -200,7 +206,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                         println(buffer)
                     end
                     @error "Exception while fitting model: $(String(take!(buffer)))"
-                    return fill(missing, size(test,1)), nothing
+                    return fill(missing, size(test, 1)), nothing
                 elseif on_model_exception == :throw
                     rethrow(e)
                 end
@@ -208,12 +214,21 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
             # test the model
             _y, _X = getxy(test)
-            predicted = mapreduce(hcat,coefs_for_code) do coefs
-                round.(Int,ScikitLearn.predict(coefs, _X))
+            predicted = mapreduce((x, y) -> cat(x, y, dims = 3), coefs_for_code) do cfs
+                cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
             end
             C = StatsModels.ContrastsMatrix(ycoding(), levels)
-            indices = map(x -> findfirst(==(x), collect(eachrow(C.matrix))), eachrow(predicted))
-            levels[indices], coefs_for_code
+            indices = [argmin(collect(eachcol(abs.(predicted[I,:] .- C.matrix'))))
+                for I in CartesianIndices(size(predicted)[1:2])]
+
+            if any(isnothing, indices)
+                nothing_index = findfirst(isnothing, indices)
+                Is = CartesianIndices(size(predicted)[1:2])
+                row = predicted[Is[nothing_index],:]
+                @error "Could not match $row to a contrast pattern."
+            end
+
+            return levels[indices], map(x -> x.coefs, coefs_for_code)
         end
         _labels, coefs_for_code = predictlabels()
 
@@ -223,8 +238,8 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
         correct  = convert(Array{Union{Bool, Missing}},   _labels .== test[:, y])
 
         coefnames = include_model_coefs ? pushfirst!(propertynames(data[:,X]),:C) : []
-        for (mcol, coefs) in enumerate(coefs_for_code)
-            if size(_labels,2) > 1
+        if size(_labels,2) > 1
+            for (mcol, coefs) in enumerate(coefs_for_code)
                 for col in 1:size(_labels,2)
                     result = append!!(result, DataFrame(
                         modelcol   =  mcol,
@@ -236,17 +251,16 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                             paramvals(model, coefs, col, coefnames))...,
                     ))
                 end
-            else
-                result = append!!(result, DataFrame(
-                    modelcol    =  mcol,
-                    label       =  label,
-                    correct     =  correct,
-                    label_fold  =  i;
-                    (keepvars  .=> eachcol(test[:, keepvars]))...,
-                    (paramnames(model, coefs, coefnames) .=>
-                        paramvals(model, coefs, coefnames))...,
-                ))
             end
+        else
+            result = append!!(result, DataFrame(
+                label       =  label,
+                correct     =  correct,
+                label_fold  =  i;
+                (keepvars  .=> eachcol(test[:, keepvars]))...,
+                (paramnames(model, coefs, coefnames) .=>
+                    paramvals(model, coefs, coefnames))...,
+            ))
         end
     end
 

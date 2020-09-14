@@ -44,7 +44,8 @@ clearer story
 - [X] spatial alone x
 - [X] look at these across time?
 - [ ] break salience down into four categories, to see gradient of timeline !!
-    - [ ] handle multi-class y-values in `testmodel`
+    - [X] handle multi-class y-values in `testmodel`
+- [ ] why are so many weights for targets == 1, is that right?
 - [ ] stats
 - [ ] get human data
 - [ ] what do the correct rejection trials early v. late in the trial look like?
@@ -91,7 +92,7 @@ this and we can't say much with any confidence about this without furthe expeirm
 - [X] by condition: near v far, early v late, salience? (high low),
   maybe have different panels, main results
 - [ ] redo near/far to use *just* the switch before a target !!
-- [ ] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows) !!
+- [ ] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
 - [ ] stats
 - [ ] get human data
 - [ ] can these been done with the median power?

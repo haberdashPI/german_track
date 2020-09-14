@@ -14,8 +14,8 @@ wmean(x, w, default = one(eltype(x))/2) =
 Create a spread of `npoints` values placed evenly along the Normal distribution
 with a standard deviation of scale/2. Leaving out `x` returns curried function.
 """
-spread(scale,npoints)   = x -> spread(x,scale,npoints)
-spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints))
+spread(scale,npoints;k=Colon())   = x -> spread(x,scale,npoints,k)
+spread(x,scale,npoints,k) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
 
 """
     select_windows(conditions, subjects)
