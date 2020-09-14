@@ -85,6 +85,11 @@ function buildmodel(params, classifier, seed)
 end
 
 function formulafn(data, y, X)
+    if @_ any(eltype(_) >: Missing, eachcol(view(data,:, X)))
+        @warn "Some data columns have a missing type which will result in dummy coding. "*
+            "This may not be what you intend."
+    end
+
     # model formula (starts empty)
     formula = term(0)
 
@@ -153,6 +158,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
     result = Empty(DataFrame)
 
     # cross validation loop
+    ids = shuffle!(stableRNG(seed, :testclassifier), unique(data[:, crossval]))
     _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test = :nothing)
     for (i, (trainids, testids)) in enumerate(_folds)
         train = @_ filter(_[crossval] in trainids, data)
