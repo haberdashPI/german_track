@@ -96,33 +96,42 @@ logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
 
 grandlogitmeandiff = @_ logitmeandiff |>
     groupby(__, [:λ, :fold]) |>
-    combine(__, :logitmeandiff => mean => :logitmeandiff) #|>
+    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
     sort!(__, [:λ]) |>
+    groupby(__, [:fold]) |>
     transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.1), Butterworth(5)), x)) => :logitmeandiff)
+        (x -> filtfilt(digitalfilter(Lowpass(0.2), Butterworth(5)), x)) => :logitmeandiff)
 
 pl = grandlogitmeandiff |> @vlplot() +
     @vlplot(:line,
+        config = {},
+        color = {:fold, type = :nominal,
+            legend = {orient = :none, legendX = 175, legendY = 0.5}},
         x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
         title = "Regularization Parameter (λ)"},
         y     = {:logitmeandiff, aggregate = :mean, type = :quantitative,
-                title = "# of non-zero coefficients (max)"}) |>
+                title = "Model - Null Model Accuracy (logit scale)"}) |>
     save(joinpath(dir, "grandmean.svg"))
 
 # pick the largest valued λ, with a non-negative peak for meandiff
 function pickλ(df)
-    peaks = @_ maxima(df.meandiff) |>
-        filter(df.meandiff[_] > 0.01, __)
+    peaks = @_ maxima(df.logitmeandiff) |>
+        filter(df.logitmeandiff[_] > 0.1, __)
     maxλ = argmax(df[peaks,:λ])
     df[peaks[maxλ],[:λ]]
 end
-λs = @_ grandmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
+λs = @_ grandlogitmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
+
 λs[!,:fold_text] .= string.("Fold: ",λs.fold)
 λs[!,:yoff] = [0.1,0.15]
 
+final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
+    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
+    for sid in λ_fold[2])...)
+
 pl = @vlplot() +
     vcat(
-        meandiff |> @vlplot(
+        logitmeandiff |> @vlplot(
         :line, width = 750, height = 100,
             color = {field = :condition, type = :nominal},
             x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
@@ -175,10 +184,6 @@ pl = @vlplot() +
         )
     ) |> save(joinpath(dir, "salience_lambdas.svg"))
 
-final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in λ_fold[2])...)
-
 # Compute the best window length
 # -----------------------------------------------------------------
 
@@ -213,6 +218,12 @@ bestlens = @_ windavg |> groupby(__, [:fold]) |>
         ((m,l) -> l[argmax(m)]) => :winlen,
         :logitmeandiff => maximum => :logitmeandiff)
 
+bestlen_bysid = @_ bestlens |>
+    groupby(__, [:fold, :winlen, :logitmeandiff]) |>
+    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
+    groupby(__, :sid)
+    winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
+
 pl = windowdiff |>
     @vlplot(:rect,
         config =  {view = {stroke = :transparent}},
@@ -224,12 +235,6 @@ pl = windowdiff |>
         color = {:logitmeandiff, aggregate = :mean, type = :quantitative,
             scale = {scheme = "redblue", domainMid = 0}}) |>
     save(joinpath(dir, "salience_windows.svg"))
-
-bestlen_bysid = @_ bestlens |>
-    groupby(__, [:fold, :winlen, :logitmeandiff]) |>
-    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
-    groupby(__, :sid)
-    winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 
 # Plot timeline
 # =================================================================
@@ -374,36 +379,7 @@ pl |> save(joinpath(dir, "salience_timeline.svg"))
 # Early/late targets
 # =================================================================
 
-# Select best window time
-# -----------------------------------------------------------------
-
-timemean = @_ classdiffs |>
-    groupby(__, [:fold, :winstart, :condition]) |>
-    combine(__, :meandiff => mean => :meandiff) |>
-    groupby(__, [:fold, :winstart]) |>
-    combine(__, :meandiff => maximum => :meandiff) |>
-    sort!(__, :winstart) |>
-    groupby(__, [:fold]) |>
-    transform!(__, :meandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :meandiff)
-pl = timemean |>
-    @vlplot(:line, x = :winstart, y = :meandiff, row = {:fold, type = :nominal},
-        color = :condition);
-pl |> save(joinpath(dir, "salience_winstart_avg.svg"))
-
-beststart = @_ timemean|>
-    groupby(__, [:fold]) |>
-    combine(__, [:meandiff, :winstart] =>
-        ((m,l) -> l[argmax(m)]) => :winstart,
-        :meandiff => maximum => :meandiff)
-
-beststart_bysid = @_ beststart |>
-    groupby(__, [:fold, :winstart, :meandiff]) |>
-    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
-    groupby(__, :sid)
-winstart_bysid(sid) = beststart_bysid[(sid = sid,)].winstart |> first
-
-# Compute frequency bins
+# Mean Frequency Bin Analysis
 # -----------------------------------------------------------------
 
 classdf_earlylate_file = joinpath(cache_dir("features"), "salience-freqmeans-earlylate-timeline.csv")
@@ -416,13 +392,12 @@ else
     classdf_earlylate_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label, :target_time_label])
-    winbounds(start,k) = sid -> (
-        start = winstart_bysid(sid),
-        len = winlen_bysid(sid) |> GermanTrack.spread(0.5,n_winlens,k=k)
-    )
 
-    windows = [winbounds(2.25,k) for k in 1:n_winlens]
-    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windowtarget, windows, foldl)
+    windows = [(len = len, start = start, before = -len)
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in range(0, 2.5, length = 12)]
+    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windowtarget,
+        windows)
 
     CSV.write(classdf_earlylate_file, classdf_earlylate)
 end
@@ -478,7 +453,7 @@ classmeans = @_ resultdf_earlylate |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
     combine(__, :mean => mean => :mean)
 
 nullmeans = @_ classmeans_sum |>
@@ -486,27 +461,29 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-classdiffs = @_ classmeans_sum |>
-    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :target_time_label]) |>
-    transform!(__, [:mean, :nullmean] => ((x,y) -> 100*(x-y)) => :meandiff)
+classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+    @_ classmeans_sum |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+end
 
-ytitle = "% Correct - % Correct of Null"
+ytitle = "Model - Null Model Accuracy (logit scale)"
 pl = classdiffs |>
     @vlplot(
-        facet = {column = {field = :condition, title = nothing}},
-        title = ["Low/High Classification ","Accuracy by Target Time"],
+        facet = {column = {field = :target_time_label, title = nothing}},
+        title = ["Low/High Salience Classification ","Accuracy by Target Time"],
         config = {legend = {disable = true}}
     ) + (
-        @vlplot(color = :condition, x = {:target_time_label, title = ["Target", "Time"]}) +
+        @vlplot(color = {:condition, title = nothing}, x = {:condition, title = nothing}) +
         @vlplot(:bar,
-            y = {:meandiff, aggregate = :mean, type = :quantitative, title = ytitle}
+            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}
         ) +
         @vlplot(:errorbar,
             color = {value = "black"},
-            y = {:meandiff, aggregate = :ci, type = :quantitative, title = ytitle}
+            y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}
         )
     );
-pl |> save(joinpath(dir, "salience_earlylate_timeline.svg"))
+pl |> save(joinpath(dir, "salience_earlylate.svg"))
 
 # Plot 4-salience-level timeline
 # =================================================================

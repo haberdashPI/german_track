@@ -1,6 +1,9 @@
 
 # The overall results
 
+wip: 3. average across all time for early/late salience (isntead of just picking a time);
+  there's an exception when classifying right now
+
 ## 1. Main result: the different conditions have different brain responses
 
 - [X] power analysis
@@ -91,7 +94,7 @@ this and we can't say much with any confidence about this without furthe expeirm
 
 - [X] by condition: near v far, early v late, salience? (high low),
   maybe have different panels, main results
-- [ ] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
+- [X] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
 - [ ] redo near/far to use *just* the switch before a target !!
 - [ ] stats
 - [ ] get human data
