@@ -1,4 +1,4 @@
-export select_windows
+export select_windows, shrinktowards
 
 """
     wmean(vals, weights, [default = one(eltype(vals))/2])
@@ -7,6 +7,15 @@ Compute a weighted mean, treating missing values as `default`.
 """
 wmean(x, w, default = one(eltype(x))/2) =
     iszero(sum(w)) ? default : mean(coalesce.(x, default), weights(w))
+
+"""
+    shrinktowards([x],mu;by=0.01)
+
+Reduce the value of `x` towards `mu` by (the presumably small value) `by*(x-mu)`.
+You can exclude the `x` argument to curry the function.
+"""
+shrinktowards(mu;by=0.01) = x -> shrinktowards(x,mu,by=by)
+shrinktowards(x,mu;by=0.01) = (1-by)*(x-mu) + mu
 
 """
     spread([x,]scale,npoints)

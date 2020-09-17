@@ -81,7 +81,7 @@ bestmeans = @_ means |>
     combine(__ , :mean => maximum => :mean) # |>
 
 logitmeans = @_ bestmeans |>
-    DataFrames.transform(__, :mean => ByRow(x-> logit(0.99(x-0.5) + 0.5)) => :mean)
+    DataFrames.transform(__, :mean => ByRow(logit ∘ shrinktowards(0.5,by=0.01)) => :mean)
 logitmeandiff = @_ filter(_.λ == 1.0, logitmeans) |>
     deletecols!(__, [:λ, :nzcoef]) |>
     rename!(__, :mean => :nullmean) |>
@@ -243,7 +243,7 @@ classmeans = @_ resultdf_chgroups |>
 classmeans_sum = @_ classmeans |>
     groupby(__, [:sid, :λ, :fold, :comparison, :chgroup]) |>
     combine(__, :mean => mean => :mean) |>
-    transform!(__, :mean => ByRow(x -> logit(0.99(x - 0.5) + 0.5)) => :meanlogit)
+    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5,by=0.01)) => :meanlogit)
 
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>

@@ -11,7 +11,6 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
     StatsFuns
 
 dir = mkpath(plotsdir("category_salience"))
-logitsh(x) = logit(0.99(x-0.5) + 0.5)
 
 # Find λ
 # =================================================================
@@ -77,7 +76,7 @@ else
     alert("Completed salience/target-time classification!")
 end
 
-# display lambdas
+# λ selection
 # -----------------------------------------------------------------
 
 means = @_ resultdf |>
@@ -87,35 +86,6 @@ means = @_ resultdf |>
 bestmeans = @_ means |>
     groupby(__, [:condition, :λ, :nzcoef, :sid, :fold]) |>
     combine(__, :mean => maximum => :mean)
-
-pl = @vlplot() +
-vcat(
-    bestmeans |> @vlplot(
-        width = 750, height = 100,
-        :line,
-        color = {field = :condition, type = :nominal},
-        x = {:λ, scale = {type = :log}},
-        y = {:nzcoef, aggregate = :max, type = :quantitative}
-    ),
-    (
-        bestmeans |> @vlplot(
-            width = 750, height = 400,
-            x = {:λ, scale = {type = :log}},
-            color = {field = :condition, type = :nominal},
-        ) +
-        @vlplot(
-            :line,
-            y = {:mean, aggregate = :mean, type = :quantitative, scale = {domain = [0.5, 1]}},
-        ) +
-        @vlplot(
-            :errorband,
-            y = {:mean, aggregate = :ci, type = :quantitative}
-        )
-    )
-)
-
-# Subtract null model to find peak in λ performance
-# -----------------------------------------------------------------
 
 meandiff = @_ filter(_.λ == 1.0, bestmeans) |>
     deletecols!(__, [:λ, :nzcoef]) |>
@@ -342,9 +312,11 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-classdiffs = @_ classmeans_sum |>
-    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold]) |>
-    transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logitsh(x) - logitsh(y)) => :logitmeandiff)
+classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+    classmeans_sum |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
+end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = "Model - Null Model Accuracy (logit scale)"
@@ -668,13 +640,14 @@ sallevel_pairs = [
 ]
 sallevel_shortpairs = [ "low" => "Low", "mid" => "Medium", "high" => "High" ]
 
-classdiffs = @_ classmeans_sum |>
-    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :sallevel]) |>
-    transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logitsh(x) - logitsh(y)) => :logitmeandiff) |>
-    transform!(__, :condition => ByRow(uppercasefirst) => :condition) |>
-    transform!(__, :sallevel => (x -> replace(x, sallevel_pairs...)) => :sallevel_title) |>
-    transform!(__, :sallevel => (x -> replace(x , sallevel_shortpairs...)) => :sallevel_shorttitle)
-
+classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+    @_ classmeans_sum |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :sallevel]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
+        transform!(__, :condition => ByRow(uppercasefirst) => :condition) |>
+        transform!(__, :sallevel => (x -> replace(x, sallevel_pairs...)) => :sallevel_title) |>
+        transform!(__, :sallevel => (x -> replace(x , sallevel_shortpairs...)) => :sallevel_shorttitle)
+end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = "Model - Null Model Accuracy (logit scale)"
