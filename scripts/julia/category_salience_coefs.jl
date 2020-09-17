@@ -85,31 +85,29 @@ means = @_ resultdf |>
 
 bestmeans = @_ means |>
     groupby(__, [:condition, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__, :mean => maximum => :mean)
+    combine(__, :mean => maximum => :mean,
+                :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
 
-meandiff = @_ filter(_.λ == 1.0, bestmeans) |>
-    deletecols!(__, [:λ, :nzcoef]) |>
-    rename!(__, :mean => :nullmean) |>
+logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
+    deletecols!(__, [:λ, :nzcoef, :mean]) |>
+    rename!(__, :logitmean => :logitnullmean) |>
     innerjoin(__, bestmeans, on = [:condition, :sid, :fold]) |>
-    transform!(__, [:mean,:nullmean] => (-) => :meandiff)
+    transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
 
-grandmeandiff = @_ meandiff |>
+grandlogitmeandiff = @_ logitmeandiff |>
     groupby(__, [:λ, :fold]) |>
-    combine(__, :meandiff => mean => :meandiff) |>
+    combine(__, :logitmeandiff => mean => :logitmeandiff) #|>
     sort!(__, [:λ]) |>
-    transform!(__, :meandiff => (x -> filtfilt(digitalfilter(Lowpass(0.1), Butterworth(5)), x)) => :meandiff)
+    transform!(__, :logitmeandiff =>
+        (x -> filtfilt(digitalfilter(Lowpass(0.1), Butterworth(5)), x)) => :logitmeandiff)
 
-pl = grandmeandiff |> @vlplot() +
+pl = grandlogitmeandiff |> @vlplot() +
     @vlplot(:line,
         x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
         title = "Regularization Parameter (λ)"},
-        y     = {:meandiff, aggregate = :mean, type = :quantitative,
-                title = "# of non-zero coefficients (max)"})
-
-pl |> save(joinpath(dir, "grandmean.svg"))
-
-# Show final λ selection
-# -----------------------------------------------------------------
+        y     = {:logitmeandiff, aggregate = :mean, type = :quantitative,
+                title = "# of non-zero coefficients (max)"}) |>
+    save(joinpath(dir, "grandmean.svg"))
 
 # pick the largest valued λ, with a non-negative peak for meandiff
 function pickλ(df)
@@ -131,19 +129,37 @@ pl = @vlplot() +
                      title = "Regularization Parameter (λ)"},
             y     = {:nzcoef, aggregate = :max, type = :quantitative,
                      title = "# of non-zero coefficients (max)"}
-        ),(
+        ),
+        (
+            @_ bestmeans |> DataFrames.transform(__, :mean => ByRow(x -> 100x) => :mean) |>
+            @vlplot(
+                width = 750, height = 200,
+                x = {:λ, scale = {type = :log}},
+                color = {field = :condition, type = :nominal},
+            ) +
+            @vlplot(
+                :line,
+                y = {:mean, aggregate = :mean, type = :quantitative,
+                    title = "% Correct", scale = {domain = [50, 100]}},
+            ) +
+            @vlplot(
+                :errorband,
+                y = {:mean, aggregate = :ci, type = :quantitative}
+            )
+        ),
+        (
             @vlplot() +
             (
-                meandiff |> @vlplot(
-                    width = 750, height = 400,
-                    x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
+                logitmeandiff |> @vlplot(
+                    width = 750, height = 200,
+                    x     = {:λ, scale = {type = :log},
                              title = "Regularization Parameter (λ)"},
                     color = {field = :condition, type = :nominal}) +
                 @vlplot(:errorband,
-                    y = {:meandiff, aggregate = :ci,   type = :quantitative,
-                         title = "% Correct - % Correct of Null Model (Intercept Only)"}) +
+                    y = {:logitmeandiff, aggregate = :ci,   type = :quantitative,
+                         title = "Model - Null Model Accuracy (logit scale)"}) +
                 @vlplot(:line,
-                    y = {:meandiff, aggregate = :mean, type = :quantitative})
+                    y = {:logitmeandiff, aggregate = :mean, type = :quantitative})
             ) +
             (
                 @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
@@ -157,34 +173,45 @@ pl = @vlplot() +
                     text = :fold_text, x = :λ, y = :yoff)
             )
         )
-    )
-
-pl |> save(joinpath(dir, "salience_lambdas.svg"))
-pl |> save(joinpath(dir, "salience_lambdas.png"))
+    ) |> save(joinpath(dir, "salience_lambdas.svg"))
 
 final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
     for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
     for sid in λ_fold[2])...)
 
-# Plot best lambda across window grid
+# Compute the best window length
 # -----------------------------------------------------------------
 
-λsid = groupby(final_λs, :sid)
+best_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
+    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
+    for sid in λ_fold[2])...)
+λsid = groupby(best_λs, :sid)
 
 windowmeans = @_ resultdf |>
     filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
     groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean) |>
+    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean)
 
 nullmeans = @_ windowmeans |>
     filter(_.λ == 1.0, __) |>
-    deletecols!(__, :λ) |>
-    rename!(__, :mean => :nullmean)
+    deletecols!(__, [:λ, :mean]) |>
+    rename!(__, :logitmean => :logitnullmean)
 
 windowdiff = @_ windowmeans |>
     filter(_.λ != 1.0, __) |>
     innerjoin(nullmeans, __, on = [:condition, :sid, :fold, :winlen, :winstart]) |>
-    transform!(__, [:mean, :nullmean] => (-) => :meandiff)
+    transform!(__, [:logitmean, :logitnullmean] => (-) => :logitmeandiff)
+
+windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
+    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
+    groupby(__, [:fold, :winlen]) |>
+    combine(__, :logitmeandiff => maximum => :logitmeandiff)
+
+bestlens = @_ windavg |> groupby(__, [:fold]) |>
+    combine(__, [:logitmeandiff, :winlen] =>
+        ((m,l) -> l[argmax(m)]) => :winlen,
+        :logitmeandiff => maximum => :logitmeandiff)
 
 pl = windowdiff |>
     @vlplot(:rect,
@@ -194,48 +221,18 @@ pl = windowdiff |>
         y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
             title = "Length (s)"},
         x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
-        color = {:meandiff, aggregate = :mean, type = :quantitative,
-            scale = {scheme = "redblue", domainMid = 0}})
+        color = {:logitmeandiff, aggregate = :mean, type = :quantitative,
+            scale = {scheme = "redblue", domainMid = 0}}) |>
+    save(joinpath(dir, "salience_windows.svg"))
 
-pl |> save(joinpath(dir, "salience_windows.svg"))
-pl |> save(joinpath(dir, "salience_windows.png"))
+bestlen_bysid = @_ bestlens |>
+    groupby(__, [:fold, :winlen, :logitmeandiff]) |>
+    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
+    groupby(__, :sid)
+    winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 
 # Plot timeline
 # =================================================================
-
-# Compute best window length
-# -----------------------------------------------------------------
-
-windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
-    combine(__, :meandiff => mean => :meandiff) |>
-    groupby(__, [:fold, :winlen, :condition]) |>
-    combine(__, :meandiff => maximum => :meandiff)
-
-pl = windavg |>
-    @vlplot(:rect,
-        config =  {view = {stroke = :transparent}},
-        column = :condition,
-        row = :fold,
-        y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
-            title = "Length (s)"},
-        # x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
-        color = {:meandiff, aggregate = :mean, type = :quantitative,
-            scale = {scheme = "redblue", domainMid = 0}})
-pl |> save(joinpath(dir, "salience_winavg.svg"))
-
-bestlens = @_ windavg |>
-    groupby(__, [:winlen, :fold]) |>
-    combine(__, :meandiff => mean => :meandiff) |>
-    groupby(__, [:fold]) |>
-    combine(__, [:meandiff, :winlen] =>
-        ((m,l) -> l[argmax(m)]) => :winlen,
-        :meandiff => maximum => :meandiff)
-
-bestlen_bysid = @_ bestlens |>
-    groupby(__, [:fold, :winlen, :meandiff]) |>
-    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
-    groupby(__, :sid)
-winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
 
 # Compute frequency bins
 # -----------------------------------------------------------------
