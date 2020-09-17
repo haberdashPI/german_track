@@ -310,7 +310,7 @@ nullmeans = @_ classmeans_sum |>
     deletecols!(__, :λ)
 
 classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
-    classmeans_sum |>
+    @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold]) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
 end
