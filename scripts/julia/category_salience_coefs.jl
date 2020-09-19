@@ -488,25 +488,10 @@ pl |> save(joinpath(dir, "salience_earlylate.svg"))
 # Plot 4-salience-level timeline
 # =================================================================
 
-# TODO: setup new features using sal4 and then run classifier with
-# different coding schemes (start with the sequential one)
-
-# test out 3-class classifier
-X = [[4, 0, 0]' .+ rand(Normal(0,0.1), 20, 3);
-     [0, 4, 0]' .+ rand(Normal(0,0.1), 20, 3);
-     [0, 0, 4]' .+ rand(Normal(0,0.1), 20, 3)];
-y = [fill("A", 20); fill("B", 20); fill("C", 20)];
-df = DataFrame(x1 = X[:,1], x2 = X[:,2], x3 = X[:,3], y = y, id = repeat(1:20, outer=3))
-
-result = testclassifier(LassoClassifier(0.0), data = df, X = r"x[0-9]+", y = :y,
-    n_folds = 5, crossval = :id, seed = stablehash(:test), irls_maxiter = 600, ycoding = DummyCoding)
-
 # Compute frequency bins
 # -----------------------------------------------------------------
 
 classdf_sal4_timeline_file = joinpath(cache_dir("features"), "salience-4level-freqmeans-timeline.csv")
-
-# TODO: debug GermanTrack.spread
 
 if isfile(classdf_sal4_timeline_file)
     classdf_sal4_timeline = CSV.read(classdf_sal4_timeline_file)
@@ -526,8 +511,6 @@ else
     CSV.write(classdf_sal4_timeline_file, classdf_sal4_timeline)
 end
 
-# TODO: below this point I haven't changed anything (it's copied from above)
-
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
@@ -537,14 +520,12 @@ end
 
 resultdf_sal4_timeline_file = joinpath(cache_dir("models"), "salience-timeline-sal4.csv")
 classdf_sal4_timeline[!,:fold] = in.(classdf_sal4_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
-classdf_sal4_timeline[!,:salience_lower] =
-    ifelse.(classdf_sal4_timeline.salience_4level .<= 1, "lowest", "notlowest")
-classdf_sal4_timeline[!,:salience_higher] =
-    ifelse.(classdf_sal4_timeline.salience_4level .> 3, "highest", "nothighest")
 
 levels = ["lowest","low","high","highest"]
 classdf_sal4_timeline[!,:salience_4label] =
     CategoricalArray(get.(Ref(levels),coalesce.(classdf_sal4_timeline.salience_4level,0),missing), levels = levels)
+
+modeltype = [ "1v4" => [1,4], "1v3" => [1,3], "1v2" => [1,2] ]
 
 if isfile(resultdf_sal4_timeline_file) && mtime(resultdf_sal4_timeline_file) > mtime(classdf_sal4_timeline_file)
     resultdf_sal4_timeline = CSV.read(resultdf_sal4_timeline_file)
@@ -552,26 +533,30 @@ else
     factors = [:fold, :winlen, :winstart, :condition]
     groups = groupby(classdf_sal4_timeline, factors)
 
-    progress = Progress(length(groups))
-    function findclass((key, sdf))
+    progress = Progress(length(groups) * length(modeltype))
+
+    function findclass(((key, sdf), (type, levels)))
         λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        filtered = @_ sdf |> filter(_.salience_4level ∈ levels, __)
+
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
-            data = sdf, y = :salience_4label, X = r"channel", crossval = :sid,
+            data = filtered, y = :salience_4label, X = r"channel", crossval = :sid,
             n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
-            maxncoef = size(sdf[:,r"channel"], 2),
+            maxncoef = size(filtered[:,r"channel"], 2),
             ycoding = StatsModels.SeqDiffCoding,
             irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-        result[!, keys(key)] .= permutedims(collect(values(key)))
+
+        result[!, keys(key)]  .= permutedims(collect(values(key)))
+        result[!, :modeltype] .= type
         next!(progress)
 
-        result end
+        result
+    end
 
     resultdf_sal4_timeline = @_ groups |> pairs |> collect |>
+        Iterators.product(__, modeltype) |>
         # foldl(append!!, Map(findclass), __)
         foldxt(append!!, Map(findclass), __)
-
-    resultdf_sal4_timeline[!, :salience_4level_class] .=
-        indexin(resultdf_sal4_timeline.label, levels)
 
     ProgressMeter.finish!(progress)
     CSV.write(resultdf_sal4_timeline_file, resultdf_sal4_timeline)
@@ -585,21 +570,11 @@ end
 # can we reproduce the timeline from earlier (it *should* work)
 
 classmeans = @_ resultdf_sal4_timeline |>
-    DataFrames.transform(__,
-        [:salience_4level, :salience_4level_class] =>
-            ByRow((a,b) -> (a >= 2) == (b >= 2)) => :low,
-        [:salience_4level, :salience_4level_class] =>
-            ByRow((a,b) -> (a >= 3) == (b >= 3)) => :mid,
-        [:salience_4level, :salience_4level_class] =>
-            ByRow((a,b) -> (a >= 4) == (b >= 4)) => :high) |>
-    stack(__, [:low, :mid, :high],
-        [:winstart, :winlen, :sid, :λ, :fold, :condition, :weight],
-        variable_name = :sallevel, value_name = :correct) |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :sallevel]) |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :modeltype]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :sallevel]) |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :modeltype]) |>
     combine(__, :mean => mean => :mean)
 
 nullmeans = @_ classmeans_sum |>
@@ -608,33 +583,39 @@ nullmeans = @_ classmeans_sum |>
     deletecols!(__, :λ)
 
 sallevel_pairs = [
-    "low" => "Low: Lower Quartile vs. Others",
-    "mid" => "Medium: Lower vs. Upper Half",
-    "high" => "High: Upper Quartile vs. Others"
+    "1v2" => "Low:\t1st vs. 2nd Quartile",
+    "1v3" => "Medium:\t1st vs. 3rd Quartile",
+    "1v4" => "High:\t1st vs. 4th Quartile"
 ]
-sallevel_shortpairs = [ "low" => "Low", "mid" => "Medium", "high" => "High" ]
+sallevel_shortpairs = [
+    "1v2" => ["Low", "1st vs. 2nd Q"],
+    "1v3" => ["Medium", "1st vs. 3rd Q"],
+    "1v4" => ["High" , "1st vs. 4th Q"]
+]
 
 classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
     @_ classmeans_sum |>
-        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :sallevel]) |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :modeltype]) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
         transform!(__, :condition => ByRow(uppercasefirst) => :condition) |>
-        transform!(__, :sallevel => (x -> replace(x, sallevel_pairs...)) => :sallevel_title) |>
-        transform!(__, :sallevel => (x -> replace(x , sallevel_shortpairs...)) => :sallevel_shorttitle)
+        transform!(__, :modeltype => (x -> replace(x, sallevel_pairs...)) => :modeltype_title) |>
+        transform!(__, :modeltype => (x -> replace(x , sallevel_shortpairs...)) => :modeltype_shorttitle) |>
+        filter(_.condition == "Global", __)
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = "Model - Null Model Accuracy (logit scale)"
+target_length_y = 1.0
 pl = classdiffs |>
     @vlplot(
-        title = "Salience Classification Accuracy",
-        config = {legend = {orient = :none, legendX = 560, legendY = 0.5, title = "Classification"}},
-        facet = {column = {field = :condition, type = :nominal,
-                 title = nothing}}
+        title = ["Salience Classification Accuracy", "Object Condition"],
+        config = {legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"}},
+        # facet = {column = {field = :condition, type = :nominal,
+        #          title = nothing}}
     ) +
     (
-        @vlplot(color = {field = :sallevel_title, type = :nominal,
-            scale = {scheme = :yellowgreenblue}, sort = getindex.(sallevel_pairs, 2)}) +
+        @vlplot(color = {field = :modeltype_title, type = :nominal,
+            scale = {scheme = :inferno}, sort = getindex.(sallevel_pairs, 2)}) +
         # data lines
         @vlplot(:line,
             x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
@@ -645,10 +626,10 @@ pl = classdiffs |>
             y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}) +
         # condition labels
         @vlplot({:text, align = :left, dx = 5},
-            transform = [{filter = "datum.winstart > 2.2 && datum.winstart < 2.3"}],
+            transform = [{filter = "datum.winstart > 2.5 && datum.winstart < 2.6"}],
             x = {datum = 3.0},
             y = {:logitmeandiff, aggregate = :mean, type = :quantitative},
-            text = :sallevel_shorttitle
+            text = :modeltype_shorttitle
         ) +
         # Basline (0 %) dotted line
         (
@@ -660,8 +641,8 @@ pl = classdiffs |>
         # "Target Length" arrow annotation
         (
             @vlplot(data = {values = [
-                {x = 0.05, y = 0.25, dir = 270},
-                {x = 0.95, y = 0.25, dir = 90}]}) +
+                {x = 0.05, y = target_length_y, dir = 270},
+                {x = 0.95, y = target_length_y, dir = 90}]}) +
             @vlplot(mark = {:line, size = 1.5},
                 x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
                 color = {value = "black"},
@@ -676,7 +657,7 @@ pl = classdiffs |>
         (
             @vlplot(data = {values = [{}]}) +
             @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
-                x = {datum = 0.5}, y = {datum = 0.25},
+                x = {datum = 0.5}, y = {datum = target_length_y},
                 text = {value = "Target Length"},
                 color = {value = "black"}
             )
@@ -684,3 +665,4 @@ pl = classdiffs |>
     );
 pl |> save(joinpath(dir, "salience_timeline_4level.svg"))
 
+# TODO: it is probably important to check the null model here
