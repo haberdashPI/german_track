@@ -18,13 +18,15 @@ shrinktowards(mu;by=0.01) = x -> shrinktowards(x,mu,by=by)
 shrinktowards(x,mu;by=0.01) = (1-by)*(x-mu) + mu
 
 """
-    spread([x,]scale,npoints)
+    spread([x,]scale,npoints,[indices=Colon()])
 
 Create a spread of `npoints` values placed evenly along the Normal distribution
 with a standard deviation of scale/2. Leaving out `x` returns curried function.
+To select only a subset of points use the `indices` keyword argument.
 """
-spread(scale,npoints;k=Colon())   = x -> spread(x,scale,npoints,k)
-spread(x,scale,npoints,k) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints)[k])
+spread(scale,npoints;indices=Colon()) = x -> spread(x,scale,npoints,indices=indices)
+spread(x,scale,npoints;indices=Colon()) =
+    quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints)[indices])
 
 """
     select_windows(conditions, subjects)
