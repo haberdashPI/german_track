@@ -96,6 +96,9 @@ this and we can't say much with any confidence about this without furthe expeirm
   maybe have different panels, main results
 - [X] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
 - [ ] redo near/far to use *just* the switch before a target !!
+  - [ ] make new plots
+  - [ ] hold on, why did it show any difference for early/at all, is there a problem
+        with the baseline correction?
 - [ ] stats
 - [ ] get human data
 - [ ] can these been done with the median power?

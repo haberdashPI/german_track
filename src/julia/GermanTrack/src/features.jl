@@ -1,5 +1,6 @@
 export compute_powerdiff_features, compute_powerbin_features, computebands,
-    windowtarget, windowbaseline, windowswitch, compute_freqbins, windowbase_bytarget
+    windowtarget, windowbaseline, windowswitch, compute_freqbins, windowbase_bytarget,
+    window_target_switch, window_target_baseline
 
 using Random123 # counter-based random number generators, this lets use reliably map
 # trial and subject id's to a random sequence
@@ -91,6 +92,31 @@ function windowtarget(trial,event,fs,(from,to))
     view(trial, :, start:stop)
 end
 
+function window_target_switch(trial, event, fs, (from, to))
+    si = event.sound_index
+    stimes = switch_times[si]
+
+    if ismissing(event.target_time)
+        options = only_near(stimes, max_trial_length, window = (from, to))
+        window = rand(trialrng((:windowswitch, switch_seed), event), options)
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+
+        view(trial, :, start:stop)
+    else
+        times = @_ stimes |> sort |> filter(_ < event.target_time, __)
+        isempty(times) && return missing
+        time = last(times)
+
+        window = only_near(time, max_trial_length, window=(from, to))
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+
+        view(trial, :, start:stop)
+    end
+end
+
 const switch_seed = 2018_11_18
 function windowswitch(trial, event, fs, (from, to))
     si = event.sound_index
@@ -128,6 +154,32 @@ function windowbaseline(;mindist, minlength, onempty = error)
         times = !ismissing(event.target_time) ?
             vcat(switch_times[si], event.target_time) |> sort! :
             switch_times[si]
+        ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+        isempty(ranges) && return handleempty(onempty)
+
+        at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
+        window = only_near(at, fs, window = (from, to))
+
+        start = max(1, round(Int, window[1]*fs))
+        stop = min(round(Int, window[2]*fs), size(trial, 2))
+        view(trial, :, start:stop)
+    end
+end
+
+function window_target_baseline(;mindist, minlength, onempty = error)
+    handleempty(onempty::Missing) = missing
+    handleempty(onempty::Function) = onempty()
+    handleempty(onempty::typeof(error)) =
+        error("Could not find any valid region for baseline window.")
+
+    function(trial, event, fs, (from, to))
+        si = event.sound_index
+        times = if !ismissing(event.target_time)
+            @_ switch_times[si] |> filter(_ > event.target_time, __) |>
+                vcat(__, event.target_time)
+        else
+            switch_times[si]
+        end
         ranges = far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
         isempty(ranges) && return handleempty(onempty)
 
@@ -192,12 +244,11 @@ function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
     wparams = windowparams(window,sid)
     windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs, windowbounds(wparams)),
         eachrow(data))
+    isempty(skipmissing(windows)) && return Empty(DataFrame)
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs; kwds...)
     freqdf[!, :weight] .= weight
-
-    freqdf
 
     if size(freqdf, 1) > 0
         nbins = size(freqdf, 2)-2
@@ -263,19 +314,24 @@ end
 function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt;
     kwds...)
 
-    progress = Progress(length(groupdf), desc = "Computing frequency bins...")
-    classdf = @_ groupdf |>
-        combine(function(sdf)
-            # compute features in each window
-            function findwindows(window)
-                result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                    windowfn, window; kwds...)
-                result
-            end
-            x = reducerfn(append!!, Map(findwindows), windows)
-            next!(progress)
-            x
-        end, __)
+    progress = Progress(length(groupdf) * length(windows),
+        desc = "Computing frequency bins...")
+    function helper(((key, sdf), window))
+        # compute features in each window
+        result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+            windowfn, window; kwds...)
+        if !isempty(result)
+            insertcols!(result, 1, (keys(key) .=> values(key))...)
+        end
+
+        # if isempty(result)
+        #     error("No data available for key = $key")
+        # end
+        next!(progress)
+        result
+    end
+    classdf = @_ groupdf |> pairs |> collect |> Iterators.product(__, windows) |>
+        reducerfn(append!!, Map(helper), __)
     ProgressMeter.finish!(progress)
 
     classdf
