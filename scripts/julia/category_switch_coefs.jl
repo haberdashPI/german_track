@@ -18,6 +18,8 @@ dir = mkpath(plotsdir("category_switch"))
 # Mean Frequency Bin Analysis
 # =================================================================
 
+# TODO: what the bleep is happening here???
+
 classdf_file = joinpath(cache_dir("features"), savename("switch-freqmeans",
     (n_winlens = n_winlens,), "csv"))
 
@@ -27,7 +29,7 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit", "reject"], __) |>
+        filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition])
 
     classdf = mapreduce(append!!, [:near, :far]) do class
@@ -86,7 +88,7 @@ classmean_summary = @_ classmeans |>
 
 # subtract null model
 meandiff = @_ filter(_.λ == 1.0, classmean_summary) |>
-    deletecols!(__, [:λ, :nzcoef]) |>
+    deletecols!(__, [:λ, :nzcoef, :mean]) |>
     rename!(__, :logitmean => :logitnullmean) |>
     innerjoin(__, classmean_summary, on = [:condition, :sid, :fold]) |>
     transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
@@ -97,7 +99,7 @@ grandmeandiff = @_ meandiff |>
     sort!(__, [:λ]) |>
     groupby(__, :fold) |>
     transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.3), Butterworth(5)), x)) => :logitmeandiff)
+        (x -> filtfilt(digitalfilter(Lowpass(0.4), Butterworth(5)), x)) => :logitmeandiff)
 
 pl = grandmeandiff |> @vlplot() +
     @vlplot(:line,
@@ -124,9 +126,6 @@ end
 final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
     for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
     for sid in λ_fold[2])...)
-
-# select the needed labmdas
-classdf = innerjoin(classdf, final_λs, on = [:sid, :fold])
 
 @vlplot() + vcat(
     classmean_summary |> @vlplot() + @vlplot(
@@ -221,14 +220,15 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_target_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit", "reject"], __) |>
+        filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition, :target_time_label])
 
     classdf_target = mapreduce(append!!, [:near, :far]) do class
         windowfn = class == :near ? window_target_switch :
             windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
         result = compute_freqbins(subjects, classdf_target_groups, windowfn,
-            [(len = winlen, start = 0) for winlen in GermanTrack.spread(1, 0.5, n_winlens)])
+            [(len = winlen, start = 0) for winlen in GermanTrack.spread(1, 0.5, n_winlens)],
+            foldl)
         result[!,:switchclass] .= string(class)
 
         result
@@ -239,6 +239,8 @@ end
 
 # compute classification accuracy
 # -----------------------------------------------------------------
+
+# TODO: why isn't this working right now????
 
 resultdf_target_file = joinpath(cache_dir("models"), "switch-freqmeans-target.csv")
 
@@ -260,7 +262,7 @@ else
             n_folds = n_folds, seed = stablehash(:switch_classification, 2019_11_18),
             maxncoef = size(sdf[:,r"channel"], 2),
             irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-        result[!, keys(key)] .= permutedims(collect(values(key)))
+        insertcols!(result, (keys(key) .=> values(key))...)
         next!(progress)
 
         result
