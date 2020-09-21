@@ -321,7 +321,7 @@ function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = fold
         result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
             windowfn, window; kwds...)
         if !isempty(result)
-            result[!, keys(key)] .= permutedims(collect(values(key)))
+            insertcols!(result, 1, (keys(key) .=> values(key))...)
         end
 
         # if isempty(result)

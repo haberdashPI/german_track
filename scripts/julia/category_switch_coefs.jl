@@ -15,8 +15,11 @@ dir = mkpath(plotsdir("category_switch"))
 
 # is freq means always the same?
 
-# Mean Frequency Bin Analysis
+# Main Effect of Switch
 # =================================================================
+
+# Mean Frequency Bin Analysis
+# -----------------------------------------------------------------
 
 # TODO: what the bleep is happening here???
 
@@ -44,9 +47,6 @@ else
 
     CSV.write(classdf_file, classdf)
 end
-
-# Find λ
-# =================================================================
 
 # Classification accuracy
 # -----------------------------------------------------------------
@@ -179,7 +179,7 @@ final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
 ) |> save(joinpath(dir, "switch_lambdas.svg"))
 
 # Use selected lambdas to plot accuracyes
-# =================================================================
+# -----------------------------------------------------------------
 
 # (this is just a slice through the plot abovve)
 
@@ -262,13 +262,13 @@ else
             n_folds = n_folds, seed = stablehash(:switch_classification, 2019_11_18),
             maxncoef = size(sdf[:,r"channel"], 2),
             irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-        insertcols!(result, (keys(key) .=> values(key))...)
         next!(progress)
 
         result
     end
 
     resultdf_target = @_ groups |> pairs |> collect |>
+        # foldl(append!!, Map(findclass), __)
         foldxt(append!!, Map(findclass), __)
 
     ProgressMeter.finish!(progress)
@@ -313,6 +313,5 @@ pl = meandiff |>
             color = {value = "black"},
             y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}
         )
-    );
-
-pl |> save(joinpath(dir, "switch_earlylate.svg"))
+    ) |>
+    save(joinpath(dir, "switch_earlylate.svg"))
