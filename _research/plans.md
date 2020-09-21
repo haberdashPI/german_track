@@ -48,19 +48,20 @@ clearer story
 - [X] look at these across time?
 - [X] break salience down into four categories, to see gradient of timeline !!
     - [X] handle multi-class y-values in `testmodel`
+- [X] it would be good to know if there is a build up effect for salience: do
+  we see the same effect for early/late targets?
 - [ ] why are so many weights for targets == 1, is that right?
 - [ ] stats
 - [ ] get human data
-- [ ] what do the correct rejection trials early v. late in the trial look like?
-      build-up would predict a change
 - [ ] it would be interesting to see the features at the earlier and later timepoints
 - [ ] do the frontal v central features matter?
+- [ ] can we see any of these effects at an individual/trial-by-trial level?
+- [ ] what do the correct rejection trials early v. late in the trial look like?
+      build-up would predict a change
 - [ ] can these be with the median power?
     - [ ] do these show up across time?
 - [ ] what does this look like with both hits and misses?
-- [X] it would be good to know if there is a build up effect for salience: do
-  we see the same effect for early/late targets?
-- [ ] can we see any of these effects at an individual/trial-by-trial level?
+
 
 ### story:
 
@@ -96,9 +97,9 @@ this and we can't say much with any confidence about this without furthe expeirm
   maybe have different panels, main results
 - [X] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
 - [ ] redo near/far to use *just* the switch before a target !!
-  - [ ] make new plots
-  - [ ] hold on, why did it show any difference for early/at all, is there a problem
-        with the baseline correction?
+  - [X] make new plots
+  - [X] hold on, why did it show any difference for early/at all, is there a problem
+        with the baseline correction? (there are some reasons, discuss in meeting)
 - [ ] stats
 - [ ] get human data
 - [ ] can these been done with the median power?
