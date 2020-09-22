@@ -322,7 +322,8 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
+    100logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
         filter(_.λ != 1.0, __) |>
@@ -330,11 +331,12 @@ classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = "Model - Null Model Accuracy (logit scale)"
+ytitle = ["% Correct", "(Null-model Corrected)"]
+target_len_y = 60
 pl = classdiffs |>
     @vlplot(
         config = {legend = {disable = true}},
-        title = "Low/High Salience Classification Accuracy",
+        title = "Salience Classification Accuracy",
         facet = {column = {field = :hittype, type = :nominal}}) +
     (@vlplot(
         color = {field = :condition, type = :nominal},
@@ -342,7 +344,8 @@ pl = classdiffs |>
     # data lines
     @vlplot(:line,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
-        y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}) +
+        y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [50,67]}}) +
     # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
@@ -358,14 +361,23 @@ pl = classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-            y = {datum = 0.0},
+            y = {datum = nullmean},
             color = {value = "black"})
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+            x = {datum = 2.3}, y = {datum = nullmean},
+            text = {value = ["Mean Accuracy", "of Null Model"]},
+            color = {value = "black"}
+        )
     ) +
     # "Target Length" arrow annotation
     (
         @vlplot(data = {values = [
-            {x = 0.05, y = 0.25, dir = 270},
-            {x = 0.95, y = 0.25, dir = 90}]}) +
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
         @vlplot(mark = {:line, size = 1.5},
             x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
             color = {value = "black"},
@@ -380,7 +392,7 @@ pl = classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
-            x = {datum = 0.5}, y = {datum = 0.25},
+            x = {datum = 0.5}, y = {datum = target_len_y},
             text = {value = "Target Length"},
             color = {value = "black"}
         )
@@ -656,20 +668,21 @@ nullmeans = @_ classmeans_sum |>
     deletecols!(__, :λ)
 
 sallevel_pairs = [
-    "1v2" => "Low:\t1st vs. 2nd Quartile",
+    "1v4" => "High:\t1st vs. 4th Quartile",
     "1v3" => "Medium:\t1st vs. 3rd Quartile",
-    "1v4" => "High:\t1st vs. 4th Quartile"
+    "1v2" => "Low:\t1st vs. 2nd Quartile",
 ]
 sallevel_shortpairs = [
-    "1v2" => ["Low", "1st vs. 2nd Q"],
+    "1v4" => ["High" , "1st vs. 4th Q"],
     "1v3" => ["Medium", "1st vs. 3rd Q"],
-    "1v4" => ["High" , "1st vs. 4th Q"]
+    "1v2" => ["Low", "1st vs. 2nd Q"],
 ]
 
-classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
+    100logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :modeltype]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> 100logistic(l(x) - l(y) + C)) => :logitmeandiff) |>
         transform!(__, :condition => ByRow(uppercasefirst) => :condition) |>
         transform!(__, :modeltype => (x -> replace(x, sallevel_pairs...)) => :modeltype_title) |>
         transform!(__, :modeltype => (x -> replace(x , sallevel_shortpairs...)) => :modeltype_shorttitle) |>
@@ -677,14 +690,13 @@ classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = ["Model - Null Model Accuracy", "Logit Scale (% Correct, given 50% Null Model)"]
-target_length_y = 1.0
+ytitle = ["% Correct", "(Null-Model Corrected)"]
+target_length_y = 70.0
 pl = classdiffs |>
     @vlplot(
-        title = ["Salience Classification Accuracy", "Object Condition"],
+        title = {text = "Salience Classification Accuracy", subtitle = "Global Condition"},
         config = {
             legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"},
-            axis = {titlePadding = 20}
         }
         # facet = {column = {field = :condition, type = :nominal,
         #          title = nothing}}
@@ -695,14 +707,15 @@ pl = classdiffs |>
         # data lines
         @vlplot(:line,
             x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
-            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}) +
+            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle,
+                 scale = {domain = [60, 85]}}) +
         # data errorbands
         @vlplot(:errorband,
             x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
             y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}) +
         # condition labels
         @vlplot({:text, align = :left, dx = 5},
-            transform = [{filter = "datum.winstart > 2.5 && datum.winstart < 2.6"}],
+            transform = [{filter = "datum.winstart > 2.4 && datum.winstart < 2.5"}],
             x = {datum = 3.0},
             y = {:logitmeandiff, aggregate = :mean, type = :quantitative},
             text = :modeltype_shorttitle
@@ -711,7 +724,7 @@ pl = classdiffs |>
         (
             @vlplot(data = {values = [{}]}) +
             @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-                y = {datum = 0.0},
+                y = {datum = nullmean},
                 color = {value = "black"})
         ) +
         # "Target Length" arrow annotation
@@ -720,7 +733,8 @@ pl = classdiffs |>
                 {x = 0.05, y = target_length_y, dir = 270},
                 {x = 0.95, y = target_length_y, dir = 90}]}) +
             @vlplot(mark = {:line, size = 1.5},
-                x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+                x = {:x, type = :quantitative},
+                y = {:y, type = :quantitative},
                 color = {value = "black"},
             ) +
             @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
@@ -738,16 +752,13 @@ pl = classdiffs |>
                 color = {value = "black"}
             )
         ) +
+        # "Null Model" text annotation
         (
-            @vlplot(data = {values = [
-                {x = 0.0, y = 0.5, text = string("(",round(Int,100logistic(0.5)),"%)")},
-                {x = 0.0, y = 1.0, text = string("(",round(Int,100logistic(1.0)),"%)")},
-                {x = 0.0, y = 1.5, text = string("(",round(Int,100logistic(1.5)),"%)")}]}) +
-            @vlplot(mark = {:text, size = 11, baseline = "center",
-                    dy = 14, align = :right},
-                x = :x, y = :y,
-                text = :text,
-                color = {value = "gray"}
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+                x = {datum = 2.0}, y = {datum = nullmean},
+                text = {value = ["Mean Accuracy", "of Null Model"]},
+                color = {value = "black"}
             )
         )
     );
