@@ -177,7 +177,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
             end
 
             _y, _X = getxy(train)
-            if eltype(_y) >: Missing
+            if eltype(_y) >: Missing && any(ismissing, _y)
                 error("The `y` variable ($y) has missing values")
             end
             # if size(_y, 2) > 1

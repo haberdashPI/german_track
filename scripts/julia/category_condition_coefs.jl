@@ -50,6 +50,7 @@ classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 classcomps = [
     "global-v-object"  => @_(classdf |> filter(_.condition in ["global", "object"],  __)),
     "global-v-spatial" => @_(classdf |> filter(_.condition in ["global", "spatial"], __)),
+    "object-v-spatial" => @_(classdf |> filter(_.condition in ["object", "spatial"], __)),
 ]
 
 lambdas = 10.0 .^ range(-2, 0, length=100)
@@ -60,6 +61,9 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
     function findclass((key,sdf))
         result = Empty(DataFrame)
 
+        # if sdf.condition |> unique |> length == 1
+        #     @infiltrate
+        # end
         result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
             X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
             weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
@@ -72,6 +76,7 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
         result
     end
     foldxt(append!!, Map(findclass), collect(groups))
+    # foldl(append!!, Map(findclass), collect(groups))
 end
 
 # λ selection
@@ -530,9 +535,24 @@ end
 # Compare coefficients across folds
 # -----------------------------------------------------------------
 
+# TODO: trying to get coefficient plots to work again
+λsid = groupby(final_λs, :sid)
+
+centerlen = @_ classdf.winlen |> unique |> sort! |> __[5]
+centerstart = @_ classdf.winstart |> unique |> __[argmin(abs.(__ .- 0.0))]
+
+classdf_atlen = @_ classdf |> filter(_.winlen == centerlen && _.winstart == centerstart, __)
+
+classcomps_atlen = [
+    "global-v-object"  => @_(classdf_atlen |> filter(_.condition in ["global", "object"],  __)),
+    "global-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["global", "spatial"], __)),
+    "object-v-spatial" => @_(classdf_atlen |> filter(_.condition in ["object", "spatial"], __))
+]
+
 coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
     function findclass((key, sdf))
-        result = testclassifier(LassoClassifier(sdf.λ |> first),
+        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        result = testclassifier(LassoClassifier(λ),
             data = sdf, y = :condition, X = r"channel",
             crossval = :sid, n_folds = 10,
             seed = stablehash(:cond_coef_timeline,2019_11_18),
@@ -546,7 +566,7 @@ coefdf = mapreduce(append!!, classcomps_atlen) do (comp, data)
     end
 
     groups = pairs(groupby(data, :fold))
-    foldl(append!!, Map(findclass), collect(groups))
+    foldxt(append!!, Map(findclass), collect(groups))
 end
 
 coefnames_ = pushfirst!(propertynames(coefdf[:,r"channel"]), :C)
