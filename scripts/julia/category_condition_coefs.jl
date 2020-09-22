@@ -5,7 +5,7 @@ using DrWatson; @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP
+    StatsFuns, Distributions, DSP, DataStructures, EzXML
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -281,7 +281,7 @@ CSV.write(joinpath(processed_datadir("analyses"), "chgroup-accuracy.csv"), class
 classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans",
     (n_winlens = n_winlens, ), "csv"))
 
-if use_cache && isfile(classbasedf_file)
+if isfile(classbasedf_file)
     classbasedf = CSV.read(classbasedf_file)
 else
     windows = [(len = len, start = 0.0)
@@ -306,7 +306,7 @@ else
     alert("Feature computation complete!")
 end
 
-classbasedf = innerjoin(classbasedf, best_λs, on = [:sid])
+classbasedf = innerjoin(classbasedf, final_λs, on = [:sid])
 
 # Classification for different baselines
 # -----------------------------------------------------------------
@@ -374,14 +374,11 @@ predictbasedf = @_ classbasedf |>
 
 predictmeans = @_ predictbasedf |>
     groupby(__, [:sid, :comparison, :modeltype, :winlen]) |>
-    combine(__, [:correct, :weight] => wmeanish => :correct) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
     groupby(__, [:sid, :comparison, :modeltype]) |>
-    combine(__, :correct => mean => :correct)
-
-
-baselines = @_ predictmeans |>
-    filter(_.modeltype != "full", __) |>
-    rename!(__, :correct => :baseline)
+    combine(__,
+        :correct => mean => :correct,
+        :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
 Nmtypes = length(baselines.modeltype |> unique)
 refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
@@ -431,6 +428,11 @@ plotfile = joinpath(dir, "category.svg")
 pl |> save(plotfile)
 addpatterns(plotfile)
 
+baselines = @_ predictmeans |>
+    filter(_.modeltype != "full", __) |>
+    deletecols!(__, :correct) |>
+    rename!(__, :logitcorrect => :baseline)
+
 plotmeans = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
     deletecols(__, :modeltype) |>
@@ -438,7 +440,7 @@ plotmeans = @_ predictmeans |>
     filter(_.modeltype ∈ keys(modelnames), __) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
     transform!(__, :modeltype => ByRow(x -> modelnames[x]) => :mtypename) |>
-    transform!(__, [:correct, :baseline] => ((x,y) -> 100(x-y)) => :correctdiff)
+    transform!(__, [:logitcorrect, :baseline] => (-) => :correctdiff)
 
 xtitle = "Baseline Accuracy"
 ytitle = "Full-model Accuracy"
@@ -450,7 +452,7 @@ pl = @vlplot(data = plotmeans,
         @vlplot() +
         @vlplot(:point,
             color = :comparison,
-            y = {:correct, title = ytitle}, x = {:baseline, title = xtitle}) +
+            y = {:logitcorrect, title = ytitle}, x = {:baseline, title = xtitle}) +
         @vlplot(data = refline, mark = {:line, strokeDash = [2, 2], size = 2},
             y = {:y, title = ytitle},
             x = {:x, title = xtitle},
@@ -458,6 +460,7 @@ pl = @vlplot(data = plotmeans,
     );
 pl |> save(joinpath(dir, "baseline_individual.svg"))
 
+ytitle = "Full Model - Baseline (logit scale)"
 pl = plotmeans |>
     @vlplot(
         facet = {
@@ -476,11 +479,11 @@ pl = plotmeans |>
                 legend = {legendX = 5, legendY = 5, orient = "none"}}) +
         @vlplot(:bar,
             y = {:correctdiff, aggregate = :mean, type = :quantitative,
-                 title = "% Correct (Full Model - Baseline)"}) +
+                 title = ytitle}) +
         @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
             color = {value = "black"},
             y = {:correctdiff, aggregate = :ci, type = :quantitative,
-                title = "% Correct (Full Model - Baseline)"}) +
+                title = ytitle}) +
         @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -2},
             color = {value = "black"},
             y = :correctdiff)

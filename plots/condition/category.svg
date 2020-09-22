@@ -68,24 +68,24 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label="compname: Global vs. Object; % Correct: 77.4820106109" role="graphics-symbol" aria-roledescription="bar" d="M1,90.07195755638924h18v109.92804244361076h-18Z" fill="url(#blue_orange)"/>
-            <path aria-label="compname: Global vs. Spatial; % Correct: 84.522235752" role="graphics-symbol" aria-roledescription="bar" d="M21,61.91105699191199h18v138.088943008088h-18Z" fill="url(#blue_red)"/>
-            <path aria-label="compname: Object vs. Spatial; % Correct: 68.6509426143" role="graphics-symbol" aria-roledescription="bar" d="M41,125.39622954278371h18v74.60377045721629h-18Z" fill="url(#orange_red)"/>
+            <path aria-label="compname: Global vs. Object; % Correct: 76.0277172491" role="graphics-symbol" aria-roledescription="bar" d="M1,95.8891310034362h18v104.1108689965638h-18Z" fill="url(#blue_orange)"/>
+            <path aria-label="compname: Global vs. Spatial; % Correct: 90.4470995134" role="graphics-symbol" aria-roledescription="bar" d="M21,38.21160194635802h18v161.78839805364197h-18Z" fill="url(#blue_red)"/>
+            <path aria-label="compname: Object vs. Spatial; % Correct: 64.7285069135" role="graphics-symbol" aria-roledescription="bar" d="M41,141.08597234605293h18v58.91402765394707h-18Z" fill="url(#orange_red)"/>
           </g>
           <g class="mark-rect role-mark layer_1_layer_0_marks" aria-hidden="true">
-            <path d="M7.5,106.68435413599059h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M27.5,72.21956390162309h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M47.5,140.5684663928468h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M7.5,112.0719162410847h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M27.5,49.143212788163396h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M47.5,158.48123294597082h5v1h-5Z" fill="black" opacity="0.7"/>
           </g>
           <g class="mark-rect role-mark layer_1_layer_1_marks" aria-hidden="true">
-            <path d="M7.5,72.45956097678788h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M27.5,50.60255008220093h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M47.5,109.22399269272061h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M7.5,78.70634576578772h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M27.5,26.27999110455267h5v1h-5Z" fill="black" opacity="0.7"/>
+            <path d="M47.5,122.69071174613505h5v1h-5Z" fill="black" opacity="0.7"/>
           </g>
           <g class="mark-rule role-mark layer_1_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="% Correct: 73.203911466; upper_correct: 81.7601097558; compname: Global vs. Object; Mean of correct: 77.4820106109; Mean + stderr of correct: 81.7601097558; Mean - stderr of correct: 73.203911466" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,107.18435413599059)" x2="0" y2="-34.224793159202704" stroke="black"/>
-            <line aria-label="% Correct: 81.8201090246; upper_correct: 87.2243624794; compname: Global vs. Spatial; Mean of correct: 84.522235752; Mean + stderr of correct: 87.2243624794; Mean - stderr of correct: 81.8201090246" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,72.71956390162309)" x2="0" y2="-21.617013819422162" stroke="black"/>
-            <line aria-label="% Correct: 64.7328834018; upper_correct: 72.5690018268; compname: Object vs. Spatial; Mean of correct: 68.6509426143; Mean + stderr of correct: 72.5690018268; Mean - stderr of correct: 64.7328834018" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,141.0684663928468)" x2="0" y2="-31.344473700126187" stroke="black"/>
+            <line aria-label="% Correct: 71.8570209397; upper_correct: 80.1984135586; compname: Global vs. Object; Mean of correct: 76.0277172491; Mean + stderr of correct: 80.1984135586; Mean - stderr of correct: 71.8570209397" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,112.5719162410847)" x2="0" y2="-33.36557047529698" stroke="black"/>
+            <line aria-label="% Correct: 87.589196803; upper_correct: 93.3050022239; compname: Global vs. Spatial; Mean of correct: 90.4470995134; Mean + stderr of correct: 93.3050022239; Mean - stderr of correct: 87.589196803" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,49.643212788163396)" x2="0" y2="-22.863221683610725" stroke="black"/>
+            <line aria-label="% Correct: 60.2546917635; upper_correct: 69.2023220635; compname: Object vs. Spatial; Mean of correct: 64.7285069135; Mean + stderr of correct: 69.2023220635; Mean - stderr of correct: 60.2546917635" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,158.98123294597082)" x2="0" y2="-35.790521199835766" stroke="black"/>
           </g>
           <g class="mark-group role-legend" role="graphics-symbol" aria-roledescription="legend" aria-label="Symbol legend for fill color with 3 values: Global vs. Object, Global vs. Spatial, Object vs. Spatial">
             <g transform="translate(5,5)">
