@@ -214,8 +214,14 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
             # test the model
             _y, _X = getxy(test)
-            predicted = mapreduce((x, y) -> cat(x, y, dims = 3), coefs_for_code) do cfs
-                cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
+            predicted = if length(coefs_for_code) > 1
+                mapreduce((x, y) -> cat(x, y, dims = 3), coefs_for_code) do cfs
+                    cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
+                end
+            else
+                cfs = first(coefs_for_code)
+                p = cfs.vals[1 .+ round.(Int, ScikitLearn.predict(cfs.coefs, _X))]
+                reshape(p, :, size(p, 2), 1)
             end
             C = StatsModels.ContrastsMatrix(ycoding(), levels)
             indices = [argmin(collect(eachcol(abs.(predicted[I,:] .- C.matrix'))))
@@ -253,14 +259,17 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                 end
             end
         else
-            result = append!!(result, DataFrame(
-                label       =  label,
-                correct     =  correct,
-                label_fold  =  i;
-                (keepvars  .=> eachcol(test[:, keepvars]))...,
-                (paramnames(model, coefs, coefnames) .=>
-                    paramvals(model, coefs, coefnames))...,
-            ))
+            for (mcol, coefs) in enumerate(coefs_for_code)
+                result = append!!(result, DataFrame(
+                    modelcol    =  mcol,
+                    label       =  vec(label),
+                    correct     =  vec(correct),
+                    label_fold  =  i;
+                    (keepvars  .=> eachcol(test[:, keepvars]))...,
+                    (paramnames(model, coefs, coefnames) .=>
+                        paramvals(model, coefs, coefnames))...,
+                ))
+            end
         end
     end
 
