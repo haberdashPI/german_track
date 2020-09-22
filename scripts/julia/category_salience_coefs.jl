@@ -18,7 +18,7 @@ dir = mkpath(plotsdir("category_salience"))
 # Mean Frequency Bin Analysis
 # -----------------------------------------------------------------
 
-classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
+classdf_file = joinpath(cache_dir("features"), "salience-freqmeans-trial.csv")
 
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -27,7 +27,7 @@ else
 
     classdf_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_label])
+        groupby(__, [:sid, :condition, :salience_label, :trial])
 
     windows = [(len = len, start = start, before = -len)
         for len in 2.0 .^ range(-1, 1, length = 10),
@@ -40,7 +40,7 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
+resultdf_file = joinpath(cache_dir("models"), "salience-target-time-trial.csv")
 
 shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds,
     :salience), __)
@@ -80,13 +80,18 @@ end
 # -----------------------------------------------------------------
 
 means = @_ resultdf |>
-    groupby(__, [:condition, :λ, :nzcoef, :sid, :fold, :winstart, :winlen]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+    groupby(__, [:condition, :λ, :sid, :fold, :winstart, :winlen]) |>
+    combine(__,
+        :nzcoef => mean => :nzcoef,
+        [:correct, :weight] => GermanTrack.wmean => :mean)
 
 bestmeans = @_ means |>
-    groupby(__, [:condition, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__, :mean => maximum => :mean,
+    groupby(__, [:condition, :λ, :sid, :fold]) |>
+    combine(__, :nzcoef => mean => :nzcoef,
+                :mean => maximum => :mean,
                 :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
+
+# DEBUG: there should be three values per subject for a signle lambda value, but there are 100s
 
 logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
     deletecols!(__, [:λ, :nzcoef, :mean]) |>
@@ -242,7 +247,7 @@ pl = windowdiff |>
 # Compute frequency bins
 # -----------------------------------------------------------------
 
-classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
+classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline-trial.csv")
 
 if isfile(classdf_timeline_file)
     classdf_timeline = CSV.read(classdf_timeline_file)
@@ -252,7 +257,7 @@ else
     classdf_timeline_groups = @_ events |>
         transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
-        groupby(__, [:sid, :condition, :salience_label, :hittype])
+        groupby(__, [:sid, :condition, :salience_label, :hittype, :trial])
     winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
         GermanTrack.spread(0.5,n_winlens,indices=k))
 
@@ -263,12 +268,12 @@ else
     CSV.write(classdf_timeline_file, classdf_timeline)
 end
 
-# Compute classification accuracy
+    # Compute classification accuracy
 # -----------------------------------------------------------------
 
 λsid = groupby(final_λs, :sid)
 
-resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
+resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline-trial.csv")
 classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
@@ -561,7 +566,7 @@ pl |> save(joinpath(dir, "salience_earlylate.svg"))
 # Compute frequency bins
 # -----------------------------------------------------------------
 
-classdf_sal4_timeline_file = joinpath(cache_dir("features"), "salience-4level-freqmeans-timeline.csv")
+classdf_sal4_timeline_file = joinpath(cache_dir("features"), "salience-4level-freqmeans-timeline-trial.csv")
 
 if isfile(classdf_sal4_timeline_file)
     classdf_sal4_timeline = CSV.read(classdf_sal4_timeline_file)
@@ -570,9 +575,9 @@ else
 
     classdf_sal4_timeline_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_4level])
+        groupby(__, [:sid, :condition, :salience_4level, :trial])
     winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
-        GermanTrack.spread(0.5,n_winlens,k=k))
+        GermanTrack.spread(0.5,n_winlens,indices=k))
 
     windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
     classdf_sal4_timeline = compute_freqbins(subjects, classdf_sal4_timeline_groups,
@@ -584,7 +589,7 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-# TODO: we probably need to reselect lambda
+# QUESTION: should we reselect lambda?
 
 λsid = groupby(final_λs, :sid)
 
@@ -637,8 +642,6 @@ end
 # Display classification timeline
 # -----------------------------------------------------------------
 
-# can we reproduce the timeline from earlier (it *should* work)
-
 classmeans = @_ resultdf_sal4_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :modeltype]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
@@ -674,12 +677,15 @@ classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = "Model - Null Model Accuracy (logit scale)"
+ytitle = ["Model - Null Model Accuracy", "Logit Scale (% Correct, given 50% Null Model)"]
 target_length_y = 1.0
 pl = classdiffs |>
     @vlplot(
         title = ["Salience Classification Accuracy", "Object Condition"],
-        config = {legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"}},
+        config = {
+            legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"},
+            axis = {titlePadding = 20}
+        }
         # facet = {column = {field = :condition, type = :nominal,
         #          title = nothing}}
     ) +
@@ -730,6 +736,18 @@ pl = classdiffs |>
                 x = {datum = 0.5}, y = {datum = target_length_y},
                 text = {value = "Target Length"},
                 color = {value = "black"}
+            )
+        ) +
+        (
+            @vlplot(data = {values = [
+                {x = 0.0, y = 0.5, text = string("(",round(Int,100logistic(0.5)),"%)")},
+                {x = 0.0, y = 1.0, text = string("(",round(Int,100logistic(1.0)),"%)")},
+                {x = 0.0, y = 1.5, text = string("(",round(Int,100logistic(1.5)),"%)")}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "center",
+                    dy = 14, align = :right},
+                x = :x, y = :y,
+                text = :text,
+                color = {value = "gray"}
             )
         )
     );
