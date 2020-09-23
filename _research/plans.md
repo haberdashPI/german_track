@@ -16,10 +16,11 @@ wip: 3. average across all time for early/late salience (isntead of just picking
     - [X] random window: does window timing matter (no)
     - [X] random trial type: does the response type matter (yes)
 - [X] regression components
-- [X] subset of channels !!
+- [X] subset of channels
+- [ ] plot of main result and selected baseline !!
+- [ ] integrate with behavioral results !!
 - [ ] stats
 - [ ] get human data
-- [ ] integrate with behavioral results
 - [ ] try MCCA averaging???
 
 ### story:
@@ -46,15 +47,15 @@ clearer story
 - [X] object alone x
 - [X] spatial alone x
 - [X] look at these across time?
-- [X] break salience down into four categories, to see gradient of timeline !!
+- [X] break salience down into four categories, to see gradient of timeline
     - [X] handle multi-class y-values in `testmodel`
 - [X] it would be good to know if there is a build up effect for salience: do
   we see the same effect for early/late targets?
 - [ ] why are so many weights for targets == 1, is that right?
+- [ ] do the frontal v central features matter? !!
+- [ ] it would be interesting to see the features at the earlier and later timepoints !!
 - [ ] stats
 - [ ] get human data
-- [ ] it would be interesting to see the features at the earlier and later timepoints
-- [ ] do the frontal v central features matter?
 - [ ] can we see any of these effects at an individual/trial-by-trial level?
 - [ ] what do the correct rejection trials early v. late in the trial look like?
       build-up would predict a change
@@ -96,10 +97,11 @@ this and we can't say much with any confidence about this without furthe expeirm
 - [X] by condition: near v far, early v late, salience? (high low),
   maybe have different panels, main results
 - [X] check high/low classification for early vs. late, check object condition (run stats or redo analysis with different target windows, or average across all times) !!
-- [ ] redo near/far to use *just* the switch before a target !!
+- [X] redo near/far to use *just* the switch before a target
   - [X] make new plots
   - [X] hold on, why did it show any difference for early/at all, is there a problem
         with the baseline correction? (there are some reasons, discuss in meeting)
+- [ ] classify targets (not switches) that are far/near from a switch !!
 - [ ] stats
 - [ ] get human data
 - [ ] can these been done with the median power?
