@@ -1,0 +1,218 @@
+\documentclass[9pt,twocolumn,twoside]{pnas-new}
+% Use the lineno option to display guide line numbers if required.
+% Note that the use of elements such as single-column equations
+% may affect the guide line number alignment. 
+
+\templatetype{pnasresearcharticle} % Choose template 
+% {pnasresearcharticle} = Template for a two-column research article
+% {pnasmathematics} = Template for a one-column mathematics article
+
+\title{Feature- and object-based auditory attention are separate mechanisms and are modulated differentially by salience}
+% (Free-listening, )feature- and object-based auditory attention are modulated differentially by salience 
+% Feature- and object-based auditory attention are not the same and interact with bottom-up salience
+
+\author[1]{Emine Merve Kaya}
+\author[1]{Mounya Elhilali} 
+
+\affil[1]{Department of Electrical and Computer Engineering, Johns Hopkins University}
+
+
+% Please give the surname of the lead author for the running footer
+\leadauthor{Kaya} 
+
+% Please add here a significance statement to explain the relevance of your work
+\significancestatement{Although it is established that visual attention can be deployed in at least three ways (space-, feature-, object-based), studies on the specific mechanisms of auditory selective attention remain sparse and disjoint in the literature. Here we take a step towards filling that gap by contrasting possible modes of auditory attention to the same stimuli to isolate attentional effects from experiment design and acoustic differences. Our results suggest that feature- and object-based attention have significantly different effects on perception in a busy, natural scene, providing new insight into top-down auditory attention, as well as its interaction with bottom-up attention. }
+
+
+% Please include corresponding author, author contribution and author declaration information
+\authorcontributions{E.M.K. and M.E. designed research, performed research, contributed new reagents/analytic tools, analyzed data, and wrote the paper.}
+\authordeclaration{The authors declare no conflict of interest.}
+\correspondingauthor{\textsuperscript{2}To whom correspondence should be addressed. E-mail: mounya\@jhu.edu}
+
+% Keywords are not mandatory, but authors are strongly encouraged to provide them. If provided, please include two to five keywords, separated by the pipe symbol, e.g:
+\keywords{Keyword 1 $|$ Keyword 2 $|$ Keyword 3 $|$ ...} 
+
+
+\begin{abstract}
+A growing body of visual and auditory literature have documented that attention in complex scenes can be directed to perceptual features or objects, however it is yet unclear whether these two forms of attention represent separate processes or are merely a subset of each other. In this work, we measured the detection performance of salient sound segments in a busy scene with three German speakers heard simultaneously from non-overlapping spatial locations. We manipulated the attention of the subjects to the global scene (free-listening), a particular feature (acoustic space), or an object (one speaker), to contrast the effect of directed attention on the perception of the same scene. Results suggest that object-based attention is stronger than feature-based attention, with higher detection and lower distraction, and global, bottom-up saliency driven attention is weakest. The advantage of directed attention is most evident for low-saliency targets, with the strongest perceptual boost achieved under object-based attention. In summary, these results illustrate that perception of the same acoustic scene differs significantly according to the type of selective attention being deployed, and that top-down and bottom-up processes interact to drive perception.
+\end{abstract}
+
+\dates{This manuscript was compiled on \today}
+\doi{\url{www.pnas.org/cgi/doi/10.1073/pnas.XXXXXXXXXX}}
+
+\begin{document}
+
+% Optional adjustment to line up main text (after abstract) of first page with line numbers, when using both lineno and twocolumn options.
+% You should only change this length when you've finalised the article contents.
+\verticaladjustment{-2pt}
+
+\maketitle
+\thispagestyle{firststyle}
+\ifthenelse{\boolean{shortarticle}}{\ifthenelse{\boolean{singlecolumn}}{\abscontentformatted}{\abscontent}}{}
+
+\dropcap{A}ttention is one of the key cognitive mechanisms that facilitate parsing complex sensory scenes into perceptual representations that disentangle objects of interest -foreground- from background items. While intuitive, the neural and perceptual underpinnings of attention are not fully understood. One of the open questions is the role of two seemingly different mode of attention; namely attention to features vs. objects: are they the same mechanism operating along a continuum with different resolutions, or is are they separate processes all together. In vision studies, a large body of work has canvassed effects of attention to visual features and objects showing that attention can indeed modulate processing in favor of spatial locations, stimulus features such as color or motion, or whole objects. Feature-based attention is primarily observed as enhanced activation of cortical populations that process the attended feature \cite{Treue96a,Saenz02a,Liu11a}. A key distinction between feature-based and object-based attention lies in the processing of unattended features: Object-based attention theories posit that attending to a feature of an object will cause the whole object to be selected, leading to enhanced processing of the unattended object features even when these other features are irrelevant to the task \cite{OCraven99a,Schoenfeld03a,Sohn04a}. However, recent work has shown that selection based on features can be associated with active suppression of unattended features in the scene, including task-irrelevant features of selected objects \cite{Wegener08a,Taya09a,Freeman14a}. To reconcile these seemingly contradictory results, current theories of visual processing suggest that feature- and object-based attentional mechanisms coexist in the visual pathway \cite{Kravitz11a,Mayer12a,Wegener14a,Geigerman16a}.
+
+In audition, selective attention to sound has been shown to modulate responses in the auditory cortex, using single neuron recordings \cite{Fritz2003,Fritz2005}, electroencephalography \cite{Hillyard73a,Alain97a}, magnetoencephalography \cite{Woldorff93a}, positron emission tomography \cite{Zatorre99a}, functional MRI \cite{Grady97a,Jancke01a}, and electrocorticography \cite{Bidet-Caulet07a}. Early studies investigating attention to auditory space and frequency failed to find feature-specific enhancement \cite{Mondor98a,Zatorre99a,Petkov04a}, reasoning that auditory attention acts not on low-level features, but on integrated object representations \cite{Zatorre99a,Shinn-Cunningham08a,Hill10a}, particularly in secondary auditory cortical areas \cite{Petkov04a,Woods09a}. A considerable amount of imaging work has since gathered evidence in support of feature-based attention in primary and non-primary auditory cortices \cite{Ahveninen06a,Krumbholz07a,Altmann08a,Degerman08a,Paltoglou09a,Costa13a,Oh13a,Riecke17a}, though support for suppression of unattended features as part of feature-based auditory attention is yet to be explicitly shown  \cite{Paltoglou09a}. As such, it is not clear whether the lack of difference in feature effects observed in some of these studies \cite{Zatorre99a,Petkov04a,Woods09a,Hill10a} is due to co-selection of unattended features along the same lines as reported in object-based visual attention results. Furthermore, there is a considerable body of work supporting the notion that attention operates at the level of auditory objects and showing that attention is affected by continuity in both task-relevant and task-irrelevant features of attended objects \cite{Best08a,Maddox12a}. These results are complemented by imaging studies demonstrating enhanced cortical representations of attended speech (the ``object") in a multi-speaker paradigm \cite{Kerlin10a,Ding12a,Mesgarani12a,simon2015encoding}. 
+
+While the studies outlined above demonstrate that attention can enhance feature and object representations in auditory cortical networks, it is unclear whether the observations are a product of a single attentional mechanism, or whether feature-based and object-based auditory attention are independent processes that co-exist to modulate cortical processing. One interpretation favored by many reports cited above is that the unit of attention is indeed at the level of objects; whereby results from feature-based attention studies can be interpreted as enhancement of the attended object's features. An alternative interpretation is that feature and object-based attention are two unique processes. To investigate this question, we examined both feature-based and object-based attention in a single experiment, using the \emph{same stimuli} for all attentional conditions. Listeners performed an demanding ``cocktail-party'' task, with concurrent male and female German speakers that occasionally changed direction between left and right (Figure~\ref{fig:attn_stim}). To contrast the two types of attention in this highly challenging scene, attention of subjects was directed to the male speech (object), or all speech coming from the right direction (feature) in separate blocks. All speakers had a similar pitch range, and the task was to detect parts of the speech that were manipulated to have abnormally high or low pitches, outside the pitch range of the regular scene. We hypothesized that detection would improve if attention was directed to relevant streams. A free-listening block (global attention) was performed first, serving as a baseline for detection of salient events in the scene. Our results suggest that feature-based and object-based attention do not reflect the same process, and further are nonlinearly affected by underlying acoustic salience of the scene.
+
+\begin{figure}[t]
+\centering
+%trim option's parameter order: left bottom right top
+\includegraphics[width=.48\textwidth]{"stim"}
+\caption[Cocktail-party stimulus design to probe selective attention.]{Setup of the cocktail-party stimulus used in this experiment. (A) Three German speakers narrating book sections start at left/center/right in each trial, with subsequent occasional shifts in direction. Targets are 1 s long segments of the natural speech manipulated to have a pitch outside the pitch range of the regular speech (3 st difference, lower for male targets, higher for female targets). (B) Four conditions are tested for the target placement, crossing the male and young female with left and right. To realize the feature attention task as attending to right, right targets are fully in the right direction. Left targets are allowed to vary between center and left to give the global perception that targets can appear anywhere in space. Shown in the figure are some example possibilities for left target spatial placement.}
+\label{fig:attn_stim}
+\end{figure}
+
+
+
+\section{Results}
+
+\underline{can you reiterate a brief summary of the experimental setup highlighting that: - listener don't speak german (no linguistic info), - there are 3 concurrent speakers at all moments - first block is global - there are catch trials with no change and notion of 2 kinds of control trials (take some of the text from next paragraph). While it is methods, unless people get the setup, they will be lost. You need to also include a description of the business of shift which is crucial to understand the build-up effect}
+
+Performance between the three attention conditions shows a clear ordinal pattern, with global attention resulting in the lowest performance, and object attention the highest performance (Figure~\ref{fig:attn_hr}). This pattern is reflected both in increased hit rates, and decreased false responses (Pairwise t-tests for hit rate: global x feature: $p<0.001$, global x object: $p<0.001$, feature x object: $p<0.002$). False responses to control trials, which have no target, decrease prominently with directed attention, with no difference between feature and object cases (Pairwise t-tests for control-false rate: global x feature: $p<0.001$, global x object: $p<0.001$, feature x object: $p=0.04$). However, another source of false responses in this experiment is distraction trials in attention directed tasks \underline{I think your figure has wrong open/closed bars. controls should be open - global has false control no false distract, the figure shows the opposite}. Distraction trials are not part of the stream that should be attended to, but contain targets in the opposite stream. Distraction rate is significantly higher for the feature task compared to the object task (Pairwise t-test for distraction-false rate: feature x object: $p<0.001$). Considering detection hits, control false alarms as well as distractions, the results suggest that object-based attention is stronger than feature-based attention. Results are found to be the same regardless of whether the feature or object task was performed first.
+
+\begin{figure}[t]
+\centering
+%trim option's parameter order: left bottom right top
+\includegraphics[width=.48\textwidth]{"main"}
+\caption[Global, feature-based, and object-based attention comparison.]{Target detection performance for different types of attention tested in this experiment. Global attention represents free-listening, providing a baseline to evaluate selective attention. Directing attention to an acoustic feature (right side) and object (male speech) results in progressively increased hit rates and decreased false rates.}
+\label{fig:attn_hr}
+\end{figure}
+
+An interesting effect on hit rate emerges when salience of targets is considered. Grouping targets by their relative salience, computed with a bottom-up attention model \cite{Kaya14a} (see Methods for details), reveals that selective attention strongly boosts perception of low-salience targets that would otherwise be missed, whereas high-salience targets are detected to a similar degree under global or selective attention (Figure~\ref{fig:attn_sal}). Notably, only 60\% of low-salience targets are detected without directed attention, barely above chance level (50\%). Both feature and object tasks significantly raise performance, with object-based attention resulting in higher detection than feature-based (t-test, $p<0.05$). Interestingly, the advantage of object-based attention over feature-based attention disappears for high-salience targets. As a result, both modes of selective attention show a significant nonlinear interaction with salience ($F_{feature}= 5.13$, $p<0.05$, $F_{object} = 14.54$, $p<0.001$).
+
+An examination of the time course of target detection after attention reorientation as a result of speakers changing direction reveals differing amounts of build-up for the tasks performed (Figure~\ref{fig:attn_switch}A). Surprisingly, the build-up effect is seen only for targets that happen before the first shift, or following the first shift, called the ``early'' shifts (see Figure~\ref{fig:attn_stim} for an illustration of shifts in trials). Targets that happened after the second or third shift, the ``late'' shifts, do not show this pattern, instead all three attention tasks show a stable hit rate level over time (Figure~\ref{fig:attn_switch}A, right). In the early shift case, the build-up lasts roughly until 1.2 s after shift before stabilizing.
+
+The overall build-up pattern shown in Figure~\ref{fig:attn_switch}A is reflected in both low and high salience trials. We quantify the angle \underline{... explain better what metric we are looking at in part C of the figure. I know it is methods but the paper is hard to understand without some repetition.} Figure~\ref{fig:attn_switch}C shows that build-up angles are most prominent for low salience targets that happened after early shifts, but for high saliency targets, the build-up effect appears very small. Particularly, detection of high salience targets is not affected by shifts under global attention with a set rate of detection achieved almost instantaneously. For feature and object attention, however, there is still some build-up. Interestingly, there is no build-up observed for low saliency targets that happened after late shifts. \underline{why is figure B before C since you talk about C first}. \underline{i started editing this paragraph (above) and got myself confused by it. Can you revise it again, split the 4 conditions clearly: low sal/high sal - early/late}
+
+\underline{I am actually not sure what Figure B is, is it the tip of the build-up for the 4 conditions, is it the average - why is this part of *build-up* at all - maybe related to early/late switch. if that's the case, maybe merits its own figure before buildup where you explain this shift business before getting to build-up}. The time-course of target detection also demonstrates that the ordinal pattern between the three types of attention are reflected throughout the entire time course of the scene. The advantage of directed attention is the smallest for high saliency targets, whether they happened early or late in the trial (Figure~\ref{fig:attn_switch}B). Low saliency targets show the biggest sensitivity to the direction of attention when they came after late shifts, suggesting a refinement of selective attention over time. These results are supported by a statistical comparison between task, saliency, and shift, revealing a significant interaction between saliency and shift ($F=8.15$, $p<0.01$), and saliency and task ($F=4.65$, $p=0.013$). All main effects are significant ($F_{task}=9.1$, $p<0.001$. $F_{saliency}=58.35$, $p<0.001$. $F_{shift}=15.6$, $p<0.001$), but no significant three-way interaction or interaction between shift and task is observed. 
+
+\begin{figure}[t]
+\centering
+%trim option's parameter order: left bottom right top
+\includegraphics[width=.48\textwidth]{"sal"}
+\caption[Interaction of selective attention with saliency.]{Selective attention interacts with saliency. For both feature-based and object-based attention, performance is differentially modulated by the salience level of the target. Specifically, detection of low-salience targets is significantly boosted by both feature- and object-based attention, and a comparatively minor boost is seen for high-salience targets.}
+\label{fig:attn_sal}
+\end{figure}
+
+
+
+\section{Discussion}
+
+
+The current results demonstrate that auditory attention can operate in at least three unique ways in continuous, natural sound environments. We find that selective attention can be directed in a feature-based and object-based manner, and that both present an advantage over free-listening, global attention. The latter contrast is of particular significance to explicitly illustrate that effects observed in directed-attention tasks are not caused only by the inherent dynamics and acoustics of the presented scenes, and to establish a baseline from which the degree of attentional enhancement can be quantified. 
+
+Object-based attention appears to be stronger than feature-based attention, resulting in enhanced perception of small acoustic deviances that would otherwise go unnoticed in a busy scene. This result is especially powerful in our paradigm manipulating different types of attention on the same set of stimuli. Enhanced sensitivity to events of interest in the ``cocktail-party'' is complemented by decreased distraction by background events in object-based attention. These differences support the hypothesis that selective attention can operate at different levels in a hierarchical framework of object formation based on the binding of features into proto-objects and objects, with feature-based attention actively biasing early acoustic representations. Although ultimately the unit of perception is an object (a speaker in our experiment), we note that even after performance builds up and stabilizes, feature-based attention remains weaker than object-based attention (Figure~\ref{fig:attn_switch}), suggesting different underlying processes rather than simply finding the target object that has the desired feature and defaulting to object-based attention.
+
+\begin{figure}[t]
+\centering
+%trim option's parameter order: left bottom right top
+\includegraphics[width=.48\textwidth]{"switch"}
+\caption[Temporal build-up of auditory attention.]{Temporal build-up of target detection under different types of attention. (A) Time course of hit rate for early (before or after the first speaker change) or late (after the second or third speaker change) attention reorientation. A shift denotes a change of speaker between the male and a female. Rates at every time $t$ denote the average hit rate of targets that are playing at time $t$: Targets that started between $t-0.8$ s and $t$ s. (B) Average hit rates analyzed by shift time and saliency level. (C) Build-up angle of the time-course for different shift times and saliency levels. Angle is found by fitting a line at the  build-up time window.}
+\label{fig:attn_switch}
+\end{figure}
+
+Without task goals in global attention, perception is largely driven by acoustic salience. When the target is not very salient, a dramatic enhancement in perception is evident for both feature- and object-based attention from the global baseline, with object-based attention resulting in the best performance. Interestingly, much of the advantage of directed attention disappears when targets are already inherently conspicuous. While directed attention still has a small advantage over global attention, the effect does not appear to depend on whether the direction is feature-based or object-based. These results imply that top-down selective attention has little effect when bottom-up attention is highly informative. These results further demonstrate that the distinction between feature-based and object-based attention is most clearly observed under high task demand in a busy, natural scene, and may not be readily apparent in scenes with few discrete stimuli with less competition for attention.
+
+A fundamental part of our paradigm is the frequent direction change of speakers within trials. We observe a decline in performance followed by rapid reorientation of attention for all tasks, but this effect is present only for early speaker shifts. As spatial configuration changes become part of the regularity in the scene, attention does not suffer following shifts and reorientation is not apparent. This seems to be the case even for hard to detect, low saliency targets. On the other hand, low saliency targets show the fastest build-up in reorientation after early shifts, with object-based attention building up most rapidly. Overall, global attention is least affected by feature changes in the scene, further reflecting that it is primarily driven by target saliency, irrespective of object parameters. It is important to note that the build-up effects observed, rapidly stabilizing in less than 2 seconds, likely represent a different effect than object formation in a scene, known to evolve over seconds \cite{Cusack04a,Kaya14a,shinn2017auditory}. The direction change of speakers does not reset attention entirely, instead reconfigures the existing regularities in the scene, thus representing object change rather than object formation. That objects and feature statistics are refined over time is instead evident in the performance level differences in the early and late sections of the scene: Both object-based and feature-based attention result in higher performance after late shifts, but only for low saliency targets. Highly salient targets and global attention nullify the temporal build-up, although it is possible that had we tested targets near the start of trials, at less than 1 s, we might have seen a global build-up effect, as in \cite{Kaya14a}.
+
+Although in this work we have only tested feature-based attention to acoustic location, neuroimaging results demonstrating attentional modulation for a variety of features suggest that similar effects could possibly be seen for directed attention to other features. This is especially the case considering that there does not appear to be feature-dependent differences in feature-based attention in vision, and that visual and auditory attention seem to share many common mechanisms \cite{Scholl01a,Busse05a}. One distinction from vision, however, is in the treatment of the spatial dimension. Space-based attention has traditionally been treated as a separate form of selective attention in vision \cite{soto2004spatial,Kravitz11a}, though it has been suggested that it could be unified under the same framework as feature-based attention \cite{maunsell2006feature}. However, there is little evidence supporting space as a special feature in audition. Studies that have investigated the effect of attention to frequency and space have suggested the two features operate under the same fundamental process \cite{Krumbholz07a,Maddox12a}. It is also worth considering that space in audition is derived from neural computations on signals reaching the two ears, in a similar manner to pitch or other acoustic features. Even if spatial attention differed significantly from feature-based attention, the current results still demonstrate that auditory attention can operate in three distinct mechanisms, with spatial or feature-based attention differing from global and object-based attention.
+
+Our results unify evidence from pyschoacoustical and imaging studies by demonstrating that auditory attention can narrow its global focus in both a feature-based and an object-based manner, further illustrating that the distinguishing characteristics between modes of selective attention are most prominent for low-saliency targets. It remains to be seen whether the different types of attention represent parts of the same neural mechanism, and to what extent they interact to drive perception and behavior in natural settings.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\matmethods{
+
+\subsection{Stimulus design} Experiment stimuli consisted of simultaneously played German audiobook narration extracts by three speakers (a young female, an old female, and a young male, all adults) that were chosen to have a similar vocal pitch range. Each speaker started at one specific direction (right/left/center) at the start of every trial. After a few seconds, one or more speakers began to move towards the opposite direction. Upon reaching the opposite direction, they remained there for a few seconds. This moving pattern happened 1-3 times. The speaker movements were constructed such that at every point in time, there would be no gaps of speech at absolute right or absolute left, so as not to bias the audio towards any direction. Further, speakers never overlapped in any direction, except for the brief moments when one speaker was reaching a direction just as another speaker was leaving it. 
+
+The male always started from the left, younger female from the right, and older female from the center. The right stream was restricted to have only the male or young female. The older female's first direction change took her from center to the left, and her direction changes happened between center and left. No speaker lingered in the center after stimulus onset. Speakers were either moving between directions, or at right/left ends.
+
+Stimulus length varied between approximately 5-10 s. Speed of moving between directions was constant, 1.2 s from one side to the other. Direction shifts started at a random time after the first second, the number of shifts was the maximum possible number the trial length allowed. Timing of direction changes were randomly selected as long as the stimulus constraints were met. 
+
+\subsubsection{Scene parameters} Speech segments used for all speakers were manually extracted from public domain Librivox German book narrations (Male: https://librivox.org/ein-vade-mecum-fur-den-hrn-sam-gotth-lange-pastor-in-laublingen-by-gotthold-ephraim-lessing/, Young female: https://librivox.org/menschen-im-krieg-by-andreas-latzko/, Old female: https://librivox.org/das-letzte-maerchen-by-paul-keller/) recorded at 22050 Hz. Eighty-one male segments were extracted from chapters 2 and 5, 61 young female segments from chapter 1, 58 old female segments from chapter 10. The overall pitch range was approximately A2-D4. Segments were chosen to have prosody to sound like spoken single sentences, with no regard to meaning of the words spoken or whether the segment contains actual sentences; thus segment length was determined primarily by the dynamics of the speech, each approximately 6-13 s before processing. As subjects would need continuous speech to follow speakers in a very busy scene, segments were manually processed to remove silent periods, including narrator pauses and words spoken very quietly. Fifty trials were constructed by selecting one unique segment for each narrator such that the length difference between the three segments would be less than 300 ms. All three blocks (global, feature, object) used the same 50 trials. Trials were 5.1-9.6 s long, and were assigned to experiment conditions randomly. 
+
+All stimulus construction and experiment analysis were performed with Matlab software. Experiments, including the interface and sound delivery, were performed in Presentation software. 
+
+\subsubsection{Spatial parameters} The three speakers were positioned in simulated 3-D space with a head-related transfer function (HRTF) recorded on a mannequin (Neumann KU 100) under the same conditions that human HRTFs are recorded in. The NH172 HRTF was used from the ARI HRTF database. Trajectories for each speaker were constructed between -90 (left) and 90 degrees (right) denoting their position for each time point. Spatial dynamics of the scenes were increased by adding jitter to the trajectory when speakers had stable position at left, center or right: Instead of a straight trajectory, a sinusoid with a period of 5 spanning 50 degrees was inserted. At direction change times, the trajectory moved from the middle of the left/right jitter (-65 and 65 degrees) in a linear line lasting 1.2 s. The old female speaker was the only one who moved between left and center. Movements for this speaker took only as long as necessary to fill in gaps in the absolute left, but with the same speed as movements of the other speakers.
+
+\subsubsection{Target construction} Targets were 1 s long segments of the ongoing speech that were manipulated to have a modified pitch. Right target times were selected randomly after the first second, as long as the speaker trajectory was in the right side for the entire duration of the target. Left targets were allowed to have a trajectory that varied between center (0 degrees) and left. This allowed for global perception that targets could appear almost anywhere in space, but have a separate right-only stream to test feature attention. Male targets never appeared before the first direction change of the male from left to right. Young female targets could appear before the first direction change, in the right side. There were no old female targets. 
+
+Pitch manipulation was performed by time dilation (for male) and compression (for female) with a phase vocoder \cite{de2000traditional}. To move the segment pitch out of the range of the pitches occurring in the scene, the male targets had lower pitch, and female targets had higher pitch, with a difference of approximately 3 semitones in either direction. Target segment onsets and offsets, as well as speech immediately prior to and following the target were smoothed by 10 ms long ramps to avoid abrupt transitions in sound.
+
+
+\subsection{Experiment procedures and participants} The task was to detect a segment with an unusually different pitch. Fifty trials with unique sentences were constructed, 10 of which contained no pitch altered segments (control trials). The target specification in the remaining trials were as follows: 10 male-right, 15 male-left, 10 female-right, 5 female-left. The target was a 1 s long segment of the speech that was altered to have slightly higher (if female) or lower (if male) pitch. The right target segments were in the absolute right for the duration of the target, but the left targets could be anywhere between center and absolute left. Stimuli were delivered with headphones (Sennheiser HD595).
+
+The experiment had three blocks. In the first block (global), subjects were presented the stimuli and asked whether they heard the target segment. In the second block (feature), subjects were instructed to pay attention to speech on the right ear and ignore the left ear to the best of their abilities. In the final block (object), subjects were instructed to pay attention to the male and ignore both females. In the feature and object blocks, subjects similarly reported targets, including those they heard that were not in the instructed stream (distractors). Subjects were randomly assigned to perform the feature or object block before the other, but the global block was always performed first. The same 50 trials were presented in all three blocks, with trial order randomized in each block. A training section before the experiment assured that subjects understood the global task. Subjects had no prior knowledge of the feature/object tasks until the end of the global block.
+
+A total of 78 subjects (43 female, aged 18-31 years) participated in the experiments after giving informed consent. Sixteen subjects total were removed from analysis due to being unable to perform the feature or object tasks, determined by whether their hit rate of distractor trials were higher than of target trials (e.g. hitting female deviants more than male deviants in the object task). Thirty-nine subjects participated in the initial version of the experiment. However, the density of target times in the trials were too sparse to construct meaningful temporal analyses. Two new sets of 50 trials were created with the same sentences and same target design, the only difference being a greater variance of target time. Twenty-three subjects performed the experiment with one of these two sets, assigned randomly (11 and 12 each). All stimulus sets produced similar average hit, control, and distraction rates, so they were grouped together for all reported results. 
+
+
+\subsection{Saliency classification of trials} Trials including targets were analyzed with the saliency model in \cite{Kaya14a}. The model builds statistical predictions among a variety of acoustic features and derives saliency among each feature as a function of deviance from the predicted feature value at each time. Saliency values are boosted depending on the saliency at other features. To reduce noise, here we only calculated interactions for the maximum spikes along each feature at the duration of the target, resulting in only one feature vector per trial. To classify saliency level instead of saliency existence, subject responses were used as ground-truth data. The trial was assigned 0 if less than half of the subjects heard the target, 1 if half or more subjects heard the target. Finally, each trial was classified as low or high saliency depending on whether saliency predictions from logistic regression were less than 0.5 or greater than or equal to 0.5 respectively.
+
+
+
+
+} 
+
+\showmatmethods % Display the Materials and Methods section
+
+\acknow{Please include your acknowledgments here, set in a single paragraph. Please do not include any acknowledgments in the Supporting Information, or anywhere else in the manuscript.}
+
+\showacknow % Display the acknowledgments section
+
+% \pnasbreak splits and balances the columns before the references.
+% If you see unexpected formatting errors, try commenting out this line
+% as it can run into problems with floats and footnotes on the final page.
+\pnasbreak
+
+% Bibliography
+\bibliography{export-4}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
