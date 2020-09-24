@@ -32,12 +32,12 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
     xlab("minutes")
 
 
-presfiles = list.files(file.path(raw_datadir),sprintf("%04d.*log",sid))
+presfiles = list.files(file.path(raw_datadir,'behavioral','duringeeg'),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
     msg = sprintf("Multiple files matching pattern for sid = %d:",sid)
     stop(do.call(paste,c(list(msg), as.list(presfiles),list(sep="\n"))))
 }
-presfile = file.path(raw_datadir,presfiles)
+presfile = file.path(raw_datadir,'behavioral','duringeeg',presfiles)
 
 raw_pf = read.table(presfile,header=TRUE,skip=3,sep="\t",
     blank.lines.skip=TRUE,fill=TRUE)
