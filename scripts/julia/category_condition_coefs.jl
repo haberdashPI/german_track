@@ -11,6 +11,17 @@ n_winlens = 6
 
 dir = mkpath(joinpath(plotsdir(), "condition"))
 
+patterns = begin
+    blue = "#4c78a8"
+    orange = "#f58518"
+    red = "#e45756"
+    Dict(
+        "blue_orange" => (blue, orange),
+        "blue_red"    => (blue, red),
+        "orange_red"  => (orange, red)
+    )
+end
+
 # Behavioral Data
 # =================================================================
 
@@ -335,7 +346,7 @@ pl = plotfull |>
 
 plotfile = joinpath(dir, "category.svg")
 pl |> save(plotfile)
-addpatterns(plotfile)
+addpatterns(plotfile, patterns)
 
 baselines = @_ predictmeans |>
     filter(_.modeltype != "full", __) |>
@@ -400,33 +411,8 @@ pl = plotmeans |>
 
 plotfile = joinpath(dir, "baseline_models.svg")
 pl |> save(plotfile)
-addpatterns(plotfile)
+addpatterns(plotfile, patterns)
 
-function addpatterns(filename)
-    blue = "#4c78a8"
-    orange = "#f58518"
-    red = "#e45756"
-
-    stripes = @_ """
-    <defs>
-        <pattern id="blue_orange" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
-        </pattern>
-        <pattern id="blue_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
-        </pattern>
-        <pattern id="orange_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
-        </pattern>
-    </defs>
-    """ |> parsexml |> __.node |> elements |> first |> unlink!
-    vgplot = readxml(filename)
-    @_ vgplot.root |> elements |> first |> linkprev!(__, stripes)
-    open(io -> prettyprint(io, vgplot), joinpath(dir, filename), write = true)
-end
 # customize the fill with some low-level svg coding
 
 # Display of model coefficients

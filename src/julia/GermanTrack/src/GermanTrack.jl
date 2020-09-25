@@ -12,6 +12,7 @@ export CSV, @save, @load
 const max_trial_length = 10
 
 include("analyses.jl")
+include("plots.jl")
 include("util.jl")
 include("features.jl")
 include("classifier.jl")
