@@ -41,17 +41,6 @@ presfile = file.path(raw_datadir,'eeg',presfiles)
 
 pf = read_experiment_events(presfile, response_codes = c(2,3))
 
-pf = pf %>% filter(condition %in% c("test","object","feature"),
-                   !is.na(response)) %>%
-    arrange(time) %>%
-    mutate(trial = trial - first(trial)+1)
-
-pf$condition = fct_recode(pf$condition,
-    "global" = "test",
-    "spatial" = "feature",
-    "object" = "object"
-)
-
 # check the counts of each condition (should be 50 for each)
 pf %>% group_by(condition) %>% summarize(count = length(sound_index))
 
