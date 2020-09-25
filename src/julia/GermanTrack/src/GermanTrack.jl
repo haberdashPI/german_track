@@ -4,7 +4,8 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays
+    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays,
+    Underscores, EzXML
 
 using BSON: @save, @load
 export CSV, @save, @load
@@ -12,6 +13,7 @@ export CSV, @save, @load
 const max_trial_length = 10
 
 include("analyses.jl")
+include("plots.jl")
 include("util.jl")
 include("features.jl")
 include("classifier.jl")

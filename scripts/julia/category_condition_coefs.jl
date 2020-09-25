@@ -5,11 +5,22 @@ using DrWatson; @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures, EzXML
+    StatsFuns, Distributions, DSP, DataStructures
 wmean = GermanTrack.wmean
 n_winlens = 6
 
 dir = mkpath(joinpath(plotsdir(), "condition"))
+
+patterns = begin
+    blue = "#4c78a8"
+    orange = "#f58518"
+    red = "#e45756"
+    Dict(
+        "blue_orange" => (blue, orange),
+        "blue_red"    => (blue, red),
+        "orange_red"  => (orange, red)
+    )
+end
 
 # Behavioral Data
 # =================================================================
@@ -222,30 +233,29 @@ classbasedf = innerjoin(classbasedf, final_λs, on = [:sid])
 
 modeltype = [
     "full" => (
-        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "target", __)),
         λfn = df -> df.λ |> first
     ),
     "null" => (
-        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "target", __)),
         λfn = df -> 1.0,
     ),
     "random-labels" => (
         filterfn = df ->
-            @_(df |> filter(_.windowtype == "target" && _.hittype == "hit", __) |>
+            @_(df |> filter(_.windowtype == "target", __) |>
                      groupby(__, [:sid, :winlen, :windowtype]) |>
                      transform!(__, :condition => shuffle => :condition)),
         λfn = df -> df.λ |> first
     ),
     "random-window-before" => (
-        filterfn = @_(filter(_.windowtype == "rndbefore" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "rndbefore", __)),
         λfn = df -> df.λ |> first
     ),
     "random-trialtype" => (
         filterfn = df ->
             @_(df |> filter(_.windowtype == "target", __) |>
                      groupby(__, [:sid, :condition, :winlen, :windowtype]) |>
-                     transform!(__, :hittype => shuffle => :hittype) |>
-                     filter(_.hittype == "hit", __)),
+                     transform!(__, :hittype => shuffle => :hittype)),
         λfn = df -> df.λ |> first
     )
 ]
@@ -274,30 +284,22 @@ function bymodeltype(((key, df), type, comp))
 end
 
 predictbasedf = @_ classbasedf |>
-    groupby(__, [:fold, :winlen]) |> pairs |>
+    groupby(__, [:fold, :winlen, :hittype]) |> pairs |>
     Iterators.product(__, modeltype, comparisons) |>
     collect |> foldxt(append!!, Map(bymodeltype), __)
 
-# Plot results
+# Main classification results
 # -----------------------------------------------------------------
 
 predictmeans = @_ predictbasedf |>
-    groupby(__, [:sid, :comparison, :modeltype, :winlen]) |>
+    groupby(__, [:sid, :comparison, :modeltype, :winlen, :hittype]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
-    groupby(__, [:sid, :comparison, :modeltype]) |>
+    groupby(__, [:sid, :comparison, :modeltype, :hittype]) |>
     combine(__,
         :correct => mean => :correct,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
-Nmtypes = length(baselines.modeltype |> unique)
-refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
-    modeltype = repeat(baselines.modeltype |> unique, inner=2))
-nrefs = size(refline,1)
-refline = @_ refline |>
-    repeat(__, 3) |>
-    insertcols!(__, :comparison => repeat(baselines.comparison |> unique, inner=nrefs))
-
-compnames = Dict(
+compnames = OrderedDict(
     "global-v-object"  => "Global vs. Object",
     "global-v-spatial" => "Global vs. Spatial",
     "object-v-spatial" => "Object vs. Spatial")
@@ -311,14 +313,33 @@ modelnames = OrderedDict(
     "random-trialtype" => "Random\nTrial Type",
 )
 
+Nmtypes = length(modelnames)
+refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
+    modeltype = repeat(keys(modelnames) |> collect, inner=2))
+nrefs = size(refline,1)
+refline = @_ refline |>
+    repeat(__, 3) |>
+    insertcols!(__, :comparison => repeat(compnames |> keys |> collect, inner=nrefs))
+
+nullmeans = @_ predictmeans |>
+    filter(_.modeltype == "null", __) |>
+    deletecols!(__, [:logitcorrect, :modeltype]) |>
+    rename!(__, :correct => :nullmodel)
 plotfull = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
+    innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
 
 ytitle= "% Correct"
-pl = plotfull |>
+plhit = @_ plotfull |>
+    filter(_.hittype == "hit", __) |>
+    @vlplot(
+        # facet = { column = { field = :hittype, type = :nominal} },
+        height = 300,
+        transform = [{calculate = "datum.correct * 100", as = :correct},
+                        {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+    ) + (
     @vlplot(x = {:compname, axis = nothing},
-        transform = [{calculate = "datum.correct * 100", as = :correct}],
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
@@ -327,15 +348,220 @@ pl = plotfull |>
         y = {:correct, aggregate = :mean, type = :quantitative,
             scale = {domain = [0.5 ,1].*100},
             title = ytitle}) +
+    @vlplot(:bar,
+        color = {value = "rgb(50,50,50)"},
+        opacity = {value = 0.5},
+        y = {:nullmodel, aggregate = :mean, type = :quantitative, title = ytitle},
+    ) +
     @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
         color = {value = "black"},
         y = {:correct, aggregate = :ci, type = :quantitative,
             scale = {domain = [0.5 ,1].*100},
-            title = ytitle});
-
+            title = ytitle})
+    );
 plotfile = joinpath(dir, "category.svg")
-pl |> save(plotfile)
-addpatterns(plotfile)
+plhit |> save(plotfile)
+addpatterns(plotfile, patterns)
+
+ytitle= "% Correct"
+plhittype = @_ plotfull |>
+    filter(_.hittype != "hit", __) |>
+    @vlplot(
+        facet = { column = { field = :hittype, type = :nominal} },
+        transform = [{calculate = "datum.correct * 100", as = :correct},
+                     {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+    ) + (
+    @vlplot(x = {:compname, axis = nothing},
+        height = 100,
+        color = {
+            :compname, title = nothing,
+            scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
+            legend = {legendX = 5, legendY = 5, orient = "none"}}) +
+    @vlplot(:bar,
+        y = {:correct, aggregate = :mean, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle}) +
+    @vlplot(:bar,
+        color = {value = "rgb(50,50,50)"},
+        opacity = {value = 0.5},
+        y = {:nullmodel, aggregate = :mean, type = :quantitative, title = ytitle},
+    ) +
+    @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+        color = {value = "black"},
+        y = {:correct, aggregate = :ci, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle})
+    );
+plotfile = joinpath(dir, "category_hittype.svg")
+plhittype |> save(plotfile)
+addpatterns(plotfile, patterns)
+
+# Main median power results
+# -----------------------------------------------------------------
+# Examine the power across bins/channels near a target
+# -----------------------------------------------------------------
+
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+classhitdf_groups = @_ events |>
+    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    groupby(__, [:sid, :condition, :hittype])
+
+windows = [(len = 2.0, start = 0.0)]
+classhitdf = compute_freqbins(subjects, classhitdf_groups, windowtarget, windows)
+
+chpat = r"channel_([0-9]+)_([a-z]+)"
+bincenter(x) = @_ GermanTrack.default_freqbins[Symbol(x)] |> log.(__) |> mean |> exp
+classhitdf_long = @_ classhitdf |>
+    stack(__, r"channel", [:sid, :condition, :weight, :hittype], variable_name = "channelbin") |>
+    transform!(__, :channelbin => ByRow(x -> parse(Int,match(chpat, x)[1])) => :channel) |>
+    transform!(__, :channelbin => ByRow(x -> match(chpat, x)[2])            => :bin) |>
+    transform!(__, :bin        => ByRow(bincenter)                          => :frequency) |>
+    groupby(__, :bin) |>
+    transform!(__, :value => zscore => :zvalue)
+
+classhitdf_summary = @_ classhitdf_long |>
+    groupby(__, [:hittype, :channel, :frequency, :condition]) |>
+    combine(__, :zvalue => median => :medvalue,
+                :zvalue => minimum => :minvalue,
+                :zvalue => maximum => :maxvalue,
+                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
+                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
+                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
+                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
+
+ytitle = "Median Power"
+@_ classhitdf_summary |>
+    filter(_.channel in 1:5, __) |>
+    @vlplot(facet = {
+            column = {field = :hittype, type = :ordinal},
+            row = {field = :channel, type = :ordinal}
+        }) + (
+        @vlplot() +
+        @vlplot(:line, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:point, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:medvalue, title = ytitle}) +
+        @vlplot(:errorband, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q50u, title = ytitle}, y2 = :q50l) +
+        @vlplot(:errorbar, color = :condition,
+            x = {:frequency, scale = {type = :log}}, y = {:q95u, title = ytitle}, y2 = :q95l)
+    )
+
+ytitle = "Median Power"
+@_ classhitdf_summary |>
+    @vlplot(facet = {
+            field = :channel,
+            type = :ordinal
+        },
+        config = {facet = {columns = 10}}
+    )+(@vlplot() +
+        @vlplot(:point, color = :condition,
+            x = :hittype,
+            y = {:medvalue, title = ytitle, aggregate = :mean, type = :quantitative}) +
+        @vlplot(:errorbar, color = :condition,
+            x = :hittype,
+            y = {:q95u, title = ytitle, aggregate = :mean, type = :quantitative},
+            y2 = :q95l)
+    )
+
+
+classhitdf_summary = @_ classhitdf_long |>
+    groupby(__, [:hittype, :condition]) |>
+    combine(__, :zvalue => median => :medvalue,
+                :zvalue => minimum => :minvalue,
+                :zvalue => maximum => :maxvalue,
+                :zvalue => (x -> quantile(x, 0.75)) => :q50u,
+                :zvalue => (x -> quantile(x, 0.25)) => :q50l,
+                :zvalue => (x -> quantile(x, 0.975)) => :q95u,
+                :zvalue => (x -> quantile(x, 0.025)) => :q95l)
+
+ytitle = "Median Power"
+@_ classhitdf_summary |>
+    @vlplot(facet = {
+            field = :hittype,
+            type = :ordinal
+        },
+        config = {facet = {columns = 10}}
+    )+(@vlplot() +
+        @vlplot(:point, color = :condition,
+            x = :condition, y = {:medvalue, title = ytitle}) +
+        @vlplot(:errorbar, color = :condition,
+            x = :condition, y = {:q95u, title = ytitle}, y2 = :q95l)
+    )
+
+classhitdf_stats = @_ classhitdf_long |>
+    groupby(__, [:hittype, :condition, :sid]) |>
+    combine(__, :zvalue => median => :medvalue)
+
+ytitle = "Median Power of top 30 MCCA Components"
+plpower = @_ classhitdf_stats |>
+    filter(_.hittype == "hit", __) |>
+    @vlplot(
+        # facet = {
+        #     field = :hittype,
+        #     type = :ordinal
+        # },
+        config = {legend = {disable = true}, facet = {columns = 10}}
+    )+(@vlplot(height = 300) +
+    @vlplot({:point, filled = true, size = 75}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
+    @vlplot({:errorbar, ticks = {size = 5}}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :ci}) +
+    @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -5},
+        color = {value = "black"},
+        x = :condition, y = {:medvalue, title = ytitle})
+    ) |> save(joinpath(dir, "medpower.svg"))
+
+ytitle = "Median Power of top 30 MCCA Components"
+plpower_hittype = @_ classhitdf_stats |>
+    filter(_.hittype != "hit", __) |>
+    @vlplot(facet = {
+            field = :hittype,
+            type = :ordinal
+        },
+        config = {legend = {disable = true}, facet = {columns = 10}}
+    )+(@vlplot(height = 100) +
+    @vlplot({:point, filled = true, size = 75}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
+    @vlplot({:errorbar, ticks = {size = 5}}, color = :condition,
+        x = :condition,
+        y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :ci}) +
+    @vlplot({:point, filled = true, size = 15, opacity = 0.25, xOffset = -5},
+        color = {value = "black"},
+        x = :condition, y = {:medvalue, title = ytitle})
+    ) |> save(joinpath(dir, "medpower_hittypes.svg"))
+
+# Combine above figures into single plot
+# -----------------------------------------------------------------
+
+maingroup(x) = @_ x |> __.node |> elements |> first |> elements |>
+    filter(nodename(_) == "g", __) |> first |> elements |> first |> elements |> first |>
+    unlink!
+
+catmain = readxml(joinpath(dir, "category.svg")) |> maingroup
+catside = readxml(joinpath(dir, "category_hittype.svg")) |> maingroup
+# powmain = readxml(joinpath(dir, "medpower.svg")) |> maingroup
+powside = readxml(joinpath(dir, "medpower_hittype.svg")) |> maingroup
+
+catmain["transform"] = "translate(320, 0)"
+catside["transform"] = "translate(640, 0)"
+powside["transform"] = "translate(640, 168)"
+
+doc = readxml(joinpath(dir, "medpower.svg"))
+docnode = @_ doc |> __.node |> elements |> first
+linkprev!(docnode, catmain)
+linkprev!(docnode, catside)
+linkprev!(docnode, powside)
+linkprev!(docnode, xmlpatterns(patterns))
+
+open(io -> prettyprint(io, doc), joinpath(dir, "fig1.svg"), write = true)
+
+# Detailed Baseline plots
+# -----------------------------------------------------------------
 
 baselines = @_ predictmeans |>
     filter(_.modeltype != "full", __) |>
@@ -400,33 +626,8 @@ pl = plotmeans |>
 
 plotfile = joinpath(dir, "baseline_models.svg")
 pl |> save(plotfile)
-addpatterns(plotfile)
+addpatterns(plotfile, patterns)
 
-function addpatterns(filename)
-    blue = "#4c78a8"
-    orange = "#f58518"
-    red = "#e45756"
-
-    stripes = @_ """
-    <defs>
-        <pattern id="blue_orange" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
-        </pattern>
-        <pattern id="blue_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$blue;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
-        </pattern>
-        <pattern id="orange_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:$orange;" />
-            <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:$red;" />
-        </pattern>
-    </defs>
-    """ |> parsexml |> __.node |> elements |> first |> unlink!
-    vgplot = readxml(filename)
-    @_ vgplot.root |> elements |> first |> linkprev!(__, stripes)
-    open(io -> prettyprint(io, vgplot), joinpath(dir, filename), write = true)
-end
 # customize the fill with some low-level svg coding
 
 # Display of model coefficients
