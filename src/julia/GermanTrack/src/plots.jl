@@ -1,11 +1,16 @@
 export addpatterns, xmlpatterns
 
-function xmlpatterns(patterns::Dict{String,Tuple{String,String}}; size=4)
+colorstr(x::String) = x
+colorstr(x::Color) = "#"*hex(x)
+function xmlpatterns(patterns::Dict{String,<:Any}; size=4)
     stripes = prod(patterns) do (name, colors)
         """
-        <pattern id="$name" x="0" y="0" width="$(2size)" height="$(2size)" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect x="0" y="0" width="$size" height="$(2size)" style="stroke:none; fill:$(colors[1]);" />
-            <rect x="$size" y="0" width="$size" height="$(2size)" style="stroke:none; fill:$(colors[2]);" />
+        <pattern id="$name" x="0" y="0" width="$(2size)" height="$(2size)"
+                patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect x="0" y="0" width="$size" height="$(2size)" style="stroke:none;
+                fill:$(colorstr(colors[1]));" />
+            <rect x="$size" y="0" width="$size" height="$(2size)" style="stroke:none;
+                fill:$(colorstr(colors[2]));" />
         </pattern>
         """
     end
@@ -14,7 +19,7 @@ function xmlpatterns(patterns::Dict{String,Tuple{String,String}}; size=4)
         elements |> first |> unlink!
 end
 
-function addpatterns(filename, patterns::Dict{String,Tuple{String,String}}; size=4)
+function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     stripes_xml = xmlpatterns(patterns, size = size)
     vgplot = readxml(filename)
     @_ vgplot.root |> elements |> first |> linkprev!(__, stripes_xml)

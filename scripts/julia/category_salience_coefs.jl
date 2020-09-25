@@ -8,9 +8,84 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns
+    StatsFuns, Colors
 
 dir = mkpath(plotsdir("category_salience"))
+
+# Behavioral Data
+# =================================================================
+
+gray = RGB(0.4,0.4,0.4)
+myblue = RGB(0.074,0.263,0.604)
+
+colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
+    hchoices = range(40, 50, length = 15),
+    lchoices = range(50, 60, length = 15),
+    cchoices = range(75, 100, length = 15),
+    transform = deuteranopic ∘ tritanopic # color-blind transform
+)[[3,5,4]]
+
+salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "condition_by_salience.csv")) |>
+    transform!(__, :salience => ByRow(uppercasefirst) => :salience,
+                   :condition => ByRow(uppercasefirst) => :condition)
+
+@_ salience_hit |>
+    @vlplot(
+        title = {text = ["Hit Rate by Salience"], subtitle = "(Low/High)"},
+        transform = [
+            {calculate = "datum.pmean + datum.err", as = "upper"},
+            {calculate = "datum.pmean - datum.err", as = "lower"}
+        ],
+        config = {legend = {disable = true}},
+        spacing = 2
+    ) +
+    hcat(
+        (
+            @vlplot(
+                width = 63, height = 100, autosize = "pad",
+                transform = [{filter = "datum.comparison == 'global_v_object'"}]) +
+            @vlplot(:line,
+                x = {:condition, axis = {labelAngle = 25, labelAlign = "center", title = ""}},
+                y = {:pmean, title = "Hit Rate", scale = {domain = [0.5, 1]}},
+                color = :salience) +
+            @vlplot({:point, filled = true},
+                x = :condition,
+                y = :pmean,
+                color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
+            @vlplot({:text, align = :center, dy = -10},
+                transform = [{filter = "datum.condition == 'Global'"}],
+                x = :condition,
+                y = :upper,
+                text = :salience,
+                color = :salience
+            ) +
+            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
+        ),
+        (
+            @vlplot(
+                width = 62, height = 100, autosize = "pad",
+                transform = [{filter = "datum.comparison == 'global_v_spatial'"}],
+            ) +
+            @vlplot(:line,
+                x = {:condition, axis = {labelAngle = 25, labelAlign = "center", title = ""}},
+                y = {:pmean, title = "", scale = {domain = [0.5, 1]}},
+                color = :salience) +
+            @vlplot({:point, filled = true},
+                x = :condition,
+                y = :pmean,
+                color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
+            @vlplot({:text, align = :center, dy = -10},
+                transform = [{filter = "datum.condition == 'Global'"}],
+                x = :condition,
+                y = :upper,
+                text = :salience,
+                color = :salience
+            ) +
+            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
+        )
+    ) |>
+    save(joinpath(dir, "behavior_salience.svg"))
 
 # Find λ
 # =================================================================
@@ -397,6 +472,93 @@ pl = classdiffs |>
         )
     ));
 pl |> save(joinpath(dir, "salience_timeline.svg"))
+
+# Job app plot
+# -----------------------------------------------------------------
+
+nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
+    100logistic(C),
+    @_ classmeans_sum |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
+        filter(_.λ != 1.0, __) |>
+        transform!(__, :condition => ByRow(uppercasefirst) => :condition_label) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> 100logistic(l(x) - l(y) + C)) => :meancor) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
+end
+
+annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
+ytitle = ["Classification Accuracy", "(Null Model Corrected)"]
+target_len_y = 90
+pl = @_ classdiffs |>
+    filter(_.hittype == "hit", __) |>
+    @vlplot(
+        width = 96, height = 150,
+        config = {legend = {disable = true}},
+        title = {text = ["EEG Salience", "Classification"], subtitle = "(Low/High)"}
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
+    ) +
+    # data lines
+    @vlplot(:line,
+        x = {:winstart, type = :quantitative, title = ["Time relative to", "target onset (s)"]},
+        y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [50,100]}}) +
+    # data errorbands
+    @vlplot(:errorband,
+        x = {:winstart, type = :quantitative},
+        y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter = "datum.winstart > 2.4 && datum.winstart < 2.45"}],
+        x = {datum = 3.0},
+        y = {:meancor, aggregate = :mean, type = :quantitative},
+        text = :condition_label
+    ) +
+    # Basline (0 %) dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+            x = {datum = 2.3}, y = {datum = nullmean},
+            text = {value = ["Baseline Accuracy", "(Null Model)"]},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "salience_timeline_job.svg"))
+
+# hit miss plot
+# -----------------------------------------------------------------
 
 hitvmiss = @_ classdiffs |>
     unstack(__, [:winstart, :sid, :condition], :hittype, :logitmeandiff) |>

@@ -5,26 +5,138 @@ using DrWatson; @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures
+    StatsFuns, Distributions, DSP, DataStructures, Colors
 wmean = GermanTrack.wmean
 n_winlens = 6
 
 dir = mkpath(joinpath(plotsdir(), "condition"))
 
+gray = RGB(0.6,0.6,0.6)
+myblue = RGB(0.074,0.263,0.604)
+
+distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
+    hchoices = range(40, 50, length = 15),
+    lchoices = range(50, 60, length = 15),
+    cchoices = range(75, 100, length = 15),
+    transform = deuteranopic ∘ tritanopic # color-blind transform
+)[3:end]
+
+colors = distinguishable_colors(3, [colorant"black", colorant"white", gray],
+    hchoices = range(150, 342, length = 15),
+    lchoices = range(20, 60, length = 15),
+    cchoices = range(50, 100, length = 15),
+    dropseed = true, transform = deuteranopic ∘ tritanopic #=color-blind transform=#)
+colors = colors[[2,1,3]]
 patterns = begin
-    blue = "#4c78a8"
-    orange = "#f58518"
-    red = "#e45756"
     Dict(
-        "blue_orange" => (blue, orange),
-        "blue_red"    => (blue, red),
-        "orange_red"  => (orange, red)
+        "mix1_2" => colors[1:2],
+        "mix1_3"    => colors[[1,3]],
+        "mix2_3"  => colors[2:3]
     )
 end
 
 # Behavioral Data
 # =================================================================
 
+main_effects = CSV.read(joinpath(processed_datadir("plots"), "main_effects.csv"))
+
+@_ main_effects |>
+    filter(_.stat ∈ ["hr", "fr"], __) |>
+    transform!(__, [:pmean, :err] => (-) => :lower,
+                  [:pmean, :err] => (+) => :upper) |>
+    @vlplot(
+        width = {step = 58},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = 20}
+        }) +
+    @vlplot({:bar, xOffset = -10},
+        transform = [{filter = "datum.stat == 'hr'"}],
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:pmean, scale = {domain = [0, 1]}, title = "Proportion"},
+        color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+    @vlplot({:bar, xOffset = 10},
+        transform = [{filter = "datum.stat == 'fr'"}],
+        x = {:condition, axis = {title = ""}},
+        y = :pmean,
+        color = {value = "rgb(175,175,175)"}) +
+    @vlplot({:rule, xOffset = -10},
+        transform = [{filter = "datum.stat == 'hr'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, title = ""}, y2 = :lower
+    ) +
+    @vlplot({:rule, xOffset = 10},
+        transform = [{filter = "datum.stat == 'fr'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, title = ""}, y2 = :lower
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", basline = "bottom", dx = 2, dy = -17},
+        transform = [{filter = "datum.stat == 'fr'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, aggregate = :mean, type = :quantitative},
+        text = {value = ["False" "Alarms"]},
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "bottom", dx = -18, dy = -5},
+        transform = [{filter = "datum.stat == 'hr'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, aggregate = :mean, type = :quantitative},
+        text = {value = ["Hits"]},
+    ) |>
+    save(joinpath(dir, "behavior.svg"))
+
+@_ main_effects |>
+    filter(_.stat ∈ ["fr_distract", "fr_random"], __) |>
+    transform!(__, [:pmean, :err] => (-) => :lower,
+                  [:pmean, :err] => (+) => :upper) |>
+    @vlplot(
+        width = {step = 58},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = 20}
+        }) +
+    @vlplot({:bar, xOffset = -10},
+        transform = [{filter = "datum.stat == 'fr_distract'"}],
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:pmean, scale = {domain = [0, 1]}, title = "Proportion"},
+        color = {:condition, scale = {range = "#".*hex.(colors[2:3])}}) +
+    @vlplot({:bar, xOffset = 10},
+        transform = [{filter = "datum.stat == 'fr_random'"}],
+        x = {:condition, axis = {title = ""}},
+        y = :pmean,
+        color = {value = "rgb(175,175,175)"}) +
+    @vlplot({:rule, xOffset = -10},
+        transform = [{filter = "datum.stat == 'fr_distract'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, title = ""}, y2 = :lower
+    ) +
+    @vlplot({:rule, xOffset = 10},
+        transform = [{filter = "datum.stat == 'fr_random'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, title = ""}, y2 = :lower
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", basline = "bottom", dx = 2, dy = -5},
+        transform = [{filter = "datum.stat == 'fr_random'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, aggregate = :mean, type = :quantitative},
+        text = {value = ["Control"]},
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "bottom", dx = -18, dy = -5},
+        transform = [{filter = "datum.stat == 'fr_distract'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, aggregate = :mean, type = :quantitative},
+        text = {value = ["Distract"]},
+    ) |>
+    save(joinpath(dir, "behavior_distract.svg"))
 
 # Findb best λs
 # =================================================================
@@ -299,9 +411,9 @@ predictmeans = @_ predictbasedf |>
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
 compnames = OrderedDict(
-    "global-v-object"  => "Global vs. Object",
-    "global-v-spatial" => "Global vs. Spatial",
-    "object-v-spatial" => "Object vs. Spatial")
+    "global-v-object"  => "Global vs.\n Object",
+    "global-v-spatial" => "Global vs.\n Spatial",
+    "object-v-spatial" => "Object vs.\n Spatial")
 
 modelnames = OrderedDict(
     # "random-window" => "Random\nWindow",
@@ -324,43 +436,75 @@ nullmeans = @_ predictmeans |>
     filter(_.modeltype == "null", __) |>
     deletecols!(__, [:logitcorrect, :modeltype]) |>
     rename!(__, :correct => :nullmodel)
+
+lowerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][2]
+innerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][1]
+upperboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][3]
+
 plotfull = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
     innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
-    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
+    groupby(__, [:compname, :hittype, :comparison]) |>
+    combine(__, :correct => innerboot => :correct,
+                :correct => lowerboot => :lower,
+                :correct => upperboot => :upper,
+                :nullmodel => innerboot => :nullmodel,
+                :nullmodel => lowerboot => :nulllower,
+                :nullmodel => upperboot => :nullupper)
 
-ytitle= "% Correct"
+ytitle= "Proportion Correct"
 plhit = @_ plotfull |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
         # facet = { column = { field = :hittype, type = :nominal} },
-        height = 300,
-        transform = [{calculate = "datum.correct * 100", as = :correct},
-                        {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+        width = {step = 58},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = 20}
+        }
     ) + (
-    @vlplot(x = {:compname, axis = nothing},
+    @vlplot(x = {:compname, axis = {
+            labelAngle = 0,
+            title = "",
+            labelExpr = "split(datum.label, '\\n')"}},
         color = {
             :compname, title = nothing,
-            scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
-            legend = {legendX = 5, legendY = 5, orient = "none"}}) +
-    @vlplot(:bar,
-        y = {:correct, aggregate = :mean, type = :quantitative,
-            scale = {domain = [0.5 ,1].*100},
+            scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
+    @vlplot({:bar, xOffset = -10},
+        y = {:correct,
+            scale = {domain = [0.5 ,1]},
             title = ytitle}) +
-    @vlplot(:bar,
-        color = {value = "rgb(50,50,50)"},
-        opacity = {value = 0.5},
-        y = {:nullmodel, aggregate = :mean, type = :quantitative, title = ytitle},
+    @vlplot({:bar, xOffset = 10},
+        color = {value = "#"*hex(gray)},
+        y = {:nullmodel, title = ytitle},
     ) +
-    @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+    @vlplot({:rule, xOffset = -10},
         color = {value = "black"},
-        y = {:correct, aggregate = :ci, type = :quantitative,
-            scale = {domain = [0.5 ,1].*100},
+        y2 = :upper,
+        y = {:lower,
+            scale = {domain = [0.5 ,1]},
+            title = ytitle}) +
+    @vlplot({:rule, xOffset = 10},
+        color = {value = "black"},
+        y2 = :nullupper,
+        y = {:nulllower,
+            scale = {domain = [0.5 ,1]},
             title = ytitle})
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", basline = "bottom", dx = -18, dy = -8},
+        x = {:compname, axis = {title = ""}},
+        y = {:upper, aggregate = :mean, type = :quantitative},
+        text = {value = "Full"},
+    ) +
+    @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "bottom", dx = 2, dy = -8},
+        x = {:compname, axis = {title = ""}},
+        y = {:nullupper, aggregate = :mean, type = :quantitative},
+        text = {value = "Null"},
     );
 plotfile = joinpath(dir, "category.svg")
 plhit |> save(plotfile)
-addpatterns(plotfile, patterns)
+addpatterns(plotfile, patterns, size = 10)
 
 ytitle= "% Correct"
 plhittype = @_ plotfull |>
@@ -374,7 +518,7 @@ plhittype = @_ plotfull |>
         height = 100,
         color = {
             :compname, title = nothing,
-            scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
+            scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]},
             legend = {legendX = 5, legendY = 5, orient = "none"}}) +
     @vlplot(:bar,
         y = {:correct, aggregate = :mean, type = :quantitative,
