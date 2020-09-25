@@ -140,9 +140,7 @@ function load_subject(file, stim_info;encoding = RawEncoding(), framerate = miss
     SubjectData(eeg = data, events = stim_events)
 end
 
-function events_for_eeg(file, stim_info)
-    sid = sidfor(file)
-    event_file = joinpath(processed_datadir("eeg"), @sprintf("sound_events_%03d.csv", sid))
+function events(event_file, stim_info)
     stim_events = DataFrame(CSV.File(event_file))
 
     target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
@@ -173,6 +171,12 @@ function events_for_eeg(file, stim_info)
     stim_events.target_time_label = get.(Ref(target_time_label), si, missing)
 
     stim_events
+end
+
+function events_for_eeg(file, stim_info)
+    sid = sidfor(file)
+    @_ joinpath(processed_datadir("eeg"), @sprintf("sound_events_%03d.csv", sid)) |>
+        events(__, stim_info)
 end
 
 function sidfor(filepath)
