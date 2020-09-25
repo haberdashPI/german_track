@@ -9,6 +9,9 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(rjson)
+library(forcats)
+
+source("src/R/analysis.R")
 
 analysis_dir = file.path(base_dir,'scripts','R')
 cache_dir = file.path(base_dir,'_research','cache','cache')

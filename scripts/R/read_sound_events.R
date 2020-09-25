@@ -32,27 +32,14 @@ p1 = ggplot(ef,aes(x=time/60,y=bit,color=factor(bit))) + geom_point() +
     xlab("minutes")
 
 
-presfiles = list.files(file.path(raw_datadir,'behavioral','duringeeg'),sprintf("%04d.*log",sid))
+presfiles = list.files(file.path(raw_datadir,'eeg'),sprintf("%04d.*log",sid))
 if(length(presfiles) > 1){
     msg = sprintf("Multiple files matching pattern for sid = %d:",sid)
     stop(do.call(paste,c(list(msg), as.list(presfiles),list(sep="\n"))))
 }
-presfile = file.path(raw_datadir,'behavioral','duringeeg',presfiles)
+presfile = file.path(raw_datadir,'eeg',presfiles)
 
-raw_pf = read.table(presfile,header=TRUE,skip=3,sep="\t",
-    blank.lines.skip=TRUE,fill=TRUE)
-
-pf = raw_pf %>% rename(subtrial=Trial) %>%
-    mutate(trial = cumsum(Event.Type=="Sound")) %>%
-    group_by(trial) %>%
-    summarize(response =
-              last(Code[Event.Type == "Response" & Code %in% c(2,3)]),
-          time = first(Time) / 10^4, # in seconds
-          condition = first(block_type.str.),
-          trial_block_offset = first(trial_order.num.),
-          sound_index = first(trial_file.num.),
-          response_time =
-              last(TTime[Event.Type == "Response" & Code %in% c(2,3)]) / 10^4)
+pf = read_experiment_events(presfile, response_codes = c(2,3))
 
 pf = pf %>% filter(condition %in% c("test","object","feature"),
                    !is.na(response)) %>%
@@ -108,7 +95,7 @@ if(any(diff(pf$trial) != 1)){
 
 
 pf %>%
-    select(trial,sample,time,condition,response,sound_index) %>%
+    select(trial,sample,time,condition,reported_target,sound_index) %>%
     write.csv(file.path(processed_datadir,'eeg',
         sprintf("sound_events_%03d.csv",sid)),
         row.names=FALSE)

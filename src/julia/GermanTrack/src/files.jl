@@ -157,8 +157,6 @@ function events_for_eeg(file, stim_info)
         missing)
     stim_events[!, :target_present] .= target_times[si] .> 0
     stim_events[!, :target_time] = ifelse.(target_times[si] .> 0, target_times[si], missing)
-    stim_events[!, :target_detected] .= stim_events.target_present .==
-        (stim_events.response .== 2)
     if :bad_trial ∈ propertynames(stim_events)
         stim_events[!, :bad_trial] = convert.(Bool, stim_events.bad_trial)
     else
