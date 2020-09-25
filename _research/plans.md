@@ -17,10 +17,11 @@ wip: 3. average across all time for early/late salience (isntead of just picking
     - [X] random trial type: does the response type matter (yes)
 - [X] regression components
 - [X] subset of channels
-- [ ] plot of main result and selected baseline !!
+- [ ] plot of main result and selected baseline !! (can occur indepndent of behavioral data)
+    - [ ] add baseline to main bar plot
+    - [ ] add
 - [ ] integrate with behavioral results !!
 - [ ] stats
-- [ ] get human data
 - [ ] try MCCA averaging???
 
 ### story:
