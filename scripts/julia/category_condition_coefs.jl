@@ -181,106 +181,6 @@ final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
     for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
     for sid in first(λ_fold))...)
 
-# Different channel groups
-# =================================================================
-
-# Mean Frequency Bin Analysis
-# -----------------------------------------------------------------
-
-classdf_chgroup_file = joinpath(processed_datadir("features"), "cond-freaqmeans-chgroups.csv")
-
-if isfile(classdf_chgroup_file)
-    classdf_chgroup = CSV.read(classdf_chgroup_file)
-else
-    windows = [(len = len, start = 0.0)
-        for len in GermanTrack.spread(1, 0.5, n_winlens)]
-
-    classdf_chgroup = mapreduce(append!!, ["frontal", "central", "mixed"]) do group
-        subjects, events = load_all_subjects(processed_datadir("eeg", group), "h5")
-        classdf_chgroup_groups = @_ events |>
-            filter(_.target_present, __) |>
-            filter(ishit(_, region = "target") == "hit", __) |>
-            groupby(__, [:sid, :condition])
-
-        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget, windows)
-        result[!,:chgroup] .= group
-
-        result
-    end
-    CSV.write(classdf_chgroup_file, classdf_chgroup)
-end
-
-# Model evaluation
-# -----------------------------------------------------------------
-
-λfold = groupby(final_λs, :fold)
-classdf_chgroup[!,:fold] = in.(classdf_chgroup.sid, Ref(Set(λ_folds[1][1]))) .+ 1
-
-classcomps = [
-    "global-v-object"  => @_(classdf_chgroup |> filter(_.condition in ["global", "object"],  __)),
-    "global-v-spatial" => @_(classdf_chgroup |> filter(_.condition in ["global", "spatial"], __)),
-]
-
-resultdf_chgroups = mapreduce(append!!, classcomps) do (comp, data)
-    groups = pairs(groupby(data, [:winlen, :fold, :chgroup]))
-
-    progress = Progress(length(groups))
-    function findclass((key,sdf))
-        result = Empty(DataFrame)
-        λ = first(λfold[(fold = first(sdf.fold),)].λ)
-        result = testclassifier(LassoPathClassifiers([1.0, λ]), data = sdf, y = :condition,
-            X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
-            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
-            on_model_exception = :debug)
-
-        result[!, keys(key)] .= permutedims(collect(values(key)))
-        result[!, :comparison] .= comp
-        next!(progress)
-
-        result
-    end
-    foldl(append!!, Map(findclass), collect(groups))
-end
-
-# Plot performance
-# -----------------------------------------------------------------
-
-classmeans = @_ resultdf_chgroups |>
-    groupby(__, [:winlen, :sid, :λ, :fold, :comparison, :chgroup]) |>
-    combine(__, [:correct, :weight] => wmean => :mean)
-
-classmeans_sum = @_ classmeans |>
-    groupby(__, [:sid, :λ, :fold, :comparison, :chgroup]) |>
-    combine(__, :mean => mean => :mean) |>
-    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5,by=0.01)) => :meanlogit)
-
-nullmeans = @_ classmeans_sum |>
-    filter(_.λ == 1.0, __) |>
-    rename!(__, :mean => :nullmean, :meanlogit => :nullmeanlogit) |>
-    deletecols!(__, :λ)
-
-classdiffs = @_ classmeans_sum |>
-    filter(_.λ != 1.0, __) |>
-    deletecols!(__, :λ) |>
-    innerjoin(__, nullmeans, on = [:comparison, :chgroup, :sid, :fold]) |>
-    transform!(__, [:meanlogit, :nullmeanlogit] => (-) => :meandifflogit)
-
-classdiffs |>
-    @vlplot(facet = {column = {field = :comparison, type = :nominal}}) + (
-        @vlplot(x = {:chgroup, type = :nominal},
-            color = {:chgroup, scale = {scheme = :dark2}}) +
-        @vlplot(:bar,
-            y = {:meandifflogit, aggregate = :mean, type=  :quantitative},
-        ) +
-        @vlplot(:errorbar,
-            color = {value = "black"},
-            y = {:meandifflogit, aggregate = :stderr, type=  :quantitative},
-        )
-    ) |>
-    save(joinpath(dir, "chgroups.svg"))
-
-CSV.write(joinpath(processed_datadir("analyses"), "chgroup-accuracy.csv"), classdiffs)
-
 # Different baseline models
 # =================================================================
 
@@ -899,5 +799,106 @@ pl = @_ classhitdf_stats |>
 
 pl |> save(joinpath(dir, "medpower_hittype.svg"))
 pl |> save(joinpath(dir, "medpower_hittype.png"))
+
+# Different channel groups
+# =================================================================
+
+# Mean Frequency Bin Analysis
+# -----------------------------------------------------------------
+
+classdf_chgroup_file = joinpath(processed_datadir("features"), "cond-freaqmeans-chgroups.csv")
+
+if isfile(classdf_chgroup_file)
+    classdf_chgroup = CSV.read(classdf_chgroup_file)
+else
+    windows = [(len = len, start = 0.0)
+        for len in GermanTrack.spread(1, 0.5, n_winlens)]
+
+    classdf_chgroup = mapreduce(append!!, ["frontal", "central", "mixed"]) do group
+        subjects, events = load_all_subjects(processed_datadir("eeg", group), "h5")
+        classdf_chgroup_groups = @_ events |>
+            filter(_.target_present, __) |>
+            filter(ishit(_, region = "target") == "hit", __) |>
+            groupby(__, [:sid, :condition])
+
+        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget, windows)
+        result[!,:chgroup] .= group
+
+        result
+    end
+    CSV.write(classdf_chgroup_file, classdf_chgroup)
+end
+
+# Model evaluation
+# -----------------------------------------------------------------
+
+λfold = groupby(final_λs, :fold)
+classdf_chgroup[!,:fold] = in.(classdf_chgroup.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+classcomps = [
+    "global-v-object"  => @_(classdf_chgroup |> filter(_.condition in ["global", "object"],  __)),
+    "global-v-spatial" => @_(classdf_chgroup |> filter(_.condition in ["global", "spatial"], __)),
+]
+
+resultdf_chgroups = mapreduce(append!!, classcomps) do (comp, data)
+    groups = pairs(groupby(data, [:winlen, :fold, :chgroup]))
+
+    progress = Progress(length(groups))
+    function findclass((key,sdf))
+        result = Empty(DataFrame)
+        λ = first(λfold[(fold = first(sdf.fold),)].λ)
+        result = testclassifier(LassoPathClassifiers([1.0, λ]), data = sdf, y = :condition,
+            X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
+            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
+            on_model_exception = :debug)
+
+        result[!, keys(key)] .= permutedims(collect(values(key)))
+        result[!, :comparison] .= comp
+        next!(progress)
+
+        result
+    end
+    foldl(append!!, Map(findclass), collect(groups))
+end
+
+# Plot performance
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf_chgroups |>
+    groupby(__, [:winlen, :sid, :λ, :fold, :comparison, :chgroup]) |>
+    combine(__, [:correct, :weight] => wmean => :mean)
+
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:sid, :λ, :fold, :comparison, :chgroup]) |>
+    combine(__, :mean => mean => :mean) |>
+    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5,by=0.01)) => :meanlogit)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean, :meanlogit => :nullmeanlogit) |>
+    deletecols!(__, :λ)
+
+classdiffs = @_ classmeans_sum |>
+    filter(_.λ != 1.0, __) |>
+    deletecols!(__, :λ) |>
+    innerjoin(__, nullmeans, on = [:comparison, :chgroup, :sid, :fold]) |>
+    transform!(__, [:meanlogit, :nullmeanlogit] => (-) => :meandifflogit)
+
+classdiffs |>
+    @vlplot(facet = {column = {field = :comparison, type = :nominal}}) + (
+        @vlplot(x = {:chgroup, type = :nominal},
+            color = {:chgroup, scale = {scheme = :dark2}}) +
+        @vlplot(:bar,
+            y = {:meandifflogit, aggregate = :mean, type=  :quantitative},
+        ) +
+        @vlplot(:errorbar,
+            color = {value = "black"},
+            y = {:meandifflogit, aggregate = :stderr, type=  :quantitative},
+        )
+    ) |>
+    save(joinpath(dir, "chgroups.svg"))
+
+CSV.write(joinpath(processed_datadir("analyses"), "chgroup-accuracy.csv"), classdiffs)
+
 
 
