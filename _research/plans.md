@@ -20,7 +20,10 @@ wip: 3. average across all time for early/late salience (isntead of just picking
 - [ ] plot of main result and selected baseline !! (can occur indepndent of behavioral data)
     - [ ] add baseline to main bar plot
     - [ ] add
-- [ ] integrate with behavioral results !!
+- [ ] get human data !!
+    - [X] store and load raw event files
+    - [ ] find stimulus metadata (timings of targets; stored in .mat file)
+    - [ ] store metadata in portable format, and load the data
 - [ ] stats
 - [ ] try MCCA averaging???
 
