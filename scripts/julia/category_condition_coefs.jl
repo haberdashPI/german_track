@@ -233,30 +233,29 @@ classbasedf = innerjoin(classbasedf, final_λs, on = [:sid])
 
 modeltype = [
     "full" => (
-        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "target", __)),
         λfn = df -> df.λ |> first
     ),
     "null" => (
-        filterfn = @_(filter(_.windowtype == "target" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "target", __)),
         λfn = df -> 1.0,
     ),
     "random-labels" => (
         filterfn = df ->
-            @_(df |> filter(_.windowtype == "target" && _.hittype == "hit", __) |>
+            @_(df |> filter(_.windowtype == "target", __) |>
                      groupby(__, [:sid, :winlen, :windowtype]) |>
                      transform!(__, :condition => shuffle => :condition)),
         λfn = df -> df.λ |> first
     ),
     "random-window-before" => (
-        filterfn = @_(filter(_.windowtype == "rndbefore" && _.hittype == "hit", __)),
+        filterfn = @_(filter(_.windowtype == "rndbefore", __)),
         λfn = df -> df.λ |> first
     ),
     "random-trialtype" => (
         filterfn = df ->
             @_(df |> filter(_.windowtype == "target", __) |>
                      groupby(__, [:sid, :condition, :winlen, :windowtype]) |>
-                     transform!(__, :hittype => shuffle => :hittype) |>
-                     filter(_.hittype == "hit", __)),
+                     transform!(__, :hittype => shuffle => :hittype)),
         λfn = df -> df.λ |> first
     )
 ]
@@ -285,7 +284,7 @@ function bymodeltype(((key, df), type, comp))
 end
 
 predictbasedf = @_ classbasedf |>
-    groupby(__, [:fold, :winlen]) |> pairs |>
+    groupby(__, [:fold, :winlen, :hittype]) |> pairs |>
     Iterators.product(__, modeltype, comparisons) |>
     collect |> foldxt(append!!, Map(bymodeltype), __)
 
@@ -293,9 +292,9 @@ predictbasedf = @_ classbasedf |>
 # -----------------------------------------------------------------
 
 predictmeans = @_ predictbasedf |>
-    groupby(__, [:sid, :comparison, :modeltype, :winlen]) |>
+    groupby(__, [:sid, :comparison, :modeltype, :winlen, :hittype]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
-    groupby(__, [:sid, :comparison, :modeltype]) |>
+    groupby(__, [:sid, :comparison, :modeltype, :hittype]) |>
     combine(__,
         :correct => mean => :correct,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
@@ -328,14 +327,18 @@ nullmeans = @_ predictmeans |>
     rename!(__, :correct => :nullmodel)
 plotfull = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
-    innerjoin(__, nullmeans, on = [:sid, :comparison]) |>
+    innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
 
 ytitle= "% Correct"
-pl = plotfull |>
-    @vlplot(x = {:compname, axis = nothing},
+plhit = @_ plotfull |>
+    filter(_.hittype == "hit", __) |>
+    @vlplot(
+        # facet = { column = { field = :hittype, type = :nominal} },
         transform = [{calculate = "datum.correct * 100", as = :correct},
-                     {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+                        {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+    ) + (
+    @vlplot(x = {:compname, axis = nothing},
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
@@ -353,9 +356,42 @@ pl = plotfull |>
         color = {value = "black"},
         y = {:correct, aggregate = :ci, type = :quantitative,
             scale = {domain = [0.5 ,1].*100},
-            title = ytitle});
+            title = ytitle})
+    );
 plotfile = joinpath(dir, "category.svg")
-pl |> save(plotfile)
+plhittype |> save(plotfile)
+addpatterns(plotfile, patterns)
+
+ytitle= "% Correct"
+plhittype = @_ plotfull |>
+    filter(_.hittype != "hit", __) |>
+    @vlplot(
+        facet = { column = { field = :hittype, type = :nominal} },
+        transform = [{calculate = "datum.correct * 100", as = :correct},
+                     {calculate = "datum.nullmodel * 100", as = :nullmodel}],
+    ) + (
+    @vlplot(x = {:compname, axis = nothing},
+        color = {
+            :compname, title = nothing,
+            scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
+            legend = {legendX = 5, legendY = 5, orient = "none"}}) +
+    @vlplot(:bar,
+        y = {:correct, aggregate = :mean, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle}) +
+    @vlplot(:bar,
+        color = {value = "rgb(50,50,50)"},
+        opacity = {value = 0.5},
+        y = {:nullmodel, aggregate = :mean, type = :quantitative, title = ytitle},
+    ) +
+    @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+        color = {value = "black"},
+        y = {:correct, aggregate = :ci, type = :quantitative,
+            scale = {domain = [0.5 ,1].*100},
+            title = ytitle})
+    );
+plotfile = joinpath(dir, "category_hittype.svg")
+plhittype |> save(plotfile)
 addpatterns(plotfile, patterns)
 
 # Detailed Baseline plots
