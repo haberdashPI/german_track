@@ -502,9 +502,8 @@ plpower = @_ classhitdf_stats |>
         #     field = :hittype,
         #     type = :ordinal
         # },
-        height = 300,
         config = {legend = {disable = true}, facet = {columns = 10}}
-    )+(@vlplot(width = 50, height = 300) +
+    )+(@vlplot(height = 300) +
     @vlplot({:point, filled = true, size = 75}, color = :condition,
         x = :condition,
         y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
@@ -525,7 +524,7 @@ plpower_hittype = @_ classhitdf_stats |>
         },
         height = 150,
         config = {legend = {disable = true}, facet = {columns = 10}}
-    )+(@vlplot(width = 50, height = 300) +
+    )+(@vlplot(height = 150) +
     @vlplot({:point, filled = true, size = 75}, color = :condition,
         x = :condition,
         y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
