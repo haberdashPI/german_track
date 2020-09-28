@@ -4,7 +4,8 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Printf, ProgressMeter, FileIO, EEGCoding, Query, Dates, Distributed,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
-    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays
+    JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays,
+    Underscores, EzXML
 
 using BSON: @save, @load
 export CSV, @save, @load

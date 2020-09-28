@@ -5,7 +5,7 @@ using DrWatson; @quickactivate("german_track")
 
 using EEGCoding, GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures, EzXML
+    StatsFuns, Distributions, DSP, DataStructures
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -300,15 +300,7 @@ predictmeans = @_ predictbasedf |>
         :correct => mean => :correct,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
-Nmtypes = length(baselines.modeltype |> unique)
-refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
-    modeltype = repeat(baselines.modeltype |> unique, inner=2))
-nrefs = size(refline,1)
-refline = @_ refline |>
-    repeat(__, 3) |>
-    insertcols!(__, :comparison => repeat(baselines.comparison |> unique, inner=nrefs))
-
-compnames = Dict(
+compnames = OrderedDict(
     "global-v-object"  => "Global vs. Object",
     "global-v-spatial" => "Global vs. Spatial",
     "object-v-spatial" => "Object vs. Spatial")
@@ -322,14 +314,28 @@ modelnames = OrderedDict(
     "random-trialtype" => "Random\nTrial Type",
 )
 
+Nmtypes = length(modelnames)
+refline = DataFrame(x = repeat([0,1],Nmtypes), y = repeat([0,1],Nmtypes),
+    modeltype = repeat(keys(modelnames) |> collect, inner=2))
+nrefs = size(refline,1)
+refline = @_ refline |>
+    repeat(__, 3) |>
+    insertcols!(__, :comparison => repeat(compnames |> keys |> collect, inner=nrefs))
+
+nullmeans = @_ predictmeans |>
+    filter(_.modeltype == "null", __) |>
+    deletecols!(__, [:logitcorrect, :modeltype]) |>
+    rename!(__, :correct => :nullmodel)
 plotfull = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
+    innerjoin(__, nullmeans, on = [:sid, :comparison]) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
 
 ytitle= "% Correct"
 pl = plotfull |>
     @vlplot(x = {:compname, axis = nothing},
-        transform = [{calculate = "datum.correct * 100", as = :correct}],
+        transform = [{calculate = "datum.correct * 100", as = :correct},
+                     {calculate = "datum.nullmodel * 100", as = :nullmodel}],
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
@@ -338,15 +344,22 @@ pl = plotfull |>
         y = {:correct, aggregate = :mean, type = :quantitative,
             scale = {domain = [0.5 ,1].*100},
             title = ytitle}) +
+    @vlplot(:bar,
+        color = {value = "rgb(50,50,50)"},
+        opacity = {value = 0.5},
+        y = {:nullmodel, aggregate = :mean, type = :quantitative, title = ytitle},
+    ) +
     @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
         color = {value = "black"},
         y = {:correct, aggregate = :ci, type = :quantitative,
             scale = {domain = [0.5 ,1].*100},
             title = ytitle});
-
 plotfile = joinpath(dir, "category.svg")
 pl |> save(plotfile)
 addpatterns(plotfile, patterns)
+
+# Detailed Baseline plots
+# -----------------------------------------------------------------
 
 baselines = @_ predictmeans |>
     filter(_.modeltype != "full", __) |>

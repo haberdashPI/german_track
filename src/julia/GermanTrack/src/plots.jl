@@ -1,3 +1,5 @@
+export addpatterns
+
 function addpatterns(filename, patterns::Dict{String,Tuple{String,String}}; size=4)
 
     stripes = prod(patterns) do (name, colors)
@@ -10,9 +12,9 @@ function addpatterns(filename, patterns::Dict{String,Tuple{String,String}}; size
     end
 
 
-    stripes_xml = string("<def>",stripes,"</def>") |> parsexml |> __.node |>
+    stripes_xml = @_ string("<defs>",stripes,"</defs>") |> parsexml |> __.node |>
         elements |> first |> unlink!
     vgplot = readxml(filename)
-    @_ vgplot.root |> elements |> first |> linkprev!(__, stripes)
-    open(io -> prettyprint(io, vgplot), joinpath(dir, filename), write = true)
+    @_ vgplot.root |> elements |> first |> linkprev!(__, stripes_xml)
+    open(io -> prettyprint(io, vgplot), filename, write = true)
 end

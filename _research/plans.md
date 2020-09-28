@@ -18,7 +18,7 @@ wip: 3. average across all time for early/late salience (isntead of just picking
 - [X] regression components
 - [X] subset of channels
 - [ ] plot of main result and selected baseline !! (can occur indepndent of behavioral data)
-    - [ ] recent changes introduced a bug; all labels are 'object' (did we loose the others, or did they change to 'object'?)
+    - [X] recent changes introduced a bug; all labels are 'object' (did we loose the others, or did they change to 'object'?)
     - [ ] add baseline to main bar plot
     - [ ] add
 - [ ] get human data !!
