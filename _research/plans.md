@@ -57,6 +57,9 @@ clearer story
 - [X] it would be good to know if there is a build up effect for salience: do
   we see the same effect for early/late targets?
 - [ ] why are so many weights for targets == 1, is that right?
+- [X] plot difference of hit and miss
+- [ ] what does the single trial classification of miss data look
+- [ ] try hit/miss classification across salience
 - [ ] do the frontal v central features matter? !!
 - [ ] it would be interesting to see the features at the earlier and later timepoints !!
 - [ ] stats

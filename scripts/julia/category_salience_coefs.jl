@@ -250,13 +250,15 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_timeline_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_label])
-    winbounds(start,k) = sid -> (start = star, len = winlen_bysid(sid) |>
-        GermanTrack.spread(0.5,n_winlens,k=k))
+        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |>
+        groupby(__, [:sid, :condition, :salience_label, :hittype])
+    winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
+        GermanTrack.spread(0.5,n_winlens,indices=k))
 
     windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
-    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windowtarget, windows, foldl)
+    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windowtarget,
+        windows)
 
     CSV.write(classdf_timeline_file, classdf_timeline)
 end
@@ -272,7 +274,7 @@ classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) 
 if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
     resultdf_timeline = CSV.read(resultdf_timeline_file)
 else
-    factors = [:fold, :winlen, :winstart, :condition]
+    factors = [:fold, :winlen, :winstart, :condition, :hittype]
     groups = groupby(classdf_timeline, factors)
 
     progress = Progress(length(groups))
@@ -290,6 +292,7 @@ else
     end
 
     resultdf_timeline = @_ groups |> pairs |> collect |>
+        # foldl(append!!, Map(findclass), __)
         foldxt(append!!, Map(findclass), __)
 
     ProgressMeter.finish!(progress)
@@ -302,11 +305,11 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf_timeline |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition]) |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :hittype]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :λ, :fold, :condition]) |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :hittype]) |>
     combine(__, :mean => mean => :mean)
 
 nullmeans = @_ classmeans_sum |>
@@ -316,7 +319,8 @@ nullmeans = @_ classmeans_sum |>
 
 classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
     @_ classmeans_sum |>
-        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold]) |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
+        filter(_.λ != 1.0, __) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
 end
 
@@ -324,9 +328,11 @@ annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argm
 ytitle = "Model - Null Model Accuracy (logit scale)"
 pl = classdiffs |>
     @vlplot(
+        config = {legend = {disable = true}},
         title = "Low/High Salience Classification Accuracy",
+        facet = {column = {field = :hittype, type = :nominal}}) +
+    (@vlplot(
         color = {field = :condition, type = :nominal},
-        config = {legend = {disable = true}}
     ) +
     # data lines
     @vlplot(:line,
@@ -373,8 +379,72 @@ pl = classdiffs |>
             text = {value = "Target Length"},
             color = {value = "black"}
         )
-    );
+    ));
 pl |> save(joinpath(dir, "salience_timeline.svg"))
+
+hitvmiss = @_ classdiffs |>
+    unstack(__, [:winstart, :sid, :condition], :hittype, :logitmeandiff) |>
+    transform!(__, [:hit, :miss] => (-) => :hitvmiss)
+
+annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
+ytitle = "Model - Null Model Accuracy (logit scale)"
+pl = hitvmiss |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        title = "Low/High Salience Classification Accuracy",
+        # facet = {column = {field = :hittype, type = :nominal}}
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal},
+    ) +
+    # data lines
+    @vlplot(:line,
+        x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+        y = {:hitvmiss, aggregate = :mean, type = :quantitative, title = ytitle}) +
+    # data errorbands
+    @vlplot(:errorband,
+        x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+        y = {:hitvmiss, aggregate = :ci, type = :quantitative, title = ytitle}) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter = "datum.winstart > 2.2"}],
+        x = {datum = 3.0},
+        y = {:hitvmiss, aggregate = :mean, type = :quantitative},
+        text = :condition
+    ) +
+    # Basline (0 %) dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = 0.0},
+            color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = 0.25, dir = 270},
+            {x = 0.95, y = 0.25, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
+            x = {datum = 0.5}, y = {datum = 0.25},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "salience_timeline_hitvmiss.svg"))
+
 
 # Early/late targets
 # =================================================================
