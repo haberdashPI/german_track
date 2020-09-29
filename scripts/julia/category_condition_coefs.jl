@@ -367,12 +367,12 @@ ytitle= "% Correct"
 plhittype = @_ plotfull |>
     filter(_.hittype != "hit", __) |>
     @vlplot(
-        height = 150,
         facet = { column = { field = :hittype, type = :nominal} },
         transform = [{calculate = "datum.correct * 100", as = :correct},
                      {calculate = "datum.nullmodel * 100", as = :nullmodel}],
     ) + (
     @vlplot(x = {:compname, axis = nothing},
+        height = 100,
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#blue_orange)", "url(#blue_red)", "url(#orange_red)"]},
@@ -522,9 +522,8 @@ plpower_hittype = @_ classhitdf_stats |>
             field = :hittype,
             type = :ordinal
         },
-        height = 150,
         config = {legend = {disable = true}, facet = {columns = 10}}
-    )+(@vlplot(height = 150) +
+    )+(@vlplot(height = 100) +
     @vlplot({:point, filled = true, size = 75}, color = :condition,
         x = :condition,
         y = {:medvalue, title = ytitle, type = :quantitative, aggregate = :mean}) +
@@ -535,6 +534,31 @@ plpower_hittype = @_ classhitdf_stats |>
         color = {value = "black"},
         x = :condition, y = {:medvalue, title = ytitle})
     ) |> save(joinpath(dir, "medpower_hittypes.svg"))
+
+# Combine above figures into single plot
+# -----------------------------------------------------------------
+
+maingroup(x) = @_ x |> __.node |> elements |> first |> elements |>
+    filter(nodename(_) == "g", __) |> first |> elements |> first |> elements |> first |>
+    unlink!
+
+catmain = readxml(joinpath(dir, "category.svg")) |> maingroup
+catside = readxml(joinpath(dir, "category_hittype.svg")) |> maingroup
+# powmain = readxml(joinpath(dir, "medpower.svg")) |> maingroup
+powside = readxml(joinpath(dir, "medpower_hittype.svg")) |> maingroup
+
+catmain["transform"] = "translate(320, 0)"
+catside["transform"] = "translate(640, 0)"
+powside["transform"] = "translate(640, 168)"
+
+doc = readxml(joinpath(dir, "medpower.svg"))
+docnode = @_ doc |> __.node |> elements |> first
+linkprev!(docnode, catmain)
+linkprev!(docnode, catside)
+linkprev!(docnode, powside)
+linkprev!(docnode, xmlpatterns(patterns))
+
+open(io -> prettyprint(io, doc), joinpath(dir, "fig1.svg"), write = true)
 
 # Detailed Baseline plots
 # -----------------------------------------------------------------
