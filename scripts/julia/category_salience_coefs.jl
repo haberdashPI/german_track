@@ -404,7 +404,7 @@ hitvmiss = @_ classdiffs |>
     transform!(__, [:hit, :miss] => (-) => :hitvmiss)
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = "Model - Null Model Accuracy (logit scale)"
+ytitle = "Hit - Miss (logit scale)"
 pl = hitvmiss |>
     @vlplot(
         config = {legend = {disable = true}},
