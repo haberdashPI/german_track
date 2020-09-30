@@ -94,11 +94,11 @@
         },
         "dvc": {
             "hashes": [
-                "sha256:219939be09c751400263c354f8f8ad710dd3169a406d0607e582f11c624a7485",
-                "sha256:7f3ca92355fea09ddab94e995c6d066f4757c2b3e9195f9f4787588871bb955e"
+                "sha256:172bad9ff194b977fe982634835a33db5f3d84e2c767a59b3de26e7660800339",
+                "sha256:f409a5306a133f38994404489da83ce590c413dbf5119ec7cc423ca50b0d275d"
             ],
             "index": "pypi",
-            "version": "==1.7.4"
+            "version": "==1.8.0"
         },
         "flatten-dict": {
             "hashes": [
@@ -116,9 +116,10 @@
         },
         "funcy": {
             "hashes": [
-                "sha256:75ee84c3b446f92e68a857c2267b15a1b49c631c9d5a87a5f063cd2d6761a5c4"
+                "sha256:65b746fed572b392d886810a98d56939c6e0d545abb750527a717c21ced21008",
+                "sha256:c247c3d085e03a89974e0c9e8331e9a79db3768a263556ba896d6c92d665bba2"
             ],
-            "version": "==1.14"
+            "version": "==1.15"
         },
         "future": {
             "hashes": [
@@ -269,11 +270,11 @@
         },
         "rich": {
             "hashes": [
-                "sha256:291700f5c09fae83676f44781d01a292c39efad9505dd4724899646b794f9afb",
-                "sha256:941c679ea681f0915eb986e48c38fa74f661f31bf815a3be696b27588469faf3"
+                "sha256:555c4d730a63377d220cfded4a47ccf6e329ada1b5d6e4f71d3618a6f49acbb6",
+                "sha256:ff701be541be32bcf46e821487c00bf4fa560aa814fc3cc9b3d514fd9b19a6f6"
             ],
             "markers": "python_version >= '3.6' and python_version < '4.0'",
-            "version": "==7.0.0"
+            "version": "==7.1.0"
         },
         "ruamel.yaml": {
             "hashes": [
@@ -358,11 +359,11 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:8f3c5815e3b5e20bc40463fa6b42a352178859692a68ffaa469706e6d38342a5",
-                "sha256:faf9c671bd3fad5ebaeee366949d969dca2b2be32c872a7092a1e1a9048d105b"
+                "sha256:2dd75fdb764f673b8187643496fcfbeac38348015b665878e582b152f3391cdb",
+                "sha256:93b7a6a9129fce904f6df4cf3ae7ff431d779be681a95c3344c26f3e6c09abfa"
             ],
             "markers": "python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
-            "version": "==4.49.0"
+            "version": "==4.50.0"
         },
         "typing-extensions": {
             "hashes": [
