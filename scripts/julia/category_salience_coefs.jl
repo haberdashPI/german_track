@@ -331,8 +331,8 @@ nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = ["% Correct", "(Null-model Corrected)"]
-target_len_y = 60
+ytitle = "Full - Null Model (logit scale)"
+target_len_y = 0.1
 pl = classdiffs |>
     @vlplot(
         config = {legend = {disable = true}},
@@ -345,7 +345,7 @@ pl = classdiffs |>
     @vlplot(:line,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
         y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [50,67]}}) +
+            #= scale = {domain = [50,67]} =#}) +
     # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
@@ -361,18 +361,18 @@ pl = classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-            y = {datum = nullmean},
+            y = {datum = 0.0},
             color = {value = "black"})
     ) +
     # "Null Model" text annotation
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
-            x = {datum = 2.3}, y = {datum = nullmean},
-            text = {value = ["Mean Accuracy", "of Null Model"]},
-            color = {value = "black"}
-        )
-    ) +
+    # (
+    #     @vlplot(data = {values = [{}]}) +
+    #     @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+    #         x = {datum = 2.3}, y = {datum = nullmean},
+    #         text = {value = ["Mean Accuracy", "of Null Model"]},
+    #         color = {value = "black"}
+    #     )
+    # ) +
     # "Target Length" arrow annotation
     (
         @vlplot(data = {values = [
