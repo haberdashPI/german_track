@@ -18,7 +18,7 @@ dir = mkpath(plotsdir("category_salience"))
 # Mean Frequency Bin Analysis
 # -----------------------------------------------------------------
 
-classdf_file = joinpath(cache_dir("features"), "salience-freqmeans-trial.csv")
+classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
 
 if isfile(classdf_file)
     classdf = CSV.read(classdf_file)
@@ -27,7 +27,7 @@ else
 
     classdf_groups = @_ events |>
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_label, :trial])
+        groupby(__, [:sid, :condition, :salience_label])
 
     windows = [(len = len, start = start, before = -len)
         for len in 2.0 .^ range(-1, 1, length = 10),
@@ -40,7 +40,7 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-resultdf_file = joinpath(cache_dir("models"), "salience-target-time-trial.csv")
+resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
 
 shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds,
     :salience), __)
@@ -247,7 +247,7 @@ pl = windowdiff |>
 # Compute frequency bins
 # -----------------------------------------------------------------
 
-classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline-trial.csv")
+classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
 
 if isfile(classdf_timeline_file)
     classdf_timeline = CSV.read(classdf_timeline_file)
@@ -257,7 +257,7 @@ else
     classdf_timeline_groups = @_ events |>
         transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
-        groupby(__, [:sid, :condition, :salience_label, :hittype, :trial])
+        groupby(__, [:sid, :condition, :salience_label, :hittype])
     winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
         GermanTrack.spread(0.5,n_winlens,indices=k))
 
@@ -273,7 +273,7 @@ end
 
 λsid = groupby(final_λs, :sid)
 
-resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline-trial.csv")
+resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
 classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
@@ -572,7 +572,7 @@ pl = classdiffs |>
     );
 pl |> save(joinpath(dir, "salience_earlylate.svg"))
 
-# Plot 4-salience-level timeline
+# Plot 4-salience-level, trial-by-trial timeline
 # =================================================================
 
 # Compute frequency bins
@@ -836,4 +836,3 @@ pl = hitvmiss |>
     ));
 pl |> save(joinpath(dir, "salience_timeline_4level_hitvmiss.svg"))
 
-# TODO: it is probably important to check the null model here
