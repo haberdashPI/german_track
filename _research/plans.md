@@ -59,17 +59,17 @@ clearer story
 - [ ] why are so many weights for targets == 1, is that right?
 - [X] plot difference of hit and miss
 - [X] what does the single trial classification of miss data look like?
-- [ ] try hit/miss classification across salience (most promising)
+- [X] try hit/miss classification across salience (most promising)
 - [ ] do the frontal v central features matter? !!
 - [ ] it would be interesting to see the features at the earlier and later timepoints !!
 - [ ] stats
 - [ ] get human data
-- [ ] can we see any of these effects at an individual/trial-by-trial level?
+- [X] can we see any of these effects at an individual/trial-by-trial level?
 - [ ] what do the correct rejection trials early v. late in the trial look like?
       build-up would predict a change
 - [ ] can these be with the median power?
     - [ ] do these show up across time?
-- [ ] what does this look like with both hits and misses?
+- [X] what does this look like with both hits and misses?
 
 
 ### story:
