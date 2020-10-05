@@ -60,7 +60,7 @@ clearer story
 - [X] plot difference of hit and miss
 - [X] what does the single trial classification of miss data look like?
 - [X] try hit/miss classification across salience (most promising)
-- [ ] do the frontal v central features matter? !!
+- [X] do the frontal v central features matter? !!
 - [ ] it would be interesting to see the features at the earlier and later timepoints !!
 - [ ] stats
 - [ ] get human data
