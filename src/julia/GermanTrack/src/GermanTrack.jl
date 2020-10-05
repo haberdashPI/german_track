@@ -60,6 +60,25 @@ const target_time_label = begin
     map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
 end
 
+const target_switch_label = begin
+    switch_distance = map(zip(switch_times,target_times)) do (switches, target)
+        if target == 0
+            return missing
+        end
+        before = @_ target .- switches |> filter(_ > 0, __)
+        if isempty(before)
+            Inf
+        else
+            last(before)
+        end
+    end
+    med = median(skipmissing(switch_distance))
+    map(switch_distance) do dist
+        ismissing(dist) && return missing
+        dist < med ? "near" : "far"
+    end
+end
+
 const numpy = PyNULL()
 
 const SVC = PyNULL()

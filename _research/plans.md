@@ -109,7 +109,7 @@ this and we can't say much with any confidence about this without furthe expeirm
   - [X] make new plots
   - [X] hold on, why did it show any difference for early/at all, is there a problem
         with the baseline correction? (there are some reasons, discuss in meeting)
-- [ ] classify targets (not switches) that are far/near from a switch !!
+- [X] classify targets (not switches) that are far/near from a switch !!
 - [ ] stats
 - [ ] get human data
 - [ ] can these been done with the median power?
