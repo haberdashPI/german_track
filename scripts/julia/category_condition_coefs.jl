@@ -42,7 +42,7 @@ main_effects = CSV.read(joinpath(processed_datadir("plots"), "main_effects.csv")
         x = {:condition, axis = {title = "", labelAngle = 0,
             labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
         y = {:pmean, scale = {domain = [0, 1]}, title = "Proportion"},
-        color = {:condition, scale = {scheme = "category10"}}) +
+        color = {:condition, scale = {scheme = "dark2"}}) +
     @vlplot(:bar,
         transform = [{filter = "datum.stat == 'fr'"}],
         x = {:condition, axis = {title = ""}},
