@@ -2,16 +2,16 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="221" height="244" viewBox="0 0 221 244" version="1.1">
   <defs><pattern id="mix2_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#A208B6;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FF3067;"/>
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#9B0000;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#E73800;"/>
 </pattern>
 <pattern id="mix1_2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#007300;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#A208B6;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#9B0000;"/>
 </pattern>
 <pattern id="mix1_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#007300;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FF3067;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#E73800;"/>
 </pattern>
 </defs>
   <rect width="221" height="244" fill="white"/>
@@ -107,24 +107,24 @@
             <path aria-label=": Object vs.  Spatial; Proportion Correct: 0.662871713854" role="graphics-symbol" aria-roledescription="bar" d="M145,134.8513144583154h20v65.14868554168461h-20Z" fill="#AFAFAF"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.775572723158; Proportion Correct: 0.693868374404" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.000000000000007,122.4526502382052)" x2="0" y2="-32.681739501479115" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.935126980304; Proportion Correct: 0.879857469386" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77,48.05701224542687)" x2="0" y2="-22.10780436695066" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.680990892177; Proportion Correct: 0.587091645577" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(135,165.16334176932537)" x2="0" y2="-37.55969864008627" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.775385651327; Proportion Correct: 0.69339545166" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.000000000000007,122.64181933614972)" x2="0" y2="-32.79607986714791" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.936071368935; Proportion Correct: 0.880178103096" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77,47.92875876160929)" x2="0" y2="-22.3573063355837" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.682544195847; Proportion Correct: 0.586424787836" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(135,165.43008486547822)" x2="0" y2="-38.44776320412305" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; nullupper: 0.654745978247; Proportion Correct: 0.616622262466" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(39.00000000000001,153.35109501363092)" x2="0" y2="-15.249486312232591" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; nullupper: 0.790387639996; Proportion Correct: 0.759716228509" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(97,96.11350859622397)" x2="0" y2="-12.26856459476707" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; nullupper: 0.682432121469; Proportion Correct: 0.643153433034" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(155,142.7386267862659)" x2="0" y2="-15.71147537370777" stroke="black"/>
+            <line aria-label=": Global vs.  Object; nullupper: 0.654310099754; Proportion Correct: 0.616149950842" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(39.00000000000001,153.54001966337373)" x2="0" y2="-15.264059565060847" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; nullupper: 0.790069802252; Proportion Correct: 0.760323425596" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(97,95.8706297615918)" x2="0" y2="-11.898550662226668" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; nullupper: 0.682454038352; Proportion Correct: 0.642491276356" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(155,143.00348945747814)" x2="0" y2="-15.985104798161402" stroke="black"/>
           </g>
           <g class="mark-text role-mark layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text aria-label=": Global vs.  Object; Mean of upper: 0.775572723158" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(11.000000000000007,84.77091073672608)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
-            <text aria-label=": Global vs.  Spatial; Mean of upper: 0.935126980304" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(69,20.94920787847621)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
-            <text aria-label=": Object vs.  Spatial; Mean of upper: 0.680990892177" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(127,122.6036431292391)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
+            <text aria-label=": Global vs.  Object; Mean of upper: 0.775385651327" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(11.000000000000007,84.84573946900181)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
+            <text aria-label=": Global vs.  Spatial; Mean of upper: 0.936071368935" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(69,20.571452426025587)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
+            <text aria-label=": Object vs.  Spatial; Mean of upper: 0.682544195847" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(127,121.98232166135517)" font-family="sans-serif" font-size="9px" fill="black">Full</text>
           </g>
           <g class="mark-text role-mark layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text aria-label=": Global vs.  Object; Mean of nullupper: 0.654745978247" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(31.000000000000007,128.10160870139833)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
-            <text aria-label=": Global vs.  Spatial; Mean of nullupper: 0.790387639996" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(89,73.8449440014569)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
-            <text aria-label=": Object vs.  Spatial; Mean of nullupper: 0.682432121469" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(147,117.02715141255814)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
+            <text aria-label=": Global vs.  Object; Mean of nullupper: 0.654310099754" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(31.000000000000007,128.27596009831288)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
+            <text aria-label=": Global vs.  Spatial; Mean of nullupper: 0.790069802252" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(89,73.97207909936513)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
+            <text aria-label=": Object vs.  Spatial; Mean of nullupper: 0.682454038352" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(147,117.01838465931674)" font-family="sans-serif" font-size="9px" fill="black">Null</text>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
