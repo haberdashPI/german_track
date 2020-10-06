@@ -164,7 +164,8 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
     # cross validation loop
     ids = shuffle!(stableRNG(seed, :testclassifier), unique(data[:, crossval]))
-    _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test = :nothing)
+    _folds = folds(n_folds, unique(data[:, crossval]), on_all_empty_test = :nothing,
+        rng = stableRNG(seed))
     for (i, (trainids, testids)) in enumerate(_folds)
         train = @_ filter(_[crossval] in trainids, data)
         test = @_ filter(_[crossval] in testids, data)

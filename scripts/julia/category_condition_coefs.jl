@@ -112,8 +112,7 @@ end
 # Model evaluation
 # -----------------------------------------------------------------
 
-shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds), __)
-λ_folds = folds(2, shuffled_sids)
+λ_folds = folds(2, unique(classdf.sid), rng = stableRNG(2019_11_18, :lambda_folds))
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 classcomps = [
