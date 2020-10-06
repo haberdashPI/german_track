@@ -5,7 +5,7 @@ using Tables, DrWatson, SignalOperators, WAV, Infiltrator, DataFrames,
     Unitful, DependentBootstrap, Distributions, LambdaFn, VegaLite, CSV,
     ProximalOperators, PlotAxes, AxisArrays, DataFramesMeta, Random, Statistics,
     JSON3, PyCall, HDF5, ScikitLearn, CRC, RandomNumbers, CategoricalArrays,
-    Underscores, EzXML
+    Underscores, EzXML, Colors
 
 using BSON: @save, @load
 export CSV, @save, @load
