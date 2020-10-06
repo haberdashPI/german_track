@@ -12,18 +12,77 @@ n_winlens = 6
 dir = mkpath(joinpath(plotsdir(), "condition"))
 
 patterns = begin
-    blue = "#4c78a8"
-    orange = "#f58518"
-    red = "#e45756"
+    blue = "rgb(31, 119, 180)"
+    orange = "rgb(255, 127, 14)"
+    green = "rgb(44, 160, 44)"
     Dict(
         "blue_orange" => (blue, orange),
-        "blue_red"    => (blue, red),
-        "orange_red"  => (orange, red)
+        "blue_green"    => (blue, green),
+        "orange_green"  => (orange, green)
     )
 end
 
 # Behavioral Data
 # =================================================================
+
+main_effects = CSV.read(joinpath(processed_datadir("plots"), "main_effects.csv"))
+
+@_ main_effects |>
+    filter(_.stat ∈ ["hr", "fr"], __) |>
+    transform!(__, [:pmean, :err] => (-) => :lower,
+                  [:pmean, :err] => (+) => :upper) |>
+    @vlplot(
+        width = {step = 35},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = 20}
+        }) +
+    @vlplot(:bar,
+        transform = [{filter = "datum.stat == 'hr'"}],
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:pmean, scale = {domain = [0, 1]}, title = "Proportion"},
+        color = {:condition, scale = {scheme = "category10"}}) +
+    @vlplot(:bar,
+        transform = [{filter = "datum.stat == 'fr'"}],
+        x = {:condition, axis = {title = ""}},
+        y = :pmean,
+        color = {value = "rgb(150,150,150)"}) +
+    @vlplot({:errorbar, size = 1, ticks = {size = 5}, tickSize = 2.5},
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:upper, title = ""}, y2 = :lower
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "center", dy = 15},
+        transform = [{filter = "datum.stat == 'fr' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {:pmean, aggregate = :mean, type = :quantitative},
+        text = {value = ["False Alarms"]},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "center", dy = 15},
+        transform = [{filter = "datum.stat == 'hr' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {:pmean, aggregate = :mean, type = :quantitative},
+        text = {value = ["Hits"]},
+    ) |>
+    save(joinpath(dir, "behavior.svg"))
+
+@_ main_effects |>
+    filter(_.stat ∈ ["fr_distract", "fr_random"], __) |>
+    transform!(__, [:pmean, :err] => (-) => :lower,
+                  [:pmean, :err] => (+) => :upper) |>
+    @vlplot() +
+    @vlplot(:bar,
+        x = {:condition, axis = {title = ""}},
+        y = {:pmean, axis = {grid = false}, stack = nothing, scale = {domain = [0, 1]}},
+        color = :stat) +
+    @vlplot(:errorbar,
+        x = {:condition, axis = {title = ""}},
+        y = :upper, y2 = :lower
+    ) |>
+    save(joinpath(dir, "behavior_distract.svg"))
 
 # Findb best λs
 # =================================================================
