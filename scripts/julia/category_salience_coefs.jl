@@ -42,9 +42,8 @@ end
 
 resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
 
-shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds,
-    :salience), __)
-λ_folds = folds(2, shuffled_sids)
+λ_folds = folds(2, unique(classdf.sid), rng = stableRNG(2019_11_18, :lambda_folds,
+    :salience))
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 if isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)

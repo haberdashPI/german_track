@@ -50,8 +50,7 @@ end
 
 # Classification accuracy
 # -----------------------------------------------------------------
-shuffled_sids = @_ unique(classdf.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds), __)
-λ_folds = folds(2, shuffled_sids)
+λ_folds = folds(2, unique(classdf.sid), rng = stableRNG(2019_11_18, :lambda_folds))
 classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 lambdas = 10.0 .^ range(-2, 0, length=100)
@@ -244,8 +243,8 @@ end
 
 resultdf_target_file = joinpath(cache_dir("models"), "switch-freqmeans-target.csv")
 
-shuffled_sids = @_ unique(classdf_target.sid) |> shuffle!(stableRNG(2019_11_18, :lambda_folds, :salience), __)
-λ_folds = folds(2, shuffled_sids)
+λ_folds = folds(2,unique(classdf_target.sid), rng =
+    stableRNG(2019_11_18, :lambda_folds, :salience))
 classdf_target[!,:fold] = in.(classdf_target.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
 if isfile(resultdf_target_file) && mtime(resultdf_target_file) > mtime(classdf_target_file)
