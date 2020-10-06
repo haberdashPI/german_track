@@ -29,7 +29,7 @@ end
 Given a a window (from, to) in seconds, return the frames of `trial` in this range.
 """
 function windowtrial(trial, fs, (from, to))
-    start, stop = clamp.(round.(Int, fs.*((from, to) .+ time)), 1, size(trial, 2))
+    start, stop = clamp.(round.(Int, fs.*(from, to)), 1, size(trial, 2))
     view(trial, :, start:stop)
 end
 
@@ -108,53 +108,74 @@ end
 # Windowing Functions
 # -----------------------------------------------------------------
 
-"""
-    windowtarget(trial, event, fs, (from, to))
+struct WindowFn{S}
+    start::Float64
+    len::Float64
+end
 
-A windowing function (can be passed to [`compute_freqbins`](#)) which selects a window
-relative to the target, if present. If the target isn't present, selects a random window.
+"""
+    windowtarget((;start, len))
+    windowtarget(fn)
+
+A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
+This one selects a window relative to the target, if present. If the target isn't present,
+selects a random window.
+
+If passed a start and length, these are relative to the target, in seconds. If passed a
+function that function takes a DataFrameRow, containing the event information for a trial,
+and it should return a named tuple with `start` and `len`.
+
 """
 const target_seed = 1983_11_09
-function windowtarget(trial, event, fs, (from, to))
+function windowtarget(params)
+    WindowFn{:target}(windowparams(params)...)
+end
+function slice(wn::WindowFn{:target}, trial, event, fs)
     time = !ismissing(event.target_time) ? event.target_time : begin
         maxlen = floor(Int, size(trial, 2) / fs)
         rand(trialrng((:windowtarget_missing, target_seed), event),
             Distributions.Uniform(0, maxlen - to))
     end
-
-    windowtrial(trial, fs, (from, to))
+    windowtrial(trial, fs, time .+ (wn.start, wn.start + wn.len))
 end
 
 """
     windowswitch(trial, event, fs, (from, to))
 
-A windowing function (can be passed to [`compute_freqbins`](#)) which selects
-a random window near a switch.
+A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
+This one selects a window near a randomly selected switch.
+
 """
 const switch_seed = 2018_11_18
-function windowswitch(trial, event, fs, (from, to))
-    si = event.sound_index
-    stimes = switch_times[si]
+function windowswitch(params)
+    WindowFn{:switch}(windowparams(params)...)
+function slice(wn::WindowFn{:switch}, trial, event, fs)
+    from, to = start, start+len
+    function (trial, event, fs)
+        si = event.sound_index
+        stimes = switch_times[si]
 
-    options = windowsat(stimes, max_trial_length, window = (from, to))
-    window = rand(trialrng((:windowswitch, switch_seed), event), options)
+        options = windowsat(stimes, max_trial_length, window = (from, to))
+        from, to = rand(trialrng((:windowswitch, switch_seed), event), options)
 
-    start = max(1, round(Int, window[1]*fs))
-    stop = min(round(Int, window[2]*fs), size(trial, 2))
-    view(trial, :, start:stop)
+        windowtrial(trial, fs, (from, to))
+    end
 end
 
 """
     windowbaseline(trial, event, fs, (from, to))
 
-A windowing function (can be passed to [`compute_freqbins`](#)) which selects a random
-window far from a switch; this is called a baseline, because these regions are generally
-used as a control to compare to the target. We avoid switches because we have a priori
-reason to think the response might be different during these disorienting moments.
+A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
+This one selects a random window far from a switch; this is called a baseline, because these
+regions are generally used as a control to compare to the target. We avoid switches because
+we have a priori reason to think the response might be different during these disorienting
+moments.
 
 """
 const baseline_seed = 2017_09_16
-function windowbaseline(;mindist, minlength, onempty = error)
+function windowbaseline(;start, len, mindist, minlength, onempty = error)
+    from, to = start, start + len
+
     handleempty(onempty::Missing) = missing
     handleempty(onempty::Function) = onempty()
     handleempty(onempty::typeof(error)) =
@@ -289,6 +310,9 @@ function computebands(signal, fs; freqbins = default_freqbins, channels = Colon(
     result
 end
 
+"""
+    compute_freqbins(subjects, groupdf, windowfn, window, [reducerfn = foldxt])
+"""
 function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt;
     kwds...)
 
