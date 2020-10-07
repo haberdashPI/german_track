@@ -1003,3 +1003,291 @@ pl = hitvmiss |>
     ));
 pl |> save(joinpath(dir, "salience_timeline_4level_hitvmiss.svg"))
 
+# Plot 4-salience-level, trial-by-trial timeline x early/late
+# =================================================================
+
+# Compute frequency bins
+# -----------------------------------------------------------------
+
+classdf_sal4_target_timeline_file = joinpath(cache_dir("features"), "salience-4level-target-time-freqmeans-timeline-trial.csv")
+
+if isfile(classdf_sal4_target_timeline_file)
+    classdf_sal4_target_timeline = CSV.read(classdf_sal4_target_timeline_file)
+else
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    classdf_sal4_target_timeline_groups = @_ events |>
+        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |>
+        filter(_.condition == "global", __) |>
+        groupby(__, [:sid, :condition, :salience_4level, :trial, :hittype, :target_time_label])
+    winbounds(start,k) = sid -> (start = start, len = winlen_bysid(sid) |>
+        GermanTrack.spread(0.5,n_winlens,indices=k))
+
+    windows = [winbounds(st,k) for st in range(0, 3, length = 64) for k in 1:n_winlens]
+    classdf_sal4_target_timeline = compute_freqbins(subjects, classdf_sal4_target_timeline_groups,
+        windowtarget, windows)
+
+    CSV.write(classdf_sal4_target_timeline_file, classdf_sal4_target_timeline)
+end
+
+# Compute classification accuracy
+# -----------------------------------------------------------------
+
+λsid = groupby(final_λs, :sid)
+
+resultdf_sal4_target_timeline_file = joinpath(cache_dir("models"), "salience-target-time-timeline-sal4.csv")
+classdf_sal4_target_timeline[!,:fold] = in.(classdf_sal4_target_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+levels = ["lowest","low","high","highest"]
+classdf_sal4_target_timeline[!,:salience_4label] =
+    CategoricalArray(get.(Ref(levels),coalesce.(classdf_sal4_target_timeline.salience_4level,0),missing), levels = levels)
+
+modeltype = [ "1v4" => [1,4], "1v3" => [1,3], "1v2" => [1,2] ]
+
+if isfile(resultdf_sal4_target_timeline_file) && mtime(resultdf_sal4_target_timeline_file) > mtime(classdf_sal4_target_timeline_file)
+    resultdf_sal4_target_timeline = CSV.read(resultdf_sal4_target_timeline_file)
+else
+    factors = [:fold, :winlen, :winstart, :condition, :hittype, :target_time_label]
+    groups = groupby(classdf_sal4_target_timeline, factors)
+
+    progress = Progress(length(groups) * length(modeltype))
+
+    function findclass(((key, sdf), (type, levels)))
+        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        filtered = @_ sdf |> filter(_.salience_4level ∈ levels, __)
+
+        result = testclassifier(LassoPathClassifiers([1.0, λ]),
+            data = filtered, y = :salience_4label, X = r"channel", crossval = :sid,
+            n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
+            maxncoef = size(filtered[:,r"channel"], 2),
+            ycoding = StatsModels.SeqDiffCoding,
+            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
+
+        result[!, keys(key)]  .= permutedims(collect(values(key)))
+        result[!, :modeltype] .= type
+        next!(progress)
+
+        result
+    end
+
+    resultdf_sal4_target_timeline = @_ groups |> pairs |> collect |>
+        Iterators.product(__, modeltype) |>
+        # foldl(append!!, Map(findclass), __)
+        foldxt(append!!, Map(findclass), __)
+
+    ProgressMeter.finish!(progress)
+    CSV.write(resultdf_sal4_target_timeline_file, resultdf_sal4_target_timeline)
+
+    alert("Completed salience timeline classification!")
+end
+
+# Display classification timeline
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf_sal4_target_timeline |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :modeltype, :hittype, :target_time_label]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :modeltype, :hittype, :target_time_label]) |>
+    combine(__, :mean => mean => :mean)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, :λ)
+
+sallevel_pairs = [
+    "1v4" => "High:\t1st vs. 4th Quartile",
+    "1v3" => "Medium:\t1st vs. 3rd Quartile",
+    "1v2" => "Low:\t1st vs. 2nd Quartile",
+]
+sallevel_shortpairs = [
+    "1v4" => ["High" , "1st vs. 4th Q"],
+    "1v3" => ["Medium", "1st vs. 3rd Q"],
+    "1v2" => ["Low", "1st vs. 2nd Q"],
+]
+
+nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
+    100logistic(C),
+    @_ classmeans_sum |>
+        filter(_.λ != 1.0, __) |>
+        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :modeltype, :hittype, :target_time_label]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> 100logistic(l(x) - l(y) + C)) => :meancor) |>
+        transform!(__, :condition => ByRow(uppercasefirst) => :condition) |>
+        transform!(__, :modeltype => (x -> replace(x, sallevel_pairs...)) => :modeltype_title) |>
+        transform!(__, :modeltype => (x -> replace(x , sallevel_shortpairs...)) => :modeltype_shorttitle)
+end
+
+annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
+ytitle = ["% Correct", "(Null-Model Corrected)"]
+target_length_y = 70.0
+pl = classdiffs |>
+    @vlplot(
+        title = {text = "Salience Classification Accuracy", subtitle = "Global Condition"},
+        config = {
+            legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"},
+        },
+        facet = {column = {field = :hittype, type = :nominal, title = nothing},
+                 row = {field = :target_time_label, type = :nominal, title = nothing}}
+    ) +
+    (
+        @vlplot(color = {field = :modeltype_title, type = :nominal,
+            scale = {scheme = :inferno}, sort = getindex.(sallevel_pairs, 2)}) +
+        # data lines
+        @vlplot(:line,
+            x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+            y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
+                 scale = {domain = [50, 100]}
+                }) +
+        # data errorbands
+        @vlplot(:errorband,
+            x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+            y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
+        # condition labels
+        @vlplot({:text, align = :left, dx = 5},
+            transform = [{filter = "datum.winstart > 2.4 && datum.winstart < 2.5"}],
+            x = {datum = 3.0},
+            y = {:meancor, aggregate = :mean, type = :quantitative},
+            text = :modeltype_shorttitle
+        ) +
+        # Basline (0 %) dotted line
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+                y = {datum = nullmean},
+                color = {value = "black"})
+        ) +
+        # "Target Length" arrow annotation
+        (
+            @vlplot(data = {values = [
+                {x = 0.05, y = target_length_y, dir = 270},
+                {x = 0.95, y = target_length_y, dir = 90}]}) +
+            @vlplot(mark = {:line, size = 1.5},
+                x = {:x, type = :quantitative},
+                y = {:y, type = :quantitative},
+                color = {value = "black"},
+            ) +
+            @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+                x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+                angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+                color = {value = "black"}
+            )
+        ) +
+        # "Target Length" text annotation
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
+                x = {datum = 0.5}, y = {datum = target_length_y},
+                text = {value = "Target Length"},
+                color = {value = "black"}
+            )
+        ) +
+        # "Null Model" text annotation
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+                x = {datum = 2.0}, y = {datum = nullmean},
+                text = {value = ["Mean Accuracy", "of Null Model"]},
+                color = {value = "black"}
+            )
+        )
+    );
+pl |> save(joinpath(dir, "salience_timeline_target-time_4level.svg"))
+
+#=
+THOUGHTS:
+
+This is kind of messy looking. Lots of questions of confusion come up.
+I don't think it's a super convincing graph. It has some promise: there
+is a difference between early and late, clearly. It is not in the direction
+I would have predicted.
+
+I might be able to create a meaningful figure of the hits, averaged across the three clases
+=#
+
+classdiff_avg = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
+    @_ classdiffs |>
+        filter(_.hittype == "hit", __) |>
+        groupby(__, [:winstart, :sid, :condition, :target_time_label]) |>
+        combine(__, :logitmeandiff => mean => :logitmeandiff) |>
+        transform!(__, :logitmeandiff => ByRow(logdiff -> 100logistic(logdiff + C)) => :meancor)
+end
+
+
+annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
+ytitle = ["% Correct", "(Null-Model Corrected)"]
+target_length_y = 70.0
+pl = classdiff_avg |>
+    @vlplot(
+        title = {text = "Salience Classification Accuracy", subtitle = "Global Condition"},
+        config = {
+            legend = {orient = :none, legendX = 5, legendY = 0.5, title = "Classification"},
+        },
+    ) +
+    (
+        @vlplot(color = {field = :target_time_label, type = :nominal,
+            scale = {scheme = :dark2}, sort = getindex.(sallevel_pairs, 2)}) +
+        # data lines
+        @vlplot(:line,
+            x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+            y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
+                 scale = {domain = [50, 100]}
+                }) +
+        # data errorbands
+        @vlplot(:errorband,
+            x = {:winstart, type = :quantitative, title = "Time (s) Relative to Target Onset"},
+            y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
+        # condition labels
+        @vlplot({:text, align = :left, dx = 5},
+            transform = [{filter = "datum.winstart > 2.4 && datum.winstart < 2.5"}],
+            x = {datum = 3.0},
+            y = {:meancor, aggregate = :mean, type = :quantitative},
+            text = :target_time_label
+        ) +
+        # Basline (0 %) dotted line
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+                y = {datum = nullmean},
+                color = {value = "black"})
+        ) +
+        # "Target Length" arrow annotation
+        (
+            @vlplot(data = {values = [
+                {x = 0.05, y = target_length_y, dir = 270},
+                {x = 0.95, y = target_length_y, dir = 90}]}) +
+            @vlplot(mark = {:line, size = 1.5},
+                x = {:x, type = :quantitative},
+                y = {:y, type = :quantitative},
+                color = {value = "black"},
+            ) +
+            @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+                x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+                angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+                color = {value = "black"}
+            )
+        ) +
+        # "Target Length" text annotation
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "bottom", yOffset = -3},
+                x = {datum = 0.5}, y = {datum = target_length_y},
+                text = {value = "Target Length"},
+                color = {value = "black"}
+            )
+        ) +
+        # "Null Model" text annotation
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
+                x = {datum = 2.0}, y = {datum = nullmean},
+                text = {value = ["Mean Accuracy", "of Null Model"]},
+                color = {value = "black"}
+            )
+        )
+    );
+pl |> save(joinpath(dir, "salience_avg_timeline_target-time_4level.svg"))
+
