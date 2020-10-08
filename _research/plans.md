@@ -4,6 +4,13 @@
 wip: 3. average across all time for early/late salience (isntead of just picking a time);
   there's an exception when classifying right now
 
+Figures we need for job application
+1. Initial paradigm diagram
+2. Figure 3A behavior (hit rate after switches)
+3. Figure 3A EEG (accuracy for early/late)
+4. Figure 2a EEG (salience over time for the three conditions)
+5. Figure 2a behavior (salience accuracy)
+
 ## 1. Main result: the different conditions have different brain responses
 
 - [X] power analysis

@@ -12,6 +12,53 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
 
 dir = mkpath(plotsdir("category_nearfar_target"))
 
+# Behavioral Data
+# =================================================================
+
+target_labels = OrderedDict(
+    "early" => ["Early target", "(before 3rd and 4th Switch)"],
+    "late"  => ["Target after", "(after 3rd or 4th Switch)"]
+)
+
+target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "hitrate_timeline_bytarget.csv")) |>
+    groupby(__, :condition) |>
+    transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
+                   [:pmean, :err] => (+) => :upper,
+                   [:pmean, :err] => (-) => :lower,
+                   :target_time => ByRow(x -> target_labels[x]) => :target_time_label)
+
+@_ target_timeline |>
+    filter(_.time < 1.5, __) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {
+                field = :target_time_label, type = :ordinal, title = nothing,
+                sort = collect(values(target_labels))
+            }
+        }
+    ) +
+    (
+        @vlplot(width = 100, height = 150) +
+        @vlplot(:trail,
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
+            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
+            size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
+            color = :condition
+        ) +
+        @vlplot(:errorband,
+            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
+            x = {:time, type = :quantitative},
+            y = {:upper, type = :quantitative}, y2 = :lower,
+            # opacity = :weight,
+            color = :condition
+        ) +
+        @vlplot(:text,
+        )
+    ) |>
+    save(joinpath(dir, "behavior_timeline.svg"))
+
 # Find λ
 # =================================================================
 
