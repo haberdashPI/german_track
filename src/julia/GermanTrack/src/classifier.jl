@@ -1,16 +1,5 @@
-export runclassifier, testclassifier, buildmodel, classifierparams, classifier_param_names,
+export runclassifier, testclassifier, classifierparams, classifier_param_names,
     LassoPathClassifiers, LassoClassifier
-
-const __classifierparams__ = (
-    svm_radial        = (:C,:gamma),
-    svm_linear        = (:C,),
-    gradient_boosting = (:max_depth, :n_estimators, :learning_rate),
-    logistic_l1       = (:lambda,),
-)
-classifier_param_names(classifier) = __classifierparams__[classifier]
-function classifierparams(obj, classifier)
-    (;(p => obj[p] for p in __classifierparams__[classifier])...)
-end
 
 struct LassoClassifier
     lambda::Float64
@@ -29,7 +18,7 @@ function zscorecol!(X, μ, σ)
     X
 end
 
-function ScikitLearn.fit!(model::LassoClassifier, X, y; kwds...)
+function StatsBase.fit(model::LassoClassifier, X, y; kwds...)
     μ = mean(X, dims = 1)
     σ = std(X, dims = 1)
 
@@ -37,7 +26,7 @@ function ScikitLearn.fit!(model::LassoClassifier, X, y; kwds...)
         Bernoulli(), λ = [model.lambda], standardize = false; kwds...)
     LassoClassifierFit(fit, μ, σ)
 end
-ScikitLearn.predict(model::LassoClassifierFit, X) =
+StatsBase.predict(model::LassoClassifierFit, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ))
 
 struct LassoPathClassifiers
@@ -48,7 +37,7 @@ struct LassoPathFits{T}
     μ::Array{Float64,2}
     σ::Array{Float64,2}
 end
-function ScikitLearn.fit!(model::LassoPathClassifiers, X, y; kwds...)
+function StatsBase.fit(model::LassoPathClassifiers, X, y; kwds...)
     μ = mean(X, dims = 1)
     σ = std(X, dims = 1)
 
@@ -56,33 +45,8 @@ function ScikitLearn.fit!(model::LassoPathClassifiers, X, y; kwds...)
         Bernoulli(), λ = model.lambdas, standardize = false; kwds...)
     LassoPathFits(fits, μ, σ)
 end
-ScikitLearn.predict(model::LassoPathFits, X) =
+StatsBase.predict(model::LassoPathFits, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ), select = AllSeg())
-
-function buildmodel(params, classifier, seed)
-    model = if classifier == :svm_radial
-        SVC(;params...)
-    elseif classifier == :svm_linear
-        SVC(
-            kernel = "linear",
-            random_state = stablehash(params, seed) & typemax(UInt32);
-            params...
-        )
-    elseif classifier == :gradient_boosting
-        GradientBoostingClassifier(
-            loss             = "deviance",
-            random_state     = stablehash(params, seed) & typemax(UInt32),
-            n_iter_no_change = 10,
-            max_features     = "auto";
-            params...
-        )
-    elseif classifier == :logistic_l1
-        @assert s(params) == __classifierparams__[:logistic_l1]
-        LassoClassifier(values(params)...)
-    else
-        error("Unknown classifier $classifier.")
-    end
-end
 
 function formulafn(data, y, X)
     # model formula (starts empty)
