@@ -12,6 +12,26 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
 
 dir = mkpath(plotsdir("category_salience"))
 
+# Behavioral Data
+# =================================================================
+
+salience_hit = main_effects = CSV.read(joinpath(processed_datadir("plots"),
+    "condition_by_salience.csv"))
+
+@_ salience_hit |>
+    @vlplot() +
+    hcat(
+        (
+            @vlplot(transform = [{filter = "datum.comparison == 'global_v_object'"}]) +
+            @vlplot(:point, x = :condition, y = :pmean, color = :condition)
+        ),
+        (
+            @vlplot(transform = [{filter = "datum.comparison == 'global_v_spatial'"}]) +
+            @vlplot(:point, x = :condition, y = :pmean, color = :condition)
+        )
+    ) |>
+    save(joinpath(dir, "behavior_salience.svg"))
+
 # Find λ
 # =================================================================
 
