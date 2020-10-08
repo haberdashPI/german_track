@@ -13,7 +13,7 @@ dir = mkpath(joinpath(plotsdir(), "condition"))
 
 gray = colorant"rgb(175,175,175)"
 colors = distinguishable_colors(3, [colorant"black", colorant"white", gray],
-    hchoices = range(50, 200, length = 15),
+    hchoices = range(150, 342, length = 15),
     lchoices = range(20, 60, length = 15),
     cchoices = range(50, 100, length = 15),
     dropseed = true, transform = deuteranopic ∘ tritanopic #=color-blind transform=#)
