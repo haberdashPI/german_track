@@ -46,10 +46,11 @@ else
         filter(ishit(_, region = "target") ∈ ["hit"], __) |>
         groupby(__, [:sid, :condition, :salience_label])
 
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in 2.0 .^ range(-1, 1, length = 10),
             start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
 
     CSV.write(classdf_file, classdf)
 end

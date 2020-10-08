@@ -49,15 +49,15 @@ else
         filter(ishit(_, region = "target") ∈ ["hit", "reject"], __) |>
         groupby(__, [:sid, :condition])
 
-    classdf = mapreduce(append!!, [:near, :far]) do class
-        windowfn = class == :near ? windowswitch :
-            windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
-        result = compute_freqbins(subjects, classdf_groups, windowfn,
-            [(len = winlen, start = 0) for winlen in spread(1, 0.5, n_winlens)])
-        result[!,:switchclass] .= string(class)
-
-        result
-    end
+    windows = [
+        class == :near ?
+            windowswitch(name = "near", len = len, start = 0) :
+            windowbaseline(name = "far", len = len, start = 0,
+                mindist = 0.5, minlength = 0.5, onempty = missing)
+        for len in spread(1, 0.5, n_winlens)
+    ]
+    result = compute_freqbins(subjects, classdf_groups, windows)
+    rename!(result, :windowtype => :switchclass)
 
     CSV.write(classdf_file, classdf)
 end
@@ -229,15 +229,16 @@ else
         filter(ishit(_, region = "target") ∈ ["hit", "reject"], __) |>
         groupby(__, [:sid, :condition, :target_time_label])
 
-    classdf = mapreduce(append!!, [:near, :far]) do class
-        windowfn = class == :near ? windowswitch :
-            windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
-        result = compute_freqbins(subjects, classdf_groups, windowfn,
-            [(len = winlen, start = 0) for winlen in spread(1, 0.5, n_winlens)])
-        result[!,:switchclass] .= string(class)
+    windows = [
+        class == :near ?
+            windowswitch(name = "near", len = len, start = 0) :
+            windowbaseline(name = "far", len = len, start = 0,
+                mindist = 0.5, minlength = 0.5, onempty = missing)
+        for len in spread(1, 0.5, n_winlens)
+    ]
 
-        result
-    end
+    result = compute_freqbins(subjects, classdf_groups, window)
+    rename!(result, :windowtype => :switchclass)
 
     CSV.write(classdf_file, classdf)
 end

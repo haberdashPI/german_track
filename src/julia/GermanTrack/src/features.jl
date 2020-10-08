@@ -108,29 +108,57 @@ end
 # Windowing Functions
 # -----------------------------------------------------------------
 
-struct WindowFn{S}
+struct WindowFnBounds{S,T}
     start::Float64
     len::Float64
+    entry::T
+    name::String
+end
+struct WindowFnFn{S,T}
+    fn::Function
+    entry::T
+    name::String
+end
+resolve(x::WindowFnBounds, _) = x
+function resolve(x::WindowFnFn{S,T}, data) where {S,T}
+    vals = x.fn(data)
+    WindowFnBounds{S,T}(vals.start, vals.len, x.entry, x.name)
+end
+
+function WindowFn{Sym}(entry = Nothing; start=nothing, len=nothing,
+    windowfn=nothing, name="window") where Sym
+
+    if isnothing(start) && isnothing(len) && isnothing(windowfn)
+        error("Need either `start` and `len` or `windowfn` keyword arguments.")
+    elseif isnothing(windowfn)
+        (isnothing(start) || isnothing(len)) && error("Need both `start` and `len` "*
+            "keyword arguments.")
+        WindowFnBounds{Sym}(start, len, entry, name)
+    else
+        !(isnothing(start) && isnothing(len)) && error("Cannot have both `windowfn` and ",
+            "one of `start` and `len` keyword arguments.")
+        WindowFnFn{Sym}(windowfn, entry, name)
+    end
 end
 
 """
-    windowtarget((;start, len))
-    windowtarget(fn)
+    windowtarget(;start, len)
+    windowtarget(;windowfn)
 
 A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
 This one selects a window relative to the target, if present. If the target isn't present,
 selects a random window.
 
 If passed a start and length, these are relative to the target, in seconds. If passed a
-function that function takes a DataFrameRow, containing the event information for a trial,
+windowfn that function takes a DataFrameRow, containing the event information for a trial,
 and it should return a named tuple with `start` and `len`.
 
 """
 const target_seed = 1983_11_09
-function windowtarget(params)
-    WindowFn{:target}(windowparams(params)...)
+function windowtarget(;params...)
+    WindowFn{:target}(;params...)
 end
-function slice(wn::WindowFn{:target}, trial, event, fs)
+function slice(wn::WindowFnBounds{:target}, trial, event, fs)
     time = !ismissing(event.target_time) ? event.target_time : begin
         maxlen = floor(Int, size(trial, 2) / fs)
         rand(trialrng((:windowtarget_missing, target_seed), event),
@@ -140,30 +168,34 @@ function slice(wn::WindowFn{:target}, trial, event, fs)
 end
 
 """
-    windowswitch(trial, event, fs, (from, to))
+    windowswitch(;start, len)
+    windowswitch(;windowfn)
 
 A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
 This one selects a window near a randomly selected switch.
 
+If passed a start and length, these are relative to the target, in seconds. If passed a
+windowfn that function takes a DataFrameRow, containing the event information for a trial,
+and it should return a named tuple with `start` and `len`.
+
 """
 const switch_seed = 2018_11_18
-function windowswitch(params)
-    WindowFn{:switch}(windowparams(params)...)
-function slice(wn::WindowFn{:switch}, trial, event, fs)
-    from, to = start, start+len
-    function (trial, event, fs)
-        si = event.sound_index
-        stimes = switch_times[si]
+function windowswitch(;params)
+    WindowFn{:switch}(;params...)
+end
+function slice(wn::WindowFnBounds{:switch}, trial, event, fs)
+    si = event.sound_index
+    stimes = switch_times[si]
 
-        options = windowsat(stimes, max_trial_length, window = (from, to))
-        from, to = rand(trialrng((:windowswitch, switch_seed), event), options)
+    options = windowsat(stimes, max_trial_length, window = (wn.start, wn.start+wn.len))
+    from, to = rand(trialrng((:windowswitch, switch_seed), event), options)
 
-        windowtrial(trial, fs, (from, to))
-    end
+    windowtrial(trial, fs, (from, to))
 end
 
 """
-    windowbaseline(trial, event, fs, (from, to))
+    windowbaseline(;start, len, mindist, minlength, onempty = error)
+    windowbaseline(;widnowfn, mindist, minlength, onempty = error)
 
 A windowing function, which is a function that can be passed to [`compute_freqbins`](#).
 This one selects a random window far from a switch; this is called a baseline, because these
@@ -171,30 +203,44 @@ regions are generally used as a control to compare to the target. We avoid switc
 we have a priori reason to think the response might be different during these disorienting
 moments.
 
+If passed a start and length, these are relative to the target, in seconds. If passed a
+windowfn that function takes a DataFrameRow, containing the event information for a trial,
+and it should return a named tuple with `start` and `len`.
+
+## Parameters
+- `mindist`: minimum to switch edge (start or end)
+- `minlength`: miniumum length of baseline regions considered (shorter ones are filtered
+  out)
+- `onempty`: what to do when there are no baseline regions, possible values are `missing`
+  (return `missing` value), `error` (throw an error) or zero argument function, which will
+  be called if the result is empty.
+
 """
 const baseline_seed = 2017_09_16
-function windowbaseline(;start, len, mindist, minlength, onempty = error)
-    from, to = start, start + len
+function windowbaseline(;mindist, minlength, onempty = error, params...)
+    WindowFn{:baseline}((mindist, minlength, onempty); params...)
+end
+function slice(wn::WindowFnBounds{:baseline}, trial, event, fs)
+    from, to = wn.start, wn.start + wn.len
+    (mindist, minlength, onempty) = wn.entry
 
-    handleempty(onempty::Missing) = missing
     handleempty(onempty::Function) = onempty()
-    handleempty(onempty::typeof(error)) =
+    handleempty(::Missing) = missing
+    handleempty(::typeof(error)) =
         error("Could not find any valid region for baseline window.")
 
-    function(trial, event, fs, (from, to))
-        si = event.sound_index
-        times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
-            switch_times[si]
-        ranges = windows_far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
-        isempty(ranges) && return handleempty(onempty)
+    si = event.sound_index
+    times = target_times[si] ≥ 0 ? vcat(switch_times[si], target_times[si]) |> sort! :
+        switch_times[si]
+    ranges = windows_far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+    isempty(ranges) && return handleempty(onempty)
 
-        at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
-        window = windowsat(at, fs, window = (from, to))
+    at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
+    window = windowsat(at, fs, window = (from, to))
 
-        start = max(1, round(Int, window[1]*fs))
-        stop = min(round(Int, window[2]*fs), size(trial, 2))
-        view(trial, :, start:stop)
-    end
+    start = max(1, round(Int, window[1]*fs))
+    stop = min(round(Int, window[2]*fs), size(trial, 2))
+    view(trial, :, start:stop)
 end
 
 # Feature Extraction
@@ -226,23 +272,24 @@ windowparams(fn::Function, event) = windowparams(fn(event), event)
 # -----------------------------------------------------------------
 
 """
-    compute_powerbin_features(eeg, data, windowfn, window; freqbins = default_freqbins,
+    compute_powerbin_features(eeg, data, windowfn; freqbins = default_freqbins,
         channels = Colon())
 
-For a given subset of data and windowing (defined by `windowfn` and `window`) compute a
-single feature vector; there are nchannels x nfreqbins total features. The
-features are computed using [`computebands`](#).
+For a given subset of data and windowing (defined by `windowfn`) compute a single feature
+vector; there are nchannels x nfreqbins total features. The features are computed using
+[`computebands`](#).
 
 Features are weighted by the number of observations (valid windows) they represent.
 """
-function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
+function compute_powerbin_features(eeg, data, windowfn; kwds...)
     @assert data.sid |> unique |> length == 1 "Expected one subject's data"
     sid = data.sid |> first
 
+    # TODO: this code is likely to be type unstable; could gain some speed
+    # by optimizing it, but hasn't been worth it to me yet
     fs = framerate(eeg)
-    wparams = windowparams(window, sid)
-    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs, windowbounds(wparams)),
-        eachrow(data))
+    windowfn = resolve(windowfn, data)
+    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs), eachrow(data))
     signal = reduce(hcat, skipmissing(windows))
     weight = sum(!isempty, skipmissing(windows))
     freqdf = computebands(signal, fs; kwds...)
@@ -260,8 +307,9 @@ function compute_powerbin_features(eeg, data, windowfn, window; kwds...)
         chstr = @_(map(@sprintf("%02d", _), powerdf.channel))
         features = Symbol.("channel_", chstr, "_", powerdf.freqbin)
         DataFrame(
-            winlen     =  wparams.len,
-            winstart   =  wparams.start,
+            winlen     =  windowfn.len,
+            winstart   =  windowfn.start,
+            windowtype =  windowfn.name,
             weight     =  minimum(powerdf.weight);
             (features .=> powerdf.power)...
         )
@@ -311,9 +359,16 @@ function computebands(signal, fs; freqbins = default_freqbins, channels = Colon(
 end
 
 """
-    compute_freqbins(subjects, groupdf, windowfn, window, [reducerfn = foldxt])
+    compute_freqbins(subjects, groupdf, windows, [reducerfn = foldxt])
+
+Compute features for a given set of subjects, according to the grouped events,
+using `windows`. The subjects are the first return value of `load_all_subjects`,
+while `groupdf` is a grouped data frame of the subjects events, which are the seconds
+return value of `load_all_subjects`. The windows should be created using the windowing
+functions (see above).
+
 """
-function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = foldxt;
+function compute_freqbins(subjects, groupdf, windows, reducerfn = foldxt;
     kwds...)
 
     progress = Progress(length(groupdf), desc = "Computing frequency bins...")
@@ -322,7 +377,7 @@ function compute_freqbins(subjects, groupdf, windowfn, windows, reducerfn = fold
             # compute features in each window
             function findwindows(window)
                 result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
-                    windowfn, window; kwds...)
+                    windows; kwds...)
                 result
             end
             x = reducerfn(append!!, Map(findwindows), windows)

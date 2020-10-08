@@ -36,7 +36,7 @@ spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npo
 if use_cache && isfile(classdf_file)
     classdf = CSV.read(classdf_file)
 else
-    windows = [(len = len, start = start, before = -len)
+    windows = [windowtarget(len = len, start = start)
         for len in spread(1, 0.5, n_winlens),
             start in range(-2.5, 2.5, length = 64)]
 
@@ -46,7 +46,7 @@ else
         filter(ishit(_, region = "target") == "hit", __) |>
         groupby(__, [:sid, :condition])
 
-    classdf = compute_freqbins(subjects, classdf_groups, windowtarget, windows)
+    classdf = compute_freqbins(subjects, classdf_groups, windows)
     CSV.write(classdf_file, classdf)
 end
 classdf = innerjoin(classdf, best_λs, on = [:sid])
@@ -167,8 +167,6 @@ spread(x,scale,npoints) = quantile.(Normal(x,scale/2),range(0.05,0.95,length=npo
 if use_cache && isfile(classbasedf_file)
     classbasedf = CSV.read(classbasedf_file)
 else
-    windows = [(len = len, start = 0.0)
-        for len in spread(1, 0.5, n_winlens)]
 
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     classbasedf_groups = @_ events |>
@@ -176,14 +174,17 @@ else
         groupby(__, [:sid, :condition, :hittype])
 
     windowtypes = [
-        "target"   => windowtarget,
-        "baseline" => windowbaseline(mindist = 0.5, minlength = 0.5, onempty = missing)
+        "target"   => (;kwds...) -> windowtarget(name = "target")
+        "baseline" => (;kwds...) -> windowbaseline(name = "baseline",
+            mindist = 0.5, minlength = 0.5, onempty = missing; kwds...)
     ]
-    classbasedf = mapreduce(append!!, windowtypes) do (windowtype, windowfn)
-        result = compute_freqbins(subjects, classbasedf_groups, windowfn, windows)
-        result[!, :windowtype] .= windowtype
-        result
-    end
+
+    windows = [
+        winfn(len = len, start = 0.0) for len in spread(1, 0.5, n_winlens)
+        for (name, winfn) in windowtypes
+    ]
+
+    result = compute_freqbins(subjects, classbasedf_groups, windows)
     CSV.write(classbasedf_file, classbasedf)
     alert("Feature computation complete!")
 end
