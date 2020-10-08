@@ -11,7 +11,16 @@ n_winlens = 6
 
 dir = mkpath(joinpath(plotsdir(), "condition"))
 
-gray = colorant"rgb(175,175,175)"
+gray = RGB(0.6,0.6,0.6)
+myblue = RGB(0.074,0.263,0.604)
+
+distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
+    hchoices = range(40, 50, length = 15),
+    lchoices = range(50, 60, length = 15),
+    cchoices = range(75, 100, length = 15),
+    transform = deuteranopic ∘ tritanopic # color-blind transform
+)[3:end]
+
 colors = distinguishable_colors(3, [colorant"black", colorant"white", gray],
     hchoices = range(150, 342, length = 15),
     lchoices = range(20, 60, length = 15),

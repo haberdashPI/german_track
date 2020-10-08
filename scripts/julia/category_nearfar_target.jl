@@ -15,9 +15,20 @@ dir = mkpath(plotsdir("category_nearfar_target"))
 # Behavioral Data
 # =================================================================
 
+gray = RGB(0.4,0.4,0.4)
+myblue = RGB(0.074,0.263,0.604)
+
+colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
+    hchoices = range(40, 50, length = 15),
+    lchoices = range(50, 60, length = 15),
+    cchoices = range(75, 100, length = 15),
+    transform = deuteranopic ∘ tritanopic # color-blind transform
+)[[3,5,4]]
+
+
 target_labels = OrderedDict(
-    "early" => ["Early target", "(before 3rd and 4th Switch)"],
-    "late"  => ["Target after", "(after 3rd or 4th Switch)"]
+    "early" => ["Early Target", "(before 3rd Switch)"],
+    "late"  => ["Late Target", "(after 3rd Switch)"]
 )
 
 target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
@@ -28,36 +39,46 @@ target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
                    [:pmean, :err] => (-) => :lower,
                    :target_time => ByRow(x -> target_labels[x]) => :target_time_label)
 
-@_ target_timeline |>
+pl = @_ target_timeline |>
     filter(_.time < 1.5, __) |>
     @vlplot(
         config = {legend = {disable = true}},
+        transform = [{calculate = "upper(slice(datum.condition,0,1)) + slice(datum.condition,1)",
+                        as = :condition}],
+        spacing = 1,
         facet = {
             column = {
                 field = :target_time_label, type = :ordinal, title = nothing,
-                sort = collect(values(target_labels))
+                sort = collect(values(target_labels)),
             }
         }
     ) +
     (
-        @vlplot(width = 100, height = 150) +
+        @vlplot(width = 75, height = 100, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot(:trail,
-            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
-            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
+                title = ["Time after", "Switch (s)"]},
+            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Target Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
-            color = :condition
         ) +
         @vlplot(:errorband,
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative},
-            y = {:upper, type = :quantitative}, y2 = :lower,
+            y = {:upper, type = :quantitative, title = ""}, y2 = :lower,
             # opacity = :weight,
             color = :condition
         ) +
-        @vlplot(:text,
+        @vlplot({:text, align = :left, dx = 5},
+            transform = [
+                {filter = "datum.time > 1 && datum.time < 1.1 && datum.target_time == 'late'"},
+            ],
+            x = {datum = 1.2},
+            y = {:pmean, aggregate = :mean, type = :quantitative},
+            color = :condition,
+            text = {:condition, }
         )
-    ) |>
-    save(joinpath(dir, "behavior_timeline.svg"))
+    );
+pl |> save(joinpath(dir, "behavior_timeline.svg"))
 
 # Find λ
 # =================================================================
