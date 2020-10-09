@@ -25,23 +25,25 @@ colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, mybl
     transform = deuteranopic ∘ tritanopic # color-blind transform
 )[[3,5,4]]
 
-salience_hit = main_effects = CSV.read(joinpath(processed_datadir("plots"),
-    "condition_by_salience.csv"))
+salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "condition_by_salience.csv")) |>
+    transform!(__, :salience => ByRow(uppercasefirst) => :salience,
+                   :condition => ByRow(uppercasefirst) => :condition)
 
 @_ salience_hit |>
     @vlplot(
-        title = ["Hit Rate by","Salience (Low/High)"],
+        title = {text = ["Hit Rate by Salience"], subtitle = "(Low/High)"},
         transform = [
             {calculate = "datum.pmean + datum.err", as = "upper"},
             {calculate = "datum.pmean - datum.err", as = "lower"}
         ],
         config = {legend = {disable = true}},
-        spacing = -5
+        spacing = 2
     ) +
     hcat(
         (
             @vlplot(
-                width = 50, height = 100,
+                width = 63, height = 100, autosize = "pad",
                 transform = [{filter = "datum.comparison == 'global_v_object'"}]) +
             @vlplot(:line,
                 x = {:condition, axis = {labelAngle = 25, labelAlign = "center", title = ""}},
@@ -52,7 +54,7 @@ salience_hit = main_effects = CSV.read(joinpath(processed_datadir("plots"),
                 y = :pmean,
                 color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
             @vlplot({:text, align = :center, dy = -10},
-                transform = [{filter = "datum.condition == 'global'"}],
+                transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
                 y = :upper,
                 text = :salience,
@@ -62,7 +64,7 @@ salience_hit = main_effects = CSV.read(joinpath(processed_datadir("plots"),
         ),
         (
             @vlplot(
-                width = 50, height = 100,
+                width = 62, height = 100, autosize = "pad",
                 transform = [{filter = "datum.comparison == 'global_v_spatial'"}],
             ) +
             @vlplot(:line,
@@ -74,7 +76,7 @@ salience_hit = main_effects = CSV.read(joinpath(processed_datadir("plots"),
                 y = :pmean,
                 color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
             @vlplot({:text, align = :center, dy = -10},
-                transform = [{filter = "datum.condition == 'global'"}],
+                transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
                 y = :upper,
                 text = :salience,
@@ -490,9 +492,9 @@ target_len_y = 90
 pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 100,
+        width = 96, height = 150,
         config = {legend = {disable = true}},
-        title = ["EEG Salience", "Classification"],
+        title = {text = ["EEG Salience", "Classification"], subtitle = "(Low/High)"}
     ) +
     (@vlplot(
         color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
