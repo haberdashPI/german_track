@@ -1,3 +1,29 @@
+## figure notes
+
+## schematic:
+
+- one target, use distinct coloring of line to denote regions of early/late
+- annotations all below
+- more switches or … to show that there could be more
+
+## all figs:
+
+- some kind of icon or something to show which is behavior and neural (or a title?)
+- show significance/n.s.
+
+## fig1: break into three panels (maybe remove 2nd panel) in one column
+
+- maybe have a key? (the annotating text is a little busy, maybe just one bar??)
+
+# fig2: y-axis moment-by-moment classification or time classification
+
+- some comment about cross validated window in range bla
+- definitely have the difference (need merve's raw data for this)
+
+# abstract
+- more lit review
+- too specific in terms of the paradgim
+- more vaugeness in the abstract
 
 # The overall results
 
