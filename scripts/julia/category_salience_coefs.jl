@@ -10,29 +10,20 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
     StatsFuns, Colors
 
+using GermanTrack: colors, gray, darkgray, patterns
+
 dir = mkpath(plotsdir("category_salience"))
 
 # Behavioral Data
 # =================================================================
 
-gray = RGB(0.4,0.4,0.4)
-myblue = RGB(0.074,0.263,0.604)
-
-colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
-    hchoices = range(40, 50, length = 15),
-    lchoices = range(50, 60, length = 15),
-    cchoices = range(75, 100, length = 15),
-    transform = deuteranopic ∘ tritanopic # color-blind transform
-)[[3,5,4]]
-
 salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
     "condition_by_salience.csv")) |>
-    transform!(__, :salience => ByRow(uppercasefirst) => :salience,
+    transform!(__, :salience => ByRow(x -> [uppercasefirst(x), " Salience"]) => :salience,
                    :condition => ByRow(uppercasefirst) => :condition)
 
 @_ salience_hit |>
     @vlplot(
-        title = {text = ["Hit Rate by Salience"], subtitle = "(Low/High)"},
         transform = [
             {calculate = "datum.pmean + datum.err", as = "upper"},
             {calculate = "datum.pmean - datum.err", as = "lower"}
@@ -43,20 +34,20 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
     hcat(
         (
             @vlplot(
-                width = 63, height = 100, autosize = "pad",
+                width = 90, height = 125, autosize = "pad",
                 transform = [{filter = "datum.comparison == 'global_v_object'"}]) +
             @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 25, labelAlign = "center", title = ""}},
+                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
                 y = {:pmean, title = "Hit Rate", scale = {domain = [0.5, 1]}},
                 color = :salience) +
             @vlplot({:point, filled = true},
                 x = :condition,
                 y = :pmean,
                 color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
-            @vlplot({:text, align = :center, dy = -10},
+            @vlplot({:text, align = :left, dy = -10, dx = 5},
                 transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
-                y = :upper,
+                y = :lower,
                 text = :salience,
                 color = :salience
             ) +
@@ -64,21 +55,21 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
         ),
         (
             @vlplot(
-                width = 62, height = 100, autosize = "pad",
+                width = 90, height = 125, autosize = "pad",
                 transform = [{filter = "datum.comparison == 'global_v_spatial'"}],
             ) +
             @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 25, labelAlign = "center", title = ""}},
+                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
                 y = {:pmean, title = "", scale = {domain = [0.5, 1]}},
                 color = :salience) +
             @vlplot({:point, filled = true},
                 x = :condition,
                 y = :pmean,
                 color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
-            @vlplot({:text, align = :center, dy = -10},
+            @vlplot({:text, align = :left, dy = -10, dx = 5},
                 transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
-                y = :upper,
+                y = :lower,
                 text = :salience,
                 color = :salience
             ) +
@@ -410,7 +401,7 @@ target_len_y = 0.1
 pl = classdiffs |>
     @vlplot(
         config = {legend = {disable = true}},
-        title = "Salience Classification Accuracy",
+        title = "Salience Classification Accuracy from EEG",
         facet = {column = {field = :hittype, type = :nominal}}) +
     (@vlplot(
         color = {field = :condition, type = :nominal},
@@ -487,21 +478,20 @@ nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean
 end
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = ["Classification Accuracy", "(Null Model Corrected)"]
-target_len_y = 90
+ytitle = ["Salience Classification Accuracy", "from EEG (Null Model Corrected)"]
+target_len_y = 80
 pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 96, height = 150,
+        width = 250, height = 200, autosize = "fit",
         config = {legend = {disable = true}},
-        title = {text = ["EEG Salience", "Classification"], subtitle = "(Low/High)"}
     ) +
     (@vlplot(
         color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
     ) +
     # data lines
     @vlplot(:line,
-        x = {:winstart, type = :quantitative, title = ["Time relative to", "target onset (s)"]},
+        x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
             scale = {domain = [50,100]}}) +
     # data errorbands
@@ -526,7 +516,7 @@ pl = @_ classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
-            x = {datum = 2.3}, y = {datum = nullmean},
+            x = {datum = 1.75}, y = {datum = nullmean},
             text = {value = ["Baseline Accuracy", "(Null Model)"]},
             color = {value = "black"}
         )
@@ -555,7 +545,7 @@ pl = @_ classdiffs |>
             color = {value = "black"}
         )
     ));
-pl |> save(joinpath(dir, "salience_timeline_job.svg"))
+pl |> save(joinpath(dir, "salience_timeline.svg"))
 
 # hit miss plot
 # -----------------------------------------------------------------

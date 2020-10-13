@@ -416,5 +416,117 @@ pl = classdiffs |>
     );
 pl |> save(joinpath(dir, "switch_target_earlylate.svg"))
 
+# Plot near/far performance for early/late targets by salience
+# =================================================================
 
+# -----------------------------------------------------------------
 
+classdf_sal_earlylate_file = joinpath(cache_dir("features"), "switch-salience-target-freqmeans-earlylate.csv")
+
+if isfile(classdf_sal_earlylate_file)
+    classdfsal_earlylate_ = CSV.read(classdf_sal_earlylate_file)
+else
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    classdf_sal_earlylate_groups = @_ events |>
+        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+        groupby(__, [:sid, :condition, :target_time_label, :target_switch_label, :salience_label])
+
+    windows = [(len = len, start = start, before = -len)
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in range(0, 2.5, length = 12)]
+    classdfsal_earlylate_ = compute_freqbins(subjects, classdf_sal_earlylate_groups, windowtarget,
+        windows)
+
+    CSV.write(classdf_sal_earlylate_file, classdfsal_earlylate_)
+end
+
+# Compute classification accuracy
+# -----------------------------------------------------------------
+
+λsid = groupby(final_λs, :sid)
+
+resultdf_sal_earlylate_file = joinpath(cache_dir("models"), "switch-salience-target-earlylate.csv")
+classdfsal_earlylate_[!,:fold] = in.(classdfsal_earlylate_.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+
+if isfile(resultdf_sal_earlylate_file) && mtime(resultdf_sal_earlylate_file) > mtime(classdf_sal_earlylate_file)
+    resultdf_sal_earlylate = CSV.read(resultdf_sal_earlylate_file)
+else
+    factors = [:fold, :winlen, :winstart, :condition, :target_time_label, :salience_label]
+    groups = groupby(classdfsal_earlylate_, factors)
+
+    progress = Progress(length(groups))
+    function findclass((key, sdf))
+        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        result = testclassifier(LassoPathClassifiers([1.0, λ]),
+            data               = sdf,
+            y                  = :target_switch_label,
+            X                  = r"channel",
+            crossval           = :sid,
+            n_folds            = n_folds,
+            seed               = stablehash(:salience_classification,
+                                            :target_time, 2019_11_18),
+            maxncoef           = size(sdf[:,r"channel"], 2),
+            irls_maxiter       = 600,
+            weight             = :weight,
+            on_model_exception = :debug,
+            on_missing_case    = :missing,
+        )
+        if !isempty(result)
+            result[!, keys(key)] .= permutedims(collect(values(key)))
+        end
+        next!(progress)
+
+        result
+    end
+
+    resultdf_sal_earlylate = @_ groups |> pairs |> collect |>
+        foldl(append!!, Map(findclass), __)
+        # foldxt(append!!, Map(findclass), __)
+
+    ProgressMeter.finish!(progress)
+    CSV.write(resultdf_sal_earlylate_file, resultdf_sal_earlylate)
+end
+
+# Plot salience by early/late targets
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf_sal_earlylate |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, :mean => mean => :mean)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, :λ)
+
+classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+    @_ classmeans_sum |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+end
+
+ytitle = "Model - Null Model Accuracy (logit scale)"
+pl = classdiffs |>
+    @vlplot(
+        facet = {
+            column = {field = :target_time_label, title = nothing},
+            row    = {field = :salience_label, title = nothing},
+        },
+        title = ["Near/Far from Switch Target Classification","Accuracy by Target Time"],
+        config = {legend = {disable = true}}
+    ) + (
+        @vlplot(color = {:condition, title = nothing}, x = {:condition, title = nothing}) +
+        @vlplot(:bar,
+            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}
+        ) +
+        @vlplot(:errorbar,
+            color = {value = "black"},
+            y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}
+        )
+    );
+pl |> save(joinpath(dir, "switch_target_sal_earlylate_.svg"))

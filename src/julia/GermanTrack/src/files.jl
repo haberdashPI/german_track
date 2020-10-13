@@ -161,14 +161,14 @@ function events(event_file, stim_info)
         @warn "Could not find `bad_trial` column in file '$event_file'."
         stim_events[!, :bad_trial] .= false
     end
-    stim_events.sid = sid
-    stim_events.trial_index = 1:size(stim_events, 1)
-    stim_events.salience = get.(Ref(target_salience), si, missing)
-    stim_events.direction = get.(Ref(directions), si, missing)
-    stim_events.target_switch_label = get.(Ref(target_switch_label), si, missing)
-    stim_events.salience_label = get.(Ref(salience_label), si, missing)
-    stim_events.salience_4level = get.(Ref(salience_4level), si, missing)
-    stim_events.target_time_label = get.(Ref(target_time_label), si, missing)
+    stim_events[!, :sid] .= sidfor(event_file)
+    stim_events[!, :trial_index] .= 1:size(stim_events, 1)
+    stim_events[!, :salience] .= get.(Ref(target_salience), si, missing)
+    stim_events[!, :direction] .= get.(Ref(directions), si, missing)
+    stim_events[!, :target_switch_label] .= get.(Ref(target_switch_label), si, missing)
+    stim_events[!, :salience_label] .= get.(Ref(salience_label), si, missing)
+    stim_events[!, :salience_4level] .= get.(Ref(salience_4level), si, missing)
+    stim_events[!, :target_time_label] .= get.(Ref(target_time_label), si, missing)
 
     stim_events
 end

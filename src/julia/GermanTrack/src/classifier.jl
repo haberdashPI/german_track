@@ -152,12 +152,31 @@ end
 
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
     seed  = nothing, weight = nothing, on_model_exception = :debug,
-    include_model_coefs = false, ycoding = DummyCoding, kwds...)
+    on_missing_case = :error, include_model_coefs = false, ycoding = DummyCoding, kwds...)
     @assert on_model_exception ∈ [:debug, :print, :throw]
 
     if !isnothing(seed); seedmodel(model, seed); end
 
-    getxy, levels = formulafn(data, y, X, ycoding)
+    if data[:,y] |> unique |> length == 1
+        if on_missing_case == :missing
+            return Empty(DataFrame)
+        else
+            error("Degenerate case (1 class present): ", data[1, Not(X)])
+        end
+    end
+
+    local getxy, levels
+    try
+        getxy, levels = formulafn(data, y, X, ycoding)
+    catch e
+        if on_model_exception == :debug
+            @info "Model setup threw an error: opening debug..."
+            @infiltrate
+            rethrow(e)
+        else
+            rethrow(e)
+        end
+    end
 
     # the results of classification (starts empty)
     result = Empty(DataFrame)
