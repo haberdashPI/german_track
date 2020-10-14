@@ -15,7 +15,7 @@ using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, 
 include("data.jl")       ## functions related to interpreting data
 include("features.jl")   ## functions related to computing classification features
 include("classifier.jl") ## functions related to classification
-include("stimuli.jl")    ## functions related to encoding stimuli
+include("stimuli.jl")    ## functions related to encoding stimuli for EEG decoding
 include("files.jl")      ## functions related to loading files
 include("random.jl")     ## functions related to pseudo-random number generation
 

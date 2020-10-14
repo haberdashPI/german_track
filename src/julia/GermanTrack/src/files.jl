@@ -1,12 +1,42 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
     load_directions, load_all_subjects
 
+"""
+    processed_datadir(subdir1,subdir2,....)
+
+Get (and possibly create) a directory for processed data.
+"""
 processed_datadir(args...) =
     mkpath(joinpath(datadir(), "processed", args...))
+"""
+    raw_datadir(subdir1,subdri2,...)
+
+Get a directory of raw data.
+"""
 raw_datadir(args...) = joinpath(datadir(), "raw", args...)
+
+"""
+    stimulus_dir()
+
+Get the directory where processed stimuli data are stored.
+"""
 stimulus_dir() = processed_datadir("stimuli")
+
+"""
+    raw_stim_dir()
+
+Get the directory where raw stimuli data are stored.
+"""
 raw_stim_dir() = raw_datadir("stimuli")
 
+
+"""
+    read_eeg_binary(filename)
+
+Helper function that loads binary EEG data stored in custom format.
+
+See also [`load_subject`](#).
+"""
 function read_eeg_binary(filename)
     open(filename) do file
         # number of channels
@@ -37,6 +67,13 @@ function read_eeg_binary(filename)
     end
 end
 
+"""
+    read_mcca_proj(filename)
+
+Helper function, load mcca projects from custom binary format.
+
+See also [`load_subject`](#).
+"""
 function read_mcca_proj(filename)
     @info "Reading projected components"
     open(filename) do file
@@ -76,6 +113,13 @@ function read_mcca_proj(filename)
     end
 end
 
+"""
+    read_h5_subj(filename)
+
+Helper function. Load HDF5 formated subject data.
+
+See also [`load_subject`](#).
+"""
 function read_h5_subj(filename)
     h5open(filename, "r") do file
         channels   = read(file, "channels")
@@ -92,12 +136,22 @@ function read_h5_subj(filename)
     end
 end
 
+# Store subject data in a cache for easy loading later on.
 const subject_cache = Dict()
 Base.@kwdef struct SubjectData
     eeg::EEGData
     events::DataFrame
 end
 
+"""
+    load_all_subjects(dir, ext)
+
+Load all subjects located under `dir` with extension `ext`. This includes
+a comperhensive dictionary from subject ids to all subject data and an aggregate
+dataframe of all event data.
+
+Caches subject loading to speed it up.
+"""
 function load_all_subjects(dir, ext)
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
     subjects = Dict(
@@ -110,7 +164,18 @@ function load_all_subjects(dir, ext)
     subjects, events
 end
 
-function load_subject(file, stim_info;encoding = RawEncoding(), framerate = missing)
+"""
+    load_subject(file, stim_info; encoding = RawEncoding(), framerate = missing)
+
+Load the given subject, encoding the EEG data acording to `encoding` (which by default
+just uses the raw data). The variable `stim_info` must contain the stimulus meta-data
+stored in teh json
+"""
+stim_file = open()
+
+function load_subject(file, stim_info = load_stimulus_metadata();
+    encoding = RawEncoding(), framerate = missing)
+
     if !isfile(file)
         error("File '$file' does not exist.")
     end
@@ -151,7 +216,6 @@ function events_for_eeg(file, stim_info)
     event_file = joinpath(processed_datadir("eeg"), @sprintf("sound_events_%03d.csv", sid))
     stim_events = DataFrame(CSV.File(event_file))
 
-    target_times = convert(Array{Float64}, stim_info["test_block_cfg"]["target_times"])
     source_indices = convert(Array{Float64},
         stim_info["test_block_cfg"]["trial_target_speakers"])
     source_names = ["male", "fem1", "fem2"]

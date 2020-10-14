@@ -1,6 +1,12 @@
-export runclassifier, testclassifier, classifierparams, classifier_param_names,
-    LassoPathClassifiers, LassoClassifier
+export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier
 
+"""
+    LassoClassifier(λ)
+
+Define a single, logistic regression classifier with L1 regularization λ. Use this once
+you've used cross-validation to pick λ. Handles z-scoring of all input variables
+using the data from a call to `fit`.
+"""
 struct LassoClassifier
     lambda::Float64
 end
@@ -29,6 +35,13 @@ end
 StatsBase.predict(model::LassoClassifierFit, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ))
 
+"""
+    LassoPathClassifiers(λs)
+
+Define a series of logistic regression classifiers using the given values for λ. Use this
+to pick a λ via cross-validation. Handles z-scoring of all input variables using
+the data from a call to `fit`.
+"""
 struct LassoPathClassifiers
     lambdas::Vector{Float64}
 end
@@ -48,6 +61,13 @@ end
 StatsBase.predict(model::LassoPathFits, X) =
     StatsBase.predict(model.result, zscorecol(X, model.μ, model.σ), select = AllSeg())
 
+"""
+    formulafn(data, y, X)
+
+Helper function to handle organizating data into a matrix. Returns a function getxy
+which can extract the y and X matrices for a given subset of data and a list of all
+levels of y.
+"""
 function formulafn(data, y, X)
     # model formula (starts empty)
     formula = term(0)
@@ -63,13 +83,19 @@ function formulafn(data, y, X)
     subdata -> modelcols(f, subdata), f.lhs.contrasts.levels
 end
 
+"""
+    runclassifier(model; data, y, X, seed, fit_kwds...)
+
+Fit the given model using data from `data` for column `y` and columns `X`. Use the given
+`seed` to ensure reproducability. `fit_kwds` will be model specific parameters.
+"""
 function runclassifier(model; data, y, X, seed = nothing, kwds...)
     getxy, levels = formulafn(data, y, X)
 
     _y, _X = getxy(data)
-    coefs = ScikitLearn.fit!(model, _X, vec(_y); kwds...)
+    coefs = fit(model, _X, vec(_y); kwds...)
 
-    level = ScikitLearn.predict(coefs, _X)
+    level = predict(coefs, _X)
     _labels = levels[round.(Int, level).+1]
 
     result = copy(data)
@@ -104,6 +130,29 @@ function paramvals(model::LassoClassifier, fit, coefnames)
     isempty(coefnames) ? () : coef(fit.result)
 end
 
+"""
+    runclassifier(model; data, y, X, seed, crossval, n_folds = 10, weight,
+        on_model_exception = :debug, include_model_coefs = false,
+        fit_kwds...)
+
+Fit the given model using data from `data` for column `y` and columns `X`, then test it
+using cross validation with `n_folds` folds. Use the given `seed` to ensure reproducability. `fit_kwds` will be
+model specific parameters.
+
+Results are returned as a data frame, with appropriately named columns.
+
+## Additional keyword args
+- `weight`: a column to weight individual observations in `data`
+- `on_model_exception`: what to do when an exception occurs in the mode; options include:
+    - `:debug` (default): runs @infiltrate at the site of the error allowing user
+        to examine data (refer to `runclassifier` source for other relevant variables).
+        **NOT THREAD SAFE**
+    - `:print`: display the error, but use missing values for the particular fold
+        where the error occured.
+    - `:throw`: throw an exception
+- `include_model_coefs`: Return the coefficients as columns in the resulting data, useful
+ for display and interpretation of the model.
+"""
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
     seed  = nothing, weight = nothing, on_model_exception = :debug,
     include_model_coefs = false, kwds...)
@@ -138,7 +187,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
             local coefs
             try
-                coefs = ScikitLearn.fit!(model, _X, vec(_y); weigths_kwds...)
+                coefs = fit(model, _X, vec(_y); weigths_kwds...)
             catch e
                 if on_model_exception == :debug
                     @info "Model fitting threw an error: opening debug to troubleshoot..."
@@ -159,7 +208,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
 
             # test the model
             _y, _X = getxy(test)
-            level = ScikitLearn.predict(coefs, _X)
+            level = predict(coefs, _X)
             levels[round.(Int, level).+1], coefs
         end
         _labels, coefs = predictlabels()
