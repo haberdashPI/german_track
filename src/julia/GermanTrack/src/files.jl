@@ -1,5 +1,6 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
-    load_directions, load_all_subjects
+    load_directions, load_all_subjects, processed_datadir, raw_datadir,
+    stimulus_dir, raw_stim_dir
 
 """
     processed_datadir(subdir1,subdir2,....)
@@ -182,13 +183,7 @@ function load_subject(file, stim_info = load_stimulus_metadata();
     stim_events = events_for_eeg(file, stim_info)
 
     data = get!(subject_cache, (file, encoding, framerate)) do
-        # data = if endswith(file, ".mat")
-        #     mf = MatFile(file)
-        #     get_mvariable(mf, :dat)
-        data = if endswith(file, ".bson")
-            @load file data
-            data
-        elseif endswith(file, ".mcca_proj") || endswith(file, ".mcca")
+        if endswith(file, ".mcca_proj") || endswith(file, ".mcca")
             read_mcca_proj(file)
         elseif endswith(file, ".eeg")
             read_eeg_binary(file)
