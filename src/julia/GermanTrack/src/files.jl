@@ -165,11 +165,12 @@ function load_all_subjects(dir, ext)
 end
 
 """
-    load_subject(file, stim_info; encoding = RawEncoding(), framerate = missing)
+    load_subject(file, metadata = load_stimulus_metadata(); encoding = RawEncoding(),
+        framerate = missing)
 
 Load the given subject, encoding the EEG data acording to `encoding` (which by default
-just uses the raw data). The variable `stim_info` must contain the stimulus meta-data
-stored in teh json
+just uses the raw data). The variable `metdata` must contain the stimulus meta-data.
+It can be loaded using `load_stimulus_metadata`.
 """
 stim_file = open()
 
@@ -211,6 +212,11 @@ function load_subject(file, stim_info = load_stimulus_metadata();
     SubjectData(eeg = data, events = stim_events)
 end
 
+"""
+    events_for_eeg(file, metadata)
+
+Load the event file for a given eeg file `file` using the naming conventions of this project.
+"""
 function events_for_eeg(file, stim_info)
     sid = sidfor(file)
     event_file = joinpath(processed_datadir("eeg"), @sprintf("sound_events_%03d.csv", sid))
