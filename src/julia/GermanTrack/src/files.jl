@@ -145,7 +145,7 @@ Base.@kwdef struct SubjectData
 end
 
 """
-    load_all_subjects(dir, ext)
+    load_all_subjects(dir, ext, metadata = load_stimulus_metadata())
 
 Load all subjects located under `dir` with extension `ext`. This includes
 a comperhensive dictionary from subject ids to all subject data and an aggregate
@@ -153,7 +153,7 @@ dataframe of all event data.
 
 Caches subject loading to speed it up.
 """
-function load_all_subjects(dir, ext)
+function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata())
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
     subjects = Dict(
         sidfor(file) => load_subject(
@@ -183,7 +183,7 @@ function load_subject(file, stim_info = load_stimulus_metadata();
     stim_events = events_for_eeg(file, stim_info)
 
     data = get!(subject_cache, (file, encoding, framerate)) do
-        if endswith(file, ".mcca_proj") || endswith(file, ".mcca")
+        data = if endswith(file, ".mcca_proj") || endswith(file, ".mcca")
             read_mcca_proj(file)
         elseif endswith(file, ".eeg")
             read_eeg_binary(file)
@@ -215,31 +215,27 @@ Load the given file of stimulus events; requires metadata loaded via
 function events(event_file, stim_info)
     stim_events = DataFrame(CSV.File(event_file))
 
-    source_indices = convert(Array{Float64},
-        stim_info["test_block_cfg"]["trial_target_speakers"])
-    source_names = ["male", "fem1", "fem2"]
+    source_names =
 
     # columns that are determined by the stimulus (and thus derived using the index of the
     # stimulus: sound_index)
     si = stim_events.sound_index
-    stim_events[!, :target_source] = get.(Ref(source_names), Int.(source_indices[si]),
-        missing)
-    stim_events[!, :target_present] .= target_times[si] .> 0
-    stim_events[!, :target_time] = ifelse.(target_times[si] .> 0, target_times[si], missing)
-    if :bad_trial ∈ propertynames(stim_events)
-        stim_events[!, :bad_trial] = convert.(Bool, stim_events.bad_trial)
-    else
-        @warn "Could not find `bad_trial` column in file '$event_file'."
-        stim_events[!, :bad_trial] .= false
-    end
-    stim_events[!, :sid] .= sidfor(event_file)
-    stim_events[!, :trial_index] .= 1:size(stim_events, 1)
-    stim_events[!, :salience] .= get.(Ref(target_salience), si, missing)
-    stim_events[!, :direction] .= get.(Ref(directions), si, missing)
-    stim_events[!, :target_switch_label] .= get.(Ref(target_switch_label), si, missing)
-    stim_events[!, :salience_label] .= get.(Ref(salience_label), si, missing)
-    stim_events[!, :salience_4level] .= get.(Ref(salience_4level), si, missing)
-    stim_events[!, :target_time_label] .= get.(Ref(target_time_label), si, missing)
+    info(sym) = get.(Ref(getproperty(stim_info, sym)), si, missing)
+
+    target_times = stim_info.target_times
+    stim_events[!, :target_present]      .= target_times[si] .> 0
+    stim_events[!, :target_source]        = get.(Ref(["male", "fem1", "fem2"]),
+                                                 Int.(stim_info.speakers[si]), missing)
+    stim_events[!, :target_time]          = ifelse.(target_times[si] .> 0,
+                                                    target_times[si], missing)
+    stim_events[!, :sid]                 .= sidfor(event_file)
+    stim_events[!, :trial_index]         .= 1:size(stim_events, 1)
+    stim_events[!, :salience]            .= info(:target_salience)
+    stim_events[!, :direction]           .= info(:directions)
+    stim_events[!, :target_switch_label] .= info(:target_switch_label)
+    stim_events[!, :salience_label]      .= info(:salience_label)
+    stim_events[!, :salience_4level]     .= info(:salience_4level)
+    stim_events[!, :target_time_label]   .= info(:target_time_label)
 
     stim_events
 end

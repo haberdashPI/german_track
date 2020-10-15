@@ -1,4 +1,4 @@
-export select_windows, shrinktowards
+export select_windows, shrinktowards, ishit
 
 """
     wmean(vals, weights, [default = one(eltype(vals))/2])
@@ -88,18 +88,18 @@ function ishit(row; kwds...)
     vals = merge(row,kwds)
     if vals.target_present
         if vals.condition == "global"
-            vals.target_detected ? "hit" : "miss"
+            vals.reported_target ? "hit" : "miss"
         elseif vals.condition == "object"
             vals.target_source == "male" ?
-                (vals.target_detected ? "hit" : "miss") :
-                (vals.target_detected ? "falsep" : "reject")
+                (vals.reported_target ? "hit" : "miss") :
+                (vals.reported_target ? "falsep" : "reject")
         else
             @assert vals.condition == "spatial"
             vals.direction == "right" ?
-                (vals.target_detected ? "hit" : "miss") :
-                (vals.target_detected ? "falsep" : "reject")
+                (vals.reported_target ? "hit" : "miss") :
+                (vals.reported_target ? "falsep" : "reject")
         end
     else
-        vals.target_detected ? "reject" : "falsep"
+        vals.reported_target ? "reject" : "falsep"
     end
 end

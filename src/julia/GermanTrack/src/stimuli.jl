@@ -23,17 +23,19 @@ function load_stimulus_metadata(
     open(stim_filename, read = true) do stream
         stim_info = JSON3.read(stream)
 
-        stim_info = JSON3.read(stim_file)
-        salience_csv = CSV.read(joinpath(stimulus_dir(), "target_salience.csv"))
+        target_salience = @_ CSV.read(joinpath(stimulus_dir(), "target_salience.csv")) |>
+            __.salience |> Array
+        target_times    = stim_info.test_block_cfg.target_times
+        switch_times    = map(times -> times ./ stim_info.fs,
+            stim_info.test_block_cfg.switch_times)
 
         return (
             trial_lengths    = CSV.read(trial_lengths_filename).sound_length |> Array,
             speakers         = stim_info.test_block_cfg.trial_target_speakers,
             directions       = stim_info.test_block_cfg.trial_target_dir,
-            target_times     = stim_info.test_block_cfg.target_times,
-            target_salience  = salience_csv.salience |> Array,
-            switch_times     = map(times -> times ./ stim_info.fs,
-                                stim_info.test_block_cfg.switch_times),
+            target_times     = target_times,
+            target_salience  = target_salience,
+            switch_times     = switch_times,
             stimulus_lengths = fill(10, 50),
 
             salience_4level = begin
