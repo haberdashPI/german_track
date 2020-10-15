@@ -5,7 +5,7 @@ using DrWatson; @quickactivate("german_track")
 
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV
+    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -161,9 +161,6 @@ resultdf = mapreduce(append!!, classcomps) do (comp, data)
     function findclass((key,sdf))
         result = Empty(DataFrame)
 
-        # if sdf.condition |> unique |> length == 1
-        #     @infiltrate
-        # end
         result = testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
             X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
             weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
@@ -301,17 +298,17 @@ else
 
     baseparams = (mindist = 0.5, minlength = 0.5, onempty = missing)
     windowtypes = [
-        "target"   => (;kwds...) -> windowtarget(name = "target")
-        "baseline" => (;kwds...) -> windowbaseline(name = "baseline",
-            mindist = 0.5, minlength = 0.5, onempty = missing; kwds...)
+        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
+        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
+            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
 
     windows = [
-        winfn(len = len, start = 0.0) for len in spread(1, 0.5, n_winlens)
+        winfn(len = len, start = 0.0) for len in GermanTrack.spread(1, 0.5, n_winlens)
         for (name, winfn) in windowtypes
     ]
 
-    result = compute_freqbins(subjects, classbasedf_groups, windows)
+    classbasedf = compute_freqbins(subjects, classbasedf_groups, windows)
     CSV.write(classbasedf_file, classbasedf)
     alert("Feature computation complete!")
 end
@@ -356,8 +353,8 @@ comparisons = [
     "object-v-spatial" => @_(filter(_.condition ∈ ["object", "spatial"], __)),
 ]
 
-function bymodeltype(((key, df), type, comp))
-    df = df |> comp[2] |> type[2].filterfn
+function bymodeltype(((key, df_), type, comp))
+    df = df_ |> comp[2] |> type[2].filterfn
 
     result = testclassifier(LassoClassifier(type[2].λfn(df)),
         data = df, y = :condition, X = r"channel",
@@ -366,11 +363,15 @@ function bymodeltype(((key, df), type, comp))
         irls_maxiter = 100,
         weight = :weight, on_model_exception = :throw
     )
-    result[!, :modeltype]  .= type[1]
-    result[!, :comparison] .= comp[1]
-    result[!, keys(key)] .= permutedims(collect(values(key)))
+    if !isempty(result)
+        result[!, :modeltype]  .= type[1]
+        result[!, :comparison] .= comp[1]
+        for (k,v) in pairs(key)
+            result[!, k] .= v
+        end
+    end
 
-    result
+    return result
 end
 
 predictbasedf = @_ classbasedf |>

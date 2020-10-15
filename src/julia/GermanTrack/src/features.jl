@@ -1,4 +1,5 @@
-export windowtarget, windowbaseline, windowswitch, compute_freqbins, window_target_switch
+export windowtarget, windowbaseline, windowswitch, compute_freqbins, window_target_switch,
+    windowbase_bytarget
 
 # Windowing Functions
 # =================================================================
@@ -20,7 +21,7 @@ number gets picked for the same stimulus and the same condition.
 """
 function trialrng(id, event)
     seed = stablehash(id)
-    Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
+    Random123.Threefry2x((seed, NUM_STIMULI*COND_ID[event.condition] + event.sound_index))
 end
 
 """
@@ -37,7 +38,7 @@ end
 # -----------------------------------------------------------------
 
 """
-    windowsat(times, max_time; from, to)
+    windowsat(times, max_time; window = (from, to))
 
 Find all possible windows starting at `from` and ending at `to`, relative to each of the
 times in `times`, mering any overlapping windows.
@@ -48,7 +49,8 @@ single window.
 
 """
 windowsat(time::Number, max_time; kwds...) = windowsat((time,), max_time; kwds...)[1]
-function windowsat(times, max_time; from, to)
+function windowsat(times, max_time; window)
+    from, to = window
     result = Array{Tuple{Float64, Float64}}(undef, length(times))
 
     i = 0
@@ -93,6 +95,29 @@ function windows_far_from(times, max_time; mindist, minlength)
     view(result, 1:i)
 end
 
+function windows_only_near(times,max_time;window=(-0.250,0.250))
+    result = Array{Tuple{Float64,Float64}}(undef,length(times))
+
+    i = 0
+    stop = 0
+    for time in times
+        new_stop = min(time+window[2],max_time)
+        if stop < time+window[1]
+            i = i+1
+            result[i] = (time+window[1],new_stop)
+        elseif i > 0
+            result[i] = (result[i][1], new_stop)
+        else
+            i = i+1
+            result[i] = (0,new_stop)
+        end
+        stop = new_stop
+    end
+
+    view(result,1:i)
+end
+
+
 """
     sample_from_ranges(rng, ranges)
 
@@ -108,34 +133,34 @@ end
 # Windowing Functions
 # -----------------------------------------------------------------
 
-struct WindowFnBounds{S,T}
+struct WindowingBounds{S,T}
     start::Float64
     len::Float64
     entry::T
     name::String
 end
-function Base.show(io::IO, x::WindowFnBounds{S,<:Nothing}) where S
+function Base.show(io::IO, x::WindowingBounds{S,<:Nothing}) where S
     print(io, S,
         " (start = ",@sprintf("%2.2f", x.start),", ",
         "len = ",@sprintf("%2.2f", x.len),")")
 end
 
-struct WindowFnFn{S,T}
+struct WindowingFn{S,T}
     fn::Function
     entry::T
     name::String
 end
-function Base.show(io::IO, x::WindowFnFn{S,<:Nothing}) where S
+function Base.show(io::IO, x::WindowingFn{S,<:Nothing}) where S
     print(io, name, ": ", S, " (", string(fn), ")")
 end
 
-resolve(x::WindowFnBounds, _) = x
-function resolve(x::WindowFnFn{S,T}, data) where {S,T}
+resolve(x::WindowingBounds, _) = x
+function resolve(x::WindowingFn{S,T}, data) where {S,T}
     vals = x.fn(data)
-    WindowFnBounds{S,T}(vals.start, vals.len, x.entry, x.name)
+    WindowingBounds{S,T}(vals.start, vals.len, x.entry, x.name)
 end
 
-function WindowFn(Sym,entry = nothing; start=nothing, len=nothing,
+function Windowing(Sym,entry = nothing; start=nothing, len=nothing,
     windowfn=nothing, name="window")
 
     if isnothing(start) && isnothing(len) && isnothing(windowfn)
@@ -143,11 +168,11 @@ function WindowFn(Sym,entry = nothing; start=nothing, len=nothing,
     elseif isnothing(windowfn)
         (isnothing(start) || isnothing(len)) && error("Need both `start` and `len` "*
             "keyword arguments.")
-        WindowFnBounds{Sym, typeof(entry)}(start, len, entry, name)
+        WindowingBounds{Sym, typeof(entry)}(start, len, entry, name)
     else
         !(isnothing(start) && isnothing(len)) && error("Cannot have both `windowfn` and ",
             "one of `start` and `len` keyword arguments.")
-        WindowFnFn{Sym, typeof(entry)}(windowfn, entry, name)
+        WindowingFn{Sym, typeof(entry)}(windowfn, entry, name)
     end
 end
 
@@ -166,9 +191,10 @@ and it should return a named tuple with `start` and `len`.
 """
 const target_seed = 1983_11_09
 function windowtarget(;params...)
-    WindowFn(:target; params...)
+    Windowing(:target; params...)
 end
-function slice(wn::WindowFnBounds{:target}, trial, event, fs)
+function slice(wn::WindowingBounds{:target}, trial, event, fs)
+    from, to = wn.start, wn.start + wn.len
     time = !ismissing(event.target_time) ? event.target_time : begin
         maxlen = floor(Int, size(trial, 2) / fs)
         rand(trialrng((:windowtarget_missing, target_seed), event),
@@ -186,15 +212,15 @@ This one selects a window near the switch just before a target; if no target exi
 a random switch is selected.
 """
 function window_target_switch(;params...)
-    WindowFn(:target_switch; params...)
+    Windowing(:target_switch; params...)
 end
-function slice(wn::WindowFnBounds{:target_switch}, trial, event, fs)
+function slice(wn::WindowingBounds{:target_switch}, trial, event, fs)
     from, to = wn.start, wn.start + wn.len
     si = event.sound_index
-    stimes = switch_times[si]
+    stimes = event.switch_times
 
     if ismissing(event.target_time)
-        options = only_near(stimes, max_trial_length, window = (from, to))
+        options = windows_only_near(stimes, max_trial_length, window = (from, to))
         window = rand(trialrng((:window_target_switch, switch_seed), event), options)
 
         start = max(1, round(Int, window[1]*fs))
@@ -206,11 +232,7 @@ function slice(wn::WindowFnBounds{:target_switch}, trial, event, fs)
         isempty(times) && return missing
         time = last(times)
 
-        window = only_near(time, max_trial_length, window=(from, to))
-        start = max(1, round(Int, window[1]*fs))
-        stop = min(round(Int, window[2]*fs), size(trial, 2))
-
-        view(trial, :, start:stop)
+        windowtrial(trial, fs, time .+ (from, to))
     end
 end
 
@@ -228,11 +250,11 @@ and it should return a named tuple with `start` and `len`.
 """
 const switch_seed = 2018_11_18
 function windowswitch(;params...)
-    WindowFn(:switch; params...)
+    Windowing(:switch; params...)
 end
-function slice(wn::WindowFnBounds{:switch}, trial, event, fs)
+function slice(wn::WindowingBounds{:switch}, trial, event, fs)
     si = event.sound_index
-    stimes = switch_times[si]
+    stimes = event.switch_times
 
     options = windowsat(stimes, max_trial_length, window = (wn.start, wn.start+wn.len))
     from, to = rand(trialrng((:windowswitch, switch_seed), event), options)
@@ -265,9 +287,9 @@ and it should return a named tuple with `start` and `len`.
 """
 const baseline_seed = 2017_09_16
 function windowbaseline(;mindist, minlength, onempty = error, params...)
-    WindowFn(:baseline, (mindist, minlength, onempty); params...)
+    Windowing(:baseline, (mindist, minlength, onempty); params...)
 end
-function slice(wn::WindowFnBounds{:baseline}, trial, event, fs)
+function slice(wn::WindowingBounds{:baseline}, trial, event, fs)
     from, to = wn.start, wn.start + wn.len
     (mindist, minlength, onempty) = wn.entry
 
@@ -278,18 +300,42 @@ function slice(wn::WindowFnBounds{:baseline}, trial, event, fs)
 
     si = event.sound_index
     times = !ismissing(event.target_time) ?
-        vcat(switch_times[si], event.target_time) |> sort! :
-        switch_times[si]
-    ranges = windows_far_from(times, max_trial_length, mindist = mindist, minlength = minlength)
+        vcat(event.switch_times, event.target_time) |> sort! :
+        event.switch_times
+    ranges = windows_far_from(times, event.trial_length, mindist = mindist, minlength = minlength)
     isempty(ranges) && return handleempty(onempty)
 
     at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
-    window = windowsat(at, fs, window = (from, to))
-
-    start = max(1, round(Int, window[1]*fs))
-    stop = min(round(Int, window[2]*fs), size(trial, 2))
-    view(trial, :, start:stop)
+    windowtrial(trial, fs, at .+ (from, to))
 end
+
+function windowbase_bytarget(filterfn; mindist, minlength, onempty = error, params...)
+    Windowing(:base_bytarget, (mindist, minlength, onempty, filterfn); params...)
+end
+function slice(wn::WindowingBounds{:base_bytarget}, trial, event, fs)
+    from, to = wn.start, wn.start + wn.len
+    (mindist, minlength, onempty, filterfn) = wn.entry
+
+    handleempty(onempty::Missing) = missing
+    handleempty(onempty::Function) = onempty()
+    handleempty(onempty::typeof(error)) =
+    error("Could not find any valid region for baseline window.")
+
+    si = event.sound_index
+    times = if !ismissing(event.target_time)
+        @_ vcat(event.switch_times, event.target_time) |> sort! |>
+            filter(filterfn(event.target_time,_),__)
+    else
+        event.switch_times
+    end
+
+    ranges = windows_far_from(times, event.trial_length, mindist = mindist, minlength = minlength)
+    isempty(ranges) && return handleempty(onempty)
+
+    at = sample_from_ranges(trialrng((:baseby, filterfn, baseline_seed), event), ranges)
+    windowtrial(trial, fs, at .+ (from, to))
+end
+
 
 # Feature Extraction
 # =================================================================
@@ -320,24 +366,24 @@ windowparams(fn::Function, event) = windowparams(fn(event), event)
 # -----------------------------------------------------------------
 
 """
-    compute_powerbin_features(eeg, data, windowfn; freqbins = default_freqbins,
+    compute_powerbin_features(eeg, data, windowing; freqbins = default_freqbins,
         channels = Colon())
 
-For a given subset of data and windowing (defined by `windowfn`) compute a single feature
+For a given subset of data and windowing (defined by `windowing`) compute a single feature
 vector; there are nchannels x nfreqbins total features. The features are computed using
 [`computebands`](#).
 
 Features are weighted by the number of observations (valid windows) they represent.
 """
-function compute_powerbin_features(eeg, data, windowfn; kwds...)
+function compute_powerbin_features(eeg, data, windowing; kwds...)
     @assert data.sid |> unique |> length == 1 "Expected one subject's data"
     sid = data.sid |> first
 
     # TODO: this code is likely to be type unstable; could gain some speed
     # by optimizing it, but hasn't been worth it to me yet
     fs = framerate(eeg)
-    windowfn = resolve(windowfn, data)
-    windows = @_ map(windowfn(eeg[_1.trial_index], _1, fs), eachrow(data))
+    windowing = resolve(windowing, data)
+    windows = @_ map(slice(windowing, eeg[_1.trial_index], _1, fs), eachrow(data))
     isempty(skipmissing(windows)) && return Empty(DataFrame)
 
     signal = reduce(hcat, skipmissing(windows))
@@ -361,9 +407,9 @@ function compute_powerbin_features(eeg, data, windowfn; kwds...)
         chstr = @_(map(@sprintf("%02d", _), powerdf.channel))
         features = Symbol.("channel_", chstr, "_", powerdf.freqbin)
         DataFrame(
-            winlen     =  windowfn.len,
-            winstart   =  windowfn.start,
-            windowtype =  windowfn.name,
+            winlen     =  windowing.len,
+            winstart   =  windowing.start,
+            windowtype =  windowing.name,
             weight     =  minimum(powerdf.weight);
             (features .=> powerdf.power)...
         )
