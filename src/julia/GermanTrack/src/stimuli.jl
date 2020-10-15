@@ -26,9 +26,8 @@ function load_stimulus_metadata(
         stim_info = JSON3.read(stim_file)
         salience_csv = CSV.read(joinpath(stimulus_dir(), "target_salience.csv"))
 
-        @warn "TODO: compute length of each trial"
-
         return (
+            trial_lengths    = CSV.read(trial_lengths_filename).sound_length |> Array,
             speakers         = stim_info.test_block_cfg.trial_target_speakers,
             directions       = stim_info.test_block_cfg.trial_target_dir,
             target_times     = stim_info.test_block_cfg.target_times,

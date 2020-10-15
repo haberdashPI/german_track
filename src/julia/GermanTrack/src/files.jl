@@ -172,8 +172,6 @@ Load the given subject, encoding the EEG data acording to `encoding` (which by d
 just uses the raw data). The variable `metdata` must contain the stimulus meta-data.
 It can be loaded using `load_stimulus_metadata`.
 """
-stim_file = open()
-
 function load_subject(file, stim_info = load_stimulus_metadata();
     encoding = RawEncoding(), framerate = missing)
 
