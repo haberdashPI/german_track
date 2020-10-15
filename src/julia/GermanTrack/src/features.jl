@@ -125,8 +125,8 @@ function resolve(x::WindowFnFn{S,T}, data) where {S,T}
     WindowFnBounds{S,T}(vals.start, vals.len, x.entry, x.name)
 end
 
-function WindowFn{Sym}(entry = Nothing; start=nothing, len=nothing,
-    windowfn=nothing, name="window") where Sym
+function WindowFn(Sym,entry = Nothing; start=nothing, len=nothing,
+    windowfn=nothing, name="window")
 
     if isnothing(start) && isnothing(len) && isnothing(windowfn)
         error("Need either `start` and `len` or `windowfn` keyword arguments.")
@@ -156,7 +156,7 @@ and it should return a named tuple with `start` and `len`.
 """
 const target_seed = 1983_11_09
 function windowtarget(;params...)
-    WindowFn{:target}(;params...)
+    WindowFn(:target; params...)
 end
 function slice(wn::WindowFnBounds{:target}, trial, event, fs)
     time = !ismissing(event.target_time) ? event.target_time : begin
@@ -176,7 +176,7 @@ This one selects a window near the switch just before a target; if no target exi
 a random switch is selected.
 """
 function window_target_switch(;params...)
-    WindowFn{:target_switch}(;params...)
+    WindowFn(:target_switch; params...)
 end
 function slice(wn::WindowFnBounds{:target_switch}, trial, event, fs)
     from, to = wn.start, wn.start + wn.len
@@ -218,7 +218,7 @@ and it should return a named tuple with `start` and `len`.
 """
 const switch_seed = 2018_11_18
 function windowswitch(;params...)
-    WindowFn{:switch}(;params...)
+    WindowFn(:switch; params...)
 end
 function slice(wn::WindowFnBounds{:switch}, trial, event, fs)
     si = event.sound_index
@@ -255,7 +255,7 @@ and it should return a named tuple with `start` and `len`.
 """
 const baseline_seed = 2017_09_16
 function windowbaseline(;mindist, minlength, onempty = error, params...)
-    WindowFn{:baseline}((mindist, minlength, onempty); params...)
+    WindowFn(:baseline, (mindist, minlength, onempty); params...)
 end
 function slice(wn::WindowFnBounds{:baseline}, trial, event, fs)
     from, to = wn.start, wn.start + wn.len

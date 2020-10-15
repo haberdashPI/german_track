@@ -55,7 +55,7 @@ function select_windows_helper((condition, boundfn), subjects)
     bounds = Dict((file, i) => bounds
         for file in keys(subjects)
         for (i, bounds) in enumerate(boundfn.(eachrow(subjects[file].events))))
-    indices = filter(@λ(!isempty(bounds[_])), keys(bounds)) |> collect |> sort!
+    indices = @_ filter(!isempty(bounds[_]), keys(bounds)) |> collect |> sort!
 
     if !isempty(indices)
         mapreduce(vcat, indices) do (file, i)

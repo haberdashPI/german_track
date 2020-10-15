@@ -184,7 +184,7 @@ function load_stimulus(source::OtherSource{JointSource}, event::RowType,
     encoding, tofs, info)
 
     stim_num = event.sound_index
-    selected = rand(filter(@λ(_ != stim_num), 1:50))
+    selected = rand(setdiff(1:50, stim_num))
 
     target_time = event.target_time
     result, real_stim_num =

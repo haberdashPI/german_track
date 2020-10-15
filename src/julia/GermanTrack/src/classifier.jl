@@ -117,13 +117,8 @@ function runclassifier(model; data, y, X, seed = nothing, kwds...)
     coefs, coefvals(coefs), result
 end
 coefvals(coefs::LassoClassifierFit) = StatsBase.coef(coefs.result)
-function coefvals(coefs::PyObject)
-    # TODO!!!
-    coefs
-end
 
 seedmodel(model, seed) = Random.seed!(seed)
-seedmodel(model::PyObject, seed) = numpy.random.seed(typemax(UInt32) & seed)
 
 function paramvals(model::LassoPathClassifiers, fit::LassoPathFits, col, coefnames)
     @assert isempty(coefnames) "Model coefficient report is not supported"

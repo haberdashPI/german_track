@@ -9,7 +9,7 @@ module GermanTrack
 
 using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, Dates,
     Unitful, Distributions, CSV, Random, Statistics, JSON3, HDF5, CRC, RandomNumbers,
-    Colors, EzXML, Underscores
+    Colors, EzXML, Underscores, DataStructures, StatsBase
 
 # ## Files
 
