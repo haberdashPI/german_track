@@ -209,8 +209,8 @@ function load_directions(file)
         len3 = read(stream, Int)
 
         dir1 = reinterpret(Float64, read(stream, sizeof(Float64)*len1))
-        dir2 = reinterpret(Float64, read(stream, sizeof(Float64)*len1))
-        dir3 = reinterpret(Float64, read(stream, sizeof(Float64)*len1))
+        dir2 = reinterpret(Float64, read(stream, sizeof(Float64)*len2))
+        dir3 = reinterpret(Float64, read(stream, sizeof(Float64)*len3))
 
         @assert length(dir1) == len1
         @assert length(dir2) == len2
