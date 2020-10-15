@@ -114,18 +114,28 @@ struct WindowFnBounds{S,T}
     entry::T
     name::String
 end
+function Base.show(io::IO, x::WindowFnBounds{S,<:Nothing}) where S
+    print(io, S,
+        " (start = ",@sprintf("%2.2f", x.start),", ",
+        "len = ",@sprintf("%2.2f", x.len),")")
+end
+
 struct WindowFnFn{S,T}
     fn::Function
     entry::T
     name::String
 end
+function Base.show(io::IO, x::WindowFnFn{S,<:Nothing}) where S
+    print(io, name, ": ", S, " (", string(fn), ")")
+end
+
 resolve(x::WindowFnBounds, _) = x
 function resolve(x::WindowFnFn{S,T}, data) where {S,T}
     vals = x.fn(data)
     WindowFnBounds{S,T}(vals.start, vals.len, x.entry, x.name)
 end
 
-function WindowFn(Sym,entry = Nothing; start=nothing, len=nothing,
+function WindowFn(Sym,entry = nothing; start=nothing, len=nothing,
     windowfn=nothing, name="window")
 
     if isnothing(start) && isnothing(len) && isnothing(windowfn)
@@ -133,11 +143,11 @@ function WindowFn(Sym,entry = Nothing; start=nothing, len=nothing,
     elseif isnothing(windowfn)
         (isnothing(start) || isnothing(len)) && error("Need both `start` and `len` "*
             "keyword arguments.")
-        WindowFnBounds{Sym}(start, len, entry, name)
+        WindowFnBounds{Sym, typeof(entry)}(start, len, entry, name)
     else
         !(isnothing(start) && isnothing(len)) && error("Cannot have both `windowfn` and ",
             "one of `start` and `len` keyword arguments.")
-        WindowFnFn{Sym}(windowfn, entry, name)
+        WindowFnFn{Sym, typeof(entry)}(windowfn, entry, name)
     end
 end
 
