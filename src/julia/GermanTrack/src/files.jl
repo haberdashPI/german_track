@@ -251,6 +251,11 @@ function events_for_eeg(file, stim_info)
     stim_events
 end
 
+"""
+    sidfor(filename)
+
+Using the naming conventions of this project, extact the subject ID from the given filename.
+"""
 function sidfor(filepath)
     file = splitdir(filepath)[2]
     pattern = r"eeg_response_([0-9]+)(_[a-z_]+)?([0-9]+)?(_unclean)?\.[a-z_0-9]+$"
@@ -273,6 +278,13 @@ struct Directions
     framerate::Float64
 end
 
+"""
+    load_directions(file)
+
+Read a file with phase directions for three sources, with the extenion `.dir` (by
+convention). These are metadata that indicate the location of each speaker in space as a
+phase value, sampled at a given framerate.
+"""
 function load_directions(file)
     open(file, read = true) do stream
         framerate = read(stream, Float64)
