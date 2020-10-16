@@ -874,7 +874,7 @@ plcoefs = coefmeans_rank |>
           x = :rank,
           mark = {type = :text, align = :left, dx = 5, dy = 5}, text = :channelstr,
           y = {field = :min_mvalue, title = ytitle},
-          color = {value = "black"}))
+          color = {value = "black"}));
 
 # MCCA visualization
 # =================================================================
@@ -949,7 +949,7 @@ plfeats = @vlplot() + hcat(
             scale = {domain = [-2.5, 2.5]}},
         shape = :condition,
         color = {:condition, scale = {scheme = "dark2"}})
-        for comparison in unique(classdf_best_long.comparison))...)
+        for comparison in unique(classdf_best_long.comparison))...);
 
 pl = @vlplot(align = "all",
         resolve = {scale = {color = "independent", shape = "independent"}}) +
@@ -1137,7 +1137,7 @@ classdf_chgroup_file = joinpath(processed_datadir("features"), "cond-freaqmeans-
 if isfile(classdf_chgroup_file)
     classdf_chgroup = CSV.read(classdf_chgroup_file)
 else
-    windows = [(len = len, start = 0.0)
+    windows = [windowtarget(len = len, start = 0.0)
         for len in GermanTrack.spread(1, 0.5, n_winlens)]
 
     classdf_chgroup = mapreduce(append!!, ["frontal", "central", "mixed"]) do group
@@ -1147,7 +1147,7 @@ else
             filter(ishit(_, region = "target") == "hit", __) |>
             groupby(__, [:sid, :condition])
 
-        result = compute_freqbins(subjects, classdf_chgroup_groups, windowtarget, windows)
+        result = compute_freqbins(subjects, classdf_chgroup_groups, windows)
         result[!,:chgroup] .= group
 
         result
