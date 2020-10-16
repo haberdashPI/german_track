@@ -151,7 +151,7 @@ struct WindowingFn{S,T}
     name::String
 end
 function Base.show(io::IO, x::WindowingFn{S,<:Nothing}) where S
-    print(io, name, ": ", S, " (", string(fn), ")")
+    print(io, name, ": ", S, " (", string(x.fn), ")")
 end
 
 resolve(x::WindowingBounds, _) = x
