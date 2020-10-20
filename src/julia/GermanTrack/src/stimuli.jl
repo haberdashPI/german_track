@@ -12,7 +12,7 @@ function load_behavioral_stimulus_metadata()
         CSV.read
     switch_times_file = joinpath(raw_datadir(), "behavioral", "switch_times.txt")
     salience_file = joinpath(processed_datadir(), "behavioral", "stimuli", "target_salience.csv")
-    target_salience = @_ CSV.read(salience_file).salience
+    target_salience = .-CSV.read(salience_file).salience
 
     return (
         trial_lengths   = fill(10, 50),

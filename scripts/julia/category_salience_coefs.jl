@@ -17,6 +17,9 @@ dir = mkpath(plotsdir("category_salience"))
 # Behavioral Data
 # =================================================================
 
+# Plot merve's analysis
+# -----------------------------------------------------------------
+
 salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
     "condition_by_salience.csv")) |>
     transform!(__, :salience => ByRow(x -> [uppercasefirst(x), " Salience"]) => :salience,
@@ -77,6 +80,77 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
         )
     ) |>
     save(joinpath(dir, "behavior_salience.svg"))
+
+# Re-analyze from raw data
+# -----------------------------------------------------------------
+
+info = GermanTrack.load_behavioral_stimulus_metadata()
+events = @_ readdir(processed_datadir("behavioral"), join=true) |>
+    filter(occursin(r"csv$", _), __) |>
+    mapreduce(GermanTrack.events(_, info), append!!, __)
+
+
+means = @_ events |>
+    transform!(__, AsTable(:) =>
+        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+    groupby(__, [:condition, :sid, :salience_label]) |>
+    combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits) |>
+    groupby(__, [:condition, :salience_label]) |>
+    combine(__, :hits => boot => :prop,
+                :hits => (x -> lowerboot(x, alpha = 0.05)) => :lower,
+                :hits => (x -> upperboot(x, alpha = 0.05)) => :upper)
+
+@_ means |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        spacing = 2
+    ) +
+    hcat(
+        (
+            @vlplot(
+                width = 90, height = 125, autosize = "pad",
+                transform = [{filter = "datum.condition == 'global' || datum.condition == 'object'"}]) +
+            @vlplot(:line,
+                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
+                y = {:prop, title = "Hit Rate", scale = {domain = [0, 1]}},
+                color = :salience_label) +
+            @vlplot({:point, filled = true},
+                x = :condition,
+                y = :prop,
+                color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
+            @vlplot({:text, align = :left, dy = -10, dx = 5},
+                transform = [{filter = "datum.condition == 'global'"}],
+                x = :condition,
+                y = :lower,
+                text = :salience_label,
+                color = :salience_label
+            ) +
+            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
+        ),
+        (
+            @vlplot(
+                width = 90, height = 125, autosize = "pad",
+                transform = [{filter = "datum.condition == 'global' || datum.condition == 'spatial'"}]
+            ) +
+            @vlplot(:line,
+                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
+                y = {:prop, title = "", scale = {domain = [0, 1]}},
+                color = :salience_label) +
+            @vlplot({:point, filled = true},
+                x = :condition,
+                y = :prop,
+                color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
+            @vlplot({:text, align = :left, dy = -10, dx = 5},
+                transform = [{filter = "datum.condition == 'global'"}],
+                x = :condition,
+                y = :lower,
+                text = :salience_label,
+                color = :salience_label
+            ) +
+            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
+        )
+    ) |>
+    save(joinpath(dir, "raw_behavior_salience.svg"))
 
 # Find λ
 # =================================================================
