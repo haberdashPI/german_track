@@ -6,6 +6,25 @@ export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus
 
 
+function load_behavioral_stimulus_metadata()
+    bdir = joinpath(raw_datadir(), "behavioral")
+    info = joinpath(processed_datadir(), "behavioral", "stimuli", "stim_info.csv") |>
+        CSV.read
+    switch_times_file = joinpath(raw_datadir(), "behavioral", "switch_times.txt")
+    salience_file = joinpath(processed_datadir(), "behavioral", "stimuli", "target_salience.csv")
+    target_salience = @_ CSV.read(salience_file).salience
+
+    return (
+        trial_lengths   = fill(10, 50),
+        target_times    = info.target_time,
+        switch_regions    = @_(CSV.read(switch_times_file, header=0, delim=' ') |>
+                                eachrow |> map(collect ∘ skipmissing,__) |>
+                                map(tuple.(_1, _1 .+ 1), __)),
+        directions      = info.direction,
+        speakers        = info.speaker,
+        target_salience = target_salience
+    ) |> derived_metadata
+end
 
 critical_times_to_switch_regions(critical_times) =
     @_ critical_times[2:(end-1)] |> zip(__[1:2:end], __[2:2:end]) |> collect
@@ -44,6 +63,7 @@ function load_stimulus_metadata(
 end
 
 function derived_metadata(meta)
+    @assert meta.switch_regions |> length in [40,50]
     return (;meta...,
 
         salience_4level = begin
@@ -59,18 +79,25 @@ function derived_metadata(meta)
 
         target_time_label = begin
             early = @_ DataFrame(
-                time = meta.target_times,
+                time = meta.target_times[1:length(meta.switch_regions)],
                 switches = meta.switch_regions,
-                row = 1:length(meta.target_times)) |>
+                row = 1:length(meta.switch_regions)) |>
             map(sum(_1.time .> first.(_1.switches)) <= 1 ? "early" : "late", eachrow(__))
         end,
 
         target_switch_label = begin
-            switch_distance = map(zip(meta.switch_regions,meta.target_times,meta.critical_times)) do (switches, target, critical)
+            critical_times = :critical_times ∉ propertynames(meta) ? fill(nothing, 50) :
+                meta.critical_times
+            args = zip(meta.switch_regions, meta.target_times, critical_times)
+            switch_distance = map(args) do (switches, target, critical)
                 if target == 0
                     return missing
                 end
-                before = @_ target .- vcat(getindex.(switches,2), critical[1]) |> filter(_ > 0, __)
+                before = if !isnothing(critical)
+                    @_ target .- vcat(getindex.(switches,2), critical[1]) |> filter(_ > 0, __)
+                else
+                    @_ target .- getindex.(switches,2) |> filter(_ > 0, __)
+                end
                 # before = @_ target .- switches |> filter(_ > 0, __)
                 if isempty(before)
                     Inf

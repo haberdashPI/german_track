@@ -1,4 +1,29 @@
-export select_windows, shrinktowards, ishit
+export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot
+
+
+"""
+    lowerboot(x; alpha = 0.05, n = 10_000)
+
+Lower bound of the bootstrapped confidnece interval.
+"""
+lowerboot(x; alpha = 0.05, n = 10_000) =
+    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][2]
+"""
+    boot(x; alpha = 0.05, n = 10_000)
+
+Bootstrapped estimate
+"""
+boot(x; alpha = 0.05, n = 10_000) =
+    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][1]
+
+"""
+    uppperboot(x; alpha = 0.05, n = 10_000)
+
+Upper bound of the bootstrapped confidnece interval.
+"""
+upperboot(x; alpha = 0.05, n = 10_000) =
+    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][3]
+
 
 """
     wmean(vals, weights, [default = one(eltype(vals))/2])
