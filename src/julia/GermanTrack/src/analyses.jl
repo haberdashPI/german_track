@@ -84,7 +84,7 @@ Correctly interprets a given row of the data as a hit, correct rejection, false 
 or miss. Since the directions are different for each condition, how we interpret a an
 indication of a detected target depends on the condition.
 """
-function ishit(row; kwds...)
+function ishit(row; mark_false_targets = false, kwds...)
     vals = merge(row,kwds)
     if vals.target_present
         if vals.condition == "global"
@@ -92,12 +92,14 @@ function ishit(row; kwds...)
         elseif vals.condition == "object"
             vals.target_source == "male" ?
                 (vals.reported_target ? "hit" : "miss") :
-                (vals.reported_target ? "falsep" : "reject")
+                (!vals.reported_target ? "reject" :
+                    (mark_false_targets ? "falsep-target" : "falsep"))
         else
             @assert vals.condition == "spatial"
             vals.direction == "right" ?
                 (vals.reported_target ? "hit" : "miss") :
-                (vals.reported_target ? "falsep" : "reject")
+                (!vals.reported_target ? "reject" :
+                    (mark_false_targets ? "falsep-target" : "falsep"))
         end
     else
         vals.reported_target ? "reject" : "falsep"

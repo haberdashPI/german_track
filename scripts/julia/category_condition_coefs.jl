@@ -116,6 +116,130 @@ pl2 = @_ main_effects |>
     ) |>
     save(joinpath(dir, "behavior_distract.svg"))
 
+# Raw Behavioral Data
+# =================================================================
+
+# Behavioral Experiment
+# -----------------------------------------------------------------
+
+info = GermanTrack.load_behavioral_stimulus_metadata()
+events = @_ readdir(processed_datadir("behavioral"), join=true) |>
+    filter(occursin(r"csv$", _), __) |>
+     mapreduce(GermanTrack.events(_, info), append!!, __)
+
+# EEG Experiment
+# -----------------------------------------------------------------
+
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+lowerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][2]
+innerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][1]
+upperboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][3]
+
+means = @_ events |>
+    transform!(__, AsTable(:) =>
+        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+    groupby(__, [:condition, :sid]) |>
+    combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits,
+                :hittype => (x -> mean(y -> occursin("falsep", y), x)) => :falseps,
+                :hittype => (x -> mean(==("falsep"), x)) => :notargets,
+                :hittype => (x -> mean(==("falsep-target"), x)) => :falsetargets) |>
+    stack(__, [:hits, :falseps, :notargets, :falsetargets], [:condition, :sid],
+        variable_name = :type, value_name = :proportion) |>
+    groupby(__, [:condition, :type]) |>
+    combine(__, :proportion => mean => :prop,
+                :proportion => lowerboot => :lower,
+                :proportion => upperboot => :upper)
+
+
+means |> @vlplot(
+    width = {step = 50},
+    config = {
+        legend = {disable = true},
+        bar = {discreteBandSize = 16}
+    }) +
+@vlplot({:bar, xOffset = -8},
+    transform = [{filter = "datum.type == 'hits'"}],
+    x = {:condition, axis = {title = "", labelAngle = -24,
+        labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+    y = {:prop, type = :quantitative, aggregate = :mean,
+         scale = {domain = [0, 1]}, title = "Response Rate"},
+    color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+@vlplot({:bar, xOffset = 8},
+    transform = [{filter = "datum.type == 'falseps'"}],
+    x = {:condition, axis = {title = ""}},
+    y = {:prop, type = :quantitative, aggregate = :mean},
+    color = {value = "rgb(175,175,175)"}) +
+@vlplot({:rule, xOffset = -8},
+    transform = [{filter = "datum.type == 'hits'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) +
+@vlplot({:rule, xOffset = 8},
+    transform = [{filter = "datum.type == 'falseps'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) |>
+#  +
+# @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = 9},
+#     transform = [{filter = "datum.stat == 'hr'"}],
+#     # x = {datum = "spatial"}, y = {datum = 0.},
+#     x = {:condition, axis = {title = ""}},
+#     y = {:pmean, aggregate = :mean, type = :quantitative},
+#     text = {value = "Hits"},
+# ) +
+# @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 13},
+#     transform = [{filter = "datum.stat == 'fr'"}],
+#     # x = {datum = "spatial"}, y = {datum = },
+#     x = {:condition, axis = {title = ""}},
+#     y = {datum = 0},
+#     text = {value = "False Positives"},
+# ) |>
+save(joinpath(dir, "eeg_behavior.svg"))
+
+function dprime(hits,falarm)
+    quantile(Normal(),hits) - quantile(Normal(),falarm)
+end
+
+dprimes = @_ events |>
+    transform!(__, AsTable(:) =>
+        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+    groupby(__, [:condition, :sid]) |>
+    combine(__, :hittype =>
+        (x -> dprime(mean(==("hit"), x), mean(y -> occursin("falsep",y), x))) => :dprime)
+
+dprimes |> @vlplot() +
+    @vlplot(:point,
+        x = {:condition, axis = {title = "", labelAngle = -24,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:dprime, type = :quantitative, aggregate = :mean, title = "d'"}) +
+    @vlplot(:errorbar,
+        x = {:condition, axis = {title = "", labelAngle = -24,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:dprime, type = :quantitative, aggregate = :ci, title = "d'"}) |>
+save(joinpath(dir, "eeg_dprime.svg"))
+
+dprimes_t = @_ events |>
+    transform!(__, AsTable(:) =>
+        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+    groupby(__, [:condition, :sid]) |>
+    combine(__, :hittype =>
+        (x -> dprime(mean(y -> y in ["hit", "falsep-target"], x), mean(==("falsep"), x))) => :dprime)
+
+dprimes_t |> @vlplot() +
+    @vlplot(:point,
+        x = {:condition, axis = {title = "", labelAngle = -24,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:dprime, type = :quantitative, aggregate = :mean, title = "d'"},
+       ) +
+    @vlplot(:errorbar,
+        x = {:condition, axis = {title = "", labelAngle = -24,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:dprime, type = :quantitative, aggregate = :ci, title = "d'"}) |>
+save(joinpath(dir, "eeg_dprime_falsetarget.svg"))
+
 # Findb best λs
 # =================================================================
 
