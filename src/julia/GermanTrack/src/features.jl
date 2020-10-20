@@ -41,7 +41,7 @@ end
     windowsat(times, max_time; window = (from, to))
 
 Find all possible windows starting at `from` and ending at `to`, relative to each of the
-times in `times`, mering any overlapping windows.
+times in `times`, merging any overlapping windows.
 
 In the simplest case, where no overlap occurs between adjacent windows, this is equivalent
 to `map(x -> (from + x, to + x), times)`. When windows overlap, they are merged into a
@@ -73,24 +73,39 @@ function windowsat(times, max_time; window)
 end
 
 """
-    windows_far_from(times, max_time; mindist, minlength)
+    ranges_far_from(windows, max_time; mindist, minlength)
+
+Find all ranges that are far from the given windows. Windows are represented as (from, to)
+tuples, `max_time` is the latest time the resulting regions can come from. What does "far"
+mean: `mindist` determines how far the region must be from any of the windows (start or
+end), `minlength` determines how small the returned region can be. The value of `mindist`
+can either be a single number or a tuple of two values. If there are two values, the first
+value is the minimum distance between the end of the region and the start of a window and
+the second is the minimum distance between the start of the region and the end of a
+window.
+
 """
-function windows_far_from(times, max_time; mindist, minlength)
+function ranges_far_from(windows, max_time; mindist, minlength)
     result = Array{Tuple{Float64, Float64}}(undef, length(times) + 1)
-    start = 0
+    pos = 0
     i = 0
-    for time in times
-        if start < time
-            if time - mindist - minlength > start
+    minstart(mindist::Number) = mindist
+    minstart(mindist::Tuple) = mindist[1]
+    minend(mindist::Number) = mindist
+    minend(mindist::Tuple) = mindist[2]
+
+    for (from, to) in windows
+        if pos < from
+            if from - minstart(mindist) - minlength > pos
                 i = i + 1
-                result[i] = (start, time - mindist)
+                result[i] = (pos, from - minstart(mindist))
             end
-            start = time + mindist
+            pos = to + minend(mindist)
         end
     end
-    if start < max_time
+    if pos < max_time
         i = i + 1
-        result[i] = (start, max_time)
+        result[i] = (pos, max_time)
     end
     view(result, 1:i)
 end
@@ -277,7 +292,8 @@ windowfn that function takes a DataFrameRow, containing the event information fo
 and it should return a named tuple with `start` and `len`.
 
 ## Parameters
-- `mindist`: minimum to switch edge (start or end)
+- `mindist`: minimum distance from widnow start to start (and end) of switch, use
+a tuple to indicate a different minimum for start and end of switch.
 - `minlength`: miniumum length of baseline regions considered (shorter ones are filtered
   out)
 - `onempty`: what to do when there are no baseline regions, possible values are `missing`
@@ -299,10 +315,11 @@ function slice(wn::WindowingBounds{:baseline}, trial, event, fs)
         error("Could not find any valid region for baseline window.")
 
     si = event.sound_index
-    times = !ismissing(event.target_time) ?
-        vcat(event.switch_times, event.target_time) |> sort! :
-        event.switch_times
-    ranges = windows_far_from(times, event.trial_length, mindist = mindist, minlength = minlength)
+    avoid = !ismissing(event.target_time) ?
+        vcat(event.switch_regions,
+             (event.target_time, event.target_time .+ 1)) |> sort! :
+        event.switch_regions
+    ranges = ranges_far_from(avoid, event.trial_length, mindist = mindist, minlength = minlength)
     isempty(ranges) && return handleempty(onempty)
 
     at = sample_from_ranges(trialrng((:windowbaseline, baseline_seed), event), ranges)
@@ -322,14 +339,13 @@ function slice(wn::WindowingBounds{:base_bytarget}, trial, event, fs)
     error("Could not find any valid region for baseline window.")
 
     si = event.sound_index
-    times = if !ismissing(event.target_time)
-        @_ vcat(event.switch_times, event.target_time) |> sort! |>
-            filter(filterfn(event.target_time,_),__)
+    avoid = if !ismissing(event.target_time)
+        @_ event.switch_regions |> sort! |> filter(filterfn(event.target_time,_),__)
     else
-        event.switch_times
+        event.switch_regions
     end
 
-    ranges = windows_far_from(times, event.trial_length, mindist = mindist, minlength = minlength)
+    ranges = ranges_far_from(avoid, event.trial_length, mindist = mindist, minlength = minlength)
     isempty(ranges) && return handleempty(onempty)
 
     at = sample_from_ranges(trialrng((:baseby, filterfn, baseline_seed), event), ranges)
