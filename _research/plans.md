@@ -1,8 +1,4 @@
-WIP: revising and documenting code
-- I need to finish off the reorganization
-- I need to merge any dangling branches so I only do the messy rebase once
-- then I rebase the reorganization, and start testing it
-## figure notes
+look at ordering of object/spatial, does it matter?
 
 ## schematic:
 
