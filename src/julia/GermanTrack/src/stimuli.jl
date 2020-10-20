@@ -5,6 +5,11 @@ const encodings = Dict{Any, Array{Float64}}()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus
 
+
+
+critical_times_to_switch_regions(critical_times) =
+    @_ critical_times[2:(end-1)] |> zip(__[1:2:end], __[2:2:end]) |> collect
+
 function load_stimulus_metadata(
     stim_filename = nothing,
     trial_lengths_filename = nothing,
@@ -22,61 +27,64 @@ function load_stimulus_metadata(
     # load and organize metadata about the stimuli
     open(stim_filename, read = true) do stream
         stim_info = JSON3.read(stream)
-
-        target_salience = @_ CSV.read(joinpath(stimulus_dir(), "target_salience.csv")) |>
-            __.salience |> Array
-        target_times    = stim_info.test_block_cfg.target_times
-        switch_times    = map(times -> times ./ stim_info.fs,
+        critical_times    = map(times -> times ./ stim_info.fs,
             stim_info.test_block_cfg.switch_times)
 
         return (
             trial_lengths    = CSV.read(trial_lengths_filename).sound_length |> Array,
             speakers         = stim_info.test_block_cfg.trial_target_speakers,
             directions       = stim_info.test_block_cfg.trial_target_dir,
-            target_times     = target_times,
-            target_salience  = target_salience,
-            switch_times     = switch_times,
-            stimulus_lengths = fill(10, 50),
+            target_times     = stim_info.test_block_cfg.target_times,
+            critical_times   = critical_times,
+            switch_regions   = critical_times_to_switch_regions.(critical_times),
+            target_salience  = @_(CSV.read(joinpath(stimulus_dir(), "target_salience.csv")) |>
+                                    __.salience |> Array),
+        ) |> derived_metadata
+    end
+end
 
-            salience_4level = begin
-                quants = quantile(target_salience, [0.25,0.5,0.75])
-                sum(target_salience .< quants', dims = 2) .+ 1
-            end,
+function derived_metadata(meta)
+    return (;meta...,
 
-            # define some useful categories for these stimuli,
-            salience_label = begin
-                med = median(target_salience)
-                ifelse.(target_salience .< med, "low", "high")
-            end,
+        salience_4level = begin
+            quants = quantile(meta.target_salience, [0.25,0.5,0.75])
+            sum(meta.target_salience .< quants', dims = 2) .+ 1
+        end,
 
-            target_time_label = begin
-                early = @_ DataFrame(
-                    time = target_times,
-                    switches = switch_times,
-                    row = 1:length(target_times)) |>
-                map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
-            end,
+        # define some useful categories for these stimuli,
+        salience_label = begin
+            med = median(meta.target_salience)
+            ifelse.(meta.target_salience .< med, "low", "high")
+        end,
 
-            target_switch_label = begin
-                switch_distance = map(zip(switch_times,target_times)) do (switches, target)
-                    if target == 0
-                        return missing
-                    end
-                    before = @_ target .- switches |> filter(_ > 0, __)
-                    if isempty(before)
-                        Inf
-                    else
-                        last(before)
-                    end
+        target_time_label = begin
+            early = @_ DataFrame(
+                time = meta.target_times,
+                switches = meta.switch_regions,
+                row = 1:length(meta.target_times)) |>
+            map(sum(_1.time .> first.(_1.switches)) <= 1 ? "early" : "late", eachrow(__))
+        end,
+
+        target_switch_label = begin
+            switch_distance = map(zip(meta.switch_regions,meta.target_times,meta.critical_times)) do (switches, target, critical)
+                if target == 0
+                    return missing
                 end
-                med = median(skipmissing(switch_distance))
-                map(switch_distance) do dist
-                    ismissing(dist) && return missing
-                    dist < med ? "near" : "far"
+                before = @_ target .- vcat(getindex.(switches,2), critical[1]) |> filter(_ > 0, __)
+                # before = @_ target .- switches |> filter(_ > 0, __)
+                if isempty(before)
+                    Inf
+                else
+                    last(before)
                 end
             end
-        )
-    end
+            med = median(skipmissing(switch_distance))
+            map(switch_distance) do dist
+                ismissing(dist) && return missing
+                dist < med ? "near" : "far"
+            end
+        end
+    )
 end
 
 abstract type StimMethod

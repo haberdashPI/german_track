@@ -361,8 +361,11 @@ else
             irls_maxiter       = 600,
             weight             = :weight,
             on_model_exception = :throw,
+            on_missing_case    = :missing,
         )
-        result[!, keys(key)] .= permutedims(collect(values(key)))
+        if !isempty(result)
+            result[!, keys(key)] .= permutedims(collect(values(key)))
+        end
         next!(progress)
 
         result
