@@ -758,6 +758,31 @@ plotfile = joinpath(dir, "category_hittype.svg")
 plhittype |> save(plotfile)
 addpatterns(plotfile, patterns)
 
+# Combine above figures into single plot
+# -----------------------------------------------------------------
+
+maingroup(x) = @_ x |> __.node |> elements |> first |> elements |>
+    filter(nodename(_) == "g", __) |> first |> elements |> first |> elements |> first |>
+    unlink!
+
+catmain = readxml(joinpath(dir, "category.svg")) |> maingroup
+catside = readxml(joinpath(dir, "category_hittype.svg")) |> maingroup
+# powmain = readxml(joinpath(dir, "medpower.svg")) |> maingroup
+powside = readxml(joinpath(dir, "medpower_hittype.svg")) |> maingroup
+
+catmain["transform"] = "translate(320, 0)"
+catside["transform"] = "translate(640, 0)"
+powside["transform"] = "translate(640, 168)"
+
+doc = readxml(joinpath(dir, "medpower.svg"))
+docnode = @_ doc |> __.node |> elements |> first
+linkprev!(docnode, catmain)
+linkprev!(docnode, catside)
+linkprev!(docnode, powside)
+linkprev!(docnode, xmlpatterns(patterns))
+
+open(io -> prettyprint(io, doc), joinpath(dir, "fig1.svg"), write = true)
+
 # Main median power results
 # -----------------------------------------------------------------
 # Examine the power across bins/channels near a target
@@ -896,31 +921,6 @@ plpower_hittype = @_ classhitdf_stats |>
         color = {value = "black"},
         x = :condition, y = {:medvalue, title = ytitle})
     ) |> save(joinpath(dir, "medpower_hittypes.svg"))
-
-# Combine above figures into single plot
-# -----------------------------------------------------------------
-
-maingroup(x) = @_ x |> __.node |> elements |> first |> elements |>
-    filter(nodename(_) == "g", __) |> first |> elements |> first |> elements |> first |>
-    unlink!
-
-catmain = readxml(joinpath(dir, "category.svg")) |> maingroup
-catside = readxml(joinpath(dir, "category_hittype.svg")) |> maingroup
-# powmain = readxml(joinpath(dir, "medpower.svg")) |> maingroup
-powside = readxml(joinpath(dir, "medpower_hittype.svg")) |> maingroup
-
-catmain["transform"] = "translate(320, 0)"
-catside["transform"] = "translate(640, 0)"
-powside["transform"] = "translate(640, 168)"
-
-doc = readxml(joinpath(dir, "medpower.svg"))
-docnode = @_ doc |> __.node |> elements |> first
-linkprev!(docnode, catmain)
-linkprev!(docnode, catside)
-linkprev!(docnode, powside)
-linkprev!(docnode, xmlpatterns(patterns))
-
-open(io -> prettyprint(io, doc), joinpath(dir, "fig1.svg"), write = true)
 
 # Detailed Baseline plots
 # -----------------------------------------------------------------
