@@ -14,13 +14,14 @@ using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, 
 
 # ## Files
 
-include("analyses.jl")   ## for analyzing data
-include("plots.jl")      ## for plotting
-include("features.jl")   ## for computing classification features
-include("classifier.jl") ## for classification
-include("stimuli.jl")    ## for encoding stimuli
-include("files.jl")      ## for loading files
-include("random.jl")     ## for pseudo-random number generation
+include("environment.jl") ## for setting up development/analysis environment
+include("analyses.jl")    ## for analyzing data
+include("plots.jl")       ## for plotting
+include("features.jl")    ## for computing classification features
+include("classifier.jl")  ## for classification
+include("stimuli.jl")     ## for encoding stimuli
+include("files.jl")       ## for loading files
+include("random.jl")      ## for pseudo-random number generation
 
 # ## Caching
 # Let `EEGCoding` know where it can cache an intermediate results it generates

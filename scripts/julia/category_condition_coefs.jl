@@ -18,103 +18,104 @@ using GermanTrack: colors, gray, patterns
 
 main_effects = CSV.read(joinpath(processed_datadir("plots"), "main_effects.csv"))
 
+barwidth = 20
 pl1 = @_ main_effects |>
     filter(_.stat ∈ ["hr", "fr"], __) |>
     transform!(__, [:pmean, :err] => (-) => :lower,
                   [:pmean, :err] => (+) => :upper) |>
     @vlplot(
-        width = {step = 58},
+        width = 242, autosize = "fit",
         config = {
             legend = {disable = true},
-            bar = {discreteBandSize = 16}
+            bar = {discreteBandSize = barwidth}
         }) +
-    @vlplot({:bar, xOffset = -8},
+    @vlplot({:bar, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'hr'"}],
-        x = {:condition, axis = {title = "", labelAngle = -24,
+        x = {:condition, axis = {title = "", labelAngle = 0,
             labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
         y = {:pmean, scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-    @vlplot({:bar, xOffset = 8},
+    @vlplot({:bar, xOffset = (barwidth/2)},
         transform = [{filter = "datum.stat == 'fr'"}],
         x = {:condition, axis = {title = ""}},
         y = :pmean,
         color = {value = "#"*hex(gray)}) +
-    @vlplot({:rule, xOffset = -8},
+    @vlplot({:rule, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'hr'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot({:rule, xOffset = 8},
+    @vlplot({:rule, xOffset = (barwidth/2)},
         transform = [{filter = "datum.stat == 'fr'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = 2},
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
         transform = [{filter = "datum.stat == 'hr' && datum.condition == 'global'"}],
         # x = {datum = "spatial"}, y = {datum = 0.},
         x = {:condition, axis = {title = ""}},
         y = {:pmean, aggregate = :mean, type = :quantitative},
         text = {value = "Hits"},
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 22},
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
         transform = [{filter = "datum.stat == 'fr' && datum.condition == 'global'"}],
         # x = {datum = "spatial"}, y = {datum = },
         x = {:condition, axis = {title = ""}},
         y = {datum = 0},
         text = {value = "False Positives"},
-    ) |>
-    save(joinpath(dir, "behavior.svg"))
+    );
+pl1 |> save(joinpath(dir, "behavior.svg"))
 
 pl2 = @_ main_effects |>
     filter(_.stat ∈ ["fr_distract", "fr_random"], __) |>
     transform!(__, [:pmean, :err] => (-) => :lower,
                   [:pmean, :err] => (+) => :upper) |>
     @vlplot(
-        width = {step = 30},
+        width = 242, autosize = "fit",
         config = {
             legend = {disable = true},
-            bar = {discreteBandSize = 15}
+            bar = {discreteBandSize = barwidth}
         }) +
-    @vlplot(:bar,
+    @vlplot({:bar, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'fr_distract'"}],
-        x = {:condition, axis = {title = "", labelAngle = -24,
+        x = {:condition, axis = {title = "", labelAngle = 0,
             labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
-        y = {:pmean, scale = {domain = [0, 1]}, title = ""},
+        y = {:pmean, scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {:condition, scale = {range = "#".*hex.(colors[2:3])}}) +
-    @vlplot(:bar,
+    @vlplot({:bar, xOffset = (barwidth/2)},
         transform = [{filter = "datum.stat == 'fr_random'"}],
         x = {:condition, axis = {title = ""}},
         y = :pmean,
         color = {value = "#"*hex(gray)}) +
-    @vlplot(:rule,
+    @vlplot({:rule, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'fr_distract'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot(:rule,
+    @vlplot({:rule, xOffset = (barwidth/2)},
         transform = [{filter = "datum.stat == 'fr_random'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = -10, dy = 9},
-        transform = [{filter = "datum.stat == 'fr_distract'"}],
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 3, dy = -barwidth-2},
+        transform = [{filter = "datum.stat == 'fr_distract' && datum.condition == 'object'"}],
         # x = {datum = "spatial"}, y = {datum = 0.},
         x = {:condition, axis = {title = ""}},
-        y = {:upper, aggregate = :mean, type = :quantitative},
+        y = {:pmean, aggregate = :mean, type = :quantitative},
         text = {value = "False Target"},
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 13},
-        transform = [{filter = "datum.stat == 'fr_random'"}],
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = barwidth+6},
+        transform = [{filter = "datum.stat == 'fr_random' && datum.condition == 'object'"}],
         # x = {datum = "spatial"}, y = {datum = },
         x = {:condition, axis = {title = ""}},
         y = {datum = 0},
         text = {value = "No Target"},
-    ) |>
-    save(joinpath(dir, "behavior_distract.svg"))
+    );
+pl2 |> save(joinpath(dir, "behavior_distract.svg"))
 
 # Raw Behavioral Experiment Analysis
 # -----------------------------------------------------------------
@@ -654,10 +655,6 @@ nullmeans = @_ predictmeans |>
     deletecols!(__, [:logitcorrect, :modeltype]) |>
     rename!(__, :correct => :nullmodel)
 
-lowerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][2]
-innerboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][1]
-upperboot(x) = confint(bootstrap(mean, x, BasicSampling(10_000)), BasicConfInt(0.682))[1][3]
-
 plotfull = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
     innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
@@ -670,7 +667,7 @@ plotfull = @_ predictmeans |>
                 :nullmodel => lowerboot => :nulllower,
                 :nullmodel => upperboot => :nullupper)
 
-ytitle= "EEG Classification Accuracy"
+ytitle= "Neural Classification Accuracy"
 plhit = @_ plotfull |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
@@ -712,11 +709,13 @@ plhit = @_ plotfull |>
             title = ytitle})
     ) +
     @vlplot({:text, angle = -90, fontSize = 9, align = "right", basline = "bottom", dx = 0, dy = -25},
+        transform = [{filter = "datum.comparison == 'global-v-object'"}],
         x = {:compname, axis = {title = ""}},
         y = {:correct, aggregate = :mean, type = :quantitative},
         text = {value = "Full Model"},
     ) +
     @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = 20},
+        transform = [{filter = "datum.comparison == 'global-v-object'"}],
         x = {:compname, axis = {title = ""}},
         y = {datum = 0.5},
         text = {value = "Null Model"},
@@ -761,30 +760,39 @@ addpatterns(plotfile, patterns)
 # Combine above figures into single plot
 # -----------------------------------------------------------------
 
-maingroup(x) = @_ x |> __.node |> elements |> first |> elements |>
-    filter(nodename(_) == "g", __) |> first |> elements |> first |> elements |> first |>
-    unlink!
+@usepython
 
-catmain = readxml(joinpath(dir, "category.svg")) |> maingroup
-catside = readxml(joinpath(dir, "category_hittype.svg")) |> maingroup
-# powmain = readxml(joinpath(dir, "medpower.svg")) |> maingroup
-powside = readxml(joinpath(dir, "medpower_hittype.svg")) |> maingroup
+svg = pyimport("svgutils").compose
 
-catmain["transform"] = "translate(320, 0)"
-catside["transform"] = "translate(640, 0)"
-powside["transform"] = "translate(640, 168)"
+background_file = tempname()
 
-doc = readxml(joinpath(dir, "medpower.svg"))
-docnode = @_ doc |> __.node |> elements |> first
-linkprev!(docnode, catmain)
-linkprev!(docnode, catside)
-linkprev!(docnode, powside)
-linkprev!(docnode, xmlpatterns(patterns))
+background = pyimport("svgutils").transform.fromstring("""
+    <svg>
+        <rect width="100%" height="100%" fill="white"/>
+    </svg>
+""").save(background_file)
 
-open(io -> prettyprint(io, doc), joinpath(dir, "fig1.svg"), write = true)
+fig = svg.Figure("89mm", "160mm", # "240mm",
+    svg.SVG(background_file),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "behavior.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold")
+    ).move(0, 0),
+    # svg.Panel(
+    #     svg.SVG(joinpath(dir, "behavior_distract.svg")).move(0,15),
+    #     svg.Text("B", 2, 10, size = 12, weight = "bold")
+    # ).move(0, 225),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "category.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight = "bold")
+    ).move(0, 225)
+        # svg.Text("C", 2, 10, size = 12, weight = "bold")
+    # ).move(0, 450)
+).scale(1.333).save(joinpath(dir, "fig1.svg"))
 
 # Main median power results
 # -----------------------------------------------------------------
+
 # Examine the power across bins/channels near a target
 # -----------------------------------------------------------------
 

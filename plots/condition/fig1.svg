@@ -1,1037 +1,246 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="111" height="370" viewBox="0 0 111 370" version="1.1">
-<g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h60v300h-60Z" stroke="#ddd"/>
+<?xml version='1.0' encoding='ASCII' standalone='yes'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="89.0mm" viewBox="0 0 89.0mm 160.0mm" height="160.0mm">
+  <g transform="translate(0, 0) scale(1.333) ">
+    <g><rect width="100%" height="100%" fill="white"/>
+    </g>
+    <g transform="translate(0, 0) scale(1) ">
+      <g class="marks" transform="translate(0, 15) scale(1) ">
+        <rect width="252" height="210" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(42,10)">
+          <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+            <g transform="translate(0,0)">
+              <path class="background" aria-hidden="true" d="M0.5,0.5h205v178h-205Z" stroke="#ddd"/>
+              <g>
+                <g class="mark-group role-axis" aria-hidden="true">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-grid" pointer-events="none">
+                        <line transform="translate(0,178)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,142)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,107)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,71)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,36)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                  <g transform="translate(0.5,178.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(34,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(102,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(170,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(33.66666666666667,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                        <text text-anchor="middle" transform="translate(102,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                        <text text-anchor="middle" transform="translate(170.33333333333331,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,0)" x2="205" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Response Rate' for a linear scale with values from 0.0 to 1.0">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(0,178)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,142)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,107)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,71)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,36)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="end" transform="translate(-7,181)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.0</text>
+                        <text text-anchor="end" transform="translate(-7,145.4)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.2</text>
+                        <text text-anchor="end" transform="translate(-7,109.8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.4</text>
+                        <text text-anchor="end" transform="translate(-7,74.2)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                        <text text-anchor="end" transform="translate(-7,38.599999999999994)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                        <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,178)" x2="0" y2="-178" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-title" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(-26,89) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Response Rate</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
+                  <path aria-label=": global; Response Rate: 0.687244152047; condition: global" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,55.67054093567244h20v122.32945906432755h-20Z" fill="#4C4C4C"/>
+                  <path aria-label=": spatial; Response Rate: 0.783274853801; condition: spatial" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,38.57707602339174h20v139.42292397660827h-20Z" fill="#008842"/>
+                  <path aria-label=": object; Response Rate: 0.846783625731; condition: object" role="graphics-symbol" aria-roledescription="bar" d="M82.5,27.272514619883072h20v150.72748538011692h-20Z" fill="#B50021"/>
+                </g>
+                <g class="mark-rect role-mark layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
+                  <path aria-label=": global; pmean: 0.302046783626" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,124.23567251461988h20v53.76432748538012h-20Z" fill="#999999"/>
+                  <path aria-label=": spatial; pmean: 0.272339181287" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,129.5236257309941h20v48.4763742690059h-20Z" fill="#999999"/>
+                  <path aria-label=": object; pmean: 0.22350877193" role="graphics-symbol" aria-roledescription="bar" d="M102.5,138.21543859649134h20v39.78456140350866h-20Z" fill="#999999"/>
+                </g>
+                <g class="mark-rule role-mark layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
+                  <line aria-label=": 0.714031880418; lower: 0.660456423676" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,50.902325285662734)" x2="0" y2="9.536431300019423" stroke="black"/>
+                  <line aria-label=": 0.823970654401; lower: 0.742579053201" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,31.333223516645155)" x2="0" y2="14.487705013493162" stroke="black"/>
+                  <line aria-label=": 0.874408444311; lower: 0.819158807151" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,22.355296912724572)" x2="0" y2="9.834435414317003" stroke="black"/>
+                </g>
+                <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                  <line aria-label=": 0.35678203728; lower: 0.247311529972" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,114.4927973642453)" x2="0" y2="19.48575030074916" stroke="black"/>
+                  <line aria-label=": 0.307611829123; lower: 0.23706653345" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,123.24509441615886)" x2="0" y2="12.557062629670483" stroke="black"/>
+                  <line aria-label=": 0.255187634981; lower: 0.191829908879" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,132.5766009733835)" x2="0" y2="11.277675246215665" stroke="black"/>
+                </g>
+                <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label=": global; Mean of pmean: 0.687244152047" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,55.67054093567244) rotate(-90) translate(0,-24)" font-family="sans-serif" font-size="9px" fill="black">Hits</text>
+                </g>
+                <g class="mark-text role-mark layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(34.16666666666667,178) rotate(-90) translate(0,29)" font-family="sans-serif" font-size="9px" fill="black">False Positives</text>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" display="none"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">A</text>
+    </g>
+    <g transform="translate(0, 225) scale(1) ">
+      <g class="marks" transform="translate(0, 15) scale(1) "><defs><pattern id="mix2_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#B50021;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#008842;"/>
+</pattern>
+<pattern id="mix1_2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#4C4C4C;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#B50021;"/>
+</pattern>
+<pattern id="mix1_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#4C4C4C;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#008842;"/>
+</pattern>
+</defs>
+  <rect width="252" height="210" fill="white"/>
+  <g fill="none" stroke-miterlimit="10" transform="translate(42,10)">
+    <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+      <g transform="translate(0,0)">
+        <path class="background" aria-hidden="true" d="M0.5,0.5h205v166h-205Z" stroke="#ddd"/>
         <g>
           <g class="mark-group role-axis" aria-hidden="true">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,300)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,166)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,133)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,66)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,33)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="205" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled '% Correct' for a linear scale with values from 50 to 100">
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: Global vs.  Object, Global vs.  Spatial, Object vs.  Spatial">
+            <g transform="translate(0.5,166.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-tick" pointer-events="none">
+                  <line transform="translate(34,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(102,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(170,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-label" pointer-events="none">
+                  <text text-anchor="middle" transform="translate(33.66666666666667,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Global vs.</tspan>
+                    <tspan x="0" dy="12">Object</tspan>
+                  </text>
+                  <text text-anchor="middle" transform="translate(102,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Global vs.</tspan>
+                    <tspan x="0" dy="12">Spatial</tspan>
+                  </text>
+                  <text text-anchor="middle" transform="translate(170.33333333333331,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Object vs.</tspan>
+                    <tspan x="0" dy="12">Spatial</tspan>
+                  </text>
+                </g>
+                <g class="mark-rule role-axis-domain" pointer-events="none">
+                  <line transform="translate(0,0)" x2="205" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Neural Classification Accuracy' for a linear scale with values from 0.5 to 1.0">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(0,300)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,166)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,133)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,66)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,33)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                   <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(-7,303)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">50</text>
-                  <text text-anchor="end" transform="translate(-7,273)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">55</text>
-                  <text text-anchor="end" transform="translate(-7,243)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">60</text>
-                  <text text-anchor="end" transform="translate(-7,213)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">65</text>
-                  <text text-anchor="end" transform="translate(-7,183)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">70</text>
-                  <text text-anchor="end" transform="translate(-7,153)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">75</text>
-                  <text text-anchor="end" transform="translate(-7,123)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">80</text>
-                  <text text-anchor="end" transform="translate(-7,93.00000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">85</text>
-                  <text text-anchor="end" transform="translate(-7,62.999999999999986)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">90</text>
-                  <text text-anchor="end" transform="translate(-7,32.99999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">95</text>
-                  <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">100</text>
+                  <text text-anchor="end" transform="translate(-7,169)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.5</text>
+                  <text text-anchor="end" transform="translate(-7,135.8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                  <text text-anchor="end" transform="translate(-7,102.60000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.7</text>
+                  <text text-anchor="end" transform="translate(-7,69.39999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                  <text text-anchor="end" transform="translate(-7,36.199999999999996)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.9</text>
+                  <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,300)" x2="0" y2="-300" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,166)" x2="0" y2="-166" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(-29,150) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">% Correct</text>
+                  <text text-anchor="middle" transform="translate(-26,83) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Neural Classification Accuracy</text>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label="compname: Global vs. Object; % Correct: 74.6129167741" role="graphics-symbol" aria-roledescription="bar" d="M1,152.32249935518442h18v147.67750064481558h-18Z" fill="url(#blue_orange)"/>
-            <path aria-label="compname: Global vs. Spatial; % Correct: 90.4470995134" role="graphics-symbol" aria-roledescription="bar" d="M21,57.31740291953703h18v242.68259708046298h-18Z" fill="url(#blue_red)"/>
-            <path aria-label="compname: Object vs. Spatial; % Correct: 63.6813583875" role="graphics-symbol" aria-roledescription="bar" d="M41,217.91184967515898h18v82.08815032484102h-18Z" fill="url(#orange_red)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Neural Classification Accuracy: 0.814098386803" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,61.71933558147821h20v104.28066441852178h-20Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Neural Classification Accuracy: 0.922009740096" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.892766288185054h20v140.10723371181496h-20Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Neural Classification Accuracy: 0.631656728854" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,122.28996602055521h20v43.71003397944479h-20Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rect role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label="compname: Global vs. Object; % Correct: 63.5503061249" role="graphics-symbol" aria-roledescription="bar" d="M1,218.69816325065028h18v81.30183674934972h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-            <path aria-label="compname: Global vs. Spatial; % Correct: 77.5131199108" role="graphics-symbol" aria-roledescription="bar" d="M21,134.921280534972h18v165.078719465028h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-            <path aria-label="compname: Object vs. Spatial; % Correct: 66.2871713854" role="graphics-symbol" aria-roledescription="bar" d="M41,202.27697168747312h18v97.72302831252688h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
+            <path aria-label=": Global vs.  Object; Neural Classification Accuracy: 0.635503061249" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,121.01298366535974h20v44.98701633464026h-20Z" fill="#999999"/>
+            <path aria-label=": Global vs.  Spatial; Neural Classification Accuracy: 0.775131199108" role="graphics-symbol" aria-roledescription="bar" d="M102.5,74.65644189601768h20v91.34355810398232h-20Z" fill="#999999"/>
+            <path aria-label=": Object vs.  Spatial; Neural Classification Accuracy: 0.662871713854" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,111.92659100040179h20v54.073408999598215h-20Z" fill="#999999"/>
           </g>
-          <g class="mark-rect role-mark layer_0_layer_2_layer_0_marks" aria-hidden="true">
-            <path d="M7.5,178.26881275920903h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M27.5,73.9648191822451h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M47.5,242.8611244715569h5v1h-5Z" fill="black" opacity="0.7"/>
+          <g class="mark-rule role-mark layer_0_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
+            <line aria-label=": Global vs.  Object; upper: 0.880250337301; Neural Classification Accuracy: 0.749231703646" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,83.25507438937359)" x2="0" y2="-43.49818637333416" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.975572924045; Neural Classification Accuracy: 0.873657751325" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,41.94562655995573)" x2="0" y2="-33.835837342986906" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.72654615511; Neural Classification Accuracy: 0.536891053977" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,153.75217007948086)" x2="0" y2="-62.96549357612139" stroke="black"/>
           </g>
-          <g class="mark-rect role-mark layer_0_layer_2_layer_1_marks" aria-hidden="true">
-            <path d="M7.5,125.3761859511599h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M27.5,39.669986656829h5v1h-5Z" fill="black" opacity="0.7"/>
-            <path d="M47.5,191.96257487876107h5v1h-5Z" fill="black" opacity="0.7"/>
+          <g class="mark-rule role-mark layer_0_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+            <line aria-label=": Global vs.  Object; nullupper: 0.671015777084; Neural Classification Accuracy: 0.596065002935" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.10641902571334)" x2="0" y2="-24.883657017618418" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; nullupper: 0.803706104936; Neural Classification Accuracy: 0.745365671094" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,84.53859719664516)" x2="0" y2="-19.36902403549226" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; nullupper: 0.701768703551; Neural Classification Accuracy: 0.624624301221" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,124.62473199452296)" x2="0" y2="-25.611941573590144" stroke="black"/>
           </g>
-          <g class="mark-rule role-mark layer_0_layer_2_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="% Correct: 70.2051978735; upper_correct: 79.0206356748; compname: Global vs. Object; Mean of correct: 74.6129167741; Mean + stderr of correct: 79.0206356748; Mean - stderr of correct: 70.2051978735" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,178.76881275920903)" x2="0" y2="-52.89262680804913" stroke="black"/>
-            <line aria-label="% Correct: 87.589196803; upper_correct: 93.3050022239; compname: Global vs. Spatial; Mean of correct: 90.4470995134; Mean + stderr of correct: 93.3050022239; Mean - stderr of correct: 87.589196803" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,74.4648191822451)" x2="0" y2="-34.29483252541609" stroke="black"/>
-            <line aria-label="% Correct: 59.4398125881; upper_correct: 67.9229041869; compname: Object vs. Spatial; Mean of correct: 63.6813583875; Mean + stderr of correct: 67.9229041869; Mean - stderr of correct: 59.4398125881" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,243.3611244715569)" x2="0" y2="-50.89854959279583" stroke="black"/>
+          <g class="mark-text role-mark layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
+            <text aria-label=": Global vs.  Object; Mean of correct: 0.814098386803" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,61.71933558147821) rotate(-90) translate(0,-22)" font-family="sans-serif" font-size="9px" fill="black">Full Model</text>
           </g>
-          <g class="mark-group role-legend" role="graphics-symbol" aria-roledescription="legend" aria-label="Symbol legend for fill color with 3 values: Global vs. Object, Global vs. Spatial, Object vs. Spatial">
-            <g transform="translate(5,5)">
-              <path class="background" aria-hidden="true" d="M0,0h103v37h-103Z" pointer-events="none"/>
-              <g>
-                <g class="mark-group role-legend-entry">
-                  <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-group role-scope" role="graphics-object" aria-roledescription="group mark container">
-                        <g transform="translate(0,0)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#blue_orange)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global vs. Object</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                        <g transform="translate(0,13)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#blue_red)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global vs. Spatial</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                        <g transform="translate(0,26)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#orange_red)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object vs. Spatial</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-<g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
-        <g>
-          <g class="mark-group role-column-title column-title" role="graphics-object" aria-roledescription="group mark container">
-            <g transform="translate(112,-31)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
-              <g>
-                <g class="mark-group role-title">
-                  <g transform="translate(0,-21)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'hittype'" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(0,9)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">hittype</text>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-          </g>
-          <g class="mark-group role-row-header row_header" role="graphics-object" aria-roledescription="group mark container">
-            <g transform="translate(-1,0)">
-              <path class="background" aria-hidden="true" d="M0,0h0v200h0Z"/>
-              <g>
-                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled '% Correct' for a linear scale with values from 50 to 100">
-                  <g transform="translate(0.5,0.5)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-rule role-axis-tick" pointer-events="none">
-                        <line transform="translate(0,200)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,160)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,120)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,80)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,40)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                      </g>
-                      <g class="mark-text role-axis-label" pointer-events="none">
-                        <text text-anchor="end" transform="translate(-7,203)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">50</text>
-                        <text text-anchor="end" transform="translate(-7,163)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">60</text>
-                        <text text-anchor="end" transform="translate(-7,123)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">70</text>
-                        <text text-anchor="end" transform="translate(-7,83)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">80</text>
-                        <text text-anchor="end" transform="translate(-7,42.99999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">90</text>
-                        <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">100</text>
-                      </g>
-                      <g class="mark-rule role-axis-domain" pointer-events="none">
-                        <line transform="translate(0,200)" x2="0" y2="-200" stroke="#888" stroke-width="1" opacity="1"/>
-                      </g>
-                      <g class="mark-text role-axis-title" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(-29,100) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">% Correct</text>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-          </g>
-          <g class="mark-group role-column-header column_header" role="graphics-object" aria-roledescription="group mark container">
-            <g transform="translate(0,-1)">
-              <path class="background" aria-hidden="true" d="M0,0h60v0h-60Z"/>
-              <g>
-                <g class="mark-group role-title">
-                  <g transform="translate(30,-20)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'falsep'" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">falsep</text>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-            <g transform="translate(82,-1)">
-              <path class="background" aria-hidden="true" d="M0,0h60v0h-60Z"/>
-              <g>
-                <g class="mark-group role-title">
-                  <g transform="translate(30,-20)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'miss'" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">miss</text>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-            <g transform="translate(164,-1)">
-              <path class="background" aria-hidden="true" d="M0,0h60v0h-60Z"/>
-              <g>
-                <g class="mark-group role-title">
-                  <g transform="translate(30,-20)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'reject'" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">reject</text>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-          </g>
-          <g class="mark-group role-scope cell" role="graphics-object" aria-roledescription="group mark container">
-            <g transform="translate(0,0)">
-              <path class="background" aria-hidden="true" d="M0.5,0.5h60v200h-60Z" stroke="#ddd"/>
-              <g>
-                <g class="mark-group role-axis" aria-hidden="true">
-                  <g transform="translate(0.5,0.5)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-rule role-axis-grid" pointer-events="none">
-                        <line transform="translate(0,200)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,160)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,120)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,80)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,40)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-                <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 70.8858168698" role="graphics-symbol" aria-roledescription="bar" d="M1,116.45673252080586h18v83.54326747919414h-18Z" fill="url(#blue_orange)"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 85.5692057908" role="graphics-symbol" aria-roledescription="bar" d="M21,57.723176836800235h18v142.27682316319977h-18Z" fill="url(#blue_red)"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 73.3384405627" role="graphics-symbol" aria-roledescription="bar" d="M41,106.6462377491789h18v93.3537622508211h-18Z" fill="url(#orange_red)"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 61.8110823832" role="graphics-symbol" aria-roledescription="bar" d="M1,152.755670467341h18v47.24432953265901h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 78.712024183" role="graphics-symbol" aria-roledescription="bar" d="M21,85.1519032680842h18v114.8480967319158h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 67.93537805" role="graphics-symbol" aria-roledescription="bar" d="M41,128.2584877998965h18v71.7415122001035h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_0_marks" aria-hidden="true">
-                  <path d="M7.5,141.46896713293063h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,69.3350976217338h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,125.89358059159179h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_1_marks" aria-hidden="true">
-                  <path d="M7.5,90.44449790868111h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,45.11125605186669h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,86.39889490676603h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rule role-mark child_layer_2_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="% Correct: 64.5077582168; upper_correct: 77.2638755228; compname: Global vs. Object; Mean of correct: 70.8858168698; Mean + stderr of correct: 77.2638755228; Mean - stderr of correct: 64.5077582168" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,141.96896713293063)" x2="0" y2="-51.024469224249515" stroke="black"/>
-                  <line aria-label="% Correct: 82.5412255946; upper_correct: 88.597185987; compname: Global vs. Spatial; Mean of correct: 85.5692057908; Mean + stderr of correct: 88.597185987; Mean - stderr of correct: 82.5412255946" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,69.8350976217338)" x2="0" y2="-24.223841569867105" stroke="black"/>
-                  <line aria-label="% Correct: 68.4016048521; upper_correct: 78.2752762733; compname: Object vs. Spatial; Mean of correct: 73.3384405627; Mean + stderr of correct: 78.2752762733; Mean - stderr of correct: 68.4016048521" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,126.39358059159179)" x2="0" y2="-39.494685684825754" stroke="black"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-            <g transform="translate(82,0)">
-              <path class="background" aria-hidden="true" d="M0.5,0.5h60v200h-60Z" stroke="#ddd"/>
-              <g>
-                <g class="mark-group role-axis" aria-hidden="true">
-                  <g transform="translate(0.5,0.5)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-rule role-axis-grid" pointer-events="none">
-                        <line transform="translate(0,200)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,160)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,120)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,80)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,40)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-                <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 67.6616803849" role="graphics-symbol" aria-roledescription="bar" d="M1,129.35327846022471h18v70.64672153977529h-18Z" fill="url(#blue_orange)"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 78.0713956523" role="graphics-symbol" aria-roledescription="bar" d="M21,87.71441739088802h18v112.28558260911198h-18Z" fill="url(#blue_red)"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 57.3913174768" role="graphics-symbol" aria-roledescription="bar" d="M41,170.43473009286063h18v29.565269907139367h-18Z" fill="url(#orange_red)"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 62.2665156341" role="graphics-symbol" aria-roledescription="bar" d="M1,150.93393746376407h18v49.06606253623593h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 68.7253715899" role="graphics-symbol" aria-roledescription="bar" d="M21,125.09851364033608h18v74.90148635966392h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 58.5571337207" role="graphics-symbol" aria-roledescription="bar" d="M41,165.77146511709563h18v34.22853488290437h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_0_marks" aria-hidden="true">
-                  <path d="M7.5,146.4211798002366h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,105.52311144721087h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,190.0915648869028h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_1_marks" aria-hidden="true">
-                  <path d="M7.5,111.28537712021286h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,68.90572333456517h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,149.77789529881846h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rule role-mark child_layer_2_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="% Correct: 63.2697050499; upper_correct: 72.0536557199; compname: Global vs. Object; Mean of correct: 67.6616803849; Mean + stderr of correct: 72.0536557199; Mean - stderr of correct: 63.2697050499" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,146.9211798002366)" x2="0" y2="-35.13580268002373" stroke="black"/>
-                  <line aria-label="% Correct: 73.4942221382; upper_correct: 82.6485691664; compname: Global vs. Spatial; Mean of correct: 78.0713956523; Mean + stderr of correct: 82.6485691664; Mean - stderr of correct: 73.4942221382" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,106.02311144721087)" x2="0" y2="-36.6173881126457" stroke="black"/>
-                  <line aria-label="% Correct: 52.3521087783; upper_correct: 62.4305261753; compname: Object vs. Spatial; Mean of correct: 57.3913174768; Mean + stderr of correct: 62.4305261753; Mean - stderr of correct: 52.3521087783" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,190.5915648869028)" x2="0" y2="-40.31366958808434" stroke="black"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-            <g transform="translate(164,0)">
-              <path class="background" aria-hidden="true" d="M0.5,0.5h60v200h-60Z" stroke="#ddd"/>
-              <g>
-                <g class="mark-group role-axis" aria-hidden="true">
-                  <g transform="translate(0.5,0.5)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-rule role-axis-grid" pointer-events="none">
-                        <line transform="translate(0,200)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,160)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,120)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,80)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,40)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-                <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 89.8758732977" role="graphics-symbol" aria-roledescription="bar" d="M1,40.49650680903607h18v159.50349319096392h-18Z" fill="url(#blue_orange)"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 93.6542508418" role="graphics-symbol" aria-roledescription="bar" d="M21,25.382996632996544h18v174.61700336700346h-18Z" fill="url(#blue_red)"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 54.1952168657" role="graphics-symbol" aria-roledescription="bar" d="M41,183.21913253711293h18v16.780867462887073h-18Z" fill="url(#orange_red)"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs. Object; % Correct: 73.3639373444" role="graphics-symbol" aria-roledescription="bar" d="M1,106.54425062226949h18v93.45574937773051h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Global vs. Spatial; % Correct: 76.7962754785" role="graphics-symbol" aria-roledescription="bar" d="M21,92.81489808614761h18v107.18510191385239h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                  <path aria-label="compname: Object vs. Spatial; % Correct: 54.5459671211" role="graphics-symbol" aria-roledescription="bar" d="M41,181.8161315155875h18v18.1838684844125h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_0_marks" aria-hidden="true">
-                  <path d="M7.5,53.96307569448232h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,33.782375907793835h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,199.93107597319798h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rect role-mark child_layer_2_layer_1_marks" aria-hidden="true">
-                  <path d="M7.5,26.02993792358984h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M27.5,15.983617358199233h5v1h-5Z" fill="black" opacity="0.7"/>
-                  <path d="M47.5,165.50718910102788h5v1h-5Z" fill="black" opacity="0.7"/>
-                </g>
-                <g class="mark-rule role-mark child_layer_2_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="% Correct: 86.3842310764; upper_correct: 93.3675155191; compname: Global vs. Object; Mean of correct: 89.8758732977; Mean + stderr of correct: 93.3675155191; Mean - stderr of correct: 86.3842310764" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,54.46307569448232)" x2="0" y2="-27.93313777089248" stroke="black"/>
-                  <line aria-label="% Correct: 91.4294060231; upper_correct: 95.8790956605; compname: Global vs. Spatial; Mean of correct: 93.6542508418; Mean + stderr of correct: 95.8790956605; Mean - stderr of correct: 91.4294060231" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,34.282375907793835)" x2="0" y2="-17.798758549594602" stroke="black"/>
-                  <line aria-label="% Correct: 49.8922310067; upper_correct: 58.4982027247; compname: Object vs. Spatial; Mean of correct: 54.1952168657; Mean + stderr of correct: 58.4982027247; Mean - stderr of correct: 49.8922310067" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,200.43107597319798)" x2="0" y2="-34.4238868721701" stroke="black"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" display="none"/>
-            </g>
-          </g>
-          <g class="mark-group role-legend" role="graphics-symbol" aria-roledescription="legend" aria-label="Symbol legend for fill color with 3 values: Global vs. Object, Global vs. Spatial, Object vs. Spatial">
-            <g transform="translate(5,5)">
-              <path class="background" aria-hidden="true" d="M0,0h103v37h-103Z" pointer-events="none"/>
-              <g>
-                <g class="mark-group role-legend-entry">
-                  <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-                    <g>
-                      <g class="mark-group role-scope" role="graphics-object" aria-roledescription="group mark container">
-                        <g transform="translate(0,0)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#blue_orange)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global vs. Object</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                        <g transform="translate(0,13)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#blue_red)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global vs. Spatial</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                        <g transform="translate(0,26)">
-                          <path class="background" aria-hidden="true" d="M0,0h103v11h-103Z" pointer-events="none" opacity="1"/>
-                          <g>
-                            <g class="mark-symbol role-legend-symbol" pointer-events="none">
-                              <path transform="translate(6,6)" d="M-5,-5h10v10h-10Z" fill="url(#orange_red)" stroke-width="1.5" opacity="1"/>
-                            </g>
-                            <g class="mark-text role-legend-label" pointer-events="none">
-                              <text text-anchor="start" transform="translate(16,9)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object vs. Spatial</text>
-                            </g>
-                          </g>
-                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                        </g>
-                      </g>
-                    </g>
-                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-                  </g>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-<g transform="translate(0,0)">
-  <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
-  <g>
-    <g class="mark-group role-column-title facet-title" role="graphics-object" aria-roledescription="group mark container">
-      <g transform="translate(97,-21)">
-        <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
-        <g>
-          <g class="mark-group role-title">
-            <g transform="translate(0,-21)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'hittype'" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(0,9)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">hittype</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-    </g>
-    <g class="mark-group role-row-header row_header" role="graphics-object" aria-roledescription="group mark container">
-      <g transform="translate(-1,0)">
-        <path class="background" aria-hidden="true" d="M0,0h0v300h0Z"/>
-        <g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Median Power of top 30 MCCA Components' for a linear scale with values from -3 to 3">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(0,300)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(-7,303)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-2.5</text>
-                  <text text-anchor="end" transform="translate(-7,273)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-2.0</text>
-                  <text text-anchor="end" transform="translate(-7,243)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-1.5</text>
-                  <text text-anchor="end" transform="translate(-7,213)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-1.0</text>
-                  <text text-anchor="end" transform="translate(-7,183)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-0.5</text>
-                  <text text-anchor="end" transform="translate(-7,153)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.0</text>
-                  <text text-anchor="end" transform="translate(-7,123)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.5</text>
-                  <text text-anchor="end" transform="translate(-7,93.00000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
-                  <text text-anchor="end" transform="translate(-7,62.999999999999986)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.5</text>
-                  <text text-anchor="end" transform="translate(-7,32.99999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">2.0</text>
-                  <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">2.5</text>
-                </g>
-                <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,300)" x2="0" y2="-300" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(-30,150) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Median Power of top 30 MCCA Components</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-    </g>
-    <g class="mark-group role-column-footer column_footer" role="graphics-object" aria-roledescription="group mark container">
-      <g transform="translate(0,301)">
-        <path class="background" aria-hidden="true" d="M0,0h50v0h-50Z"/>
-        <g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'condition' for a discrete scale with 3 values: global, object, spatial">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(8,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(25,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(41,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(7.833333333333334,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">global</text>
-                  <text text-anchor="end" transform="translate(24.5,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">object</text>
-                  <text text-anchor="end" transform="translate(41.16666666666667,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">spatial</text>
-                </g>
-                <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(25,53)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">condition</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-      <g transform="translate(72,301)">
-        <path class="background" aria-hidden="true" d="M0,0h50v0h-50Z"/>
-        <g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'condition' for a discrete scale with 3 values: global, object, spatial">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(8,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(25,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(41,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(7.833333333333334,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">global</text>
-                  <text text-anchor="end" transform="translate(24.5,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">object</text>
-                  <text text-anchor="end" transform="translate(41.16666666666667,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">spatial</text>
-                </g>
-                <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(25,53)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">condition</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-      <g transform="translate(144,301)">
-        <path class="background" aria-hidden="true" d="M0,0h50v0h-50Z"/>
-        <g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'condition' for a discrete scale with 3 values: global, object, spatial">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(8,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(25,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(41,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(7.833333333333334,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">global</text>
-                  <text text-anchor="end" transform="translate(24.5,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">object</text>
-                  <text text-anchor="end" transform="translate(41.16666666666667,7) rotate(270) translate(0,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">spatial</text>
-                </g>
-                <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                </g>
-                <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(25,53)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">condition</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-    </g>
-    <g class="mark-group role-scope cell" role="graphics-object" aria-roledescription="group mark container">
-      <g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h50v300h-50Z" stroke="#ddd"/>
-        <g>
-          <g class="mark-group role-axis" aria-hidden="true">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,300)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-          <g class="mark-symbol role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.690416967804" role="graphics-symbol" aria-roledescription="point" transform="translate(8.333333333333334,191.42501806822742)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#4c78a8" stroke-width="2"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.197641082041" role="graphics-symbol" aria-roledescription="point" transform="translate(25,138.14153507755918)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#f58518" stroke-width="2"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.816038001626" role="graphics-symbol" aria-roledescription="point" transform="translate(41.66666666666667,101.03771990244816)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#e45756" stroke-width="2"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_0_marks" aria-hidden="true">
-            <path d="M5.833333333333334,197.49335329038584h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,142.21710959996798h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,106.1176110512088h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_1_marks" aria-hidden="true">
-            <path d="M5.833333333333334,184.35668284606896h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,133.06596055515033h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,94.95782875368756h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rule role-mark child_layer_1_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="Median Power of top 30 MCCA Components: -0.799889221506; upper_medvalue: -0.580944714101; condition: global; Mean of medvalue: -0.690416967804; Mean + stderr of medvalue: -0.580944714101; Mean - stderr of medvalue: -0.799889221506" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(8.333333333333334,197.99335329038584)" x2="0" y2="-13.136670444316877" stroke="#4c78a8"/>
-            <line aria-label="Median Power of top 30 MCCA Components: 0.121381506667; upper_medvalue: 0.273900657414; condition: object; Mean of medvalue: 0.197641082041; Mean + stderr of medvalue: 0.273900657414; Mean - stderr of medvalue: 0.121381506667" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(25,142.71710959996798)" x2="0" y2="-9.151149044817657" stroke="#f58518"/>
-            <line aria-label="Median Power of top 30 MCCA Components: 0.723039815813; upper_medvalue: 0.909036187439; condition: spatial; Mean of medvalue: 0.816038001626; Mean + stderr of medvalue: 0.909036187439; Mean - stderr of medvalue: 0.723039815813" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(41.66666666666667,106.6176110512088)" x2="0" y2="-11.159782297521232" stroke="#e45756"/>
-          </g>
-          <g class="mark-symbol role-mark child_layer_2_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 1.18214183575" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,79.0714898551054)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.390125705896" role="graphics-symbol" aria-roledescription="point" transform="translate(20,126.59245764626135)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.321892951796" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,130.68642289224633)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.74306812107" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,194.58408726421857)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.131247118414" role="graphics-symbol" aria-roledescription="point" transform="translate(20,157.8748271048654)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.33710779756" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,69.77353214615194)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.410448530191" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,174.6269118114877)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.8112124427" role="graphics-symbol" aria-roledescription="point" transform="translate(20,101.32725343798327)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.4891996869" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,60.648018786285164)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.15420200899" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,219.25212053941917)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.143682498519" role="graphics-symbol" aria-roledescription="point" transform="translate(20,141.3790500888815)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.09007185817" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,84.59568850987318)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.234914652105" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,164.09487912632954)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.179418426409" role="graphics-symbol" aria-roledescription="point" transform="translate(20,139.2348944154438)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.291191012814" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,132.52853923113872)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.318589547068" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,169.11537282408966)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.443576755613" role="graphics-symbol" aria-roledescription="point" transform="translate(20,123.38539466320961)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.542846721226" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,117.42919672645768)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.599445708081" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,185.96674248486562)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.363041037212" role="graphics-symbol" aria-roledescription="point" transform="translate(20,128.21753776725558)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.934565591927" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,93.92606448438676)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.751862477212" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,195.1117486327473)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0327216641789" role="graphics-symbol" aria-roledescription="point" transform="translate(20,148.03670014926865)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.737613900256" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,105.74316598462305)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.855624789172" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,201.33748735034663)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0962910895814" role="graphics-symbol" aria-roledescription="point" transform="translate(20,144.22253462511543)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.04282657675" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,87.43040539472312)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.25734673719" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,225.44080423162458)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.310237992278" role="graphics-symbol" aria-roledescription="point" transform="translate(20,131.38572046333204)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.64861311842" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,111.08321289481026)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.198059031" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,221.88354185996172)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.555648174517" role="graphics-symbol" aria-roledescription="point" transform="translate(20,183.33889047104518)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.093631797528" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,144.38209214831969)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.08346710132" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,215.00802607915307)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.442063125664" role="graphics-symbol" aria-roledescription="point" transform="translate(20,176.52378753986955)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.439876699667" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,123.6073980199726)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.559579751576" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,183.57478509458824)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.20587373504" role="graphics-symbol" aria-roledescription="point" transform="translate(20,137.64757589760794)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.365869548326" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,128.04782710043307)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.370867883889" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,172.25207303333673)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.517409224758" role="graphics-symbol" aria-roledescription="point" transform="translate(20,118.9554465145022)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.40214665827" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,65.87120050403266)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.48689858874" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,239.213915324341)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.15128001269" role="graphics-symbol" aria-roledescription="point" transform="translate(20,140.92319923862362)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.698107003222" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,108.1135798066548)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.735401196722" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,194.1240718033166)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0522893133227" role="graphics-symbol" aria-roledescription="point" transform="translate(20,146.86264120063808)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.561172868641" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,116.32962788154923)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.982336611911" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,208.94019671464798)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.430162587103" role="graphics-symbol" aria-roledescription="point" transform="translate(20,124.19024477384677)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.552439638889" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,116.8536216666886)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.23854378267" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,224.31262696047386)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.161480190945" role="graphics-symbol" aria-roledescription="point" transform="translate(20,140.31118854328767)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.11193970438" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,83.28361773720229)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.667312022168" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,190.0387213300685)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0379101138775" role="graphics-symbol" aria-roledescription="point" transform="translate(20,147.7253931673518)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.652882424786" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,110.82705451283165)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.904321467417" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,204.259288045032)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.163019761099" role="graphics-symbol" aria-roledescription="point" transform="translate(20,140.2188143340766)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.498805528114" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,120.07166831316232)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.37160454007" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,172.29627240421382)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.345107290877" role="graphics-symbol" aria-roledescription="point" transform="translate(20,170.70643745261805)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.687704534041" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,108.7377279575125)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.17005526287" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,160.20331577218641)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 1.14092929563" role="graphics-symbol" aria-roledescription="point" transform="translate(20,81.54424226245237)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.9689020836" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,31.865874983724595)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.04748749258" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,212.84924955482447)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0103816727603" role="graphics-symbol" aria-roledescription="point" transform="translate(20,149.37709963438041)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.707577421738" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,107.54535469573946)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.610711759018" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,186.64270554107927)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.576408158842" role="graphics-symbol" aria-roledescription="point" transform="translate(20,115.41551046950322)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.407926912" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,65.52438528023671)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-          </g>
-          <g class="mark-group role-title">
-            <g transform="translate(25,-20)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'falsep'" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">falsep</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-      <g transform="translate(72,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h50v300h-50Z" stroke="#ddd"/>
-        <g>
-          <g class="mark-group role-axis" aria-hidden="true">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,300)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-          <g class="mark-symbol role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.28674280168" role="graphics-symbol" aria-roledescription="point" transform="translate(8.333333333333334,132.79543189919087)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#4c78a8" stroke-width="2"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.398278539086" role="graphics-symbol" aria-roledescription="point" transform="translate(25,173.89671234514987)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#f58518" stroke-width="2"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.668616734974" role="graphics-symbol" aria-roledescription="point" transform="translate(41.66666666666667,190.11700409844977)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#e45756" stroke-width="2"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_0_marks" aria-hidden="true">
-            <path d="M5.833333333333334,138.74454343351275h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,183.13772798614303h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,196.70539845056544h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_1_marks" aria-hidden="true">
-            <path d="M5.833333333333334,125.84632036486902h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,163.65569670415667h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,182.5286097463341h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rule role-mark child_layer_1_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="Median Power of top 30 MCCA Components: 0.179257609441; upper_medvalue: 0.394227993919; condition: global; Mean of medvalue: 0.28674280168; Mean + stderr of medvalue: 0.394227993919; Mean - stderr of medvalue: 0.179257609441" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(8.333333333333334,139.24454343351275)" x2="0" y2="-12.89822306864373" stroke="#4c78a8"/>
-            <line aria-label="Median Power of top 30 MCCA Components: -0.560628799769; upper_medvalue: -0.235928278403; condition: object; Mean of medvalue: -0.398278539086; Mean + stderr of medvalue: -0.235928278403; Mean - stderr of medvalue: -0.560628799769" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(25,183.63772798614303)" x2="0" y2="-19.482031281986366" stroke="#f58518"/>
-            <line aria-label="Median Power of top 30 MCCA Components: -0.786756640843; upper_medvalue: -0.550476829106; condition: spatial; Mean of medvalue: -0.668616734974; Mean + stderr of medvalue: -0.550476829106; Mean - stderr of medvalue: -0.786756640843" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(41.66666666666667,197.20539845056544)" x2="0" y2="-14.176788704231342" stroke="#e45756"/>
-          </g>
-          <g class="mark-symbol role-mark child_layer_2_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.817406719696" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,100.95559681821749)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 1.3613625514" role="graphics-symbol" aria-roledescription="point" transform="translate(20,68.31824691605377)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.0697421894676" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,145.81546863194174)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.288623655934" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,167.31741935603384)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.421189669902" role="graphics-symbol" aria-roledescription="point" transform="translate(20,175.27138019413647)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.82571518916" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,199.54291134960965)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.516209006021" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,119.02745963873303)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.271647069032" role="graphics-symbol" aria-roledescription="point" transform="translate(20,133.70117585805292)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.379409960979" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,172.764597658725)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.490720633442" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,179.4432380065197)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.737504577031" role="graphics-symbol" aria-roledescription="point" transform="translate(20,194.25027462185713)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.838451086449" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,200.30706518691528)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.173862970267" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,139.56822178399204)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.00267722430886" role="graphics-symbol" aria-roledescription="point" transform="translate(20,149.83936654146856)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.0834955018046" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,155.00973010827562)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.443548791152" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,123.3870725308623)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.666000565887" role="graphics-symbol" aria-roledescription="point" transform="translate(20,189.96003395323964)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.77673929668" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,196.60435780082253)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.0502075313702" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,153.01245188221316)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.261413920019" role="graphics-symbol" aria-roledescription="point" transform="translate(20,165.68483520114637)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.734103081174" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,194.04618487044934)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 1.22540587895" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,76.47564726301368)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.857284396334" role="graphics-symbol" aria-roledescription="point" transform="translate(20,201.4370637800329)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.410872891378" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,174.6523734826797)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.596929018126" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,185.81574108757127)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -1.99831435362" role="graphics-symbol" aria-roledescription="point" transform="translate(20,269.8988612174152)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.905256492125" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,95.68461047247935)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0480860479827" role="graphics-symbol" aria-roledescription="point" transform="translate(20,147.11483712103816)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.109983733624" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,156.5990240174198)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.637974382828" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,111.72153703030878)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.514990146068" role="graphics-symbol" aria-roledescription="point" transform="translate(20,180.8994087640636)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.661999552327" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,189.71997313959997)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.324871889413" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,130.50768663521887)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.193675352775" role="graphics-symbol" aria-roledescription="point" transform="translate(20,138.3794788334781)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.719130497179" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,193.14782983073135)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.425706633555" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,124.45760198671647)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.867206624434" role="graphics-symbol" aria-roledescription="point" transform="translate(20,97.96760253395477)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.0212978665659" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,151.27787199395212)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 1.22575982989" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,76.45441020670873)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.276308888132" role="graphics-symbol" aria-roledescription="point" transform="translate(20,166.57853328792015)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.207021171394" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,137.5787297163787)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.99338192781" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,90.3970843314267)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -1.00850282322" role="graphics-symbol" aria-roledescription="point" transform="translate(20,210.51016939337973)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.919794668147" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,205.1876800887902)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.231299046101" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,136.122057233926)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.498475337314" role="graphics-symbol" aria-roledescription="point" transform="translate(20,179.90852023882502)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.0769230520575" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,154.61538312344862)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.187604418807" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,161.25626512843192)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.971826297817" role="graphics-symbol" aria-roledescription="point" transform="translate(20,208.3095778690225)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -1.27329942528" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,226.39796551705774)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.0409253654533" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,147.54447807279928)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.557975995515" role="graphics-symbol" aria-roledescription="point" transform="translate(20,116.52144026910591)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.927080118137" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,205.6248070882287)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.381549325089" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,127.10704049465834)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -1.6530877229" role="graphics-symbol" aria-roledescription="point" transform="translate(20,249.18526337378702)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.966777800895" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,208.00666805368107)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.0680763326722" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,145.9154200396671)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.588145977663" role="graphics-symbol" aria-roledescription="point" transform="translate(20,185.28875865980595)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -1.49422152109" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,239.65329126556927)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.236795549214" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,135.79226704714765)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.667301648515" role="graphics-symbol" aria-roledescription="point" transform="translate(20,190.03809891092456)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.412539065976" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,174.75234395853226)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: 0.612289587802" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,113.26262473189745)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.77062741368" role="graphics-symbol" aria-roledescription="point" transform="translate(20,196.2376448208094)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -1.55809179477" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,243.48550768630412)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.244062727317" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,164.6437636390155)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -1.53982295706" role="graphics-symbol" aria-roledescription="point" transform="translate(20,242.38937742386267)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -2.05283435502" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,273.17006130140373)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.520344502717" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,181.2206701630225)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.569480891663" role="graphics-symbol" aria-roledescription="point" transform="translate(20,115.83114650021624)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.412187806564" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,174.73126839382843)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-          </g>
-          <g class="mark-group role-title">
-            <g transform="translate(25,-20)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'miss'" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">miss</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-        </g>
-        <path class="foreground" aria-hidden="true" d="" display="none"/>
-      </g>
-      <g transform="translate(144,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h50v300h-50Z" stroke="#ddd"/>
-        <g>
-          <g class="mark-group role-axis" aria-hidden="true">
-            <g transform="translate(0.5,0.5)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,300)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,270)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,240)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,210)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,180)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,150)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,120)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,90)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,60)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="50" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
-          </g>
-          <g class="mark-symbol role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.27665785204" role="graphics-symbol" aria-roledescription="point" transform="translate(8.333333333333334,226.5994711225093)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#4c78a8" stroke-width="2"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.0450805812938" role="graphics-symbol" aria-roledescription="point" transform="translate(25,152.70483487762647)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#f58518" stroke-width="2"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.244499860684" role="graphics-symbol" aria-roledescription="point" transform="translate(41.66666666666667,135.33000835893935)" d="M4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,-4.330127018922194,0A4.330127018922194,4.330127018922194,0,1,1,4.330127018922194,0" fill="#e45756" stroke-width="2"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_0_marks" aria-hidden="true">
-            <path d="M5.833333333333334,231.657980060883h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,157.86932004289372h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,144.5212428765279h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rect role-mark child_layer_1_layer_1_marks" aria-hidden="true">
-            <path d="M5.833333333333334,220.5409621841356h5v1h-5Z" fill="#4c78a8" opacity="0.7"/>
-            <path d="M22.5,146.5403497123592h5v1h-5Z" fill="#f58518" opacity="0.7"/>
-            <path d="M39.16666666666667,125.1387738413508h5v1h-5Z" fill="#e45756" opacity="0.7"/>
-          </g>
-          <g class="mark-rule role-mark child_layer_1_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="Median Power of top 30 MCCA Components: -1.36929966768; upper_medvalue: -1.1840160364; condition: global; Mean of medvalue: -1.27665785204; Mean + stderr of medvalue: -1.1840160364; Mean - stderr of medvalue: -1.36929966768" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(8.333333333333334,232.157980060883)" x2="0" y2="-11.117017876747411" stroke="#4c78a8"/>
-            <line aria-label="Median Power of top 30 MCCA Components: -0.139488667382; upper_medvalue: 0.049327504794; condition: object; Mean of medvalue: -0.0450805812938; Mean + stderr of medvalue: 0.049327504794; Mean - stderr of medvalue: -0.139488667382" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(25,158.36932004289372)" x2="0" y2="-11.328970330534531" stroke="#f58518"/>
-            <line aria-label="Median Power of top 30 MCCA Components: 0.0829792853912; upper_medvalue: 0.406020435977; condition: spatial; Mean of medvalue: 0.244499860684; Mean + stderr of medvalue: 0.406020435977; Mean - stderr of medvalue: 0.0829792853912" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(41.66666666666667,145.0212428765279)" x2="0" y2="-19.38246903517711" stroke="#e45756"/>
-          </g>
-          <g class="mark-symbol role-mark child_layer_2_marks" role="graphics-object" aria-roledescription="symbol mark container">
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.9178125366" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,265.0687521961739)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.288906008203" role="graphics-symbol" aria-roledescription="point" transform="translate(20,132.66563950784862)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 2.40297917554" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,5.821249467307609)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.16287562222" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,219.77253733303706)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.510725999899" role="graphics-symbol" aria-roledescription="point" transform="translate(20,119.35644000608112)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.532227160363" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,118.06637037819617)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.95472951124" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,267.28377067463725)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.887545640457" role="graphics-symbol" aria-roledescription="point" transform="translate(20,203.25273842743414)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.991735701985" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,209.5041421190814)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.914574053428" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,204.87444320565444)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.361940124232" role="graphics-symbol" aria-roledescription="point" transform="translate(20,128.28359254608682)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.0849049489664" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,155.0942969379816)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -2.04262030051" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,272.5572180306441)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.569101742675" role="graphics-symbol" aria-roledescription="point" transform="translate(20,184.14610456048914)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.0191086374023" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,151.14651824413653)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.56577546632" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,243.94652797929862)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.246811640401" role="graphics-symbol" aria-roledescription="point" transform="translate(20,135.19130157591036)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.50082809078" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,59.950314553223926)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.64714262741" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,248.8285576445906)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.672990733509" role="graphics-symbol" aria-roledescription="point" transform="translate(20,190.37944401051118)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.132212829601" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,142.06723022392174)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.05694405583" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,213.41664334975684)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.40265927856" role="graphics-symbol" aria-roledescription="point" transform="translate(20,125.84044328641556)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.00357124974" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,89.78572501542676)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.18164829229" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,220.89889753761383)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0547275261255" role="graphics-symbol" aria-roledescription="point" transform="translate(20,146.71634843247296)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.0398179831069" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,147.61092101358304)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.649365309182" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,188.96191855090478)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.07371958841" role="graphics-symbol" aria-roledescription="point" transform="translate(20,145.5768246953973)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.282074096762" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,133.07555419427715)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.582311580582" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,184.9386948349075)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.310309610787" role="graphics-symbol" aria-roledescription="point" transform="translate(20,168.61857664719457)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.158287404712" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,159.49724428273353)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.10530144771" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,216.31808686261027)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.0541465729411" role="graphics-symbol" aria-roledescription="point" transform="translate(20,146.7512056235362)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.109448236645" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,143.4331058013051)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.36270698249" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,231.76241894935268)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.440009614428" role="graphics-symbol" aria-roledescription="point" transform="translate(20,123.59942313434121)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 1.07840298956" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,85.29582062641745)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.098148513" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,215.88891078020666)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.871265915371" role="graphics-symbol" aria-roledescription="point" transform="translate(20,97.72404507776437)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.401780050355" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,125.8931969787047)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.469026369305" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,178.14158215827848)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.636340071871" role="graphics-symbol" aria-roledescription="point" transform="translate(20,188.18040431225472)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.433664704427" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,176.01988226560974)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.70072879447" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,252.04372766821993)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.497972711959" role="graphics-symbol" aria-roledescription="point" transform="translate(20,179.87836271752144)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.256625126164" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,134.60249243013592)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.20258546232" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,222.15512773898513)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.729347673249" role="graphics-symbol" aria-roledescription="point" transform="translate(20,193.76086039496118)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.411738225204" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,125.29570648778213)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -0.715816380785" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,192.94898284711536)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.168409267408" role="graphics-symbol" aria-roledescription="point" transform="translate(20,160.10455604447608)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.145858001166" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,141.24851993003497)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.36124303824" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,231.67458229427112)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.181436087788" role="graphics-symbol" aria-roledescription="point" transform="translate(20,139.11383473271331)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.902720797408" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,95.83675215554759)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.16047341588" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,219.62840495271737)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.287878228382" role="graphics-symbol" aria-roledescription="point" transform="translate(20,132.7273062970504)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.777207222847" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,103.36756662918003)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: 0.339206342629" role="graphics-symbol" aria-roledescription="point" transform="translate(20,129.64761944228184)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: 0.0340355338174" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,147.95786797095602)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.68324472633" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,250.99468358002233)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.140018879378" role="graphics-symbol" aria-roledescription="point" transform="translate(20,158.4011327627009)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -1.07963828753" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,214.77829725156454)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.14672563952" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,218.80353837130838)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.215441094627" role="graphics-symbol" aria-roledescription="point" transform="translate(20,162.92646567760983)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.475947473552" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,178.55684841310133)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: global; Median Power of top 30 MCCA Components: -1.68133047129" role="graphics-symbol" aria-roledescription="point" transform="translate(3.333333333333334,250.87982827740694)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: object; Median Power of top 30 MCCA Components: -0.3678894525" role="graphics-symbol" aria-roledescription="point" transform="translate(20,172.07336714998235)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-            <path aria-label="condition: spatial; Median Power of top 30 MCCA Components: -0.900242954072" role="graphics-symbol" aria-roledescription="point" transform="translate(36.66666666666667,204.01457724433578)" d="M1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,-1.9364916731037085,0A1.9364916731037085,1.9364916731037085,0,1,1,1.9364916731037085,0" fill="black" stroke-width="2" opacity="0.25"/>
-          </g>
-          <g class="mark-group role-title">
-            <g transform="translate(25,-20)">
-              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
-              <g>
-                <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'reject'" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">reject</text>
-                </g>
-              </g>
-              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
-            </g>
+          <g class="mark-text role-mark layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
+            <text aria-label=": Global vs.  Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(34.16666666666667,166) rotate(-90) translate(0,27)" font-family="sans-serif" font-size="9px" fill="black">Null Model</text>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
       </g>
     </g>
   </g>
-  <path class="foreground" aria-hidden="true" d="" display="none"/>
 </g>
-<defs><pattern id="blue_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:#4c78a8;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:#e45756;"/>
-</pattern>
-<pattern id="orange_red" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:#f58518;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:#e45756;"/>
-</pattern>
-<pattern id="blue_orange" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none; fill:#4c78a8;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none; fill:#f58518;"/>
-</pattern>
-</defs>
+      <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">B</text>
+    </g>
+  </g>
 </svg>

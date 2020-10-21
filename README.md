@@ -3,13 +3,7 @@
 This project aims to decode EEG signals from a three-speaker experiment that
 includes three listening conditions: listening to all speakers--the *global*
 condition--listening to one speaker--the *object* condition--or listening to
-one ear--the *feature* condition.
-
-In some places throughout the code, due to unfortunate label usage in the original
-experiment, the `test` condition is used to indicate the `global` condition. (TODO: At some
-point I need to have the `test` label renamed throughout most of the code)
-
-TODO: more details about the project should eventually go here.
+one ear--the *spatial* condition.
 
 ## Download Source Code and Data
 
@@ -27,6 +21,9 @@ use to install dvc as follows:
 >
 > From there you should be able to run the `dvc` commands below within this shell. This
 > approach will ensure reproducibility of the commands below.
+>
+>> **NOTE**: If you also prefer to use [asdf](https://asdf-vm.com/#/) it may be worth
+>> *first* running `asdf install`, and then `pip install pipenv` before running pipenv.
 
 Once you have these tools installed, set up the project as follows:
 
@@ -63,11 +60,18 @@ If you are using [`asdf`](https://asdf-vm.com/#/), you can follow these steps:
 following the directions there to add fieldtrip to your path.
 4. Run the script `scripts/julia/install.jl` in Julia.
 
+> **NOTE**: On some systems, you may need to ensure that asdf installs python with
+shared-library support; otherwise Julia's PyCall package may not be able to find the
+necessary python binaries. This can be done by running `CONFIGURE_OPTS=--enable-shared asdf
+install`. If you already have python installed via asdf you may need to first uninstall
+python for this to work properly.
+
 Otherwise, follow the steps below.
 
 1. Install [MATALB](https://www.mathworks.com)
 2. Install [R](https://www.r-project.org)
 3. Install [Julia](https://julialang.org)
+4. Install [Python 3.8](https://www.python.org/downloads/)
 4. Download and install [fieldtrip](http://www.fieldtriptoolbox.org/download/),
 following the directions there to add fieldtrip to your path.
 5. Run the script `scripts/julia/install.jl` in Julia.

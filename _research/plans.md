@@ -37,6 +37,12 @@ Figures we need for job application
 4. Figure 2a EEG (salience over time for the three conditions)
 5. Figure 2a behavior (salience accuracy)
 
+# cleanup
+
+I'd like to have an easy to read set of sources for each figure, probalby separated
+from the analysis. Also lambda selection should probably occur within a function
+since it is pretty wrote, and all generated figures are auxilarly (appendix).
+
 ## 1. Main result: the different conditions have different brain responses
 
 - [X] power analysis

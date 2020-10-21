@@ -66,7 +66,7 @@
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'EEG Classification Accuracy' for a linear scale with values from 0.5 to 1.0">
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Neural Classification Accuracy' for a linear scale with values from 0.5 to 1.0">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
@@ -90,41 +90,37 @@
                   <line transform="translate(0,166)" x2="0" y2="-166" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(-26,83) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">EEG Classification Accuracy</text>
+                  <text text-anchor="middle" transform="translate(-26,83) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Neural Classification Accuracy</text>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; EEG Classification Accuracy: 0.814364539685" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,61.63097282451085h20v104.36902717548915h-20Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; EEG Classification Accuracy: 0.918438311524" role="graphics-symbol" aria-roledescription="bar" d="M82.5,27.078480573899412h20v138.9215194261006h-20Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; EEG Classification Accuracy: 0.621883066302" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,125.53482198763339h20v40.46517801236661h-20Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Neural Classification Accuracy: 0.814098386803" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,61.71933558147821h20v104.28066441852178h-20Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Neural Classification Accuracy: 0.922009740096" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.892766288185054h20v140.10723371181496h-20Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Neural Classification Accuracy: 0.631656728854" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,122.28996602055521h20v43.71003397944479h-20Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rect role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; EEG Classification Accuracy: 0.635503061249" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,121.01298366535974h20v44.98701633464026h-20Z" fill="#999999"/>
-            <path aria-label=": Global vs.  Spatial; EEG Classification Accuracy: 0.775131199108" role="graphics-symbol" aria-roledescription="bar" d="M102.5,74.65644189601768h20v91.34355810398232h-20Z" fill="#999999"/>
-            <path aria-label=": Object vs.  Spatial; EEG Classification Accuracy: 0.662871713854" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,111.92659100040179h20v54.073408999598215h-20Z" fill="#999999"/>
+            <path aria-label=": Global vs.  Object; Neural Classification Accuracy: 0.635503061249" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,121.01298366535974h20v44.98701633464026h-20Z" fill="#999999"/>
+            <path aria-label=": Global vs.  Spatial; Neural Classification Accuracy: 0.775131199108" role="graphics-symbol" aria-roledescription="bar" d="M102.5,74.65644189601768h20v91.34355810398232h-20Z" fill="#999999"/>
+            <path aria-label=": Object vs.  Spatial; Neural Classification Accuracy: 0.662871713854" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,111.92659100040179h20v54.073408999598215h-20Z" fill="#999999"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.849419831213; EEG Classification Accuracy: 0.780183912073" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,72.97894119192033)" x2="0" y2="-22.986325154491183" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.944827791755; EEG Classification Accuracy: 0.892271116455" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,35.765989337017956)" x2="0" y2="-17.4488161995248" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.673188345562; EEG Classification Accuracy: 0.569638095805" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,142.8801521928328)" x2="0" y2="-34.378682919421905" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.880250337301; Neural Classification Accuracy: 0.749231703646" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,83.25507438937359)" x2="0" y2="-43.49818637333416" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.975572924045; Neural Classification Accuracy: 0.873657751325" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,41.94562655995573)" x2="0" y2="-33.835837342986906" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.72654615511; Neural Classification Accuracy: 0.536891053977" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,153.75217007948086)" x2="0" y2="-62.96549357612139" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; nullupper: 0.654781364473; EEG Classification Accuracy: 0.616468848892" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,127.33234216771964)" x2="0" y2="-12.7197551728093" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; nullupper: 0.790385946228; EEG Classification Accuracy: 0.75995794208" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,79.69396322948323)" x2="0" y2="-10.10209737721327" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; nullupper: 0.682946266404; EEG Classification Accuracy: 0.642899669663" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,118.55730967186913)" x2="0" y2="-13.295470118154569" stroke="black"/>
+            <line aria-label=": Global vs.  Object; nullupper: 0.671015777084; Neural Classification Accuracy: 0.596065002935" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.10641902571334)" x2="0" y2="-24.883657017618418" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; nullupper: 0.803706104936; Neural Classification Accuracy: 0.745365671094" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,84.53859719664516)" x2="0" y2="-19.36902403549226" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; nullupper: 0.701768703551; Neural Classification Accuracy: 0.624624301221" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,124.62473199452296)" x2="0" y2="-25.611941573590144" stroke="black"/>
           </g>
           <g class="mark-text role-mark layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text aria-label=": Global vs.  Object; Mean of correct: 0.814364539685" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,61.63097282451085) rotate(-90) translate(0,-22)" font-family="sans-serif" font-size="9px" fill="black">Full Model</text>
-            <text aria-label=": Global vs.  Spatial; Mean of correct: 0.918438311524" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(102.5,27.078480573899412) rotate(-90) translate(0,-22)" font-family="sans-serif" font-size="9px" fill="black">Full Model</text>
-            <text aria-label=": Object vs.  Spatial; Mean of correct: 0.621883066302" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(170.83333333333331,125.53482198763339) rotate(-90) translate(0,-22)" font-family="sans-serif" font-size="9px" fill="black">Full Model</text>
+            <text aria-label=": Global vs.  Object; Mean of correct: 0.814098386803" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,61.71933558147821) rotate(-90) translate(0,-22)" font-family="sans-serif" font-size="9px" fill="black">Full Model</text>
           </g>
           <g class="mark-text role-mark layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
             <text aria-label=": Global vs.  Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(34.16666666666667,166) rotate(-90) translate(0,27)" font-family="sans-serif" font-size="9px" fill="black">Null Model</text>
-            <text aria-label=": Global vs.  Spatial" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(102.5,166) rotate(-90) translate(0,27)" font-family="sans-serif" font-size="9px" fill="black">Null Model</text>
-            <text aria-label=": Object vs.  Spatial" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(170.83333333333331,166) rotate(-90) translate(0,27)" font-family="sans-serif" font-size="9px" fill="black">Null Model</text>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
