@@ -96,12 +96,16 @@ events = @_ readdir(processed_datadir("behavioral"), join=true) |>
     filter(occursin(r"csv$", _), __) |>
     mapreduce(GermanTrack.events(_, info), append!!, __)
 
+bad_sids = CSV.read(joinpath(processed_datadir("behavioral", "outliers"), "sids.csv")).sid
 
-means = @_ events |>
+indmeans = @_ events |>
     transform!(__, AsTable(:) =>
         ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
     groupby(__, [:condition, :sid, :salience_label]) |>
-    combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits) |>
+    combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits)
+
+means = @_ indmeans |>
+    filter(_.sid ∉ bad_sids, __) |>
     groupby(__, [:condition, :salience_label]) |>
     combine(__, :hits => boot => :prop,
                 :hits => (x -> lowerboot(x, alpha = 0.05)) => :lower,
