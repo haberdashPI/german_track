@@ -25,6 +25,13 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
     transform!(__, :salience => ByRow(x -> [uppercasefirst(x), " Salience"]) => :salience,
                    :condition => ByRow(uppercasefirst) => :condition)
 
+salience_colors = "#".*hex.(vcat(
+    colors[1],
+    RGB(0.3,0.3,0.3),
+    RGB(0.6,0.6,0.6),
+    colors[2:3])
+)
+
 @_ salience_hit |>
     @vlplot(
         transform = [
@@ -46,7 +53,7 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
             @vlplot({:point, filled = true},
                 x = :condition,
                 y = :pmean,
-                color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
+                color = {:condition, scale = {range = salience_colors}}) +
             @vlplot({:text, align = :left, dy = -10, dx = 5},
                 transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
@@ -68,7 +75,7 @@ salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
             @vlplot({:point, filled = true},
                 x = :condition,
                 y = :pmean,
-                color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
+                color = {:condition, scale = {range = salience_colors}}) +
             @vlplot({:text, align = :left, dy = -10, dx = 5},
                 transform = [{filter = "datum.condition == 'Global'"}],
                 x = :condition,
