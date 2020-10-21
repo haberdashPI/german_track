@@ -16,7 +16,7 @@ function load_behavioral_stimulus_metadata()
 
     ## the below value is copied from an old config file (also the same value that's
     ## present in config.json, but if that ever changes, this shouldn't change)
-    switch_length   = 1.2,
+    switch_length   = 1.2
 
     return (
         switch_length   = switch_length,
