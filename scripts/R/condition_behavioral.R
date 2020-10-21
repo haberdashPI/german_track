@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 
-presfiles = list.files(file.path(raw_datadir,'behavioral'),sprintf("*.*log",sid))
+presfiles = list.files(file.path(raw_datadir,'behavioral'),"*.*log")
 
 for(filename in presfiles){
     cat(paste0('File: ',filename,'\n'))

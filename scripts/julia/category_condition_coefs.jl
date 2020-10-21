@@ -125,6 +125,10 @@ events = @_ readdir(processed_datadir("behavioral"), join=true) |>
     filter(occursin(r"csv$", _), __) |>
     mapreduce(GermanTrack.events(_, info), append!!, __)
 
+order = @_ events |>
+    groupby(__, :sid) |>
+    combine(__, :condition => (x -> last(x) == "spatial") => :spatial_last)
+
 indmeans = @_ events |>
     transform!(__, AsTable(:) =>
         ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
@@ -137,8 +141,8 @@ indmeans = @_ events |>
 bad_sids = @_ indmeans |>
     filter(_.condition != "global", __) |>
     groupby(__, :sid) |>
-    combine(__, :hits => mean => :hits, :falseps => mean => :falseps) |>
-    filter(_.hits < _.falseps, __) |>
+    combine(__, [:hits, :falseps] => ((x, y) -> minimum(x - y)) => :diffs) |>
+    filter(_.diffs < 0, __) |>
     __.sid
 
 means = @_ indmeans |>
@@ -146,7 +150,7 @@ means = @_ indmeans |>
     stack(__, [:hits, :falseps, :notargets, :falsetargets], [:condition, :sid],
         variable_name = :type, value_name = :proportion) |>
     groupby(__, [:condition, :type]) |>
-    combine(__, :proportion => boot => :prop,
+    combine(__, :proportion => mean => :prop,
                 :proportion => (x -> lowerboot(x, alpha = 0.05)) => :lower,
                 :proportion => (x -> upperboot(x, alpha = 0.05)) => :upper)
 
