@@ -236,8 +236,9 @@ function events(event_file, stim_info)
     stim_events[!, :salience_label]      .= info(:salience_label)
     stim_events[!, :salience_4level]     .= info(:salience_4level)
     stim_events[!, :target_time_label]   .= info(:target_time_label)
-    stim_events[!, :switch_regions]        .= info(:switch_regions)
+    stim_events[!, :switch_regions]      .= info(:switch_regions)
     stim_events[!, :trial_length]        .= info(:trial_lengths)
+    stim_events[!, :switch_distance]     .= info(:switch_distance)
 
     stim_events
 end
