@@ -116,25 +116,33 @@ pl2 = @_ main_effects |>
     ) |>
     save(joinpath(dir, "behavior_distract.svg"))
 
-# Raw Behavioral Data
-# =================================================================
-
-# Behavioral Experiment
+# Raw Behavioral Experiment Analysis
 # -----------------------------------------------------------------
 
 info = GermanTrack.load_behavioral_stimulus_metadata()
+
 events = @_ readdir(processed_datadir("behavioral"), join=true) |>
     filter(occursin(r"csv$", _), __) |>
     mapreduce(GermanTrack.events(_, info), append!!, __)
 
-means = @_ events |>
+indmeans = @_ events |>
     transform!(__, AsTable(:) =>
         ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
     groupby(__, [:condition, :sid]) |>
     combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits,
                 :hittype => (x -> mean(y -> occursin("falsep", y), x)) => :falseps,
                 :hittype => (x -> mean(==("falsep"), x)) => :notargets,
-                :hittype => (x -> mean(==("falsep-target"), x)) => :falsetargets) |>
+                :hittype => (x -> mean(==("falsep-target"), x)) => :falsetargets)
+
+bad_sids = @_ indmeans |>
+    filter(_.condition != "global", __) |>
+    groupby(__, :sid) |>
+    combine(__, :hits => mean => :hits, :falseps => mean => :falseps) |>
+    filter(_.hits < _.falseps, __) |>
+    __.sid
+
+means = @_ indmeans |>
+    filter(_.sid ∉ bad_sids, __) |>
     stack(__, [:hits, :falseps, :notargets, :falsetargets], [:condition, :sid],
         variable_name = :type, value_name = :proportion) |>
     groupby(__, [:condition, :type]) |>
@@ -234,7 +242,7 @@ means |> @vlplot(
 ) |>
 save(joinpath(dir, "raw_behavior_falsep.svg"))
 
-# EEG Experiment
+# Behavioral data from EEG Experiment
 # -----------------------------------------------------------------
 
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
