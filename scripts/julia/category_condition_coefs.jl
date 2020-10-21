@@ -760,7 +760,7 @@ addpatterns(plotfile, patterns)
 # Combine above figures into single plot
 # -----------------------------------------------------------------
 
-@usepython
+GermanTrack.@usepython
 
 svg = pyimport("svgutils").compose
 

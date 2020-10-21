@@ -163,6 +163,44 @@ means = @_ indmeans |>
     ) |>
     save(joinpath(dir, "raw_behavior_salience.svg"))
 
+# Difference in hit rate across salience levels
+# -----------------------------------------------------------------
+
+diffmeans = @_ indmeans |>
+    unstack(__, [:condition, :sid], :salience_label, :hits) |>
+    transform!(__, [:high, :low] => (-) => :meandiff) |>
+    groupby(__, :condition) |>
+    combine(__,
+        :meandiff => mean => :meandiff,
+        :meandiff => lowerboot => :lower,
+        :meandiff => upperboot => :upper
+    )
+
+barwidth = 18
+@_ diffmeans |>
+    @vlplot(
+        width = 111, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        }
+    ) +
+    @vlplot(:bar,
+        x = {:condition,
+            title = "",
+            axis = {labelAngle = -32, labelAlign = "right",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
+        },
+        color = {:condition, scale = {range = "#".*hex.(colors)}},
+        y = {:meandiff,
+            title = "High - Low Salience (Hit Rate)"
+        }
+    ) +
+    @vlplot(:errorbar,
+        x = {:condition, title = ""},
+        y = {:lower, title = ""}, y2 = :upper,
+    ) |> save(joinpath(dir, "raw_behavior_diff_salience.svg"))
+
 # Find λ
 # =================================================================
 
@@ -556,22 +594,24 @@ pl |> save(joinpath(dir, "salience_timeline_hitmiss.svg"))
 # -----------------------------------------------------------------
 
 nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
-    100logistic(C),
+   logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
         filter(_.λ != 1.0, __) |>
         transform!(__, :condition => ByRow(uppercasefirst) => :condition_label) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> 100logistic(l(x) - l(y) + C)) => :meancor) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
 end
 
+timeslice = 2.5
+
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = ["Salience Classification Accuracy", "from EEG (Null Model Corrected)"]
-target_len_y = 80
+ytitle = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"]
+target_len_y = 0.75
 pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 250, height = 200, autosize = "fit",
+        width = 242, height = 200, autosize = "fit",
         config = {legend = {disable = true}},
     ) +
     (@vlplot(
@@ -581,14 +621,14 @@ pl = @_ classdiffs |>
     @vlplot(:line,
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [50,100]}}) +
+            scale = {domain = [0.5,1.0]}}) +
     # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative},
         y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter = "datum.winstart > 2.4 && datum.winstart < 2.45"}],
+        transform = [{filter = "datum.winstart > 2.95 && datum.winstart <= 3"}],
         x = {datum = 3.0},
         y = {:meancor, aggregate = :mean, type = :quantitative},
         text = :condition_label
@@ -603,9 +643,9 @@ pl = @_ classdiffs |>
     # "Null Model" text annotation
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 4},
-            x = {datum = 1.75}, y = {datum = nullmean},
-            text = {value = ["Baseline Accuracy", "(Null Model)"]},
+        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 2, align = "right"},
+            x = {datum = 3}, y = {datum = nullmean},
+            text = {value = ["Null Model Accur."]},
             color = {value = "black"}
         )
     ) +
@@ -634,6 +674,81 @@ pl = @_ classdiffs |>
         )
     ));
 pl |> save(joinpath(dir, "salience_timeline.svg"))
+
+# Salience class accuracy at fixed time point
+# -----------------------------------------------------------------
+
+times = classdiffs.winstart |> unique
+real_timeslice = times[argmin(abs.(times .- timeslice))]
+
+@_ classdiffs |>
+    filter(_.winstart == real_timeslice, __) |>
+    groupby(__, [:condition]) |>
+    combine(__,
+        :meancor => mean => :meancor,
+        :meancor => lowerboot => :lower,
+        :meancor => upperboot => :upper,
+    ) |>
+    @vlplot(
+        width = 111, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        }
+    ) +
+    @vlplot(:bar,
+        x = {:condition,
+            title = "",
+            axis = {labelAngle = -32, labelAlign = "right",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
+        },
+        color = {:condition, scale = {range = "#".*hex.(colors)}},
+        y = {:meancor,
+            title = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"],
+            scale = {domain = [0.5, 1.0]}
+        }
+    ) +
+    @vlplot(:errorbar,
+        x = {:condition, title = ""},
+        y = {:lower, title = ""}, y2 = :upper,
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) |> save(joinpath(dir, "neural_diff_salience.svg"))
+
+# Final, combined plots for data fig 2
+# -----------------------------------------------------------------
+
+GermanTrack.@usepython
+
+svg = pyimport("svgutils").compose
+
+background_file = tempname()
+
+background = pyimport("svgutils").transform.fromstring("""
+    <svg>
+        <rect width="100%" height="100%" fill="white"/>
+    </svg>
+""").save(background_file)
+
+fig = svg.Figure("89mm", "160mm", # "240mm",
+    svg.SVG(background_file),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "raw_behavior_diff_salience.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold")
+    ).move(0, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "neural_diff_salience.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight = "bold")
+    ).move(125, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "salience_timeline.svg")).move(0,15),
+        svg.Text("C", 2, 10, size = 12, weight = "bold")
+    ).move(0, 225)
+).scale(1.333).save(joinpath(dir, "fig2.svg"))
 
 # hit miss plot
 # -----------------------------------------------------------------
