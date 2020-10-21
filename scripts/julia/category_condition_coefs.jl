@@ -23,43 +23,43 @@ pl1 = @_ main_effects |>
     transform!(__, [:pmean, :err] => (-) => :lower,
                   [:pmean, :err] => (+) => :upper) |>
     @vlplot(
-        width = {step = 30},
+        width = {step = 58},
         config = {
             legend = {disable = true},
-            bar = {discreteBandSize = 15}
+            bar = {discreteBandSize = 16}
         }) +
-    @vlplot(:bar,
+    @vlplot({:bar, xOffset = -8},
         transform = [{filter = "datum.stat == 'hr'"}],
         x = {:condition, axis = {title = "", labelAngle = -24,
             labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
         y = {:pmean, scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-    @vlplot(:bar,
+    @vlplot({:bar, xOffset = 8},
         transform = [{filter = "datum.stat == 'fr'"}],
         x = {:condition, axis = {title = ""}},
         y = :pmean,
         color = {value = "#"*hex(gray)}) +
-    @vlplot(:rule,
+    @vlplot({:rule, xOffset = -8},
         transform = [{filter = "datum.stat == 'hr'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot(:rule,
+    @vlplot({:rule, xOffset = 8},
         transform = [{filter = "datum.stat == 'fr'"}],
         color = {value = "black"},
         x = {:condition, axis = {title = ""}},
         y = {:upper, title = ""}, y2 = :lower
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = 9},
-        transform = [{filter = "datum.stat == 'hr'"}],
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = 2},
+        transform = [{filter = "datum.stat == 'hr' && datum.condition == 'global'"}],
         # x = {datum = "spatial"}, y = {datum = 0.},
         x = {:condition, axis = {title = ""}},
         y = {:pmean, aggregate = :mean, type = :quantitative},
         text = {value = "Hits"},
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 13},
-        transform = [{filter = "datum.stat == 'fr'"}],
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 22},
+        transform = [{filter = "datum.stat == 'fr' && datum.condition == 'global'"}],
         # x = {datum = "spatial"}, y = {datum = },
         x = {:condition, axis = {title = ""}},
         y = {datum = 0},
