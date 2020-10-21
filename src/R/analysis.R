@@ -14,7 +14,7 @@ read_experiment_events = function(presfile, response_codes = c('y','n')){
             trial_block_offset = first(trial_order.num.),
             sound_index = first(trial_file.num.),
             response_time =
-                last(TTime[Event.Type == "Response" & Code %in% c('y','n')]) / 10^4)
+                last(TTime[Event.Type == "Response" & Code %in% response_codes]) / 10^4)
     pf$reported_target = pf$response == response_codes[1]
 
     pf = pf %>% filter(condition %in% c("test","object","feature"),
