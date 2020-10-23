@@ -117,10 +117,77 @@ pl2 = @_ main_effects |>
     );
 pl2 |> save(joinpath(dir, "behavior_distract.svg"))
 
-# Raw Behavioral Experiment Analysis
+# Raw Behavioral Experiment Analysis (using merve summaries)
 # -----------------------------------------------------------------
 
-summaries = CSV.read(joinpath(processed_datadir("behaviora", "merve_summaries"), "exported.csv"))
+summaries = CSV.read(joinpath(processed_datadir("behavioral", "merve_summaries"), "exported_hits.csv"))
+
+ascondition = Dict(
+    "test" => "global",
+    "feature" => "spatial",
+    "object" => "object"
+)
+
+means = @_ summaries |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+    rename(__,:sbj_id => :sid) |>
+    select(__, :condition, :sid, :hr, :fr) |>
+    stack(__, [:hr, :fr], [:condition, :sid], variable_name = :type, value_name = :prop) |>
+    groupby(__, [:condition, :type]) |>
+    combine(__,
+        :prop => mean => :prop,
+        :prop => lowerboot => :lower,
+        :prop => upperboot => :upper
+    )
+
+means |> @vlplot(
+    width = {step = 50},
+    config = {
+        legend = {disable = true},
+        bar = {discreteBandSize = 16}
+    }) +
+@vlplot({:bar, xOffset = -8},
+    transform = [{filter = "datum.type == 'hr'"}],
+    x = {:condition, axis = {title = "", labelAngle = 0,
+        labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+    y = {:prop, type = :quantitative, aggregate = :mean,
+            scale = {domain = [0, 1]}, title = "Response Rate"},
+    color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+@vlplot({:bar, xOffset = 8},
+    transform = [{filter = "datum.type == 'fr'"}],
+    x = {:condition, axis = {title = ""}},
+    y = {:prop, type = :quantitative, aggregate = :mean},
+    color = {value = "#"*hex(gray)}) +
+@vlplot({:rule, xOffset = -8},
+    transform = [{filter = "datum.type == 'hr'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) +
+@vlplot({:rule, xOffset = 8},
+    transform = [{filter = "datum.type == 'fr'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) +
+@vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = 2},
+    transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
+    # x = {datum = "spatial"}, y = {datum = 0.},
+    x = {:condition, axis = {title = ""}},
+    y = {:prop, aggregate = :mean, type = :quantitative},
+    text = {value = "Hits"},
+) +
+@vlplot({:text, angle = -90, fontSize = 9, align = "left", basline = "top", dx = 0, dy = 20},
+    transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
+    # x = {datum = "spatial"}, y = {datum = },
+    x = {:condition, axis = {title = ""}},
+    y = {datum = 0},
+    text = {value = "False Positives"},
+) |>
+save(joinpath(dir, "raw_sum_behavior.svg"))
+
+# Raw Behavioral Experiment Analysis
+# -----------------------------------------------------------------
 
 info = GermanTrack.load_behavioral_stimulus_metadata()
 
