@@ -117,6 +117,77 @@ pl2 = @_ main_effects |>
     );
 pl2 |> save(joinpath(dir, "behavior_distract.svg"))
 
+# Raw Behavioral Experiment Analysis (using merve summaries)
+# -----------------------------------------------------------------
+
+summaries = CSV.read(joinpath(processed_datadir("behavioral", "merve_summaries"), "exported_hits.csv"))
+
+ascondition = Dict(
+    "test" => "global",
+    "feature" => "spatial",
+    "object" => "object"
+)
+
+means = @_ summaries |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+    rename(__,:sbj_id => :sid) |>
+    select(__, :condition, :sid, :hr, :fr) |>
+    stack(__, [:hr, :fr], [:condition, :sid], variable_name = :type, value_name = :prop) |>
+    groupby(__, [:condition, :type]) |>
+    combine(__,
+        :prop => mean => :prop,
+        :prop => lowerboot => :lower,
+        :prop => upperboot => :upper
+    )
+
+barwidth = 20
+means |> @vlplot(
+    width = 242, autosize = "fit",
+    # width = {step = 50},
+    config = {
+        legend = {disable = true},
+        bar = {discreteBandSize = barwidth}
+    }) +
+@vlplot({:bar, xOffset = -(barwidth/2)},
+    transform = [{filter = "datum.type == 'hr'"}],
+    x = {:condition, axis = {title = "", labelAngle = 0,
+        labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+    y = {:prop, type = :quantitative, aggregate = :mean,
+            scale = {domain = [0, 1]}, title = "Response Rate"},
+    color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+@vlplot({:bar, xOffset = (barwidth/2)},
+    transform = [{filter = "datum.type == 'fr'"}],
+    x = {:condition, axis = {title = ""}},
+    y = {:prop, type = :quantitative, aggregate = :mean},
+    color = {value = "#"*hex(gray)}) +
+@vlplot({:rule, xOffset = -(barwidth/2)},
+    transform = [{filter = "datum.type == 'hr'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) +
+@vlplot({:rule, xOffset = (barwidth/2)},
+    transform = [{filter = "datum.type == 'fr'"}],
+    color = {value = "black"},
+    x = {:condition, axis = {title = ""}},
+    y = {:lower, title = ""}, y2 = :upper
+) +
+@vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
+    transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
+    # x = {datum = "spatial"}, y = {datum = 0.},
+    x = {:condition, axis = {title = ""}},
+    y = {:prop, aggregate = :mean, type = :quantitative},
+    text = {value = "Hits"},
+) +
+@vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+    transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
+    # x = {datum = "spatial"}, y = {datum = },
+    x = {:condition, axis = {title = ""}},
+    y = {datum = 0},
+    text = {value = "False Positives"},
+) |>
+save(joinpath(dir, "raw_sum_behavior.svg"))
+
 # Raw Behavioral Experiment Analysis
 # -----------------------------------------------------------------
 
@@ -457,6 +528,10 @@ end
 λs[!,:fold_text] .= string.("Fold: ",λs.fold)
 λs[!,:yoff] = [0.5, 1.5]
 
+final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
+    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
+    for sid in first(λ_fold))...)
+
 pl = @vlplot() +
     vcat(
         logitmeandiff |> @vlplot(
@@ -511,10 +586,6 @@ pl = @vlplot() +
     );
 
 pl |> save(joinpath(dir, "relative_logit_lambdas.svg"))
-
-final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in first(λ_fold))...)
 
 # Different baseline models
 # =================================================================
@@ -660,14 +731,15 @@ plotfull = @_ predictmeans |>
     innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
     transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
     groupby(__, [:compname, :hittype, :comparison]) |>
-    combine(__, :correct => innerboot => :correct,
+    combine(__, :correct => mean => :correct,
                 :correct => lowerboot => :lower,
                 :correct => upperboot => :upper,
-                :nullmodel => innerboot => :nullmodel,
+                :nullmodel => mean => :nullmodel,
                 :nullmodel => lowerboot => :nulllower,
                 :nullmodel => upperboot => :nullupper)
 
 ytitle= "Neural Classification Accuracy"
+barwidth = 20
 plhit = @_ plotfull |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
@@ -676,7 +748,7 @@ plhit = @_ plotfull |>
         autosize = "fit",
         config = {
             legend = {disable = true},
-            bar = {discreteBandSize = 20}
+            bar = {discreteBandSize = barwidth}
         }
     ) + (
     @vlplot(x = {:compname, axis = {
@@ -686,35 +758,35 @@ plhit = @_ plotfull |>
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
-    @vlplot({:bar, xOffset = -10},
+    @vlplot({:bar, xOffset = -(barwidth/2)},
         y = {:correct,
             scale = {domain = [0.5 ,1]},
             title = ytitle}) +
-    @vlplot({:bar, xOffset = 10},
+    @vlplot({:bar, xOffset = (barwidth/2)},
         color = {value = "#"*hex(gray)},
         # opacity = {value = 0.75},
         y = {:nullmodel, title = ytitle},
     ) +
-    @vlplot({:rule, xOffset = -10},
+    @vlplot({:rule, xOffset = -(barwidth/2)},
         color = {value = "black"},
         y2 = :upper,
         y = {:lower,
             scale = {domain = [0.5 ,1]},
             title = ytitle}) +
-    @vlplot({:rule, xOffset = 10},
+    @vlplot({:rule, xOffset = (barwidth/2)},
         color = {value = "black"},
         y2 = :nullupper,
         y = {:nulllower,
             scale = {domain = [0.5 ,1]},
             title = ytitle})
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "right", basline = "bottom", dx = 0, dy = -25},
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
         transform = [{filter = "datum.comparison == 'global-v-object'"}],
         x = {:compname, axis = {title = ""}},
         y = {:correct, aggregate = :mean, type = :quantitative},
         text = {value = "Full Model"},
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = 20},
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
         transform = [{filter = "datum.comparison == 'global-v-object'"}],
         x = {:compname, axis = {title = ""}},
         y = {datum = 0.5},
@@ -775,7 +847,7 @@ background = pyimport("svgutils").transform.fromstring("""
 fig = svg.Figure("89mm", "160mm", # "240mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "behavior.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "raw_sum_behavior.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold")
     ).move(0, 0),
     # svg.Panel(

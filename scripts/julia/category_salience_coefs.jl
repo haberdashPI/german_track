@@ -201,6 +201,59 @@ barwidth = 18
         y = {:lower, title = ""}, y2 = :upper,
     ) |> save(joinpath(dir, "raw_behavior_diff_salience.svg"))
 
+# Difference in hit rate across salience levels (merve's summaries)
+# -----------------------------------------------------------------
+
+summaries = CSV.read(joinpath(processed_datadir("behavioral", "merve_summaries"), "export_salience.csv"))
+
+ascondition = Dict(
+    "test" => "global",
+    "feature" => "spatial",
+    "object" => "object"
+)
+
+indmeans = @_ summaries |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+    rename(__,:sbj_id => :sid, :hr_highsal => :high, :hr_lowsal => :low) |>
+    select(__, :condition, :sid, :high, :low) |>
+    stack(__, [:high, :low], [:condition, :sid],
+        variable_name = :salience_label, value_name = :prop)
+
+diffmeans = @_ indmeans |>
+    unstack(__, [:condition, :sid], :salience_label, :prop) |>
+    transform!(__, [:high, :low] => (-) => :meandiff) |>
+    groupby(__, :condition) |>
+    combine(__,
+        :meandiff => mean => :meandiff,
+        :meandiff => lowerboot => :lower,
+        :meandiff => upperboot => :upper
+    )
+
+barwidth = 18
+@_ diffmeans |>
+    @vlplot(
+        width = 111, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        }
+    ) +
+    @vlplot(:bar,
+        x = {:condition,
+            title = "",
+            axis = {labelAngle = -32, labelAlign = "right",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
+        },
+        color = {:condition, scale = {range = "#".*hex.(colors)}},
+        y = {:meandiff,
+            title = "High - Low Salience (Hit Rate)"
+        }
+    ) +
+    @vlplot(:errorbar,
+        x = {:condition, title = ""},
+        y = {:lower, title = ""}, y2 = :upper,
+    ) |> save(joinpath(dir, "raw_sum_behavior_diff_salience.svg"))
+
 # Find λ
 # =================================================================
 
@@ -737,7 +790,7 @@ background = pyimport("svgutils").transform.fromstring("""
 fig = svg.Figure("89mm", "160mm", # "240mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "raw_behavior_diff_salience.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "raw_sum_behavior_diff_salience.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold")
     ).move(0, 0),
     svg.Panel(
