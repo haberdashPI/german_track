@@ -371,7 +371,13 @@
                   <path aria-label="x: 0.05; y: 0.75; dir: 270" role="graphics-symbol" aria-roledescription="point" transform="translate(2.4833333333333334,80.5) rotate(270)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
                   <path aria-label="x: 0.95; y: 0.75; dir: 90" role="graphics-symbol" aria-roledescription="point" transform="translate(47.18333333333333,80.5) rotate(90)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
                 </g>
-                <g class="mark-text role-mark layer_0_layer_6_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
+                <g class="mark-rule role-mark layer_0_layer_6_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
+                  <line transform="translate(124.16666666666667,0)" x2="0" y2="161" stroke="black"/>
+                </g>
+                <g class="mark-text role-mark layer_0_layer_6_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text text-anchor="end" transform="translate(122.16666666666667,19.100000000000016)" font-family="sans-serif" font-size="11px" fill="black">Figure B Slice</text>
+                </g>
+                <g class="mark-text role-mark layer_0_layer_7_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text text-anchor="start" transform="translate(0,75.5)" font-family="sans-serif" font-size="11px" fill="black">Target Length</text>
                 </g>
               </g>

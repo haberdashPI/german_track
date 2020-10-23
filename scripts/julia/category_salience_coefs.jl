@@ -717,6 +717,20 @@ pl = @_ classdiffs |>
             color = {value = "black"}
         )
     ) +
+    # "Time Slice" annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(:rule,
+            x = {datum = 2.5},
+            color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "right", dx = -2},
+            x = {datum = 2.5},
+            y = {datum = 0.95},
+            text = {value = "Figure B Slice"},
+            color = {value = "black"}
+        )
+    ) +
     # "Target Length" text annotation
     (
         @vlplot(data = {values = [{}]}) +
