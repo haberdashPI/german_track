@@ -120,6 +120,8 @@ pl2 |> save(joinpath(dir, "behavior_distract.svg"))
 # Raw Behavioral Experiment Analysis
 # -----------------------------------------------------------------
 
+summaries = CSV.read(joinpath(processed_datadir("behaviora", "merve_summaries"), "exported.csv"))
+
 info = GermanTrack.load_behavioral_stimulus_metadata()
 
 events = @_ readdir(processed_datadir("behavioral"), join=true) |>
