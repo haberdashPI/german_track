@@ -157,6 +157,10 @@ Results are returned as a data frame, with appropriately named columns.
     - `:print`: display the error, but use missing values for the particular fold
         where the error occured.
     - `:throw`: throw an exception
+- `on_missing_case`
+    - `:error` (default): throw an error if there is only one label value for `y`
+    - `:missing`: return missing data if there is only one label value for `y`
+    - `:debug`: call @infiltrate; **NOT THREAD SAFE**
 - `include_model_coefs`: Return the coefficients as columns in the resulting data, useful
  for display and interpretation of the model.
 """
@@ -170,6 +174,9 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
     if data[:,y] |> unique |> length == 1
         if on_missing_case == :missing
             return Empty(DataFrame)
+        elseif on_missing_case == :debug
+            @infiltrate
+            rethrow(e)
         else
             error("Degenerate case (1 class present): ", data[1, Not(X)])
         end
