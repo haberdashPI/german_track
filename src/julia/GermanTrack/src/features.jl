@@ -365,19 +365,6 @@ const default_freqbins = OrderedDict(
     :gamma => (30, 100)
 )
 
-# Utilities
-# -----------------------------------------------------------------
-
-# `windowbounds` converts from start,len to from,to format
-windowbounds(x) = (x.start, x.start + x.len)
-
-# Most windows are defined by a start,len named tuple, but some need
-# more information about the individual trial to pick the right time;
-# these are represented as an anoymouse function which is passed the
-# individual time
-windowparams(x::NamedTuple,_) = x
-windowparams(fn::Function, event) = windowparams(fn(event), event)
-
 # Helper Functions
 # -----------------------------------------------------------------
 
