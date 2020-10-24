@@ -416,10 +416,6 @@ function compute_powerbin_features(eeg, data, windowing; kwds...)
             transform!(__, :weight => minimum => :weight) |>
             filter(all(!isnan, _.power), __)
 
-        if any(ismissing, Array(powerdf))
-            @infiltrate
-        end
-
         chstr = @_(map(@sprintf("%02d", _), powerdf.channel))
         features = Symbol.("channel_", chstr, "_", powerdf.freqbin)
         DataFrame(
@@ -432,7 +428,14 @@ function compute_powerbin_features(eeg, data, windowing; kwds...)
     else
         Empty(DataFrame)
     end
-end
+
+# function computebandfeats(data; freqbins = default_freqbins, channels = Colon())
+#     chn = channels isa Colon ? channels : 1:size(data, 1)
+#     bins = repeat(keys(freqbins), inner = length(chn))
+#     chns = repeat(chn, outer = length(keys(freqbins)))
+#     chstr = @_(map(@sprintf("%02d", _), chstr))
+#     Symbol.("channel_", chstr, "_", bins)
+# end
 
 """
     computebands(signal, fs; freqbins = default_freqbins, channels = Colon())
