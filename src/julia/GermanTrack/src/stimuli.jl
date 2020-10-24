@@ -36,7 +36,7 @@ critical_times_to_switch_regions(critical_times, switch_length) =
     @_ critical_times[2:(end-1)] |> zip(__[1:2:end], __[2:2:end]) |> collect |>
         # there is an initial 'degenerate' switch at the start of the trial
         # that is half the length of the other switches
-        vcat((0.0, switch_length/2), __)
+        vcat((0.0, critical_times[1] / 2), __)
 
 function load_stimulus_metadata(
     stim_filename = nothing,
@@ -76,16 +76,17 @@ end
 function derived_metadata(meta)
     @assert meta.switch_regions |> length in [40,50]
 
-    args = zip(meta.switch_regions, meta.target_times)
-    switch_distance = map(args) do (switches, target)
+    args = zip(meta.switch_regions, meta.target_times, meta.critical_times)
+    switch_distance = map(args) do (switches, target, critical)
         if target == 0
             return missing
         end
-        before = @_ target .- getindex.(switches,2) |> filter(_ > 0, __)
+        before = @_ switchdiff.(switches, target) |> filter(_ >= 0, __)
+        # before = @_ target .- critical |> filter(_ > 0, __)
         if isempty(before)
             Inf
         else
-            last(before)
+            minimum(before)
         end
     end
 
@@ -109,17 +110,28 @@ function derived_metadata(meta)
                 time = meta.target_times[1:length(meta.switch_regions)],
                 switches = meta.switch_regions,
                 row = 1:length(meta.switch_regions)) |>
-            map(sum(_1.time .> getindex.(_1.switches, 2)) <= 2 ? "early" : "late", eachrow(__))
+            map(sum(switchdiff.(_1.switches, _1.time) .>= 0) <= 2 ? "early" : "late", eachrow(__))
         end,
 
         target_switch_label = begin
-            med = skipmissing(switch_distance) |> median
+            med = @_ skipmissing(switch_distance) |> filter(!isinf,__) |> quantile(__, 0.5)
             map(switch_distance) do dist
                 ismissing(dist) && return missing
-                dist < med ? "near" : "far"
+                dist <= med ? "near" : "far"
             end
         end
     )
+end
+
+function switchdiff(region, time)
+    diffs = time .- region
+    if all(diffs .> 0) ## switch comes before, get distance from end
+        return diffs[2]
+    elseif all(diffs .< 0) ## switch comes after, mark as negative distance
+        return diffs[1]
+    else ## switch overlaps, mark distance as 0
+        return 0.0
+    end
 end
 
 abstract type StimMethod

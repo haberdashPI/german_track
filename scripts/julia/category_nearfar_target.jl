@@ -8,22 +8,24 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, CSV
+    StatsFuns, CSV, Colors
 
 dir = mkpath(plotsdir("category_nearfar_target"))
+
+using GermanTrack: gray, colors
 
 # Behavioral Data
 # =================================================================
 
-gray = RGB(0.4,0.4,0.4)
-myblue = RGB(0.074,0.263,0.604)
+# gray = RGB(0.4,0.4,0.4)
+# myblue = RGB(0.074,0.263,0.604)
 
-colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
-    hchoices = range(40, 50, length = 15),
-    lchoices = range(50, 60, length = 15),
-    cchoices = range(75, 100, length = 15),
-    transform = deuteranopic ∘ tritanopic # color-blind transform
-)[[3,5,4]]
+# colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
+#     hchoices = range(40, 50, length = 15),
+#     lchoices = range(50, 60, length = 15),
+#     cchoices = range(75, 100, length = 15),
+#     transform = deuteranopic ∘ tritanopic # color-blind transform
+# )[[3,5,4]]
 
 
 target_labels = OrderedDict(
@@ -329,6 +331,7 @@ else
             start in range(0, 2.5, length = 12)]
     classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windows)
 
+    # TASK: set condition on infiltrate to look at missing data case
     CSV.write(classdf_earlylate_file, classdf_earlylate)
 end
 
@@ -361,7 +364,7 @@ else
             irls_maxiter       = 600,
             weight             = :weight,
             on_model_exception = :throw,
-            on_missing_case    = :missing,
+            # on_missing_case    = :debug,
         )
         if !isempty(result)
             result[!, keys(key)] .= permutedims(collect(values(key)))
@@ -372,6 +375,7 @@ else
     end
 
     resultdf_earlylate = @_ groups |> pairs |> collect |>
+        # foldl(append!!, Map(findclass), __)
         foldxt(append!!, Map(findclass), __)
 
     ProgressMeter.finish!(progress)
@@ -404,7 +408,6 @@ ytitle = "Model - Null Model Accuracy (logit scale)"
 pl = classdiffs |>
     @vlplot(
         facet = {column = {field = :target_time_label, title = nothing}},
-        title = ["Near/Far from Switch Target Classification","Accuracy by Target Time"],
         config = {legend = {disable = true}}
     ) + (
         @vlplot(color = {:condition, title = nothing}, x = {:condition, title = nothing}) +
@@ -417,6 +420,60 @@ pl = classdiffs |>
         )
     );
 pl |> save(joinpath(dir, "switch_target_earlylate.svg"))
+
+# Absolute values
+# -----------------------------------------------------------------
+
+summary = @_ classdiffs |>
+    stack(__, [:mean, :nullmean], [:target_time_label, :condition, :sid],
+        variable_name = :modeltype, value_name = :prop) |>
+    groupby(__, [:target_time_label, :condition, :modeltype]) |>
+    combine(__,
+        :prop => mean => :prop,
+        :prop => (x -> lowerboot(x; alpha = 0.318)) => :lower,
+        :prop => (x -> upperboot(x; alpha = 0.318)) => :upper
+    ) |>
+    transform!(__, :modeltype => (x -> replace(string.(x), "mean" => "pmean")) => :modeltype)
+
+ytitle = "Accuracy"
+barwidth = 10
+pl = summary |>
+    @vlplot(
+        # width = 121, #autosize = "fit",
+        facet = {column = {field = :target_time_label, type = "nominal", title = nothing}},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        }
+    ) + (
+        @vlplot() +
+        @vlplot({:bar, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.modeltype == 'pmean'"}],
+            # color = {value = "#"*hex(gray)},
+            color = {:condition, title = nothing, scale = {range ="#".*hex.(colors)}},
+            x = {:condition, title = nothing},
+            y = {:prop, title = ytitle, scale = {domain = [0.3,0.8]}}
+        ) +
+        @vlplot({:rule, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.modeltype == 'pmean'"}],
+            color = {value = "black"},
+            x = {:condition, title = nothing},
+            y = {:lower, title = ytitle}, y2 = :upper
+        ) +
+        @vlplot({:bar, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.modeltype == 'nullmean'"}],
+            color = {value = "#"*hex(gray)},
+            x = {:condition, title = nothing},
+            y = {:prop, title = ytitle}
+        ) +
+        @vlplot({:rule, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.modeltype == 'nullmean'"}],
+            color = {value = "black"},
+            x = {:condition, title = nothing},
+            y = {:lower, title = ytitle}, y2 = :upper
+        )
+    );
+pl |> save(joinpath(dir, "switch_target_absolute_earlylate.svg"))
 
 # Plot near/far performance for early/late targets by salience
 # =================================================================
