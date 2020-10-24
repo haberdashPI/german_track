@@ -415,6 +415,7 @@ function compute_powerbin_features(eeg, data, windowing; kwds...)
     else
         Empty(DataFrame)
     end
+end
 
 # function computebandfeats(data; freqbins = default_freqbins, channels = Colon())
 #     chn = channels isa Colon ? channels : 1:size(data, 1)

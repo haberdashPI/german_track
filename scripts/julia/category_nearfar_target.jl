@@ -17,17 +17,6 @@ using GermanTrack: gray, colors
 # Behavioral Data
 # =================================================================
 
-# gray = RGB(0.4,0.4,0.4)
-# myblue = RGB(0.074,0.263,0.604)
-
-# colors = distinguishable_colors(6, [colorant"black", colorant"white", gray, myblue],
-#     hchoices = range(40, 50, length = 15),
-#     lchoices = range(50, 60, length = 15),
-#     cchoices = range(75, 100, length = 15),
-#     transform = deuteranopic ∘ tritanopic # color-blind transform
-# )[[3,5,4]]
-
-
 target_labels = OrderedDict(
     "early" => ["Early Target", "(before 3rd Switch)"],
     "late"  => ["Late Target", "(after 3rd Switch)"]
