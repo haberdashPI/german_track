@@ -1164,11 +1164,7 @@ pl |> save(joinpath(dir, "salience_earlylate.svg"))
 # -----------------------------------------------------------------
 
 means = @_ CSV.read(joinpath(processed_datadir("plots"),
-    "hitrate_angle_byswitch_andtarget.csv")) |>
-    transform!(__,
-        [:pmean, :err] => (+) => :upper,
-        [:pmean, :err] => (-) => :lower,
-    )
+    "hitrate_angle_byswitch_andtarget.csv"))
 
 pl = means |>
     @vlplot(
