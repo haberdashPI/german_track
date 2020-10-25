@@ -41,23 +41,26 @@ pl = @_ target_timeline |>
             column = {
                 field = :target_time_label, type = :ordinal, title = nothing,
                 sort = collect(values(target_labels)),
+                header = {labelFontWeight = "bold"}
             }
         }
     ) +
     (
-        @vlplot(width = 75, height = 100, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(width = 111, autosize = "fit", height = 150, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot(:trail,
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
-            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Target Hit Rate"},
+            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
+            clip = true
         ) +
         @vlplot(:errorband,
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
-            x = {:time, type = :quantitative},
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
             y = {:upper, type = :quantitative, title = ""}, y2 = :lower,
             # opacity = :weight,
-            color = :condition
+            color = :condition,
+            clip = true
         ) +
         @vlplot({:text, align = :left, dx = 5},
             transform = [

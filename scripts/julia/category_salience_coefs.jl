@@ -1160,6 +1160,36 @@ pl = classdiffs |>
     );
 pl |> save(joinpath(dir, "salience_earlylate.svg"))
 
+# Behavioral early/late salience
+# -----------------------------------------------------------------
+
+means = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "hitrate_angle_byswitch_andtarget.csv")) |>
+    transform!(__,
+        [:pmean, :err] => (+) => :upper,
+        [:pmean, :err] => (-) => :lower,
+    )
+
+pl = means |>
+    @vlplot(
+        facet = {
+            column = {field = :target_time, type = :nominal},
+            row = {field = :variable, type = :nominal}
+        }
+    ) +
+    @vlplot(:bar,
+        x = :condition,
+        y = :pmean,
+        color = :condition
+    ) +
+    @vlplot(:rule,
+        x = :condition,
+        y = :lower, y2 = :upper,
+        color = {value = "black"}
+    );
+
+pl |> save(joinpath(dir, "behavior_earlylate_hitrate.svg"))
+
 # Plot 4-salience-level, trial-by-trial timeline
 # =================================================================
 
