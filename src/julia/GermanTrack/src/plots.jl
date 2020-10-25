@@ -63,6 +63,12 @@ colors = @_ distinguishable_colors(2, [colorant"black", colorant"white", gray, d
     transform = deuteranopic ∘ tritanopic # color-blind transform
 ) |> vcat(darkgray, __)
 
+darkcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l, _.c, _.h), __) |>
+    convert.(RGB, __)
+lightcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l + 30, _.c, _.h), __) |>
+    convert.(RGB, __)
+lightdark = Iterators.flatten(zip(lightcolors, darkcolors)) |> collect
+
 """
     patterns
 

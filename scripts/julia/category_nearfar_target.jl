@@ -12,7 +12,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
 
 dir = mkpath(plotsdir("category_nearfar_target"))
 
-using GermanTrack: gray, colors
+using GermanTrack: gray, colors, lightdark, darkgray
 
 # Behavioral Data
 # =================================================================
@@ -41,23 +41,24 @@ pl = @_ target_timeline |>
             column = {
                 field = :target_time_label, type = :ordinal, title = nothing,
                 sort = collect(values(target_labels)),
+                header = {labelFontWeight = "bold"}
             }
         }
     ) +
     (
-        @vlplot(width = 75, height = 100, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:trail,
+        @vlplot(width = 80, autosize = "fit", height = 130, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot({:trail, #= clip = true =#},
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
-            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Target Hit Rate"},
+            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
         ) +
-        @vlplot(:errorband,
+        @vlplot({:errorband, #= clip = true =#},
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
-            x = {:time, type = :quantitative},
-            y = {:upper, type = :quantitative, title = ""}, y2 = :lower,
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
+            y = {:upper, type = :quantitative, title = "", scale = {domain = [0.5, 1]}}, y2 = :lower,
             # opacity = :weight,
-            color = :condition
+            color = :condition,
         ) +
         @vlplot({:text, align = :left, dx = 5},
             transform = [
@@ -387,25 +388,101 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+nullmean, classdiffs =
+    let l = logit ∘ shrinktowards(0.5, by = 0.01),
+        C = mean(l.(nullmeans.nullmean))
+        tocor = x -> logistic(x + C)
+    logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
+        groupby(__, [:condition, :target_time_label]) |>
+        combine(__,
+            :logitmeandiff => tocor ∘ mean => :mean,
+            :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.318))) => :lower,
+            :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
+        ) |>
+        transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
 end
 
-ytitle = "Model - Null Model Accuracy (logit scale)"
+ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
+barwidth = 14
+yrange = [0.4, 0.8]
 pl = classdiffs |>
     @vlplot(
-        facet = {column = {field = :target_time_label, title = nothing}},
-        config = {legend = {disable = true}}
-    ) + (
-        @vlplot(color = {:condition, title = nothing}, x = {:condition, title = nothing}) +
-        @vlplot(:bar,
-            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}
+        height = 175, width = 242, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth},
+            axis = {titlePadding = 13}
+        },
+    ) +
+    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {:condition_time, title = nothing, scale = {range = "#".*hex.(lightdark)}},
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
+        y = {:mean, title = ytitle, scale = {domain = yrange}}
+    ) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {value = "black"},
+        x = {:condition, title = nothing},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        color = {:condition_time, title = nothing},
+        x = {:condition, title = nothing},
+        y = {:mean, title = ytitle}
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        x = {:condition, title = nothing},
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.target_time_label == 'early' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "Early"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.target_time_label == 'late' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "Late"},
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-top",
+            dx = -2barwidth - 17, dy = 14},
+            color = {value = "#"*hex(darkgray)},
+            x = {datum = "global"},
+            y = {datum = yrange[1]},
+            text = {datum = ["Less", "Disruptive"]}
         ) +
-        @vlplot(:errorbar,
-            color = {value = "black"},
-            y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}
+        @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
+            dx = -2barwidth - 17, dy = -24},
+            color = {value = "#"*hex(darkgray)},
+            x = {datum = "global"},
+            y = {datum = yrange[2]},
+            text = {datum = ["More", "Disruptive"]}
+        )
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"}) +
+        @vlplot({:text, align = "left", dx = 5, dy = 0, baseline = "line-bottom", fontSize = 9},
+            y = {datum = nullmean},
+            x = {datum = "spatial"},
+            text = {value = ["Null Model", "Accuracy"]}
         )
     );
 pl |> save(joinpath(dir, "switch_target_earlylate.svg"))
@@ -463,6 +540,33 @@ pl = summary |>
         )
     );
 pl |> save(joinpath(dir, "switch_target_absolute_earlylate.svg"))
+
+# Combine early/late plots
+# -----------------------------------------------------------------
+
+GermanTrack.@usepython
+
+svg = pyimport("svgutils").compose
+
+background_file = tempname()
+
+background = pyimport("svgutils").transform.fromstring("""
+    <svg>
+        <rect width="100%" height="100%" fill="white"/>
+    </svg>
+""").save(background_file)
+
+fig = svg.Figure("89mm", "160mm", # "240mm",
+    svg.SVG(background_file),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "behavior_timeline.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold")
+    ).move(0, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "switch_target_earlylate.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight = "bold")
+    ).move(0, 250),
+).scale(1.333).save(joinpath(dir, "fig3.svg"))
 
 # Plot near/far performance for early/late targets by salience
 # =================================================================
