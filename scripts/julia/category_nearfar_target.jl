@@ -459,18 +459,18 @@ pl = classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-top",
-            dx = -2barwidth - 17, dy = 14},
+            dx = -2barwidth - 17, dy = 22},
             color = {value = "#"*hex(darkgray)},
             x = {datum = "global"},
             y = {datum = yrange[1]},
-            text = {datum = ["Less", "Disruptive"]}
+            text = {datum = ["Less distinct", "response during switch"]}
         ) +
         @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
             dx = -2barwidth - 17, dy = -24},
             color = {value = "#"*hex(darkgray)},
             x = {datum = "global"},
             y = {datum = yrange[2]},
-            text = {datum = ["More", "Disruptive"]}
+            text = {datum = ["More distinct", "response during switch"]}
         )
     ) +
     (
