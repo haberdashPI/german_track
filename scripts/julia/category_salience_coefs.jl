@@ -10,7 +10,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
     StatsFuns, Colors, CSV
 
-using GermanTrack: colors, gray, patterns
+using GermanTrack: colors, gray, patterns, lightdark
 
 dir = mkpath(plotsdir("category_salience"))
 
@@ -1167,12 +1167,6 @@ means = @_ CSV.read(joinpath(processed_datadir("plots"),
     "hitrate_angle_byswitch_andtarget.csv")) |>
     transform!(__, [:condition, :target_time] => ByRow(string) => :condition_time)
 
-darkcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l, _.c, _.h), __) |>
-    convert.(RGB, __)
-lightcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l + 30, _.c, _.h), __) |>
-    convert.(RGB, __)
-plcols = Iterators.flatten(zip(lightcolors, darkcolors)) |> collect
-
 barwidth = 8
 yrange = [0.4, 1]
 pl = means |>
@@ -1197,7 +1191,7 @@ pl = means |>
             x = {:condition, axis = {title = "", labelAngle = -32,
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
             y = {:pmean, title = "Hit Rate", scale = {domain = yrange}},
-            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+            color = {:condition_time, scale = {range = "#".*hex.(lightdark)}}
         ) +
         @vlplot({:rule, xOffset = -(barwidth/2)},
             transform = [{filter = "datum.target_time == 'early'"}],
@@ -1209,7 +1203,7 @@ pl = means |>
             transform = [{filter = "datum.target_time == 'late'"}],
             x = :condition,
             y = {:pmean, title = ""},
-            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+            color = {:condition_time, scale = {range = "#".*hex.(lightdark)}}
         ) +
         @vlplot({:rule, xOffset = (barwidth/2)},
             transform = [{filter = "datum.target_time == 'late'"}],
