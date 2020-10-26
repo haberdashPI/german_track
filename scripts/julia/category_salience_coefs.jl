@@ -10,7 +10,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
     StatsFuns, Colors, CSV
 
-using GermanTrack: colors, gray, patterns, lightdark
+using GermanTrack: colors, gray, patterns, lightdark, darkgray
 
 dir = mkpath(plotsdir("category_salience"))
 
@@ -1136,26 +1136,101 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
+nullmean, classdiffs =
+    let l = logit ∘ shrinktowards(0.5, by = 0.01),
+        C = mean(l.(nullmeans.nullmean)),
+        tocor = x -> logistic(x + C)
+    logistic(C),
     @_ classmeans_sum |>
+        filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
+        groupby(__, [:condition, :target_time_label]) |>
+        combine(__,
+            :logitmeandiff => tocor ∘ mean => :mean,
+            :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.318))) => :lower,
+            :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
+        ) |>
+        transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
 end
 
-ytitle = "Model - Null Model Accuracy (logit scale)"
+ytitle = ["Neural Salience-Classification", "Accuracy (Null Model Corrected)"]
+barwidth = 14
+yrange = [0.4, 1]
 pl = classdiffs |>
     @vlplot(
-        facet = {column = {field = :target_time_label, title = nothing}},
-        title = ["Low/High Salience Classification ","Accuracy by Target Time"],
-        config = {legend = {disable = true}}
-    ) + (
-        @vlplot(color = {:condition, title = nothing}, x = {:condition, title = nothing}) +
-        @vlplot(:bar,
-            y = {:logitmeandiff, aggregate = :mean, type = :quantitative, title = ytitle}
+        height = 175, width = 242, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth},
+            axis = {titlePadding = 13}
+        },
+    ) +
+    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {:condition_time, title = nothing, scale = {range = "#".*hex.(lightdark)}},
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
+        y = {:mean, title = ytitle, scale = {domain = yrange}}
+    ) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {value = "black"},
+        x = {:condition, title = nothing},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        color = {:condition_time, title = nothing},
+        x = {:condition, title = nothing},
+        y = {:mean, title = ytitle}
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        x = {:condition, title = nothing},
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.target_time_label == 'early' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "Early"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.target_time_label == 'late' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "Late"},
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-top",
+            dx = -2barwidth - 17, dy = 22},
+            color = {value = "#"*hex(darkgray)},
+            x = {datum = "global"},
+            y = {datum = yrange[1]},
+            text = {datum = ["Less Distinct", "Response to Salience"]}
         ) +
-        @vlplot(:errorbar,
-            color = {value = "black"},
-            y = {:logitmeandiff, aggregate = :ci, type = :quantitative, title = ytitle}
+        @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
+            dx = -2barwidth - 17, dy = -24},
+            color = {value = "#"*hex(darkgray)},
+            x = {datum = "global"},
+            y = {datum = yrange[2]},
+            text = {datum = ["More Distict", "Response to Salience"]}
+        )
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"}) +
+        @vlplot({:text, align = "left", dx = 12, dy = 0, baseline = "line-bottom", fontSize = 9},
+            y = {datum = nullmean},
+            x = {datum = "spatial"},
+            text = {value = ["Null Model", "Accuracy"]}
         )
     );
 pl |> save(joinpath(dir, "salience_earlylate.svg"))
@@ -1288,6 +1363,56 @@ pl = means |>
         )
     );
 pl |> save(joinpath(dir, "behavior_earlylate_angle.svg"))
+
+# Combine  behavioral and neural early/late responses
+# -----------------------------------------------------------------
+
+GermanTrack.@usepython
+
+svg = pyimport("svgutils").compose
+
+background_file = tempname()
+
+background = pyimport("svgutils").transform.fromstring("""
+    <svg>
+        <rect width="100%" height="100%" fill="white"/>
+    </svg
+""").save(background_file)
+
+# NOTE: we have to make all of the `clipN` definitions distinct
+# across the three files we're combining
+function filereplace(file, pairs...)
+    lines = readlines(file)
+    open(file, write = true) do stream
+        for line in lines
+            println(stream, replace(line, pairs...))
+        end
+    end
+end
+
+for (suffix, file) in [
+    ("behavior_hitrate", "behavior_earlylate_hitrate.svg"),
+    ("behavior_angle", "behavior_earlylate_angle.svg"),
+    ("neural", "salience_earlylate.svg")]
+    filereplace(joinpath(dir, file), r"\bclip([0-9]+)\b" =>
+        SubstitutionString("clip\\1_$suffix"))
+end
+
+fig = svg.Figure("89mm", "235mm",
+    svg.SVG(background_file),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "behavior_earlylate_hitrate.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold")
+    ).move(0, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "behavior_earlylate_angle.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight = "bold")
+    ).move(0, 235),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "salience_earlylate.svg")).move(0,15),
+        svg.Text("C", 2, 10, size = 12, weight = "bold")
+    ).move(0, 235 + 235),
+).scale(1.333).save(joinpath(dir, "fig4.svg"))
 
 # Plot 4-salience-level, trial-by-trial timeline
 # =================================================================

@@ -390,12 +390,11 @@ nullmeans = @_ classmeans_sum |>
 
 nullmean, classdiffs =
     let l = logit ∘ shrinktowards(0.5, by = 0.01),
-        C = mean(l.(nullmeans.nullmean))
+        C = mean(l.(nullmeans.nullmean)),
         tocor = x -> logistic(x + C)
     logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
         groupby(__, [:condition, :target_time_label]) |>
         combine(__,

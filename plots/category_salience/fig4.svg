@@ -1,0 +1,646 @@
+<?xml version='1.0' encoding='ASCII' standalone='yes'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="89.0mm" viewBox="0 0 89.0mm 235.0mm" height="235.0mm">
+  <g transform="translate(0, 0) scale(1.333) ">
+    <g><rect width="100%" height="100%" fill="white"/>
+    </g>
+    <g transform="translate(0, 0) scale(1) ">
+      <g class="marks" transform="translate(0, 15) scale(1) ">
+        <defs>
+          <clipPath id="clip1_behavior_hitrate">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip2_behavior_hitrate">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip3_behavior_hitrate">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip4_behavior_hitrate">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+        </defs>
+        <rect width="258" height="220" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(46,30)">
+          <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+            <g transform="translate(0,0)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
+              <g>
+                <g class="mark-group role-row-header row_header" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(-4,0)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v150h0Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Hit Rate' for a linear scale with values from 0.4 to 1.0">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(0,150)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,50)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(-7,153)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.4</text>
+                              <text text-anchor="end" transform="translate(-7,103.00000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                              <text text-anchor="end" transform="translate(-7,52.999999999999986)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                              <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,150)" x2="0" y2="-150" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-title" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(-26,75) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Hit Rate</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-column-header column_header" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,-5)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-title">
+                        <g transform="translate(49,-20)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'Low Salience'" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#000" opacity="1">Low Salience</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,-5)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-title">
+                        <g transform="translate(49,-20)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'High Salience'" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#000" opacity="1">High Salience</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-column-footer column_footer" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,151)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(16,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(49,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(81,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(15.83333333333334,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                              <text text-anchor="end" transform="translate(48.5,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                              <text text-anchor="end" transform="translate(81.16666666666667,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,151)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(16,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(49,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(81,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(15.83333333333334,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                              <text text-anchor="end" transform="translate(48.5,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                              <text text-anchor="end" transform="translate(81.16666666666667,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-scope cell" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,0)">
+                    <path class="background" aria-hidden="true" d="M0.5,0.5h98v150h-98Z" stroke="#ddd"/>
+                    <g>
+                      <g class="mark-group role-axis" aria-hidden="true">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-grid" pointer-events="none">
+                              <line transform="translate(0,150)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,50)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip1_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label=": global; Hit Rate: 0.539135802469; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,115.21604938271602h8v134.78395061728398h-8Z" fill="#979797"/>
+                        <path aria-label=": spatial; Hit Rate: 0.651419753086; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,87.145061728395h8v162.854938271605h-8Z" fill="#7AD996"/>
+                        <path aria-label=": object; Hit Rate: 0.743148148148; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,64.212962962963h8v185.787037037037h-8Z" fill="#FF6F7A"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : 0.488509252438; upperc: 0.5897623525" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,127.872686890471)" x2="0" y2="-25.313275015509987" stroke="black"/>
+                        <line aria-label="condition: spatial; : 0.591983824986; upperc: 0.710855681187" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77.66666666666667,102.00404375360651)" x2="0" y2="-29.717964050422765" stroke="black"/>
+                        <line aria-label="condition: object; : 0.694709003778; upperc: 0.791587292518" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,76.32274905545574)" x2="0" y2="-24.219572184985495" stroke="black"/>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip2_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label="condition: global; : 0.73680655764; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,65.79836059002726h8v184.20163940997276h-8Z" fill="#4C4D4C"/>
+                        <path aria-label="condition: spatial; : 0.775727513228; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,56.06812169312175h8v193.93187830687825h-8Z" fill="#008842"/>
+                        <path aria-label="condition: object; : 0.833174603175; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,41.706349206349245h8v208.29365079365076h-8Z" fill="#B50021"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : 0.689368776483; upperc: 0.784244338796" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,77.65780587915974)" x2="0" y2="-23.71889057826499" stroke="black"/>
+                        <line aria-label="condition: spatial; : 0.725067828894; upperc: 0.826387197561" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(85.66666666666667,68.73304277650699)" x2="0" y2="-25.329842166770497" stroke="black"/>
+                        <line aria-label="condition: object; : 0.788494271216; upperc: 0.877854935133" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(53,52.876432196004)" x2="0" y2="-22.34016597930975" stroke="black"/>
+                      </g>
+                      <g class="mark-text role-mark child_layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,150) rotate(-90) translate(0,-12)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
+                      </g>
+                      <g class="mark-text role-mark child_layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global; Mean of pmean: 0.73680655764" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(16.33333333333334,65.79836059002726) rotate(-90) translate(0,17)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,0)">
+                    <path class="background" aria-hidden="true" d="M0.5,0.5h98v150h-98Z" stroke="#ddd"/>
+                    <g>
+                      <g class="mark-group role-axis" aria-hidden="true">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-grid" pointer-events="none">
+                              <line transform="translate(0,150)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,50)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip3_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label=": global; Hit Rate: 0.530120481928; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,117.46987951807225h8v132.53012048192775h-8Z" fill="#979797"/>
+                        <path aria-label=": spatial; Hit Rate: 0.704819277108; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,73.79518072289152h8v176.20481927710847h-8Z" fill="#7AD996"/>
+                        <path aria-label=": object; Hit Rate: 0.892857142857; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,26.785714285714242h8v223.21428571428575h-8Z" fill="#FF6F7A"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : 0.437911270305; upperc: 0.62232969355" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,140.5221824237335)" x2="0" y2="-46.10460581132226" stroke="black"/>
+                        <line aria-label="condition: spatial; : 0.620761320854; upperc: 0.788877233363" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77.66666666666667,94.8096697865425)" x2="0" y2="-42.028978127301734" stroke="black"/>
+                        <line aria-label="condition: object; : 0.77619047619; upperc: 1.00952380952" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,55.952380952381006)" x2="0" y2="-58.33333333333348" stroke="black"/>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip4_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label="condition: global; : 0.769470899471; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,57.632275132275254h8v192.36772486772475h-8Z" fill="#4C4D4C"/>
+                        <path aria-label="condition: spatial; : 0.789761904762; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,52.55952380952375h8v197.44047619047626h-8Z" fill="#008842"/>
+                        <path aria-label="condition: object; : 0.860119047619; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,34.970238095238h8v215.02976190476198h-8Z" fill="#B50021"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : 0.719343769859; upperc: 0.819598029083" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,70.16405753533925)" x2="0" y2="-25.063564806128255" stroke="black"/>
+                        <line aria-label="condition: spatial; : 0.736019745046; upperc: 0.843504064477" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(85.66666666666667,65.99506373841199)" x2="0" y2="-26.87107985777623" stroke="black"/>
+                        <line aria-label="condition: object; : 0.760344223981; upperc: 0.959893871258" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(53,59.91394400486924)" x2="0" y2="-49.887411819262496" stroke="black"/>
+                      </g>
+                      <g class="mark-text role-mark child_layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,150) rotate(-90) translate(0,-12)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
+                      </g>
+                      <g class="mark-text role-mark child_layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global; Mean of pmean: 0.769470899471" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(16.33333333333334,57.632275132275254) rotate(-90) translate(0,17)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" display="none"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">A</text>
+    </g>
+    <g transform="translate(0, 235) scale(1) ">
+      <g class="marks" transform="translate(0, 15) scale(1) ">
+        <defs>
+          <clipPath id="clip1_behavior_angle">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip2_behavior_angle">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip3_behavior_angle">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+          <clipPath id="clip4_behavior_angle">
+            <rect x="0" y="0" width="98" height="150"/>
+          </clipPath>
+        </defs>
+        <rect width="255" height="216" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(43,26)">
+          <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+            <g transform="translate(0,0)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
+              <g>
+                <g class="mark-group role-row-header row_header" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(-4,0)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v150h0Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Hit Rate Angle' for a linear scale with values from -5 to 40">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(0,133)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,67)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,33)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(-7,136.33333333333331)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0</text>
+                              <text text-anchor="end" transform="translate(-7,103.00000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">10</text>
+                              <text text-anchor="end" transform="translate(-7,69.66666666666666)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">20</text>
+                              <text text-anchor="end" transform="translate(-7,36.33333333333333)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">30</text>
+                              <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">40</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,150)" x2="0" y2="-150" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-title" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(-23,75) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Hit Rate Angle</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-column-header column_header" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,-1)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-title">
+                        <g transform="translate(49,-20)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'Low Salience'" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#000" opacity="1">Low Salience</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,-1)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-title">
+                        <g transform="translate(49,-20)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-text role-title-text" role="graphics-symbol" aria-roledescription="title" aria-label="Title text 'High Salience'" pointer-events="none">
+                              <text text-anchor="middle" transform="translate(0,8)" font-family="sans-serif" font-size="10px" font-weight="bold" fill="#000" opacity="1">High Salience</text>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-column-footer column_footer" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,151)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(16,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(49,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(81,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(15.83333333333334,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                              <text text-anchor="end" transform="translate(48.5,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                              <text text-anchor="end" transform="translate(81.16666666666667,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,151)">
+                    <path class="background" aria-hidden="true" d="M0,0h98v0h-98Z"/>
+                    <g>
+                      <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-tick" pointer-events="none">
+                              <line transform="translate(16,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(49,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                              <line transform="translate(81,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                            <g class="mark-text role-axis-label" pointer-events="none">
+                              <text text-anchor="end" transform="translate(15.83333333333334,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                              <text text-anchor="end" transform="translate(48.5,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                              <text text-anchor="end" transform="translate(81.16666666666667,7) rotate(328) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                            </g>
+                            <g class="mark-rule role-axis-domain" pointer-events="none">
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-scope cell" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,0)">
+                    <path class="background" aria-hidden="true" d="M0.5,0.5h98v150h-98Z" stroke="#ddd"/>
+                    <g>
+                      <g class="mark-group role-axis" aria-hidden="true">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-grid" pointer-events="none">
+                              <line transform="translate(0,133)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,67)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,33)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip1_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label=": global; Hit Rate Angle: 20.3718498776; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,65.42716707480467h8v67.90616625852864h-8Z" fill="#979797"/>
+                        <path aria-label=": spatial; Hit Rate Angle: 27.8646272068; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,40.45124264390466h8v92.88209068942865h-8Z" fill="#7AD996"/>
+                        <path aria-label=": object; Hit Rate Angle: 36.1794818939; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,12.735060353500344h8v120.59827297983297h-8Z" fill="#FF6F7A"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : 17.4531610963; upperc: 23.015889281" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,75.15612967911566)" x2="0" y2="-18.542427282458" stroke="black"/>
+                        <line aria-label="condition: spatial; : 23.9297086305; upperc: 31.4766428444" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77.66666666666667,53.56763789840434)" x2="0" y2="-25.156447379747682" stroke="black"/>
+                        <line aria-label="condition: object; : 31.5216042172; upperc: 39.6474659247" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,28.261319275927338)" x2="0" y2="-27.08620569153068" stroke="black"/>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip2_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label="condition: global; : 0.920697947122; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,130.26434017625957h8v3.0689931570737485h-8Z" fill="#4C4D4C"/>
+                        <path aria-label="condition: spatial; : 7.37262114003; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,108.75792953323963h8v24.57540380009368h-8Z" fill="#008842"/>
+                        <path aria-label="condition: object; : 23.9326144136; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,53.55795195452933h8v79.77538137880398h-8Z" fill="#B50021"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : -4.21175228597; upperc: 6.0408399781" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,147.3725076198961)" x2="0" y2="-34.175307546892384" stroke="black"/>
+                        <line aria-label="condition: spatial; : 3.92903770193; upperc: 10.9061363239" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(85.66666666666667,120.23654099356733)" x2="0" y2="-23.256995406494013" stroke="black"/>
+                        <line aria-label="condition: object; : 17.8760113055; upperc: 29.2007952394" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(53,73.746628981721)" x2="0" y2="-37.74927977957466" stroke="black"/>
+                      </g>
+                      <g class="mark-text role-mark child_layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,133.33333333333331) rotate(-90) translate(0,-12)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
+                      </g>
+                      <g class="mark-text role-mark child_layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,133.33333333333331) rotate(-90) translate(0,17)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(108,0)">
+                    <path class="background" aria-hidden="true" d="M0.5,0.5h98v150h-98Z" stroke="#ddd"/>
+                    <g>
+                      <g class="mark-group role-axis" aria-hidden="true">
+                        <g transform="translate(0.5,0.5)">
+                          <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                          <g>
+                            <g class="mark-rule role-axis-grid" pointer-events="none">
+                              <line transform="translate(0,133)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,100)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,67)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,33)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                              <line transform="translate(0,0)" x2="98" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                            </g>
+                          </g>
+                          <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                        </g>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip3_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label=": global; Hit Rate Angle: -1.93866660541; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,133.33333333333331h8v6.462222018025756h-8Z" fill="#979797"/>
+                        <path aria-label=": spatial; Hit Rate Angle: 0.329608373197; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,132.2346387560093h8v1.0986945773240109h-8Z" fill="#7AD996"/>
+                        <path aria-label=": object; Hit Rate Angle: 1.19443117835; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,129.35189607217396h8v3.981437261159357h-8Z" fill="#FF6F7A"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : -3.47902914473; upperc: -0.28892606718" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,144.93009714910886)" x2="0" y2="-10.633676925175394" stroke="black"/>
+                        <line aria-label="condition: spatial; : -1.8697034402; upperc: 2.32306831297" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(77.66666666666667,139.56567813398956)" x2="0" y2="-13.975905843886395" stroke="black"/>
+                        <line aria-label="condition: object; : -0.1846784599; upperc: 2.51908716891" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,133.94892819966583)" x2="0" y2="-9.012552096047258" stroke="black"/>
+                      </g>
+                      <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip4_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
+                        <path aria-label="condition: global; : -0.668319123162; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,133.33333333333331h8v2.2277304105398343h-8Z" fill="#4C4D4C"/>
+                        <path aria-label="condition: spatial; : 0.810763639741; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,130.6307878675315h8v2.702545465801819h-8Z" fill="#008842"/>
+                        <path aria-label="condition: object; : -0.0342627646249; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,133.33333333333331h8v0.11420921541647999h-8Z" fill="#B50021"/>
+                      </g>
+                      <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                        <line aria-label="condition: global; : -3.68967699446; upperc: 2.34581068538" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,145.63225664821582)" x2="0" y2="-20.118292266149624" stroke="black"/>
+                        <line aria-label="condition: spatial; : -2.33022703534; upperc: 4.21281751816" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(85.66666666666667,141.1007567844683)" x2="0" y2="-21.810148511674498" stroke="black"/>
+                        <line aria-label="condition: object; : -2.72480697016; upperc: 2.41128495015" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(53,142.41602323386448)" x2="0" y2="-17.120306401022376" stroke="black"/>
+                      </g>
+                      <g class="mark-text role-mark child_layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,133.33333333333331) rotate(-90) translate(0,-12)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
+                      </g>
+                      <g class="mark-text role-mark child_layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(16.33333333333334,133.33333333333331) rotate(-90) translate(0,17)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" display="none"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">B</text>
+    </g>
+    <g transform="translate(0, 470) scale(1) ">
+      <g class="marks" transform="translate(0, 15) scale(1) ">
+        <defs>
+          <clipPath id="clip1_salience">
+            <rect x="0" y="0" width="160" height="98"/>
+          </clipPath>
+          <clipPath id="clip2_salience">
+            <rect x="0" y="0" width="160" height="98"/>
+          </clipPath>
+        </defs>
+        <rect width="252" height="185" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(64,39)">
+          <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+            <g transform="translate(0,0)">
+              <path class="background" aria-hidden="true" d="M0.5,0.5h160v98h-160Z" stroke="#ddd"/>
+              <g>
+                <g class="mark-group role-axis" aria-hidden="true">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-grid" pointer-events="none">
+                        <line transform="translate(0,98)" x2="160" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,65)" x2="160" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,33)" x2="160" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="160" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+                  <g transform="translate(0.5,98.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(26,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(80,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(133,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(26.16666666666667,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                        <text text-anchor="middle" transform="translate(79.5,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                        <text text-anchor="middle" transform="translate(132.83333333333334,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,0)" x2="160" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Neural Salience-Classification Accuracy (Null Model Corrected)' for a linear scale with values from 0.4 to 1.0">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(0,98)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,65)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,33)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="end" transform="translate(-7,101)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.4</text>
+                        <text text-anchor="end" transform="translate(-7,68.33333333333334)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                        <text text-anchor="end" transform="translate(-7,35.66666666666666)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                        <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,98)" x2="0" y2="-98" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-title" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(-48,49) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">
+                          <tspan>Neural Salience-Classification</tspan>
+                          <tspan x="0" dy="13">Accuracy (Null Model Corrected)</tspan>
+                        </text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1_salience)" role="graphics-object" aria-roledescription="rect mark container">
+                  <path aria-label="condition_time: globalearly; : global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.891620581788" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,17.701971641259323h14v145.63136169207402h-14Z" fill="#979797"/>
+                  <path aria-label="condition_time: objectearly; : object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.663889477833" role="graphics-symbol" aria-roledescription="bar" d="M66,54.89805195394869h14v108.43528137938466h-14Z" fill="#FF6F7A"/>
+                  <path aria-label="condition_time: spatialearly; : spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.524798193212" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,77.61629510878461h14v85.71703822454873h-14Z" fill="#7AD996"/>
+                </g>
+                <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+                  <line aria-label="condition: global; : 0.856199729651; upper: 0.918968992841" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.66666666666667,23.487377490392134)" x2="0" y2="-10.252312987812099" stroke="black"/>
+                  <line aria-label="condition: object; : 0.630875275753; upper: 0.695289657589" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,60.2903716270492)" x2="0" y2="-10.521015699921179" stroke="black"/>
+                  <line aria-label="condition: spatial; : 0.398714210584; upper: 0.648107973692" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,98.21001227121536)" x2="0" y2="-40.73431464088389" stroke="black"/>
+                </g>
+                <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2_salience)" role="graphics-object" aria-roledescription="rect mark container">
+                  <path aria-label="condition_time: globallate; condition: global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.768727920331" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,37.774439679226674h14v125.55889365410667h-14Z" fill="#4C4D4C"/>
+                  <path aria-label="condition_time: objectlate; condition: object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.69772353025" role="graphics-symbol" aria-roledescription="bar" d="M80,49.37182339257861h14v113.96150994075472h-14Z" fill="#B50021"/>
+                  <path aria-label="condition_time: spatiallate; condition: spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.546424512311" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,74.08399632259977h14v89.24933701073357h-14Z" fill="#008842"/>
+                </g>
+                <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+                  <line aria-label="condition: global; : 0.739040968299; upper: 0.79602362783" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(33.66666666666667,42.62330851109406)" x2="0" y2="-9.307167723271398" stroke="black"/>
+                  <line aria-label="condition: object; : 0.606461093927; upper: 0.776824492437" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(87,64.27802132528731)" x2="0" y2="-27.826021756695035" stroke="black"/>
+                  <line aria-label="condition: spatial; : 0.385905585203; upper: 0.699609680779" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(140.33333333333334,100.30208775010553)" x2="0" y2="-51.23833561062506" stroke="black"/>
+                </g>
+                <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,98) rotate(-90) translate(0,-18)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
+                </g>
+                <g class="mark-text role-mark layer_5_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,98) rotate(-90) translate(0,23)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
+                </g>
+                <g class="mark-text role-mark layer_6_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text text-anchor="start" transform="translate(-18.33333333333333,128)" font-family="sans-serif" font-size="9px" fill="#4C4C4C">
+                    <tspan>Less Distinct</tspan>
+                    <tspan x="0" dy="11">Response to Salience</tspan>
+                  </text>
+                </g>
+                <g class="mark-text role-mark layer_6_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text text-anchor="start" transform="translate(-18.33333333333333,-27)" font-family="sans-serif" font-size="9px" fill="#4C4C4C">
+                    <tspan>More Distict</tspan>
+                    <tspan x="0" dy="11">Response to Salience</tspan>
+                  </text>
+                </g>
+                <g class="mark-rule role-mark layer_7_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
+                  <line transform="translate(160,54.368469048786366)" x2="-160" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+                </g>
+                <g class="mark-text role-mark layer_7_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text text-anchor="start" transform="translate(145.33333333333334,51.368469048786366)" font-family="sans-serif" font-size="9px" fill="black">
+                    <tspan>Null Model</tspan>
+                    <tspan x="0" dy="11">Accuracy</tspan>
+                  </text>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" display="none"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">C</text>
+    </g>
+  </g>
+</svg>
