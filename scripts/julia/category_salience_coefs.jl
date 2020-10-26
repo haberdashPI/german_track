@@ -1164,27 +1164,136 @@ pl |> save(joinpath(dir, "salience_earlylate.svg"))
 # -----------------------------------------------------------------
 
 means = @_ CSV.read(joinpath(processed_datadir("plots"),
-    "hitrate_angle_byswitch_andtarget.csv"))
+    "hitrate_angle_byswitch_andtarget.csv")) |>
+    transform!(__, [:condition, :target_time] => ByRow(string) => :condition_time)
 
+darkcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l, _.c, _.h), __) |>
+    convert.(RGB, __)
+lightcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l + 30, _.c, _.h), __) |>
+    convert.(RGB, __)
+plcols = Iterators.flatten(zip(lightcolors, darkcolors)) |> collect
+
+barwidth = 8
+yrange = [0.4, 1]
 pl = means |>
     @vlplot(
+        # width = 121,
+        spacing = 5,
+        transform = [{filter = "datum.variable == 'hitrate'"}],
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        },
         facet = {
-            column = {field = :target_time, type = :nominal},
-            row = {field = :variable, type = :nominal}
+            column = {field = :salience, type = :nominal, title = nothing,
+                sort = ["low", "high"],
+                header = {labelFontWeight = "bold",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1) + ' Salience'"}, },
         }
-    ) +
-    @vlplot(:bar,
-        x = :condition,
-        y = :pmean,
-        color = :condition
-    ) +
-    @vlplot(:rule,
-        x = :condition,
-        y = :lower, y2 = :upper,
-        color = {value = "black"}
+    ) + (
+        @vlplot(width = 98, height = 150) +
+        @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+            transform = [{filter = "datum.target_time == 'early'"}],
+            x = {:condition, axis = {title = "", labelAngle = -32,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:pmean, title = "Hit Rate", scale = {domain = yrange}},
+            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+        ) +
+        @vlplot({:rule, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.target_time == 'early'"}],
+            x = :condition,
+            y = {:lowerc, title = ""}, y2 = :upperc,
+            color = {value = "black"}
+        ) +
+        @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+            transform = [{filter = "datum.target_time == 'late'"}],
+            x = :condition,
+            y = {:pmean, title = ""},
+            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+        ) +
+        @vlplot({:rule, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.target_time == 'late'"}],
+            x = :condition,
+            y = {:lowerc, title = ""}, y2 = :upperc,
+            color = {value = "black"}
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+            transform = [{filter = "datum.target_time == 'early' && datum.condition == 'global'"}],
+            # x = {datum = "spatial"}, y = {datum = 0.},
+            x = {:condition, axis = {title = ""}},
+            y = {datum = yrange[1]},
+            text = {value = "Early"},
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "top", dx = 0, dy = barwidth+2},
+            transform = [{filter = "datum.target_time == 'late' && datum.condition == 'global'"}],
+            # x = {datum = "spatial"}, y = {datum = },
+            x = {:condition, axis = {title = ""}},
+            y = {:pmean, aggregate = :mean, type = :quantitative},
+            text = {value = "Late"},
+        )
     );
-
 pl |> save(joinpath(dir, "behavior_earlylate_hitrate.svg"))
+
+barwidth = 8
+yrange = [-1, 40]
+pl = means |>
+    @vlplot(
+        # width = 121,
+        spacing = 5,
+        transform = [{filter = "datum.variable == 'angle'"}],
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        },
+        facet = {
+            column = {field = :salience, type = :nominal, title = nothing,
+                sort = ["low", "high"],
+                header = {labelFontWeight = "bold",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1) + ' Salience'"}, },
+        }
+    ) + (
+        @vlplot(width = 98, height = 150) +
+        @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+            transform = [{filter = "datum.target_time == 'early'"}],
+            x = {:condition, axis = {title = "", labelAngle = -32,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:pmean, title = "Hit Rate Angle", scale = {domain = yrange}},
+            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+        ) +
+        @vlplot({:rule, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.target_time == 'early'"}],
+            x = :condition,
+            y = {:lowerc, title = ""}, y2 = :upperc,
+            color = {value = "black"}
+        ) +
+        @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+            transform = [{filter = "datum.target_time == 'late'"}],
+            x = :condition,
+            y = {:pmean, title = ""},
+            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+        ) +
+        @vlplot({:rule, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.target_time == 'late'"}],
+            x = :condition,
+            y = {:lowerc, title = ""}, y2 = :upperc,
+            color = {value = "black"}
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+            transform = [{filter = "datum.target_time == 'early' && datum.condition == 'global'"}],
+            # x = {datum = "spatial"}, y = {datum = 0.},
+            x = {:condition, axis = {title = ""}},
+            y = {datum = 0},
+            text = {value = "Early"},
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+            transform = [{filter = "datum.target_time == 'late' && datum.condition == 'global'"}],
+            # x = {datum = "spatial"}, y = {datum = },
+            x = {:condition, axis = {title = ""}},
+            y = {datum = 0},
+            text = {value = "Late"},
+        )
+    );
+pl |> save(joinpath(dir, "behavior_earlylate_angle.svg"))
 
 # Plot 4-salience-level, trial-by-trial timeline
 # =================================================================

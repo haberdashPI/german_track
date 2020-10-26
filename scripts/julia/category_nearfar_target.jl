@@ -47,20 +47,18 @@ pl = @_ target_timeline |>
     ) +
     (
         @vlplot(width = 111, autosize = "fit", height = 150, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:trail,
+        @vlplot({:trail, clip = true},
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
             y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
-            clip = true
         ) +
-        @vlplot(:errorband,
+        @vlplot({:errorband, clip = true},
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
-            y = {:upper, type = :quantitative, title = ""}, y2 = :lower,
+            y = {:upper, type = :quantitative, title = "", scale = {domain = [0.5, 1]}}, y2 = :lower,
             # opacity = :weight,
             color = :condition,
-            clip = true
         ) +
         @vlplot({:text, align = :left, dx = 5},
             transform = [
