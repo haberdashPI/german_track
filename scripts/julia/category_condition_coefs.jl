@@ -11,7 +11,7 @@ n_winlens = 6
 
 dir = mkpath(joinpath(plotsdir(), "condition"))
 
-using GermanTrack: colors, gray, patterns
+using GermanTrack: colors, neutral, patterns
 
 # Behavioral Data
 # =================================================================
@@ -39,7 +39,7 @@ pl1 = @_ main_effects |>
         transform = [{filter = "datum.stat == 'fr'"}],
         x = {:condition, axis = {title = ""}},
         y = :pmean,
-        color = {value = "#"*hex(gray)}) +
+        color = {value = "#"*hex(neutral)}) +
     @vlplot({:rule, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'hr'"}],
         color = {value = "black"},
@@ -88,7 +88,7 @@ pl2 = @_ main_effects |>
         transform = [{filter = "datum.stat == 'fr_random'"}],
         x = {:condition, axis = {title = ""}},
         y = :pmean,
-        color = {value = "#"*hex(gray)}) +
+        color = {value = "#"*hex(neutral)}) +
     @vlplot({:rule, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.stat == 'fr_distract'"}],
         color = {value = "black"},
@@ -159,7 +159,7 @@ means |> @vlplot(
     transform = [{filter = "datum.type == 'fr'"}],
     x = {:condition, axis = {title = ""}},
     y = {:prop, type = :quantitative, aggregate = :mean},
-    color = {value = "#"*hex(gray)}) +
+    color = {value = "#"*hex(neutral)}) +
 @vlplot({:rule, xOffset = -(barwidth/2)},
     transform = [{filter = "datum.type == 'hr'"}],
     color = {value = "black"},
@@ -241,7 +241,7 @@ means |> @vlplot(
     transform = [{filter = "datum.type == 'falseps'"}],
     x = {:condition, axis = {title = ""}},
     y = {:prop, type = :quantitative, aggregate = :mean},
-    color = {value = "#"*hex(gray)}) +
+    color = {value = "#"*hex(neutral)}) +
 @vlplot({:rule, xOffset = -8},
     transform = [{filter = "datum.type == 'hits'"}],
     color = {value = "black"},
@@ -287,7 +287,7 @@ means |> @vlplot(
     transform = [{filter = "datum.type == 'notargets'"}],
     x = {:condition, axis = {title = ""}},
     y = {:prop, type = :quantitative, aggregate = :mean},
-    color = {value = "#"*hex(gray)}) +
+    color = {value = "#"*hex(neutral)}) +
 @vlplot({:rule, xOffset = -8},
     transform = [{filter = "datum.type == 'falsetargets'"}],
     color = {value = "black"},
@@ -354,7 +354,7 @@ means |> @vlplot(
     transform = [{filter = "datum.type == 'falseps'"}],
     x = {:condition, axis = {title = ""}},
     y = {:prop, type = :quantitative, aggregate = :mean},
-    color = {value = "#"*hex(gray)}) +
+    color = {value = "#"*hex(neutral)}) +
 @vlplot({:rule, xOffset = -8},
     transform = [{filter = "datum.type == 'hits'"}],
     color = {value = "black"},
@@ -763,7 +763,7 @@ plhit = @_ plotfull |>
             scale = {domain = [0.5 ,1]},
             title = ytitle}) +
     @vlplot({:bar, xOffset = (barwidth/2)},
-        color = {value = "#"*hex(gray)},
+        color = {value = "#"*hex(neutral)},
         # opacity = {value = 0.75},
         y = {:nullmodel, title = ytitle},
     ) +
