@@ -12,7 +12,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
 
 dir = mkpath(plotsdir("category_nearfar_target"))
 
-using GermanTrack: gray, colors, lightdark, darkgray
+using GermanTrack: neutral, colors, lightdark, darkgray
 
 # Behavioral Data
 # =================================================================
@@ -119,7 +119,7 @@ else
             data = sdf, y = :target_switch_label, X = r"channel", crossval = :sid,
             n_folds = n_folds, seed = stablehash(:nearfartarget_classification, 2019_11_18),
             maxncoef = size(sdf[:,r"channel"], 2),
-            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
+            irls_maxiter = 1200, weight = :weight, on_model_exception = :throw)
         result[!, keys(key)] .= permutedims(collect(values(key)))
         next!(progress)
 
@@ -163,7 +163,7 @@ grandlogitmeandiff = @_ logitmeandiff |>
     sort!(__, [:λ]) |>
     groupby(__, [:fold]) |>
     transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.2), Butterworth(5)), x)) => :logitmeandiff)
+        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :logitmeandiff)
 
 pl = grandlogitmeandiff |> @vlplot() +
     @vlplot(:line,
@@ -330,6 +330,8 @@ end
 
 λsid = groupby(final_λs, :sid)
 
+# TODO: compute accuracy accross multiple definitions of early/late targets
+
 resultdf_earlylate_file = joinpath(cache_dir("models"), "switch-target-earlylate.csv")
 classdf_earlylate[!,:fold] = in.(classdf_earlylate.sid, Ref(Set(λ_folds[1][1]))) .+ 1
 
@@ -392,11 +394,17 @@ nullmean, classdiffs =
     let l = logit ∘ shrinktowards(0.5, by = 0.01),
         C = mean(l.(nullmeans.nullmean)),
         tocor = x -> logistic(x + C)
-    logistic(C),
-    @_ classmeans_sum |>
+
+    rawdata = @_ classmeans_sum |>
         filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
+        transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
+        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+
+    CSV.write(joinpath(processed_datadir("analyses"), "nearfar_earlylate.csv"), rawdata)
+
+    meandata = @_ rawdata |>
         groupby(__, [:condition, :target_time_label]) |>
         combine(__,
             :logitmeandiff => tocor ∘ mean => :mean,
@@ -404,6 +412,8 @@ nullmean, classdiffs =
             :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
         ) |>
         transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
+
+    logistic(C), meandata
 end
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
@@ -515,7 +525,7 @@ pl = summary |>
         @vlplot() +
         @vlplot({:bar, xOffset = -(barwidth/2)},
             transform = [{filter = "datum.modeltype == 'pmean'"}],
-            # color = {value = "#"*hex(gray)},
+            # color = {value = "#"*hex(neurtral)},
             color = {:condition, title = nothing, scale = {range ="#".*hex.(colors)}},
             x = {:condition, title = nothing},
             y = {:prop, title = ytitle, scale = {domain = [0.3,0.8]}}
@@ -528,7 +538,7 @@ pl = summary |>
         ) +
         @vlplot({:bar, xOffset = (barwidth/2)},
             transform = [{filter = "datum.modeltype == 'nullmean'"}],
-            color = {value = "#"*hex(gray)},
+            color = {value = "#"*hex(neurtral)},
             x = {:condition, title = nothing},
             y = {:prop, title = ytitle}
         ) +

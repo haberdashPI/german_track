@@ -4,6 +4,10 @@
 - show absolute for salience
 - make figure 2 consistent with the others (null model corrected)
 - check into the splits for early/late early/late (switch defintiion)
+    - the target time selection matters somewhat, and interacts with how switches
+        are categorized
+    - the switch categorization is crucial; the "bad" way yields a more convincing result
+    let's look into why...
 
 - decoding:
 - pick range

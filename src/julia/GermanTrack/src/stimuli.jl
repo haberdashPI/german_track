@@ -76,13 +76,12 @@ end
 function derived_metadata(meta)
     @assert meta.switch_regions |> length in [40,50]
 
-    args = zip(meta.switch_regions, meta.target_times, meta.critical_times)
-    switch_distance = map(args) do (switches, target, critical)
+    args = zip(meta.switch_regions, meta.target_times#= , meta.critical_times =#)
+    switch_distance = map(args) do (switches, target#= , critical =#)
         if target == 0
             return missing
         end
         before = @_ switchdiff.(switches, target) |> filter(_ >= 0, __)
-        # before = @_ target .- critical |> filter(_ > 0, __)
         if isempty(before)
             Inf
         else
@@ -123,16 +122,7 @@ function derived_metadata(meta)
     )
 end
 
-function switchdiff(region, time)
-    diffs = time .- region
-    if all(diffs .> 0) ## switch comes before, get distance from end
-        return diffs[2]
-    elseif all(diffs .< 0) ## switch comes after, mark as negative distance
-        return diffs[1]
-    else ## switch overlaps, mark distance as 0
-        return 0.0
-    end
-end
+switchdiff(region, time) = time .- region[1]
 
 abstract type StimMethod
 end
