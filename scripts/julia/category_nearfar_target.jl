@@ -12,7 +12,7 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
 
 dir = mkpath(plotsdir("category_nearfar_target"))
 
-using GermanTrack: gray, colors, lightdark, darkgray
+using GermanTrack: neutral, colors, lightdark, darkgray
 
 # Behavioral Data
 # =================================================================
@@ -163,7 +163,7 @@ grandlogitmeandiff = @_ logitmeandiff |>
     sort!(__, [:λ]) |>
     groupby(__, [:fold]) |>
     transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.2), Butterworth(5)), x)) => :logitmeandiff)
+        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :logitmeandiff)
 
 pl = grandlogitmeandiff |> @vlplot() +
     @vlplot(:line,
@@ -407,7 +407,7 @@ end
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
-yrange = [0.4, 0.8]
+yrange = [0.4, 1.0]
 pl = classdiffs |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
@@ -514,7 +514,7 @@ pl = summary |>
         @vlplot() +
         @vlplot({:bar, xOffset = -(barwidth/2)},
             transform = [{filter = "datum.modeltype == 'pmean'"}],
-            # color = {value = "#"*hex(gray)},
+            # color = {value = "#"*hex(neurtral)},
             color = {:condition, title = nothing, scale = {range ="#".*hex.(colors)}},
             x = {:condition, title = nothing},
             y = {:prop, title = ytitle, scale = {domain = [0.3,0.8]}}
@@ -527,7 +527,7 @@ pl = summary |>
         ) +
         @vlplot({:bar, xOffset = (barwidth/2)},
             transform = [{filter = "datum.modeltype == 'nullmean'"}],
-            color = {value = "#"*hex(gray)},
+            color = {value = "#"*hex(neurtral)},
             x = {:condition, title = nothing},
             y = {:prop, title = ytitle}
         ) +

@@ -82,7 +82,7 @@ function derived_metadata(meta)
             return missing
         end
         before = @_ switchdiff.(switches, target) |> filter(_ >= 0, __)
-        # before = @_ target .- critical |> filter(_ > 0, __)
+        # before = @_ target .- vcat(0.0,critical) |> filter(_ > 0, __)
         if isempty(before)
             Inf
         else
@@ -105,12 +105,20 @@ function derived_metadata(meta)
             ifelse.(meta.target_salience .< med, "low", "high")
         end,
 
+        # target_time_label = begin
+        #     early = @_ DataFrame(
+        #         time = meta.target_times[1:length(meta.switch_regions)],
+        #         switches = meta.switch_regions,
+        #         row = 1:length(meta.switch_regions)) |>
+        #     map(sum(switchdiff.(_1.switches, _1.time) .>= 0) <= 2 ? "early" : "late", eachrow(__))
+        # end,
+
         target_time_label = begin
             early = @_ DataFrame(
-                time = meta.target_times[1:length(meta.switch_regions)],
-                switches = meta.switch_regions,
-                row = 1:length(meta.switch_regions)) |>
-            map(sum(switchdiff.(_1.switches, _1.time) .>= 0) <= 2 ? "early" : "late", eachrow(__))
+                time = meta.target_times,
+                switches = meta.critical_times,
+                row = 1:length(meta.target_times)) |>
+            map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
         end,
 
         target_switch_label = begin
@@ -125,12 +133,12 @@ end
 
 function switchdiff(region, time)
     diffs = time .- region
-    if all(diffs .> 0) ## switch comes before, get distance from end
+    if diffs[2] > 0 ## switch comes before, get distance from end
         return diffs[2]
-    elseif all(diffs .< 0) ## switch comes after, mark as negative distance
-        return diffs[1]
-    else ## switch overlaps, mark distance as 0
-        return 0.0
+    elseif diffs[1] < 0 ## switch comes after, mark as invalid
+        return -Inf
+    else ## switch overlaps, mark distance as negative
+        return diffs[2]
     end
 end
 
