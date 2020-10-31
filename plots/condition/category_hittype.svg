@@ -2,16 +2,16 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="276" height="163" viewBox="0 0 276 163" version="1.1">
   <defs><pattern id="mix2_3" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#B50021;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#008842;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#3F6E54;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#A98C2C;"/>
 </pattern>
 <pattern id="mix1_2" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#4C4C4C;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#B50021;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#3F6E54;"/>
 </pattern>
 <pattern id="mix1_3" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#4C4C4C;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#008842;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#A98C2C;"/>
 </pattern>
 </defs>
   <rect width="276" height="163" fill="white"/>
@@ -142,9 +142,9 @@
                   </g>
                 </g>
                 <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs.  Object; % Correct: 87.0515425932" role="graphics-symbol" aria-roledescription="bar" d="M1,25.896914813581507h18v74.1030851864185h-18Z" fill="url(#mix1_2)"/>
-                  <path aria-label="compname: Global vs.  Spatial; % Correct: 93.5818089823" role="graphics-symbol" aria-roledescription="bar" d="M21,12.836382035376259h18v87.16361796462374h-18Z" fill="url(#mix1_3)"/>
-                  <path aria-label="compname: Object vs.  Spatial; % Correct: 76.8949922641" role="graphics-symbol" aria-roledescription="bar" d="M41,46.21001547185264h18v53.78998452814736h-18Z" fill="url(#mix2_3)"/>
+                  <path aria-label="compname: Global vs.  Object; % Correct: 86.3074949742" role="graphics-symbol" aria-roledescription="bar" d="M1,27.385010051676716h18v72.61498994832328h-18Z" fill="url(#mix1_2)"/>
+                  <path aria-label="compname: Global vs.  Spatial; % Correct: 94.0713790121" role="graphics-symbol" aria-roledescription="bar" d="M21,11.857241975776478h18v88.14275802422353h-18Z" fill="url(#mix1_3)"/>
+                  <path aria-label="compname: Object vs.  Spatial; % Correct: 78.1496607982" role="graphics-symbol" aria-roledescription="bar" d="M41,43.70067840369208h18v56.29932159630792h-18Z" fill="url(#mix2_3)"/>
                 </g>
                 <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
                   <path aria-label="compname: Global vs.  Object; % Correct: 68.3799617705" role="graphics-symbol" aria-roledescription="bar" d="M1,63.24007645896529h18v36.75992354103471h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
@@ -174,9 +174,9 @@
                   </g>
                 </g>
                 <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs.  Object; % Correct: 65.140390978" role="graphics-symbol" aria-roledescription="bar" d="M1,69.71921804404445h18v30.280781955955547h-18Z" fill="url(#mix1_2)"/>
-                  <path aria-label="compname: Global vs.  Spatial; % Correct: 78.744910001" role="graphics-symbol" aria-roledescription="bar" d="M21,42.51017999792512h18v57.48982000207488h-18Z" fill="url(#mix1_3)"/>
-                  <path aria-label="compname: Object vs.  Spatial; % Correct: 60.2016167454" role="graphics-symbol" aria-roledescription="bar" d="M41,79.59676650916509h18v20.403233490834907h-18Z" fill="url(#mix2_3)"/>
+                  <path aria-label="compname: Global vs.  Object; % Correct: 64.0634409728" role="graphics-symbol" aria-roledescription="bar" d="M1,71.87311805433129h18v28.126881945668714h-18Z" fill="url(#mix1_2)"/>
+                  <path aria-label="compname: Global vs.  Spatial; % Correct: 78.7042224297" role="graphics-symbol" aria-roledescription="bar" d="M21,42.59155514057474h18v57.40844485942526h-18Z" fill="url(#mix1_3)"/>
+                  <path aria-label="compname: Object vs.  Spatial; % Correct: 57.69804682" role="graphics-symbol" aria-roledescription="bar" d="M41,84.60390636005495h18v15.39609363994505h-18Z" fill="url(#mix2_3)"/>
                 </g>
                 <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
                   <path aria-label="compname: Global vs.  Object; % Correct: 62.2665156341" role="graphics-symbol" aria-roledescription="bar" d="M1,75.46696873188203h18v24.533031268117966h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>
@@ -206,9 +206,9 @@
                   </g>
                 </g>
                 <g class="mark-rect role-mark child_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="compname: Global vs.  Object; % Correct: 83.7230641807" role="graphics-symbol" aria-roledescription="bar" d="M1,32.553871638623974h18v67.44612836137603h-18Z" fill="url(#mix1_2)"/>
-                  <path aria-label="compname: Global vs.  Spatial; % Correct: 80.3000343976" role="graphics-symbol" aria-roledescription="bar" d="M21,39.399931204731956h18v60.600068795268044h-18Z" fill="url(#mix1_3)"/>
-                  <path aria-label="compname: Object vs.  Spatial; % Correct: 58.4928578763" role="graphics-symbol" aria-roledescription="bar" d="M41,83.01428424733177h18v16.985715752668227h-18Z" fill="url(#mix2_3)"/>
+                  <path aria-label="compname: Global vs.  Object; % Correct: 83.5607409715" role="graphics-symbol" aria-roledescription="bar" d="M1,32.878518057020386h18v67.12148194297961h-18Z" fill="url(#mix1_2)"/>
+                  <path aria-label="compname: Global vs.  Spatial; % Correct: 79.9496970002" role="graphics-symbol" aria-roledescription="bar" d="M21,40.10060599960965h18v59.89939400039035h-18Z" fill="url(#mix1_3)"/>
+                  <path aria-label="compname: Object vs.  Spatial; % Correct: 58.2907309305" role="graphics-symbol" aria-roledescription="bar" d="M41,83.41853813890452h18v16.581461861095477h-18Z" fill="url(#mix2_3)"/>
                 </g>
                 <g class="mark-rect role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
                   <path aria-label="compname: Global vs.  Object; % Correct: 76.9197751638" role="graphics-symbol" aria-roledescription="bar" d="M1,46.16044967244653h18v53.83955032755347h-18Z" fill="rgb(50,50,50)" opacity="0.5"/>

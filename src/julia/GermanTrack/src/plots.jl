@@ -40,34 +40,30 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
+allcolors = ColorSchemes.lajolla[range(0.1, 0.85, length = 3*3)] |> reverse
+
 """
-    gray
+    neutral
 
-The gray color used in our plots.
+The neurtral color used for "null" values in our plots
 """
-gray = RGB(0.6,0.6,0.6)
+neutral = allcolors[3]
 
-darkgray = RGB(0.3,0.3,0.3)
+"""
+    darkgray
 
+The darkgray used to represent the default condition (Global)
+"""
+darkgray = allcolors[1]
 
 """
     colors
 
 The three colors used to distinguish between the three conditions (Global, Object & Spatial)
 """
-colors = @_ distinguishable_colors(2, [colorant"black", colorant"white", gray, darkgray],
-    hchoices = range(0, 375, length = 15),
-    lchoices = range(30, 70, length = 15),
-    cchoices = range(20, 100, length = 15),
-    dropseed = true,
-    transform = deuteranopic ∘ tritanopic # color-blind transform
-) |> vcat(darkgray, __)
+colors = allcolors[[1, 5, 8]]
 
-darkcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l, _.c, _.h), __) |>
-    convert.(RGB, __)
-lightcolors = @_ convert.(LCHuv, colors) |> map(LCHuv(_.l + 30, _.c, _.h), __) |>
-    convert.(RGB, __)
-lightdark = Iterators.flatten(zip(lightcolors, darkcolors)) |> collect
+lightdark = allcolors[[1, 2, 5, 6, 8, 9]]
 
 """
     patterns
