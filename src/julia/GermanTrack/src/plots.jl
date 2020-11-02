@@ -1,4 +1,4 @@
-export addpatterns, xmlpatterns
+export addpatterns, xmlpatterns, filereplace
 
 colorstr(x::String) = x
 colorstr(x::Color) = "#"*hex(x)
@@ -78,3 +78,18 @@ patterns = begin
         "mix2_3"  => colorat([5,8])
     )
 end
+
+"""
+    filereplace(file, pair)
+
+Apply `replace` to all lines of the given file.
+"""
+function filereplace(file, pairs...)
+    lines = readlines(file)
+    open(file, write = true) do stream
+        for line in lines
+            println(stream, replace(line, pairs...))
+        end
+    end
+end
+

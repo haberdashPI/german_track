@@ -1,7 +1,7 @@
 ## new figure changes
 
-- show icons for eeg / behavior
-- show absolute for salience
++ show icons for eeg / behavior
++ show absolute for salience
 + make figure 2 (data fig 1) consistent with the others (null model corrected)
 - check into the splits for early/late early/late (switch defintiion)
     - the target time selection matters somewhat, and interacts with how switches

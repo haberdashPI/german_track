@@ -47,13 +47,13 @@ pl = @_ target_timeline |>
     ) +
     (
         @vlplot(width = 80, autosize = "fit", height = 130, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot({:trail, #= clip = true =#},
+        @vlplot({:trail, clip = true},
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
             y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
         ) +
-        @vlplot({:errorband, #= clip = true =#},
+        @vlplot({:errorband, clip = true},
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
             y = {:upper, type = :quantitative, title = "", scale = {domain = [0.5, 1]}}, y2 = :lower,
@@ -407,15 +407,28 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
+for (suffix, file) in [
+    ("behavior_timeline", "behavior_timeline.svg"),
+    ("neural", "switch_target_earlylate.svg")]
+    filereplace(joinpath(dir, file), r"\bclip([0-9]+)\b" =>
+        SubstitutionString("clip\\1_$suffix"))
+end
+
 fig = svg.Figure("89mm", "160mm", # "240mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "behavior_timeline.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold")
+        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(115,50),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,50)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "switch_target_earlylate.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight = "bold")
+        svg.Text("B", 2, 10, size = 12, weight = "bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(220,35)
     ).move(0, 250),
 ).scale(1.333).save(joinpath(dir, "fig3.svg"))
 

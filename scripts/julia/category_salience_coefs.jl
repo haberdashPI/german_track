@@ -219,6 +219,84 @@ indmeans = @_ summaries |>
     stack(__, [:high, :low], [:condition, :sid],
         variable_name = :salience_label, value_name = :prop)
 
+means = @_ indmeans |>
+    groupby(__, [:condition, :salience_label]) |>
+    combine(__,
+        :prop => mean => :mean,
+        :prop => lowerboot => :lower,
+        :prop => upperboot => :upper
+    ) |>
+    transform(__, [:condition, :salience_label] => ByRow(string) => :condition_salience)
+
+barwidth = 18
+ytitle = "Hit Rate"
+pl = means |>
+    @vlplot(
+        height = 175, width = 242, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth},
+            axis = {titlePadding = 13}
+        },
+    ) +
+    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+        transform = [{filter = "datum.salience_label == 'high'"}],
+        color = {:condition_salience, title = nothing, scale = {range = "#".*hex.(lightdark)}},
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
+        y = {:mean, title = ytitle, scale = {domain = yrange}}
+    ) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.salience_label == 'high'"}],
+        color = {value = "black"},
+        x = {:condition, title = nothing},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+        transform = [{filter = "datum.salience_label == 'low'"}],
+        color = {:condition_salience, title = nothing},
+        x = {:condition, title = nothing},
+        y = {:mean, title = ytitle}
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.salience_label == 'low'"}],
+        x = {:condition, title = nothing},
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.salience_label == 'high' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "High Salience"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.salience_label == 'low' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {datum = yrange[1]},
+        text = {value = "Low Salience"},
+    ); # +
+    # (
+    #     @vlplot(data = {values = [{}]}) +
+    #     @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-top",
+    #         dx = -2barwidth - 17, dy = 22},
+    #         color = {value = "#"*hex(darkgray)},
+    #         x = {datum = "global"},
+    #         y = {datum = yrange[1]},
+    #         text = {datum = ["Less distinct", "response during switch"]}
+    #     ) +
+    #     @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
+    #         dx = -2barwidth - 17, dy = -24},
+    #         color = {value = "#"*hex(darkgray)},
+    #         x = {datum = "global"},
+    #         y = {datum = yrange[2]},
+    #         text = {datum = ["More distinct", "response during switch"]}
+    #     )
+    # ) +
+pl |> save(joinpath(dir, "raw_sum_behavior_salience.svg"))
+
 diffmeans = @_ indmeans |>
     unstack(__, [:condition, :sid], :salience_label, :prop) |>
     transform!(__, [:high, :low] => (-) => :meandiff) |>
@@ -542,7 +620,7 @@ nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
 end
 
-timeslice = 2.5
+timeslice = 2.8
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"]
@@ -607,13 +685,13 @@ pl = @_ classdiffs |>
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(:rule,
-            x = {datum = 2.5},
+            x = {datum = timeslice},
             color = {value = "black"}
         ) +
         @vlplot({:text, align = "right", dx = -2},
-            x = {datum = 2.5},
+            x = {datum = timeslice},
             y = {datum = 0.95},
-            text = {value = "Figure B Slice"},
+            text = {value = "Figure C Slice"},
             color = {value = "black"}
         )
     ) +
@@ -689,20 +767,32 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "160mm", # "240mm",
+fig = svg.Figure("89mm", "240mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "raw_sum_behavior_diff_salience.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold")
+        svg.SVG(joinpath(dir, "raw_sum_behavior_salience.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,15)
     ).move(0, 0),
     svg.Panel(
+        svg.SVG(joinpath(dir, "raw_sum_behavior_diff_salience.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight="bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(90,15)
+    ).move(0, 225),
+    svg.Panel(
         svg.SVG(joinpath(dir, "neural_diff_salience.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight = "bold")
-    ).move(125, 0),
+        svg.Text("C", 2, 10, size = 12, weight = "bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(90,15)
+    ).move(125, 225),
     svg.Panel(
         svg.SVG(joinpath(dir, "salience_timeline.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold")
-    ).move(0, 225)
+        svg.Text("D", 2, 10, size = 12, weight = "bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(215,15)
+    ).move(0, 450)
 ).scale(1.333).save(joinpath(dir, "fig2.svg"))
 
 # hit miss plot
@@ -1144,7 +1234,7 @@ pl = means |>
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1) + ' Salience'"}, },
         }
     ) + (
-        @vlplot(width = 98, height = 150) +
+        @vlplot(width = 95, height = 150) +
         @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
             transform = [{filter = "datum.target_time == 'early'"}],
             x = {:condition, axis = {title = "", labelAngle = -32,
@@ -1211,7 +1301,7 @@ pl = means |>
             x = {:condition, axis = {title = "", labelAngle = -32,
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
             y = {:pmean, title = "Hit Rate Angle", scale = {domain = yrange}},
-            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+            color = {:condition_time, scale = {range = "#".*hex.(lightdark)}}
         ) +
         @vlplot({:rule, xOffset = -(barwidth/2)},
             transform = [{filter = "datum.target_time == 'early'"}],
@@ -1223,7 +1313,7 @@ pl = means |>
             transform = [{filter = "datum.target_time == 'late'"}],
             x = :condition,
             y = {:pmean, title = ""},
-            color = {:condition_time, scale = {range = "#".*hex.(plcols)}}
+            color = {:condition_time, scale = {range = "#".*hex.(lightdark)}}
         ) +
         @vlplot({:rule, xOffset = (barwidth/2)},
             transform = [{filter = "datum.target_time == 'late'"}],
@@ -1260,20 +1350,11 @@ background_file = tempname()
 background = pyimport("svgutils").transform.fromstring("""
     <svg>
         <rect width="100%" height="100%" fill="white"/>
-    </svg
+    </svg>
 """).save(background_file)
 
 # NOTE: we have to make all of the `clipN` definitions distinct
 # across the three files we're combining
-function filereplace(file, pairs...)
-    lines = readlines(file)
-    open(file, write = true) do stream
-        for line in lines
-            println(stream, replace(line, pairs...))
-        end
-    end
-end
-
 for (suffix, file) in [
     ("behavior_hitrate", "behavior_earlylate_hitrate.svg"),
     ("behavior_angle", "behavior_earlylate_angle.svg"),
@@ -1286,15 +1367,25 @@ fig = svg.Figure("89mm", "235mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "behavior_earlylate_hitrate.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold")
+        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(115,35),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,35)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "behavior_earlylate_angle.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight = "bold")
+        svg.Text("B", 2, 10, size = 12, weight = "bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(115,35),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,35)
     ).move(0, 235),
     svg.Panel(
         svg.SVG(joinpath(dir, "salience_earlylate.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold")
+        svg.Text("C", 2, 10, size = 12, weight = "bold"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(220,50)
     ).move(0, 235 + 235),
 ).scale(1.333).save(joinpath(dir, "fig4.svg"))
 
