@@ -119,7 +119,7 @@ else
             data = sdf, y = :target_switch_label, X = r"channel", crossval = :sid,
             n_folds = n_folds, seed = stablehash(:nearfartarget_classification, 2019_11_18),
             maxncoef = size(sdf[:,r"channel"], 2),
-            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
+            irls_maxiter = 1200, weight = :weight, on_model_exception = :throw)
         result[!, keys(key)] .= permutedims(collect(values(key)))
         next!(progress)
 
@@ -170,6 +170,8 @@ end
 # -----------------------------------------------------------------
 
 λsid = groupby(final_λs, :sid)
+
+# TODO: compute accuracy accross multiple definitions of early/late targets
 
 resultdf_earlylate_file = joinpath(cache_dir("models"), "switch-target-earlylate.csv")
 classdf_earlylate[!,:fold] = getindex.(Ref(fold_map), classdf_earlylate.sid)
@@ -233,11 +235,17 @@ nullmean, classdiffs =
     let l = logit ∘ shrinktowards(0.5, by = 0.01),
         C = mean(l.(nullmeans.nullmean)),
         tocor = x -> logistic(x + C)
-    logistic(C),
-    @_ classmeans_sum |>
+
+    rawdata = @_ classmeans_sum |>
         filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
+        transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
+        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+
+    CSV.write(joinpath(processed_datadir("analyses"), "nearfar_earlylate.csv"), rawdata)
+
+    meandata = @_ rawdata |>
         groupby(__, [:condition, :target_time_label]) |>
         combine(__,
             :logitmeandiff => tocor ∘ mean => :mean,
@@ -245,6 +253,8 @@ nullmean, classdiffs =
             :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
         ) |>
         transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
+
+    logistic(C), meandata
 end
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]

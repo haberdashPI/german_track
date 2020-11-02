@@ -76,13 +76,12 @@ end
 function derived_metadata(meta)
     @assert meta.switch_regions |> length in [40,50]
 
-    args = zip(meta.switch_regions, meta.target_times, meta.critical_times)
-    switch_distance = map(args) do (switches, target, critical)
+    args = zip(meta.switch_regions, meta.target_times#= , meta.critical_times =#)
+    switch_distance = map(args) do (switches, target#= , critical =#)
         if target == 0
             return missing
         end
         before = @_ switchdiff.(switches, target) |> filter(_ >= 0, __)
-        # before = @_ target .- vcat(0.0,critical) |> filter(_ > 0, __)
         if isempty(before)
             Inf
         else
@@ -105,20 +104,12 @@ function derived_metadata(meta)
             ifelse.(meta.target_salience .< med, "low", "high")
         end,
 
-        # target_time_label = begin
-        #     early = @_ DataFrame(
-        #         time = meta.target_times[1:length(meta.switch_regions)],
-        #         switches = meta.switch_regions,
-        #         row = 1:length(meta.switch_regions)) |>
-        #     map(sum(switchdiff.(_1.switches, _1.time) .>= 0) <= 2 ? "early" : "late", eachrow(__))
-        # end,
-
         target_time_label = begin
             early = @_ DataFrame(
-                time = meta.target_times,
-                switches = meta.critical_times,
-                row = 1:length(meta.target_times)) |>
-            map(sum(_1.time .> _1.switches) <= 2 ? "early" : "late", eachrow(__))
+                time = meta.target_times[1:length(meta.switch_regions)],
+                switches = meta.switch_regions,
+                row = 1:length(meta.switch_regions)) |>
+            map(sum(switchdiff.(_1.switches, _1.time) .>= 0) <= 2 ? "early" : "late", eachrow(__))
         end,
 
         target_switch_label = begin
@@ -131,16 +122,7 @@ function derived_metadata(meta)
     )
 end
 
-function switchdiff(region, time)
-    diffs = time .- region
-    if diffs[2] > 0 ## switch comes before, get distance from end
-        return diffs[2]
-    elseif diffs[1] < 0 ## switch comes after, mark as invalid
-        return -Inf
-    else ## switch overlaps, mark distance as negative
-        return diffs[2]
-    end
-end
+switchdiff(region, time) = time .- region[1]
 
 abstract type StimMethod
 end
