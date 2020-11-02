@@ -691,7 +691,7 @@ pl = @_ classdiffs |>
         @vlplot({:text, align = "right", dx = -2},
             x = {datum = timeslice},
             y = {datum = 0.95},
-            text = {value = "Figure D Slice"},
+            text = {value = "Figure C Slice"},
             color = {value = "black"}
         )
     ) +
