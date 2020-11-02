@@ -86,7 +86,7 @@ window.
 
 """
 function ranges_far_from(windows, max_time; mindist, minlength)
-    result = Array{Tuple{Float64, Float64}}(undef, length(times) + 1)
+    result = Array{Tuple{Float64, Float64}}(undef, length(windows) + 1)
     pos = 0
     i = 0
     minstart(mindist::Number) = mindist
@@ -340,7 +340,8 @@ function slice(wn::WindowingBounds{:base_bytarget}, trial, event, fs)
 
     si = event.sound_index
     avoid = if !ismissing(event.target_time)
-        @_ event.switch_regions |> sort! |> filter(filterfn(event.target_time,_),__)
+        @_ first.(event.switch_regions) |> sort! |> findall(filterfn(event.target_time,_),__) |>
+            event.switch_regions[__]
     else
         event.switch_regions
     end
