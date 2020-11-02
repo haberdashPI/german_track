@@ -636,6 +636,7 @@ real_timeslice = times[argmin(abs.(times .- timeslice))]
 barwidth = 16
 
 @_ classdiffs |>
+    filter(_.hittype == "hit", __) |>
     filter(_.winstart == real_timeslice, __) |>
     groupby(__, [:condition]) |>
     combine(__,
@@ -659,7 +660,7 @@ barwidth = 16
         color = {:condition, scale = {range = "#".*hex.(colors)}},
         y = {:meancor,
             title = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"],
-            scale = {domain = [0.5, 1.0]}
+            scale = {domain = [0.4, 1.0]}
         }
     ) +
     @vlplot(:errorbar,

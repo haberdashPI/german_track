@@ -235,6 +235,7 @@ nullmean, classdiffs =
         tocor = x -> logistic(x + C)
     logistic(C),
     @_ classmeans_sum |>
+        filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
         groupby(__, [:condition, :target_time_label]) |>
@@ -248,7 +249,7 @@ end
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
-yrange = [0.4, 1.0]
+yrange = [0.2, 0.8]
 pl = classdiffs |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
