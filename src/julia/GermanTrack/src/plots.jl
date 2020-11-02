@@ -40,30 +40,30 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
-allcolors = ColorSchemes.lajolla[range(0.1, 0.85, length = 3*3)] |> reverse
+colorat(i) = ColorSchemes.bamako[range(0.1, 0.9, length = 3*3)][i]
 
 """
     neutral
 
 The neurtral color used for "null" values in our plots
 """
-neutral = allcolors[3]
+neutral = colorat(3)
 
 """
     darkgray
 
 The darkgray used to represent the default condition (Global)
 """
-darkgray = allcolors[1]
+darkgray = colorat(1)
 
 """
     colors
 
 The three colors used to distinguish between the three conditions (Global, Object & Spatial)
 """
-colors = allcolors[[1, 5, 8]]
+colors = colorat([1, 5, 8])
 
-lightdark = allcolors[[1, 2, 5, 6, 8, 9]]
+lightdark = colorat([1, 2, 5, 6, 8, 9])
 
 """
     patterns
@@ -73,8 +73,8 @@ and Object v. Spatial.
 """
 patterns = begin
     Dict(
-        "mix1_2" => colors[1:2],
-        "mix1_3"    => colors[[1,3]],
-        "mix2_3"  => colors[2:3]
+        "mix1_2" => colorat([1,5]),
+        "mix1_3"    => colorat([1,8]),
+        "mix2_3"  => colorat([5,8])
     )
 end

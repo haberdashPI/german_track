@@ -601,7 +601,7 @@ predictmeans = @_ predictbasedf |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
     groupby(__, [:sid, :comparison, :modeltype, :hittype]) |>
     combine(__,
-        :correct => mean => :correct,
+        :correct => mean => :mean,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
 compnames = OrderedDict(
@@ -629,22 +629,29 @@ refline = @_ refline |>
 nullmeans = @_ predictmeans |>
     filter(_.modeltype == "null", __) |>
     deletecols!(__, [:logitcorrect, :modeltype]) |>
-    rename!(__, :correct => :nullmodel)
+    rename!(__, :mean => :nullmean)
 
-plotfull = @_ predictmeans |>
-    filter(_.modeltype == "full", __) |>
-    innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
-    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
-    groupby(__, [:compname, :hittype, :comparison]) |>
-    combine(__, :correct => mean => :correct,
-                :correct => lowerboot => :lower,
-                :correct => upperboot => :upper,
-                :nullmodel => mean => :nullmodel,
-                :nullmodel => lowerboot => :nulllower,
-                :nullmodel => upperboot => :nullupper)
+nullmean, plotfull =
+    let l = logit ∘ shrinktowards(0.5, by = 0.01),
+        C = mean(l.(nullmeans.nullmean)),
+        tocor = x -> logistic(x + C)
 
-ytitle= "Neural Classification Accuracy"
-barwidth = 20
+    logistic(C),
+    @_ predictmeans |>
+        filter(_.modeltype == "full", __) |>
+        innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
+        transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
+        groupby(__, [:compname, :hittype, :comparison]) |>
+            combine(__,
+            :logitmeandiff => tocor ∘ mean => :mean,
+            :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.05))) => :lower,
+            :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.05))) => :upper,
+        )
+end
+
+ytitle= ["Neural Classification Accuracy", "(Null Model Corrected)"]
+barwidth = 25
 plhit = @_ plotfull |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
@@ -663,39 +670,27 @@ plhit = @_ plotfull |>
         color = {
             :compname, title = nothing,
             scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
-    @vlplot({:bar, xOffset = -(barwidth/2)},
-        y = {:correct,
+    @vlplot({:bar},
+        y = {:mean,
             scale = {domain = [0.5 ,1]},
             title = ytitle}) +
-    @vlplot({:bar, xOffset = (barwidth/2)},
-        color = {value = "#"*hex(neutral)},
-        # opacity = {value = 0.75},
-        y = {:nullmodel, title = ytitle},
-    ) +
-    @vlplot({:rule, xOffset = -(barwidth/2)},
+    @vlplot({:rule},
         color = {value = "black"},
         y2 = :upper,
         y = {:lower,
             scale = {domain = [0.5 ,1]},
-            title = ytitle}) +
-    @vlplot({:rule, xOffset = (barwidth/2)},
-        color = {value = "black"},
-        y2 = :nullupper,
-        y = {:nulllower,
-            scale = {domain = [0.5 ,1]},
             title = ytitle})
     ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
-        transform = [{filter = "datum.comparison == 'global-v-object'"}],
-        x = {:compname, axis = {title = ""}},
-        y = {:correct, aggregate = :mean, type = :quantitative},
-        text = {value = "Full Model"},
-    ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
-        transform = [{filter = "datum.comparison == 'global-v-object'"}],
-        x = {:compname, axis = {title = ""}},
-        y = {datum = 0.5},
-        text = {value = "Null Model"},
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"}) +
+        @vlplot({:text, align = "left", dx = 15, dy = 0, baseline = "line-bottom", fontSize = 9},
+            y = {datum = nullmean},
+            x = {datum = "Object vs.\n Spatial"},
+            text = {value = ["Null Model", "Accuracy"]}
+        )
     );
 plotfile = joinpath(dir, "category.svg")
 plhit |> save(plotfile)
