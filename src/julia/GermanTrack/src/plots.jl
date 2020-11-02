@@ -40,7 +40,7 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
-allcolors = ColorSchemes.lajolla[range(0.1, 0.85, length = 3*3)] |> reverse
+allcolors = ColorSchemes.lajolla[range(0.25, 0.85, length = 3*3)] |> reverse
 
 """
     neutral
