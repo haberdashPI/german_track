@@ -138,167 +138,8 @@ end
 # λ selection
 # -----------------------------------------------------------------
 
-means = @_ resultdf |>
-    groupby(__, [:condition, :λ, :sid, :fold, :winstart, :winlen]) |>
-    combine(__,
-        :nzcoef => mean => :nzcoef,
-        [:correct, :weight] => GermanTrack.wmean => :mean)
-
-bestmeans = @_ means |>
-    groupby(__, [:condition, :λ, :sid, :fold]) |>
-    combine(__, :nzcoef => mean => :nzcoef,
-                :mean => maximum => :mean,
-                :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
-
-
-logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
-    deletecols!(__, [:λ, :nzcoef, :mean]) |>
-    rename!(__, :logitmean => :logitnullmean) |>
-    innerjoin(__, bestmeans, on = [:condition, :sid, :fold]) |>
-    transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
-
-grandlogitmeandiff = @_ logitmeandiff |>
-    groupby(__, [:λ, :fold]) |>
-    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
-    sort!(__, [:λ]) |>
-    groupby(__, [:fold]) |>
-    transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :logitmeandiff)
-
-pl = grandlogitmeandiff |> @vlplot() +
-    @vlplot(:line,
-        config = {},
-        color = {:fold, type = :nominal,
-            legend = {orient = :none, legendX = 175, legendY = 0.5}},
-        x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-        title = "Regularization Parameter (λ)"},
-        y     = {:logitmeandiff, aggregate = :mean, type = :quantitative,
-                title = "Model - Null Model Accuracy (logit scale)"}) |>
-    save(joinpath(dir, "grandmean.svg"))
-
-# pick the largest valued λ, with a non-negative peak for meandiff
-function pickλ(df)
-    peaks = @_ maxima(df.logitmeandiff) |>
-        filter(df.logitmeandiff[_] > 0.1, __)
-    maxλ = argmax(df[peaks,:λ])
-    df[peaks[maxλ],[:λ]]
-end
-λs = @_ grandlogitmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
-
-λs[!,:fold_text] .= string.("Fold: ",λs.fold)
-λs[!,:yoff] = [0.1,0.15]
-
-final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in λ_fold[2])...)
-
-pl = @vlplot() +
-    vcat(
-        logitmeandiff |> @vlplot(
-        :line, width = 750, height = 100,
-            color = {field = :condition, type = :nominal},
-            x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-                     title = "Regularization Parameter (λ)"},
-            y     = {:nzcoef, aggregate = :max, type = :quantitative,
-                     title = "# of non-zero coefficients (max)"}
-        ),
-        (
-            @_ bestmeans |> DataFrames.transform(__, :mean => ByRow(x -> 100x) => :mean) |>
-            @vlplot(
-                width = 750, height = 200,
-                x = {:λ, scale = {type = :log}},
-                color = {field = :condition, type = :nominal},
-            ) +
-            @vlplot(
-                :line,
-                y = {:mean, aggregate = :mean, type = :quantitative,
-                    title = "% Correct", scale = {domain = [50, 100]}},
-            ) +
-            @vlplot(
-                :errorband,
-                y = {:mean, aggregate = :ci, type = :quantitative}
-            )
-        ),
-        (
-            @vlplot() +
-            (
-                logitmeandiff |> @vlplot(
-                    width = 750, height = 200,
-                    x     = {:λ, scale = {type = :log},
-                             title = "Regularization Parameter (λ)"},
-                    color = {field = :condition, type = :nominal}) +
-                @vlplot(:errorband,
-                    y = {:logitmeandiff, aggregate = :ci,   type = :quantitative,
-                         title = "Model - Null Model Accuracy (logit scale)"}) +
-                @vlplot(:line,
-                    y = {:logitmeandiff, aggregate = :mean, type = :quantitative})
-            ) +
-            (
-                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
-                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
-            ) +
-            (
-                @vlplot(data = λs) +
-                @vlplot({:rule, strokeDash = [4, 4], size = 3}, x = :λ,
-                    color = {value = "green"}) +
-                @vlplot({:text, align = :left, dy = -8, size =  12, angle = 90},
-                    text = :fold_text, x = :λ, y = :yoff)
-            )
-        )
-    ) |> save(joinpath(dir, "switchtarget_lambdas.svg"))
-
-#= # Compute the best window length
-# -----------------------------------------------------------------
-
-best_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in λ_fold[2])...)
-λsid = groupby(best_λs, :sid)
-
-windowmeans = @_ resultdf |>
-    filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
-    groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean) |>
-    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean)
-
-nullmeans = @_ windowmeans |>
-    filter(_.λ == 1.0, __) |>
-    deletecols!(__, [:λ, :mean]) |>
-    rename!(__, :logitmean => :logitnullmean)
-
-windowdiff = @_ windowmeans |>
-    filter(_.λ != 1.0, __) |>
-    innerjoin(nullmeans, __, on = [:condition, :sid, :fold, :winlen, :winstart]) |>
-    transform!(__, [:logitmean, :logitnullmean] => (-) => :logitmeandiff)
-
-windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
-    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
-    groupby(__, [:fold, :winlen]) |>
-    combine(__, :logitmeandiff => maximum => :logitmeandiff)
-
-bestlens = @_ windavg |> groupby(__, [:fold]) |>
-    combine(__, [:logitmeandiff, :winlen] =>
-        ((m,l) -> l[argmax(m)]) => :winlen,
-        :logitmeandiff => maximum => :logitmeandiff)
-
-bestlen_bysid = @_ bestlens |>
-    groupby(__, [:fold, :winlen, :logitmeandiff]) |>
-    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
-    groupby(__, :sid)
-    winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
-
-pl = windowdiff |>
-    @vlplot(:rect,
-        config =  {view = {stroke = :transparent}},
-        column = :condition,
-        # row = :fold,
-        y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
-            title = "Length (s)"},
-        x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
-        color = {:logitmeandiff, aggregate = :mean, type = :quantitative,
-            scale = {scheme = "redblue", domainMid = 0}}) |>
-    save(joinpath(dir, "switchtarget_windows.svg"))
- =#
+resultdf = pickλ(resultdf, 2, [:condition, :winlen, :winstart], :condition,
+    smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.05, dir = dir)
 
 # Plot near/far performance for early/late targets
 # =================================================================
@@ -333,7 +174,7 @@ end
 # TODO: compute accuracy accross multiple definitions of early/late targets
 
 resultdf_earlylate_file = joinpath(cache_dir("models"), "switch-target-earlylate.csv")
-classdf_earlylate[!,:fold] = in.(classdf_earlylate.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdf_earlylate[!,:fold] = getindex.(Ref(fold_map), classdf_earlylate.sid)
 
 if isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
     resultdf_earlylate = CSV.read(resultdf_earlylate_file)
@@ -343,7 +184,7 @@ else
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
             data               = sdf,
             y                  = :target_switch_label,
@@ -608,7 +449,7 @@ end
 λsid = groupby(final_λs, :sid)
 
 resultdf_sal_earlylate_file = joinpath(cache_dir("models"), "switch-salience-target-earlylate.csv")
-classdfsal_earlylate_[!,:fold] = in.(classdfsal_earlylate_.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdfsal_earlylate_[!,:fold] = getindex.(Ref(fold_map), classdfsal_earlylate_.sid)
 
 if isfile(resultdf_sal_earlylate_file) && mtime(resultdf_sal_earlylate_file) > mtime(classdf_sal_earlylate_file)
     resultdf_sal_earlylate = CSV.read(resultdf_sal_earlylate_file)
@@ -618,7 +459,7 @@ else
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
             data               = sdf,
             y                  = :target_switch_label,

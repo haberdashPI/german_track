@@ -1,4 +1,4 @@
-export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot
+export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pickλ
 
 
 """
@@ -130,3 +130,153 @@ function ishit(row; mark_false_targets = false, kwds...)
         vals.reported_target ? "reject" : "falsep"
     end
 end
+
+myfirst(x) = first(x)
+myfirst(x::Symbol) = x
+
+"""
+    pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = :λ, smoothing,
+        slope_thresh, flat_thresh, dir, grand_mean_plot = "grandmean",
+        lambda_plot = "lambdas")
+
+Divide `df` into `n_folds` by `fold_id`, then pick the best λ for classification. The
+classification accuracy is assumed to be encoded in a `:correct` column (and optionally a
+`:weight`) column. Any additional factors in the anlaysis should be included in `factors`.
+The analysis looks at the maximum performance for each value of `maximize_across` factors
+and then averages these performance values. The λ is selected assuming there is a peak in
+the derivative (`slope_thresh`) that then levels off (`flat_thresh`) as we move from larger
+to smaller λ values (a reverse sigmoid shape), and it tries to find the point where
+performance levels off. The derivative is computed from a smoothed version of the
+performance, where `smoothing` ranges from 0 to 1.
+
+You can view the generated plots to verify that the assumptions of the analysis are
+reasonable and a sensible λ value for each fold is selected.
+
+# Arguments
+- `df` The data to analyze
+
+"""
+function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = :λ,
+    smoothing, slope_thresh, flat_thresh,
+    dir, grand_mean_plot = "grandmean", lambda_plot = "lambdas")
+
+    λ_folds = folds(n_folds, unique(df[:,fold_id]),
+        rng = stableRNG(2019_11_18, dir, grand_mean_plot, lambda_plot))
+
+    fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
+        for id in train_ids)
+
+    if :fold ∉ propertynames(df)
+        df[!,:fold] = getindex.(Ref(fold_map), df[:, fold_id])
+    elseif length(unique(df.fold)) != n_folds
+        error("Data folds do not match `n_folds` parameters")
+    end
+
+    means = @_ df |>
+        groupby(__, vcat(factors, [λ_col, fold_id, :fold])) |>
+        combine(__,
+            :nzcoef => mean => :nzcoef,
+            [:correct, :weight] => GermanTrack.wmean => :mean)
+
+    bestmeans = @_ means |>
+        groupby(__, vcat(maximize_across, [λ_col, fold_id, :fold])) |>
+        combine(__, :nzcoef => mean => :nzcoef,
+                    :mean => maximum => :mean,
+                    :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
+
+    logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
+        deletecols!(__, [λ_col, :nzcoef, :mean]) |>
+        rename!(__, :logitmean => :logitnullmean) |>
+        innerjoin(__, bestmeans, on = vcat(maximize_across, [fold_id, :fold])) |>
+        transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
+
+    diff0(x) = vcat(0,diff(x))
+    filtfn(x) = filtfilt(digitalfilter(Lowpass(1 - smoothing), Butterworth(5)), x)
+    grandlogitmeandiff = @_ logitmeandiff |>
+        groupby(__, [λ_col, :fold]) |>
+        combine(__, :logitmeandiff => mean => :logitmeandiff) |>
+        sort!(__, [λ_col]) |>
+        groupby(__, [:fold]) |>
+        transform!(__, :logitmeandiff => (x -> abs.(diff0(filtfn(x)))) => :logitmeandiff)
+
+    pl = grandlogitmeandiff |> @vlplot() +
+    @vlplot(:line,
+        config = {},
+        color = {:fold, type = :nominal,
+            legend = {orient = :none, legendX = 175, legendY = 0.5}},
+        x     = {λ_col, scale = {type = :log, domain = [0.01, 0.35]},
+        title = "Regularization Parameter (λ)"},
+        y     = {:logitmeandiff, aggregate = :mean, type = :quantitative,
+                title = "Model - Null Model Accuracy (logit scale)"}) |>
+    save(joinpath(dir, string(grand_mean_plot,".svg")))
+
+    function pickλ(df)
+        peaks = @_ maxima(df.logitmeandiff) |>
+            filter(df.logitmeandiff[_] > slope_thresh, __)
+        first_near_zero = @_ findlast(_ < flat_thresh, df[1:peaks[end],:logitmeandiff])
+        df[(1:peaks[end])[first_near_zero],[λ_col]]
+    end
+    λs = @_ grandlogitmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
+
+    λs[!,:fold_text] .= string.("Fold: ",λs.fold)
+    λs[!,:yoff] = [0.1,0.15]
+    λ_map = Dict(row.fold => row.λ for row in eachrow(λs))
+
+    @vlplot() +
+    vcat(
+        logitmeandiff |> @vlplot(
+        :line, width = 750, height = 100,
+            color = {field = myfirst(maximize_across), type = :nominal},
+            x     = {λ_col, scale = {type = :log, domain = [0.01, 0.35]},
+                    title = "Regularization Parameter (λ)"},
+            y     = {:nzcoef, aggregate = :max, type = :quantitative,
+                    title = "# of non-zero coefficients (max)"}
+        ),
+        (
+            @_ bestmeans |> DataFrames.transform(__, :mean => ByRow(x -> 100x) => :mean) |>
+            @vlplot(
+                width = 750, height = 200,
+                x = {λ_col, scale = {type = :log}},
+                color = {field = myfirst(maximize_across), type = :nominal},
+            ) +
+            @vlplot(
+                :line,
+                y = {:mean, aggregate = :mean, type = :quantitative,
+                    title = "% Correct", scale = {domain = [50, 100]}},
+            ) +
+            @vlplot(
+                :errorband,
+                y = {:mean, aggregate = :ci, type = :quantitative}
+            )
+        ),
+        (
+            @vlplot() +
+            (
+                logitmeandiff |> @vlplot(
+                    width = 750, height = 200,
+                    x     = {λ_col, scale = {type = :log},
+                            title = "Regularization Parameter (λ)"},
+                    color = {field = myfirst(maximize_across), type = :nominal}) +
+                @vlplot(:errorband,
+                    y = {:logitmeandiff, aggregate = :ci,   type = :quantitative,
+                        title = "Model - Null Model Accuracy (logit scale)"}) +
+                @vlplot(:line,
+                    y = {:logitmeandiff, aggregate = :mean, type = :quantitative})
+            ) +
+            (
+                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
+                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
+            ) +
+            (
+                @vlplot(data = λs) +
+                @vlplot({:rule, strokeDash = [4, 4], size = 3}, x = λ_col,
+                    color = {value = "green"}) +
+                @vlplot({:text, align = :left, dy = -8, size =  12, angle = 90},
+                    text = :fold_text, x = λ_col, y = :yoff)
+            )
+        )
+    ) |> save(joinpath(dir, string(lambda_plot,".svg")))
+
+    return fold_map, λ_map
+end
+
