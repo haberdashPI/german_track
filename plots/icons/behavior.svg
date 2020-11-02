@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(0.479233,0,0,0.479233,-4.64078e-15,0)">
+<svg width="100%" height="100%" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+        <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
+        <rect x="0" y="0" width="300" height="254.021" style="fill:white;stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.345157,0,0,0.345157,54.3511,31.3618)">
         <use xlink:href="#_Image1" x="0" y="0" width="626px" height="626px"/>
     </g>
     <defs>
