@@ -111,7 +111,13 @@
         </g>
       </g>
       <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">A</text>
-      <g transform="translate(220, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.479233,0,0,0.479233,-4.64078e-15,0)">
+      <g transform="translate(220, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+        <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
+        <rect x="0" y="0" width="300" height="254.021" style="fill:white;stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.345157,0,0,0.345157,54.3511,31.3618)">
         <use xlink:href="#_Image1" x="0" y="0" width="626px" height="626px"/>
     </g>
     <defs>
@@ -244,7 +250,15 @@
   </g>
 </g>
       <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">B</text>
-      <g transform="translate(190, 15) scale(1) translate(0, 0) scale(0.1) "><path d="M9.918,150C65.144,151.167 50.997,99.43 65.762,99.934C76.232,100.292 82.967,197.319 93.33,197.74C104.348,198.188 113.82,20.245 132.106,20.378C152.588,20.527 146.555,266.298 182.3,266.791C207.358,267.137 221.574,151.285 290.395,150" style="fill:none;stroke:black;stroke-width:12.5px;"/>
+      <g transform="translate(220, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+        <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
+        <rect x="0" y="0" width="300" height="254.021" style="fill:white;stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.750724,0,0,0.750724,57.2225,30.4652)">
+        <path d="M9.918,150C65.144,151.167 50.997,99.43 65.762,99.934C76.232,100.292 82.967,197.319 93.33,197.74C104.348,198.188 113.82,20.245 132.106,20.378C152.588,20.527 146.555,266.298 182.3,266.791C207.358,267.137 221.574,151.285 290.395,150" style="fill:none;stroke:black;stroke-width:16.65px;"/>
+    </g>
 </g>
     </g>
   </g>

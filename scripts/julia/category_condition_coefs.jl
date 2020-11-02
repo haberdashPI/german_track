@@ -760,7 +760,7 @@ fig = svg.Figure("89mm", "160mm", # "240mm",
         svg.SVG(joinpath(dir, "category.svg")).move(0,15),
         svg.Text("B", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(190,15)
+            scale(0.1).move(220,15)
     ).move(0, 225)
         # svg.Text("C", 2, 10, size = 12, weight = "bold")
     # ).move(0, 450)
