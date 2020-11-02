@@ -321,126 +321,14 @@ end
 # λ selection
 # -----------------------------------------------------------------
 
-means = @_ resultdf |>
-    groupby(__, [:condition, :λ, :sid, :fold, :winstart, :winlen]) |>
-    combine(__,
-        :nzcoef => mean => :nzcoef,
-        [:correct, :weight] => GermanTrack.wmean => :mean)
-
-bestmeans = @_ means |>
-    groupby(__, [:condition, :λ, :sid, :fold]) |>
-    combine(__, :nzcoef => mean => :nzcoef,
-                :mean => maximum => :mean,
-                :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
-
-# DEBUG: there should be three values per subject for a signle lambda value, but there are 100s
-
-logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
-    deletecols!(__, [:λ, :nzcoef, :mean]) |>
-    rename!(__, :logitmean => :logitnullmean) |>
-    innerjoin(__, bestmeans, on = [:condition, :sid, :fold]) |>
-    transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
-
-grandlogitmeandiff = @_ logitmeandiff |>
-    groupby(__, [:λ, :fold]) |>
-    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
-    sort!(__, [:λ]) |>
-    groupby(__, [:fold]) |>
-    transform!(__, :logitmeandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.2), Butterworth(5)), x)) => :logitmeandiff)
-
-pl = grandlogitmeandiff |> @vlplot() +
-    @vlplot(:line,
-        config = {},
-        color = {:fold, type = :nominal,
-            legend = {orient = :none, legendX = 175, legendY = 0.5}},
-        x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-        title = "Regularization Parameter (λ)"},
-        y     = {:logitmeandiff, aggregate = :mean, type = :quantitative,
-                title = "Model - Null Model Accuracy (logit scale)"}) |>
-    save(joinpath(dir, "grandmean.svg"))
-
-# pick the largest valued λ, with a non-negative peak for meandiff
-function pickλ(df)
-    peaks = @_ maxima(df.logitmeandiff) |>
-        filter(df.logitmeandiff[_] > 0.1, __)
-    maxλ = argmax(df[peaks,:λ])
-    df[peaks[maxλ],[:λ]]
-end
-λs = @_ grandlogitmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
-
-λs[!,:fold_text] .= string.("Fold: ",λs.fold)
-λs[!,:yoff] = [0.1,0.15]
-
-final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in λ_fold[2])...)
-
-pl = @vlplot() +
-    vcat(
-        logitmeandiff |> @vlplot(
-        :line, width = 750, height = 100,
-            color = {field = :condition, type = :nominal},
-            x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-                     title = "Regularization Parameter (λ)"},
-            y     = {:nzcoef, aggregate = :max, type = :quantitative,
-                     title = "# of non-zero coefficients (max)"}
-        ),
-        (
-            @_ bestmeans |> DataFrames.transform(__, :mean => ByRow(x -> 100x) => :mean) |>
-            @vlplot(
-                width = 750, height = 200,
-                x = {:λ, scale = {type = :log}},
-                color = {field = :condition, type = :nominal},
-            ) +
-            @vlplot(
-                :line,
-                y = {:mean, aggregate = :mean, type = :quantitative,
-                    title = "% Correct", scale = {domain = [50, 100]}},
-            ) +
-            @vlplot(
-                :errorband,
-                y = {:mean, aggregate = :ci, type = :quantitative}
-            )
-        ),
-        (
-            @vlplot() +
-            (
-                logitmeandiff |> @vlplot(
-                    width = 750, height = 200,
-                    x     = {:λ, scale = {type = :log},
-                             title = "Regularization Parameter (λ)"},
-                    color = {field = :condition, type = :nominal}) +
-                @vlplot(:errorband,
-                    y = {:logitmeandiff, aggregate = :ci,   type = :quantitative,
-                         title = "Model - Null Model Accuracy (logit scale)"}) +
-                @vlplot(:line,
-                    y = {:logitmeandiff, aggregate = :mean, type = :quantitative})
-            ) +
-            (
-                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
-                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
-            ) +
-            (
-                @vlplot(data = λs) +
-                @vlplot({:rule, strokeDash = [4, 4], size = 3}, x = :λ,
-                    color = {value = "green"}) +
-                @vlplot({:text, align = :left, dy = -8, size =  12, angle = 90},
-                    text = :fold_text, x = :λ, y = :yoff)
-            )
-        )
-    ) |> save(joinpath(dir, "salience_lambdas.svg"))
+fold_map, λ_map = pickλ(resultdf, 2, [:condition, :winlen, :winstart], :condition,
+    smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02, dir = dir)
 
 # Compute the best window length
 # -----------------------------------------------------------------
 
-best_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in λ_fold[2])...)
-λsid = groupby(best_λs, :sid)
-
 windowmeans = @_ resultdf |>
-    filter(_.λ ∈ (1.0, first(λsid[(sid = _.sid,)].λ)), __) |>
+    filter(_.λ ∈ (1.0, λ_map[_.fold]), __) |>
     groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean) |>
     transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean)
@@ -515,10 +403,8 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-λsid = groupby(final_λs, :sid)
-
 resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
-classdf_timeline[!,:fold] = in.(classdf_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdf_timeline[!,:fold] = getindex.(Ref(fold_map), classdf_timeline.sid)
 
 if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
     resultdf_timeline = CSV.read(resultdf_timeline_file)
@@ -528,7 +414,7 @@ else
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
             data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
             n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
@@ -681,7 +567,7 @@ pl = @_ classdiffs |>
         y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter = "datum.winstart > 2.95 && datum.winstart <= 3"}],
+        transform = [{filter = "datum.winstart > 2.45 && datum.winstart <= 2.55"}],
         x = {datum = 3.0},
         y = {:meancor, aggregate = :mean, type = :quantitative},
         text = :condition_label
@@ -747,6 +633,7 @@ pl |> save(joinpath(dir, "salience_timeline.svg"))
 
 times = classdiffs.winstart |> unique
 real_timeslice = times[argmin(abs.(times .- timeslice))]
+barwidth = 16
 
 @_ classdiffs |>
     filter(_.winstart == real_timeslice, __) |>
@@ -921,10 +808,8 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-λsid = groupby(final_λs, :sid)
-
 resultdf_chgroup_file = joinpath(cache_dir("models"), "salience-chgroup.csv")
-classdf_chgroup[!,:fold] = in.(classdf_chgroup.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdf_chgroup[!,:fold] = getindex.(Ref(fold_map), classdf_chgroup)
 
 if isfile(resultdf_chgroup_file) && mtime(resultdf_chgroup_file) > mtime(classdf_chgroup_file)
     resultdf_chgroup = CSV.read(resultdf_chgroup_file)
@@ -934,7 +819,7 @@ else
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
             data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
             n_folds = n_folds, seed = stablehash(:salience_classification, :chgroup, 2019_11_18),
@@ -1080,10 +965,8 @@ end
 # Compute classification accuracy
 # -----------------------------------------------------------------
 
-λsid = groupby(final_λs, :sid)
-
 resultdf_earlylate_file = joinpath(cache_dir("models"), "salience-earlylate-timeline.csv")
-classdf_earlylate[!,:fold] = in.(classdf_earlylate.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdf_earlylate[!,:fold] = getindex.(Ref(fold_map), classdf_earlylate.sid)
 
 if isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
     resultdf_earlylate = CSV.read(resultdf_earlylate_file)
@@ -1093,7 +976,7 @@ else
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         result = testclassifier(LassoPathClassifiers([1.0, λ]),
             data               = sdf,
             y                  = :salience_label,
@@ -1453,7 +1336,7 @@ end
 λsid = groupby(final_λs, :sid)
 
 resultdf_sal4_timeline_file = joinpath(cache_dir("models"), "salience-timeline-sal4.csv")
-classdf_sal4_timeline[!,:fold] = in.(classdf_sal4_timeline.sid, Ref(Set(λ_folds[1][1]))) .+ 1
+classdf_sal4_timeline[!,:fold] = getindex.(Ref(fold_map), classdf_sal4_timeline.sid)
 
 levels = ["lowest","low","high","highest"]
 classdf_sal4_timeline[!,:salience_4label] =
@@ -1470,7 +1353,7 @@ else
     progress = Progress(length(groups) * length(modeltype))
 
     function findclass(((key, sdf), (type, levels)))
-        λ = first(λsid[(sid = first(sdf.sid),)].λ)
+        λ = λ_map[first(sdf.fold)]
         filtered = @_ sdf |> filter(_.salience_4level ∈ levels, __)
 
         result = testclassifier(LassoPathClassifiers([1.0, λ]),

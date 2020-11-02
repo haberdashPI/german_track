@@ -425,7 +425,7 @@ dprimes_t |> @vlplot() +
         y = {:dprime, type = :quantitative, aggregate = :ci, title = "d'"}) |>
 save(joinpath(dir, "eeg_dprime_falsetarget.svg"))
 
-# Findb best λs
+# Find best λs
 # =================================================================
 
 # Mean Frequency Bin Analysis
@@ -488,104 +488,8 @@ end
 # λ selection
 # -----------------------------------------------------------------
 
-means = @_ resultdf |>
-    groupby(__,[:winlen, :winstart, :comparison, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__, [:correct, :weight] => wmean => :mean)
-bestmeans = @_ means |>
-    groupby(__, [:comparison, :λ, :nzcoef, :sid, :fold]) |>
-    combine(__ , :mean => maximum => :mean) # |>
-
-logitmeans = @_ bestmeans |>
-    DataFrames.transform(__, :mean => ByRow(logit ∘ shrinktowards(0.5,by=0.01)) => :mean)
-logitmeandiff = @_ filter(_.λ == 1.0, logitmeans) |>
-    deletecols!(__, [:λ, :nzcoef]) |>
-    rename!(__, :mean => :nullmean) |>
-    innerjoin(__, logitmeans, on = [:comparison, :sid, :fold]) |>
-    transform!(__, [:mean,:nullmean] => (-) => :meandiff)
-
-grandmeandiff = @_ logitmeandiff |>
-    groupby(__, [:λ, :fold]) |>
-    combine(__, :meandiff => mean => :meandiff) |>
-    sort!(__, [:λ]) |>
-    groupby(__, :fold) |>
-    transform!(__, :meandiff =>
-        (x -> filtfilt(digitalfilter(Lowpass(0.5), Butterworth(5)), x)) => :meandiff)
-
-@_ grandmeandiff |> @vlplot(:line,
-        x = {:λ, scale = {type = :log}},
-        y = :meandiff,
-        color = {:fold, type = :nominal}) |>
-    save(joinpath(dir,"lambdapick.svg"))
-
-# pick the largest valued λ, with a non-negative peak for meandiff
-function pickλ(df)
-    peaks = @_ maxima(df.meandiff) |>
-        filter(df.meandiff[_] > 0.05, __)
-    maxλ = argmax(df[peaks,:λ])
-    df[peaks[maxλ],[:λ]]
-end
-λs = @_ grandmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
-λs[!,:fold_text] .= string.("Fold: ",λs.fold)
-λs[!,:yoff] = [0.5, 1.5]
-
-final_λs = vcat((DataFrame(sid = sid, λ = λ, fold = fi)
-    for (fi, (λ, λ_fold)) in enumerate(zip(λs.λ, λ_folds))
-    for sid in first(λ_fold))...)
-
-pl = @vlplot() +
-    vcat(
-        logitmeandiff |> @vlplot(
-            :line, width = 750, height = 100,
-            color = {field = :comparison, type = :nominal},
-            x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-                     title = "Regularization Parameter (λ)"},
-            y     = {:nzcoef, aggregate = :max, type = :quantitative,
-                     title = "# of non-zero coefficients (max)"}
-        ),
-        (
-            bestmeans |> @vlplot(
-                width = 750, height = 200,
-                x = {:λ, scale = {type = :log}},
-                color = {field = :comparison, type = :nominal},
-            ) +
-            @vlplot(
-                :line,
-                y = {:mean, aggregate = :mean, type = :quantitative, scale = {domain = [0.5, 1]}},
-            ) +
-            @vlplot(
-                :errorband,
-                y = {:mean, aggregate = :ci, type = :quantitative}
-            )
-        ),
-        (
-            @vlplot() +
-            (
-                logitmeandiff |> @vlplot(
-                    width = 750, height = 200,
-                    x     = {:λ, scale = {type = :log, domain = [0.01, 0.35]},
-                             title = "Regularization Parameter (λ)"},
-                    color = {field = :comparison, type = :nominal}) +
-                @vlplot(:errorband,
-                    y = {:meandiff, aggregate = :ci,   type = :quantitative,
-                         title = "Logistic Unit Advantage over Baseline"}) +
-                @vlplot(:line,
-                    y = {:meandiff, aggregate = :mean, type = :quantitative})
-            ) +
-            (
-                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
-                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
-            ) +
-            (
-                @vlplot(data = λs) +
-                @vlplot({:rule, strokeDash = [4, 4], size = 3}, x = :λ,
-                    color = {value = "green"}) +
-                @vlplot({:text, align = :left, dy = -8, size =  12, angle = 90},
-                    text = :fold_text, x = :λ, y = :yoff)
-            )
-        )
-    );
-
-pl |> save(joinpath(dir, "relative_logit_lambdas.svg"))
+fold_map, λ_map = pickλ(resultdf, 2, [:comparison, :winlen, :winstart], :comparison,
+    smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02, dir = dir)
 
 # Different baseline models
 # =================================================================
@@ -622,10 +526,11 @@ else
     alert("Feature computation complete!")
 end
 
-classbasedf = innerjoin(classbasedf, final_λs, on = [:sid])
-
 # Classification for different baselines
 # -----------------------------------------------------------------
+
+classbasedf[!,:fold] = getindex.(Ref(fold_map), classbasedf.sid)
+classbasedf[!,:λ] = getindex.(Ref(λ_map), classbasedf.fold)
 
 modeltype = [
     "full" => (
@@ -1078,8 +983,7 @@ addpatterns(plotfile, patterns)
 # Compare coefficients across folds
 # -----------------------------------------------------------------
 
-# TODO: trying to get coefficient plots to work again
-λsid = groupby(final_λs, :sid)
+# TODO: nonworking code below this point
 
 centerlen = @_ classdf.winlen |> unique |> sort! |> __[5]
 centerstart = @_ classdf.winstart |> unique |> __[argmin(abs.(__ .- 0.0))]
