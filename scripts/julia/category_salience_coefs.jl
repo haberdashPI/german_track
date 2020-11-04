@@ -230,6 +230,7 @@ means = @_ indmeans |>
 
 barwidth = 18
 ytitle = "Hit Rate"
+yrange = [0.4, 1]
 pl = means |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
@@ -684,7 +685,7 @@ pl = @_ classdiffs |>
     # "Time Slice" annotation
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot(:rule,
+        @vlplot({:rule, strokeDash = [2 2]},
             x = {datum = timeslice},
             color = {value = "black"}
         ) +
