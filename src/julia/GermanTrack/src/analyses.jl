@@ -163,11 +163,13 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
     λ_folds = folds(n_folds, unique(df[:,fold_id]),
         rng = stableRNG(2019_11_18, dir, grand_mean_plot, lambda_plot))
 
-    fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
+    train_fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
         for id in train_ids)
+    test_fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
+        for id in test_ids)
 
     if :fold ∉ propertynames(df)
-        df[!,:fold] = getindex.(Ref(fold_map), df[:, fold_id])
+        df[!,:fold] = getindex.(Ref(train_fold_map), df[:, fold_id])
     elseif length(unique(df.fold)) != n_folds
         error("Data folds do not match `n_folds` parameters")
     end
@@ -277,6 +279,6 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
         )
     ) |> save(joinpath(dir, string(lambda_plot,".svg")))
 
-    return fold_map, λ_map
+    return test_fold_map, λ_map
 end
 
