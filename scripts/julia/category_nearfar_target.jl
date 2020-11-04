@@ -48,6 +48,7 @@ pl = @_ target_timeline |>
     (
         @vlplot(width = 80, autosize = "fit", height = 130, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot({:trail, clip = true},
+            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
             y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
@@ -151,17 +152,30 @@ classdf_earlylate_file = joinpath(cache_dir("features"), "switch-target-freqmean
 if isfile(classdf_earlylate_file)
     classdf_earlylate = CSV.read(classdf_earlylate_file)
 else
+    nbins = 30
+
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+    breaks = range(0,1,length = nbins+1)[2:(end-1)]
+    switchclass = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
+        skipmissing |> quantile(__, breaks)
+    events[!, :switch_class] = @_ map(sum(_ .> switchclass), events.switch_distance)
 
-    classdf_earlylate_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :target_time_label, :target_switch_label])
+    classdf_earlylate = mapreduce(append!!, 1:(nbins-2)) do switch_break
+        label(x) = ismissing(x) ? missing : x > switch_break ? "early" : "late"
+        events[!, :target_switch_label] = label.(events.switch_class)
+        classdf_earlylate_groups = @_ events |>
+            filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+            groupby(__, [:sid, :condition, :target_time_label, :target_switch_label])
 
-    windows = [windowtarget(len = len, start = start)
-        for len in 2.0 .^ range(-1, 1, length = 10),
-            start in range(0, 2.5, length = 12)]
-    classdf_earlylate = compute_freqbins(subjects, classdf_earlylate_groups, windows)
+        windows = [windowtarget(len = len, start = start)
+            for len in 2.0 .^ range(-1, 1, length = 10),
+                start in range(0, 2.5, length = 12)]
 
+        result = compute_freqbins(subjects, classdf_earlylate_groups, windows)
+        result[!, :switch_break] .= switch_break
+
+        result
+    end
     # TASK: set condition on infiltrate to look at missing data case
     CSV.write(classdf_earlylate_file, classdf_earlylate)
 end
@@ -175,7 +189,7 @@ classdf_earlylate[!,:fold] = getindex.(Ref(fold_map), classdf_earlylate.sid)
 if isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(classdf_earlylate_file)
     resultdf_earlylate = CSV.read(resultdf_earlylate_file)
 else
-    factors = [:fold, :winlen, :winstart, :condition, :target_time_label]
+    factors = [:fold, :winlen, :winstart, :condition, :target_time_label, :switch_break]
     groups = groupby(classdf_earlylate, factors)
 
     progress = Progress(length(groups))
@@ -193,7 +207,7 @@ else
             irls_maxiter       = 600,
             weight             = :weight,
             on_model_exception = :throw,
-            # on_missing_case    = :debug,
+            on_missing_case    = :missing,
         )
         if !isempty(result)
             result[!, keys(key)] .= permutedims(collect(values(key)))
@@ -215,11 +229,11 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf_earlylate |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label, :switch_break]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label, :switch_break]) |>
     combine(__, :mean => mean => :mean)
 
 nullmeans = @_ classmeans_sum |>
@@ -227,22 +241,20 @@ nullmeans = @_ classmeans_sum |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
 
-nullmean, classdiffs =
-    let l = logit ∘ shrinktowards(0.5, by = 0.01),
-        C = mean(l.(nullmeans.nullmean)),
-        tocor = x -> logistic(x + C)
+logitshrink = logit ∘ shrinktowards(0.5, by = 0.01)
+
+nullmean, classdiffs, rawdata =
+    let l = logitshrink, C = mean(l.(nullmeans.nullmean)), tocor = x -> logistic(x + C)
 
     rawdata = @_ classmeans_sum |>
         filter(_.λ != 1.0, __) |>
-        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :switch_break]) |>
         transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
         transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
 
-    CSV.write(joinpath(processed_datadir("analyses"), "nearfar_earlylate.csv"), rawdata)
-
     meandata = @_ rawdata |>
-        groupby(__, [:condition, :target_time_label]) |>
+        groupby(__, [:condition, :target_time_label, :switch_break]) |>
         combine(__,
             :logitmeandiff => tocor ∘ mean => :mean,
             :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.318))) => :lower,
@@ -250,13 +262,61 @@ nullmean, classdiffs =
         ) |>
         transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
 
-    logistic(C), meandata
+    logistic(C), meandata, rawdata
 end
 
+classdiffs |>
+    @vlplot(
+        facet = {row = {field = :condition}},
+    ) + (
+        @vlplot() +
+        @vlplot(:line,
+            color = :target_time_label,
+            x = :switch_break,
+            y = :mean
+        ) +
+        @vlplot(:errorband,
+            color = :target_time_label,
+            x = :switch_break,
+            y = :lower, y2 = :upper
+        )
+    ) |> save(joinpath(dir, "switch_target_earlylate_multibreak.svg"))
+
+# select the best break value by fold
+best_breaks = @_ rawdata |>
+    groupby(__, [:fold, :switch_break]) |>
+    combine(__, :logitmeandiff => mean => :mean,
+                [:condition, :target_time_label] =>
+                ((x,y) -> string.(x,y) |> unique |> length) => :condcount) |>
+    filter(_.condcount == 6, __) |> # only consider values with the complete conditions covered
+    groupby(__, :fold) |>
+    combine(__, [:switch_break, :mean] => ((b, mean) -> b[argmax(mean)]) => :best) |>
+    Dict(r.fold => r.best for r in eachrow(__))
+
+classdiff_best =
+    let l = logitshrink, C = mean(l.(nullmeans.nullmean)), tocor = x -> logistic(x + C)
+
+    @_ rawdata |>
+        filter(_.switch_break == best_breaks[_.fold], __) |>
+        CSV.write(joinpath(processed_datadir("analyses"), "nearfar_earlylate.csv"), __)
+
+    meandata = @_ rawdata |>
+        filter(_.switch_break == best_breaks[_.fold], __) |>
+        groupby(__, [:condition, :target_time_label]) |>
+        combine(__,
+            :logitmeandiff => tocor ∘ mean => :mean,
+            :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.318))) => :lower,
+            :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
+        ) |>
+        transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
+end
+
+
+# TODO: select just one switch break for this plot
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
-yrange = [0.2, 0.8]
-pl = classdiffs |>
+yrange = [0.35, 1.0]
+pl = classdiff_best |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
         config = {

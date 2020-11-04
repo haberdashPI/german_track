@@ -3,6 +3,10 @@
 + show icons for eeg / behavior
 + show absolute for salience
 + make figure 2 (data fig 1) consistent with the others (null model corrected)
+- refactor code, to make it easier to run just what I need, and easy to
+ find the core steps used to generate the figures
+- check raw behaviora analysis: try looking across all experiments merve used
+  does that get us back the results she found?
 - check into the splits for early/late early/late (switch defintiion)
     - the target time selection matters somewhat, and interacts with how switches
         are categorized
