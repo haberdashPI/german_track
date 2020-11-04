@@ -311,8 +311,6 @@ classdiff_best =
         transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
 end
 
-
-# TODO: select just one switch break for this plot
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
 yrange = [0.35, 1.0]
