@@ -41,20 +41,23 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
 end
 
 colorat(i) = ColorSchemes.bamako[range(0.1, 0.9, length = 3*3)][i]
+grayify(x) = let c = convert(LCHab, x)
+    convert(RGB, LCHab(c.l, 0, 0))
+end
 
 """
     neutral
 
 The neurtral color used for "null" values in our plots
 """
-neutral = colorat(3)
+neutral = grayify(colorat(3))
 
 """
     darkgray
 
 The darkgray used to represent the default condition (Global)
 """
-darkgray = colorat(1)
+darkgray = grayify(colorat(1))
 
 """
     colors
