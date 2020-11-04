@@ -138,7 +138,7 @@ end
 # λ selection
 # -----------------------------------------------------------------
 
-resultdf = pickλ(resultdf, 2, [:condition, :winlen, :winstart], :condition,
+fold_map, λ_map = pickλ(resultdf, 2, [:condition, :winlen, :winstart], :condition,
     smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.05, dir = dir)
 
 # Plot near/far performance for early/late targets
@@ -168,10 +168,6 @@ end
 
 # Compute classification accuracy
 # -----------------------------------------------------------------
-
-λsid = groupby(final_λs, :sid)
-
-# TODO: compute accuracy accross multiple definitions of early/late targets
 
 resultdf_earlylate_file = joinpath(cache_dir("models"), "switch-target-earlylate.csv")
 classdf_earlylate[!,:fold] = getindex.(Ref(fold_map), classdf_earlylate.sid)
