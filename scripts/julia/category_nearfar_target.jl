@@ -392,26 +392,26 @@ pl = @_ target_timeline |>
             y = {:pmean, aggregate = :mean, type = :quantitative},
             color = :condition,
             text = {:condition, }
-        ) +
-        (
-            @vlplot(data = {values = [{}]}) +
-            @vlplot({:rule, strokeDash = [4 4], size = 1},
-                x = {datum = nearsplit},
-                color = {value = "black"}
-            ) +
-            @vlplot({:text, fontSize = 9, align = :left, dx = 2},
-                x = {datum = nearsplit},
-                y = {datum = 0.55},
-                text = {value = "Far ▶"},
-                color = {value = "black"}
-            ) +
-            @vlplot({:text, fontSize = 9, align = :right, dx = -2},
-                x = {datum = nearsplit},
-                y = {datum = 0.55},
-                text = {value = "◀ Near"},
-                color = {value = "black"}
-            )
-        )
+        ) # +
+        # (
+        #     @vlplot(data = {values = [{}]}) +
+        #     @vlplot({:rule, strokeDash = [4 4], size = 1},
+        #         x = {datum = nearsplit},
+        #         color = {value = "black"}
+        #     ) +
+        #     @vlplot({:text, fontSize = 9, align = :left, dx = 2},
+        #         x = {datum = nearsplit},
+        #         y = {datum = 0.55},
+        #         text = {value = "Far ▶"},
+        #         color = {value = "black"}
+        #     ) +
+        #     @vlplot({:text, fontSize = 9, align = :right, dx = -2},
+        #         x = {datum = nearsplit},
+        #         y = {datum = 0.55},
+        #         text = {value = "◀ Near"},
+        #         color = {value = "black"}
+        #     )
+        # )
     );
 pl |> save(joinpath(dir, "behavior_timeline.svg"))
 
