@@ -43,8 +43,8 @@
             <rect x="0" y="0" width="80" height="130"/>
           </clipPath>
         </defs>
-        <rect width="258" height="221" fill="white"/>
-        <g fill="none" stroke-miterlimit="10" transform="translate(43,39)">
+        <rect width="258" height="219" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(43,38)">
           <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
             <g transform="translate(0,0)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z"/>
@@ -88,7 +88,7 @@
                   </g>
                 </g>
                 <g class="mark-group role-column-header column_header" role="graphics-object" aria-roledescription="group mark container">
-                  <g transform="translate(0,-2)">
+                  <g transform="translate(0,-1)">
                     <path class="background" aria-hidden="true" d="M0,0h80v0h-80Z"/>
                     <g>
                       <g class="mark-group role-title">
@@ -108,7 +108,7 @@
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
-                  <g transform="translate(106,-2)">
+                  <g transform="translate(106,-1)">
                     <path class="background" aria-hidden="true" d="M0,0h80v0h-80Z"/>
                     <g>
                       <g class="mark-group role-title">
@@ -130,7 +130,7 @@
                   </g>
                 </g>
                 <g class="mark-group role-column-footer column_footer" role="graphics-object" aria-roledescription="group mark container">
-                  <g transform="translate(0,132)">
+                  <g transform="translate(0,131)">
                     <path class="background" aria-hidden="true" d="M0,0h80v0h-80Z"/>
                     <g>
                       <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'Time after Switch (s)' for a linear scale with values from 0.0 to 1.6">
@@ -161,7 +161,7 @@
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
-                  <g transform="translate(106,132)">
+                  <g transform="translate(106,131)">
                     <path class="background" aria-hidden="true" d="M0,0h80v0h-80Z"/>
                     <g>
                       <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'Time after Switch (s)' for a linear scale with values from 0.0 to 1.6">
@@ -284,14 +284,11 @@
                         </g>
                       </g>
                       <g class="mark-text role-mark child_layer_2_marks" role="graphics-object" aria-roledescription="text mark container"/>
-                      <g class="mark-rule role-mark child_layer_3_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-                        <line transform="translate(56.20975056689343,0)" x2="0" y2="130" stroke="black" stroke-width="1" stroke-dasharray="4,4"/>
+                      <g class="mark-text role-mark child_layer_3_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text text-anchor="end" transform="translate(77,128)" font-family="sans-serif" font-size="9px" fill="#424242">Far</text>
                       </g>
                       <g class="mark-text role-mark child_layer_3_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-                        <text text-anchor="start" transform="translate(58.20975056689343,119.99999999999999)" font-family="sans-serif" font-size="9px" fill="black">Far &#9654;</text>
-                      </g>
-                      <g class="mark-text role-mark child_layer_3_layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
-                        <text text-anchor="end" transform="translate(54.20975056689343,119.99999999999999)" font-family="sans-serif" font-size="9px" fill="black">&#9664; Near</text>
+                        <text text-anchor="start" transform="translate(2,128)" font-family="sans-serif" font-size="9px" fill="#424242">Near</text>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -390,14 +387,11 @@
                         <text aria-label="condition: Spatial; Mean of pmean: 0.809473235979" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(65,52.536958645392396)" font-family="sans-serif" font-size="11px" fill="#CDB53D">Spatial</text>
                         <text aria-label="condition: Object; Mean of pmean: 0.859392241745" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(65,39.55801714625244)" font-family="sans-serif" font-size="11px" fill="#617D14">Object</text>
                       </g>
-                      <g class="mark-rule role-mark child_layer_3_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-                        <line transform="translate(56.20975056689343,0)" x2="0" y2="130" stroke="black" stroke-width="1" stroke-dasharray="4,4"/>
+                      <g class="mark-text role-mark child_layer_3_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
+                        <text text-anchor="end" transform="translate(77,128)" font-family="sans-serif" font-size="9px" fill="#424242">Far</text>
                       </g>
                       <g class="mark-text role-mark child_layer_3_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-                        <text text-anchor="start" transform="translate(58.20975056689343,119.99999999999999)" font-family="sans-serif" font-size="9px" fill="black">Far &#9654;</text>
-                      </g>
-                      <g class="mark-text role-mark child_layer_3_layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
-                        <text text-anchor="end" transform="translate(54.20975056689343,119.99999999999999)" font-family="sans-serif" font-size="9px" fill="black">&#9664; Near</text>
+                        <text text-anchor="start" transform="translate(2,128)" font-family="sans-serif" font-size="9px" fill="#424242">Near</text>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -546,13 +540,13 @@
                 <g class="mark-text role-mark layer_6_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text text-anchor="start" transform="translate(-17.166666666666654,128)" font-family="sans-serif" font-size="9px" fill="#424242">
                     <tspan>Less distinct</tspan>
-                    <tspan x="0" dy="11">response during switch</tspan>
+                    <tspan x="0" dy="11">response near switch</tspan>
                   </text>
                 </g>
                 <g class="mark-text role-mark layer_6_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text text-anchor="start" transform="translate(-17.166666666666654,-27)" font-family="sans-serif" font-size="9px" fill="#424242">
                     <tspan>More distinct</tspan>
-                    <tspan x="0" dy="11">response during switch</tspan>
+                    <tspan x="0" dy="11">response near switch</tspan>
                   </text>
                 </g>
                 <g class="mark-rule role-mark layer_7_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">

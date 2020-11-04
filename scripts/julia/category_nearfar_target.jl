@@ -310,14 +310,14 @@ pl = classdiff_best |>
             color = {value = "#"*hex(darkgray)},
             x = {datum = "global"},
             y = {datum = yrange[1]},
-            text = {datum = ["Less distinct", "response during switch"]}
+            text = {datum = ["Less distinct", "response near switch"]}
         ) +
         @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
             dx = -2barwidth - 17, dy = -24},
             color = {value = "#"*hex(darkgray)},
             x = {datum = "global"},
             y = {datum = yrange[2]},
-            text = {datum = ["More distinct", "response during switch"]}
+            text = {datum = ["More distinct", "response near switch"]}
         )
     ) +
     (
@@ -395,21 +395,21 @@ pl = @_ target_timeline |>
         ) +
         (
             @vlplot(data = {values = [{}]}) +
-            @vlplot({:rule, strokeDash = [4 4], size = 1},
-                x = {datum = nearsplit},
-                color = {value = "black"}
+            # @vlplot({:rule, strokeDash = [4 4], size = 1},
+            #     x = {datum = nearsplit},
+            #     color = {value = "black"}
+            # ) +
+            @vlplot({:text, fontSize = 9, align = :right, dx = 2, baseline = "bottom"},
+                x = {datum = 1.5},
+                y = {datum = 0.5},
+                text = {value = "Far"},
+                color = {value = "#"*hex(darkgray)}
             ) +
-            @vlplot({:text, fontSize = 9, align = :left, dx = 2},
-                x = {datum = nearsplit},
-                y = {datum = 0.55},
-                text = {value = "Far ▶"},
-                color = {value = "black"}
-            ) +
-            @vlplot({:text, fontSize = 9, align = :right, dx = -2},
-                x = {datum = nearsplit},
-                y = {datum = 0.55},
-                text = {value = "◀ Near"},
-                color = {value = "black"}
+            @vlplot({:text, fontSize = 9, align = :left, dx = 2, baseline = "bottom"},
+                x = {datum = 0},
+                y = {datum = 0.5},
+                text = {value = "Near"},
+                color = {value = "#"*hex(darkgray)}
             )
         )
     );
