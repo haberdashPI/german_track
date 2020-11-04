@@ -392,60 +392,6 @@ pl = classdiff_best |>
     );
 pl |> save(joinpath(dir, "switch_target_earlylate.svg"))
 
-# Absolute values
-# -----------------------------------------------------------------
-
-summary = @_ classdiffs |>
-    stack(__, [:mean, :nullmean], [:target_time_label, :condition, :sid],
-        variable_name = :modeltype, value_name = :prop) |>
-    groupby(__, [:target_time_label, :condition, :modeltype]) |>
-    combine(__,
-        :prop => mean => :prop,
-        :prop => (x -> lowerboot(x; alpha = 0.318)) => :lower,
-        :prop => (x -> upperboot(x; alpha = 0.318)) => :upper
-    ) |>
-    transform!(__, :modeltype => (x -> replace(string.(x), "mean" => "pmean")) => :modeltype)
-
-ytitle = "Accuracy"
-barwidth = 10
-pl = summary |>
-    @vlplot(
-        # width = 121, #autosize = "fit",
-        facet = {column = {field = :target_time_label, type = "nominal", title = nothing}},
-        config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
-        }
-    ) + (
-        @vlplot() +
-        @vlplot({:bar, xOffset = -(barwidth/2)},
-            transform = [{filter = "datum.modeltype == 'pmean'"}],
-            # color = {value = "#"*hex(neurtral)},
-            color = {:condition, title = nothing, scale = {range ="#".*hex.(colors)}},
-            x = {:condition, title = nothing},
-            y = {:prop, title = ytitle, scale = {domain = [0.3,0.8]}}
-        ) +
-        @vlplot({:rule, xOffset = -(barwidth/2)},
-            transform = [{filter = "datum.modeltype == 'pmean'"}],
-            color = {value = "black"},
-            x = {:condition, title = nothing},
-            y = {:lower, title = ytitle}, y2 = :upper
-        ) +
-        @vlplot({:bar, xOffset = (barwidth/2)},
-            transform = [{filter = "datum.modeltype == 'nullmean'"}],
-            color = {value = "#"*hex(neurtral)},
-            x = {:condition, title = nothing},
-            y = {:prop, title = ytitle}
-        ) +
-        @vlplot({:rule, xOffset = (barwidth/2)},
-            transform = [{filter = "datum.modeltype == 'nullmean'"}],
-            color = {value = "black"},
-            x = {:condition, title = nothing},
-            y = {:lower, title = ytitle}, y2 = :upper
-        )
-    );
-pl |> save(joinpath(dir, "switch_target_absolute_earlylate.svg"))
-
 # Combine early/late plots
 # -----------------------------------------------------------------
 
