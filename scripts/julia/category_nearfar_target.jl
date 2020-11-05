@@ -254,11 +254,6 @@ classdiffs |>
         )
     ) |> save(joinpath(dir, "switch_target_earlylate_multibreak.svg"))
 
-best_break_df |> @vlplot() +
-@vlplot(:rule,
-    x = :early_break,
-) |> save(joinpath(dir, "test.svg"))
-
 classdiff_best =
     let l = logitshrink, C = mean(l.(nullmeans.nullmean)), tocor = x -> logistic(x + C)
 
