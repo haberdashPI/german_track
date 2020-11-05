@@ -230,7 +230,7 @@ means = @_ indmeans |>
 
 barwidth = 18
 ytitle = "Hit Rate"
-yrange = [0.4, 1]
+yrange = [0, 1]
 pl = means |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
@@ -1131,7 +1131,7 @@ end
 
 ytitle = ["Neural Salience-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
-yrange = [0.4, 1]
+yrange = [0, 1]
 pl = classdiffs |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
@@ -1218,7 +1218,7 @@ means = @_ CSV.read(joinpath(processed_datadir("plots"),
     transform!(__, [:condition, :target_time] => ByRow(string) => :condition_time)
 
 barwidth = 8
-yrange = [0.4, 1]
+yrange = [0, 1]
 pl = means |>
     @vlplot(
         # width = 121,
