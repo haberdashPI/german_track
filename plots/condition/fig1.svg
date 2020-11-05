@@ -79,9 +79,9 @@
                   </g>
                 </g>
                 <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label=": global; Response Rate: 0.695934139785; condition: global" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,54.12372311827957h20v123.87627688172043h-20Z" fill="#3E2716"/>
-                  <path aria-label=": spatial; Response Rate: 0.794946236559; condition: spatial" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,36.49956989247308h20v141.5004301075269h-20Z" fill="#F6D470"/>
-                  <path aria-label=": object; Response Rate: 0.854193548387; condition: object" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.953548387096745h20v152.04645161290324h-20Z" fill="#DE754F"/>
+                  <path aria-label=": global; Response Rate: 0.695934139785; condition: global" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,54.12372311827957h20v123.87627688172043h-20Z" fill="#411E4A"/>
+                  <path aria-label=": spatial; Response Rate: 0.794946236559; condition: spatial" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,36.49956989247308h20v141.5004301075269h-20Z" fill="#9BBA95"/>
+                  <path aria-label=": object; Response Rate: 0.854193548387; condition: object" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.953548387096745h20v152.04645161290324h-20Z" fill="#8D7B82"/>
                 </g>
                 <g class="mark-rect role-mark layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
                   <path aria-label=": global; Mean of prop: 0.297580645161" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,125.03064516129035h20v52.96935483870965h-20Z" fill="#5C5C5C"/>
@@ -89,14 +89,14 @@
                   <path aria-label=": object; Mean of prop: 0.231505376344" role="graphics-symbol" aria-roledescription="bar" d="M102.5,136.7920430107527h20v41.20795698924729h-20Z" fill="#5C5C5C"/>
                 </g>
                 <g class="mark-rule role-mark layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label=": 0.66938844086; upper: 0.721337365591" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,58.848857526881694)" x2="0" y2="-9.24690860215047" stroke="black"/>
-                  <line aria-label=": 0.757580645161; upper: 0.834731182796" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,43.150645161290285)" x2="0" y2="-13.732795698924733" stroke="black"/>
-                  <line aria-label=": 0.828494623656; upper: 0.880860215054" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,30.527956989247254)" x2="0" y2="-9.321075268817186" stroke="black"/>
+                  <line aria-label=": 0.670327620968; upper: 0.721303763441" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,58.68168346774198)" x2="0" y2="-9.073753360215086" stroke="black"/>
+                  <line aria-label=": 0.757419354839; upper: 0.834247311828" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,43.179354838709614)" x2="0" y2="-13.675376344085976" stroke="black"/>
+                  <line aria-label=": 0.828169354839; upper: 0.880860215054" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,30.585854838709636)" x2="0" y2="-9.378973118279568" stroke="black"/>
                 </g>
                 <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label=": 0.244623655914; upper: 0.347849462366" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.4569892473119)" x2="0" y2="-18.374193548387126" stroke="black"/>
-                  <line aria-label=": 0.258064516129; upper: 0.331721774194" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,132.0645161290323)" x2="0" y2="-13.110991935483867" stroke="black"/>
-                  <line aria-label=": 0.199784946237; upper: 0.261829301075" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,142.43827956989247)" x2="0" y2="-11.043895161290294" stroke="black"/>
+                  <line aria-label=": 0.243679435484; upper: 0.349193548387" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.62506048387098)" x2="0" y2="-18.78151209677415" stroke="black"/>
+                  <line aria-label=": 0.25784811828; upper: 0.33188172043" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,132.10303494623662)" x2="0" y2="-13.177981182795719" stroke="black"/>
+                  <line aria-label=": 0.2; upper: 0.261883064516" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,142.4)" x2="0" y2="-11.015185483870965" stroke="black"/>
                 </g>
                 <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text aria-label=": global; Mean of prop: 0.695934139785" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,54.12372311827957) rotate(-90) translate(0,-24)" font-family="sans-serif" font-size="9px" fill="black">Hits</text>
@@ -127,16 +127,16 @@
     </g>
     <g transform="translate(0, 225) scale(1) ">
       <g class="marks" transform="translate(0, 15) scale(1) "><defs><pattern id="mix2_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#DE754F;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#F6D470;"/>
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#8D7B82;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#9BBA95;"/>
 </pattern>
 <pattern id="mix1_2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#3E2716;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#DE754F;"/>
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#411E4A;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#8D7B82;"/>
 </pattern>
 <pattern id="mix1_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#3E2716;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#F6D470;"/>
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#411E4A;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#9BBA95;"/>
 </pattern>
 </defs>
   <rect width="252" height="210" fill="white"/>
