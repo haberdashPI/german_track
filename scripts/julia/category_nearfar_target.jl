@@ -206,25 +206,10 @@ nullmean, classdiffs, rawdata =
     logistic(C), meandata, rawdata
 end
 
-classdiffs |>
-    @vlplot(
-        facet = {row = {field = :condition}},
-    ) + (
-        @vlplot() +
-        @vlplot(:line,
-            color = :target_time_label,
-            x = :switch_break,
-            y = :mean
-        ) +
-        @vlplot(:errorband,
-            color = :target_time_label,
-            x = :switch_break,
-            y = :lower, y2 = :upper
-        )
-    ) |> save(joinpath(dir, "switch_target_earlylate_multibreak.svg"))
+classdiffs[!, :early_break] = switchclass[classdiffs.switch_break.+1]
 
 # select the best break value by fold
-best_breaks = @_ rawdata |>
+best_break_df = @_ rawdata |>
     groupby(__, [:fold, :switch_break]) |>
     combine(__, :logitmeandiff => mean => :mean,
                 [:condition, :target_time_label] =>
@@ -232,7 +217,47 @@ best_breaks = @_ rawdata |>
     filter(_.condcount == 6, __) |> # only consider values with the complete conditions covered
     groupby(__, :fold) |>
     combine(__, [:switch_break, :mean] => ((b, mean) -> b[argmax(mean)]) => :best) |>
-    Dict(r.fold => r.best for r in eachrow(__))
+    transform!(__, :best => ByRow(x -> switchclass[x + 1]) => :early_break)
+
+best_breaks = @_ best_break_df |> Dict(r.fold => r.best for r in eachrow(__))
+
+classdiffs |>
+    @vlplot(
+        facet = {row = {field = :condition, title = ""}},
+    ) + (
+        @vlplot() +
+        @vlplot(:line,
+            color = :target_time_label,
+            x = {:early_break, title = "Early/Late Divide (s)", scale = {domain = [0, 2.5]}},
+            y = {:mean, title = ["Classsification Accuracy", "(Null Mean Corrected)"]}
+        ) +
+        @vlplot(:point,
+            color = :target_time_label,
+            x = :early_break,
+            y = {:mean, title = ""}
+        ) +
+        @vlplot(:errorband,
+            color = :target_time_label,
+            x = :early_break,
+            y = {:lower, title = ""}, y2 = :upper
+        ) + (
+            best_break_df |> @vlplot() +
+            @vlplot({:rule, strokeDash = [2,2]},
+                x = :early_break,
+            ) +
+            @vlplot({:text, align = :left, fontSiz = 9, xOffset = 2},
+                transform = [{calculate = "'Fold '+datum.fold", as = :fold_label}],
+                x = :early_break,
+                y = {datum = 0.2},
+                text = :fold_label
+            )
+        )
+    ) |> save(joinpath(dir, "switch_target_earlylate_multibreak.svg"))
+
+best_break_df |> @vlplot() +
+@vlplot(:rule,
+    x = :early_break,
+) |> save(joinpath(dir, "test.svg"))
 
 classdiff_best =
     let l = logitshrink, C = mean(l.(nullmeans.nullmean)), tocor = x -> logistic(x + C)
