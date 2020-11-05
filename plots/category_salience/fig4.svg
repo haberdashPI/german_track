@@ -170,9 +170,9 @@
                         </g>
                       </g>
                       <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip1_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label=": global; Hit Rate: 0.539135802469; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M7.833333333333336,115.21604938271602h8v134.78395061728398h-8Z" fill="#114A43"/>
-                        <path aria-label=": spatial; Hit Rate: 0.651419753086; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M71.16666666666667,87.145061728395h8v162.854938271605h-8Z" fill="#CDB53D"/>
-                        <path aria-label=": object; Hit Rate: 0.743148148148; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M39.5,64.212962962963h8v185.787037037037h-8Z" fill="#617D14"/>
+                        <path aria-label=": global; Hit Rate: 0.539135802469; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M7.833333333333336,115.21604938271602h8v134.78395061728398h-8Z" fill="#0F3C5F"/>
+                        <path aria-label=": spatial; Hit Rate: 0.651419753086; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M71.16666666666667,87.145061728395h8v162.854938271605h-8Z" fill="#FBA689"/>
+                        <path aria-label=": object; Hit Rate: 0.743148148148; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M39.5,64.212962962963h8v185.787037037037h-8Z" fill="#818232"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : 0.488509252438; upperc: 0.5897623525" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(11.833333333333336,127.872686890471)" x2="0" y2="-25.313275015509987" stroke="black"/>
@@ -180,9 +180,9 @@
                         <line aria-label="condition: object; : 0.694709003778; upperc: 0.791587292518" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(43.5,76.32274905545574)" x2="0" y2="-24.219572184985495" stroke="black"/>
                       </g>
                       <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip2_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label="condition: global; : 0.73680655764; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M15.833333333333336,65.79836059002726h8v184.20163940997276h-8Z" fill="#225539"/>
-                        <path aria-label="condition: spatial; : 0.775727513228; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M79.16666666666667,56.06812169312175h8v193.93187830687825h-8Z" fill="#E9CF6D"/>
-                        <path aria-label="condition: object; : 0.833174603175; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M47.5,41.706349206349245h8v208.29365079365076h-8Z" fill="#808D04"/>
+                        <path aria-label="condition: global; : 0.73680655764; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M15.833333333333336,65.79836059002726h8v184.20163940997276h-8Z" fill="#185562"/>
+                        <path aria-label="condition: spatial; : 0.775727513228; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M79.16666666666667,56.06812169312175h8v193.93187830687825h-8Z" fill="#FDB8C1"/>
+                        <path aria-label="condition: object; : 0.833174603175; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M47.5,41.706349206349245h8v208.29365079365076h-8Z" fill="#B38E2F"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : 0.689368776483; upperc: 0.784244338796" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.833333333333336,77.65780587915974)" x2="0" y2="-23.71889057826499" stroke="black"/>
@@ -216,9 +216,9 @@
                         </g>
                       </g>
                       <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip3_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label=": global; Hit Rate: 0.530120481928; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M7.833333333333336,117.46987951807225h8v132.53012048192775h-8Z" fill="#114A43"/>
-                        <path aria-label=": spatial; Hit Rate: 0.704819277108; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M71.16666666666667,73.79518072289152h8v176.20481927710847h-8Z" fill="#CDB53D"/>
-                        <path aria-label=": object; Hit Rate: 0.892857142857; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M39.5,26.785714285714242h8v223.21428571428575h-8Z" fill="#617D14"/>
+                        <path aria-label=": global; Hit Rate: 0.530120481928; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M7.833333333333336,117.46987951807225h8v132.53012048192775h-8Z" fill="#0F3C5F"/>
+                        <path aria-label=": spatial; Hit Rate: 0.704819277108; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M71.16666666666667,73.79518072289152h8v176.20481927710847h-8Z" fill="#FBA689"/>
+                        <path aria-label=": object; Hit Rate: 0.892857142857; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M39.5,26.785714285714242h8v223.21428571428575h-8Z" fill="#818232"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : 0.437911270305; upperc: 0.62232969355" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(11.833333333333336,140.5221824237335)" x2="0" y2="-46.10460581132226" stroke="black"/>
@@ -226,9 +226,9 @@
                         <line aria-label="condition: object; : 0.77619047619; upperc: 1.00952380952" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(43.5,55.952380952381006)" x2="0" y2="-58.33333333333348" stroke="black"/>
                       </g>
                       <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip4_behavior_hitrate)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label="condition: global; : 0.769470899471; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M15.833333333333336,57.632275132275254h8v192.36772486772475h-8Z" fill="#225539"/>
-                        <path aria-label="condition: spatial; : 0.789761904762; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M79.16666666666667,52.55952380952375h8v197.44047619047626h-8Z" fill="#E9CF6D"/>
-                        <path aria-label="condition: object; : 0.860119047619; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M47.5,34.970238095238h8v215.02976190476198h-8Z" fill="#808D04"/>
+                        <path aria-label="condition: global; : 0.769470899471; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M15.833333333333336,57.632275132275254h8v192.36772486772475h-8Z" fill="#185562"/>
+                        <path aria-label="condition: spatial; : 0.789761904762; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M79.16666666666667,52.55952380952375h8v197.44047619047626h-8Z" fill="#FDB8C1"/>
+                        <path aria-label="condition: object; : 0.860119047619; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M47.5,34.970238095238h8v215.02976190476198h-8Z" fill="#B38E2F"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : 0.719343769859; upperc: 0.819598029083" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.833333333333336,70.16405753533925)" x2="0" y2="-25.063564806128255" stroke="black"/>
@@ -449,9 +449,9 @@
                         </g>
                       </g>
                       <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip1_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label=": global; Hit Rate Angle: 20.3718498776; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,65.42716707480467h8v67.90616625852864h-8Z" fill="#114A43"/>
-                        <path aria-label=": spatial; Hit Rate Angle: 27.8646272068; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,40.45124264390466h8v92.88209068942865h-8Z" fill="#CDB53D"/>
-                        <path aria-label=": object; Hit Rate Angle: 36.1794818939; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,12.735060353500344h8v120.59827297983297h-8Z" fill="#617D14"/>
+                        <path aria-label=": global; Hit Rate Angle: 20.3718498776; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,65.42716707480467h8v67.90616625852864h-8Z" fill="#0F3C5F"/>
+                        <path aria-label=": spatial; Hit Rate Angle: 27.8646272068; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,40.45124264390466h8v92.88209068942865h-8Z" fill="#FBA689"/>
+                        <path aria-label=": object; Hit Rate Angle: 36.1794818939; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,12.735060353500344h8v120.59827297983297h-8Z" fill="#818232"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : 17.4531610963; upperc: 23.015889281" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,75.15612967911566)" x2="0" y2="-18.542427282458" stroke="black"/>
@@ -459,9 +459,9 @@
                         <line aria-label="condition: object; : 31.5216042172; upperc: 39.6474659247" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,28.261319275927338)" x2="0" y2="-27.08620569153068" stroke="black"/>
                       </g>
                       <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip2_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label="condition: global; : 0.920697947122; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,130.26434017625957h8v3.0689931570737485h-8Z" fill="#225539"/>
-                        <path aria-label="condition: spatial; : 7.37262114003; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,108.75792953323963h8v24.57540380009368h-8Z" fill="#E9CF6D"/>
-                        <path aria-label="condition: object; : 23.9326144136; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,53.55795195452933h8v79.77538137880398h-8Z" fill="#808D04"/>
+                        <path aria-label="condition: global; : 0.920697947122; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,130.26434017625957h8v3.0689931570737485h-8Z" fill="#185562"/>
+                        <path aria-label="condition: spatial; : 7.37262114003; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,108.75792953323963h8v24.57540380009368h-8Z" fill="#FDB8C1"/>
+                        <path aria-label="condition: object; : 23.9326144136; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,53.55795195452933h8v79.77538137880398h-8Z" fill="#B38E2F"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : -4.21175228597; upperc: 6.0408399781" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,147.3725076198961)" x2="0" y2="-34.175307546892384" stroke="black"/>
@@ -496,9 +496,9 @@
                         </g>
                       </g>
                       <g class="mark-rect role-mark child_layer_0_marks" clip-path="url(#clip3_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label=": global; Hit Rate Angle: -1.93866660541; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,133.33333333333331h8v6.462222018025756h-8Z" fill="#114A43"/>
-                        <path aria-label=": spatial; Hit Rate Angle: 0.329608373197; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,132.2346387560093h8v1.0986945773240109h-8Z" fill="#CDB53D"/>
-                        <path aria-label=": object; Hit Rate Angle: 1.19443117835; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,129.35189607217396h8v3.981437261159357h-8Z" fill="#617D14"/>
+                        <path aria-label=": global; Hit Rate Angle: -1.93866660541; condition_time: globalearly" role="graphics-symbol" aria-roledescription="bar" d="M8.33333333333334,133.33333333333331h8v6.462222018025756h-8Z" fill="#0F3C5F"/>
+                        <path aria-label=": spatial; Hit Rate Angle: 0.329608373197; condition_time: spatialearly" role="graphics-symbol" aria-roledescription="bar" d="M73.66666666666667,132.2346387560093h8v1.0986945773240109h-8Z" fill="#FBA689"/>
+                        <path aria-label=": object; Hit Rate Angle: 1.19443117835; condition_time: objectearly" role="graphics-symbol" aria-roledescription="bar" d="M41,129.35189607217396h8v3.981437261159357h-8Z" fill="#818232"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : -3.47902914473; upperc: -0.28892606718" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(12.33333333333334,144.93009714910886)" x2="0" y2="-10.633676925175394" stroke="black"/>
@@ -506,9 +506,9 @@
                         <line aria-label="condition: object; : -0.1846784599; upperc: 2.51908716891" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(45,133.94892819966583)" x2="0" y2="-9.012552096047258" stroke="black"/>
                       </g>
                       <g class="mark-rect role-mark child_layer_2_marks" clip-path="url(#clip4_behavior_angle)" role="graphics-object" aria-roledescription="rect mark container">
-                        <path aria-label="condition: global; : -0.668319123162; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,133.33333333333331h8v2.2277304105398343h-8Z" fill="#225539"/>
-                        <path aria-label="condition: spatial; : 0.810763639741; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,130.6307878675315h8v2.702545465801819h-8Z" fill="#E9CF6D"/>
-                        <path aria-label="condition: object; : -0.0342627646249; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,133.33333333333331h8v0.11420921541647999h-8Z" fill="#808D04"/>
+                        <path aria-label="condition: global; : -0.668319123162; condition_time: globallate" role="graphics-symbol" aria-roledescription="bar" d="M16.33333333333334,133.33333333333331h8v2.2277304105398343h-8Z" fill="#185562"/>
+                        <path aria-label="condition: spatial; : 0.810763639741; condition_time: spatiallate" role="graphics-symbol" aria-roledescription="bar" d="M81.66666666666667,130.6307878675315h8v2.702545465801819h-8Z" fill="#FDB8C1"/>
+                        <path aria-label="condition: object; : -0.0342627646249; condition_time: objectlate" role="graphics-symbol" aria-roledescription="bar" d="M49,133.33333333333331h8v0.11420921541647999h-8Z" fill="#B38E2F"/>
                       </g>
                       <g class="mark-rule role-mark child_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
                         <line aria-label="condition: global; : -3.68967699446; upperc: 2.34581068538" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(20.33333333333334,145.63225664821582)" x2="0" y2="-20.118292266149624" stroke="black"/>
@@ -640,24 +640,24 @@
                   </g>
                 </g>
                 <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1_neural)" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="condition_time: globalearly; : global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.868311150878" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,21.50917868997247h14v141.82415464336088h-14Z" fill="#114A43"/>
-                  <path aria-label="condition_time: objectearly; : object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.670400278781" role="graphics-symbol" aria-roledescription="bar" d="M66,53.834621132488486h14v109.49871220084486h-14Z" fill="#617D14"/>
-                  <path aria-label="condition_time: spatialearly; : spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.539079004161" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,75.28376265367196h14v88.04957067966139h-14Z" fill="#CDB53D"/>
+                  <path aria-label="condition_time: globalearly; : global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.868311150878" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,21.50917868997247h14v141.82415464336088h-14Z" fill="#0F3C5F"/>
+                  <path aria-label="condition_time: objectearly; : object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.670400278781" role="graphics-symbol" aria-roledescription="bar" d="M66,53.834621132488486h14v109.49871220084486h-14Z" fill="#818232"/>
+                  <path aria-label="condition_time: spatialearly; : spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.539079004161" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,75.28376265367196h14v88.04957067966139h-14Z" fill="#FBA689"/>
                 </g>
                 <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="condition: global; : 0.831853748259; upper: 0.898203134785" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.66666666666667,27.46388778436314)" x2="0" y2="-10.837066465838873" stroke="black"/>
-                  <line aria-label="condition: object; : 0.65732297459; upper: 0.682989670466" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,55.970580817047036)" x2="0" y2="-4.192226993236332" stroke="black"/>
-                  <line aria-label="condition: spatial; : 0.458239387829; upper: 0.616013472006" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,88.48756665461137)" x2="0" y2="-25.769767082230942" stroke="black"/>
+                  <line aria-label="condition: global; : 0.830901091488; upper: 0.898147636374" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.66666666666667,27.61948839029293)" x2="0" y2="-10.983602331450715" stroke="black"/>
+                  <line aria-label="condition: object; : 0.657437701821; upper: 0.683095885495" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,55.95184203586079)" x2="0" y2="-4.190836666635384" stroke="black"/>
+                  <line aria-label="condition: spatial; : 0.457187109232; upper: 0.616522431555" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,88.65943882551562)" x2="0" y2="-26.02476931284955" stroke="black"/>
                 </g>
                 <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2_neural)" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label="condition_time: globallate; condition: global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.740029726618" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,42.46181131907746h14v120.87152201425587h-14Z" fill="#225539"/>
-                  <path aria-label="condition_time: objectlate; condition: object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.691793818573" role="graphics-symbol" aria-roledescription="bar" d="M80,50.34034296640276h14v112.99299036693058h-14Z" fill="#808D04"/>
-                  <path aria-label="condition_time: spatiallate; condition: spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.553904861226" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,72.86220599970075h14v90.4711273336326h-14Z" fill="#E9CF6D"/>
+                  <path aria-label="condition_time: globallate; condition: global; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.740029726618" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,42.46181131907746h14v120.87152201425587h-14Z" fill="#185562"/>
+                  <path aria-label="condition_time: objectlate; condition: object; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.691793818573" role="graphics-symbol" aria-roledescription="bar" d="M80,50.34034296640276h14v112.99299036693058h-14Z" fill="#B38E2F"/>
+                  <path aria-label="condition_time: spatiallate; condition: spatial; Neural Salience-Classification, Accuracy (Null Model Corrected): 0.553904861226" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,72.86220599970075h14v90.4711273336326h-14Z" fill="#FDB8C1"/>
                 </g>
                 <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="condition: global; : 0.72311125558; upper: 0.756094495531" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(33.66666666666667,45.22516158855735)" x2="0" y2="-5.387262525353513" stroke="black"/>
-                  <line aria-label="condition: object; : 0.613246930657; upper: 0.762672514931" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(87,63.16966799264567)" x2="0" y2="-24.406178764780208" stroke="black"/>
-                  <line aria-label="condition: spatial; : 0.409626928125; upper: 0.685793234741" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(140.33333333333334,96.42760173951189)" x2="0" y2="-45.107163413842876" stroke="black"/>
+                  <line aria-label="condition: global; : 0.72295201181; upper: 0.756422133369" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(33.66666666666667,45.25117140433789)" x2="0" y2="-5.4667865212995395" stroke="black"/>
+                  <line aria-label="condition: object; : 0.614004770685; upper: 0.759176461081" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(87,63.04588745482339)" x2="0" y2="-23.71137609800416" stroke="black"/>
+                  <line aria-label="condition: spatial; : 0.40960981736; upper: 0.69041142263" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(140.33333333333334,96.43039649789921)" x2="0" y2="-45.864262194065006" stroke="black"/>
                 </g>
                 <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,98) rotate(-90) translate(0,-18)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
@@ -666,13 +666,13 @@
                   <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,98) rotate(-90) translate(0,23)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
                 </g>
                 <g class="mark-text role-mark layer_6_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text text-anchor="start" transform="translate(-18.33333333333333,128)" font-family="sans-serif" font-size="9px" fill="#424242">
+                  <text text-anchor="start" transform="translate(-18.33333333333333,128)" font-family="sans-serif" font-size="9px" fill="#3A3A3A">
                     <tspan>Less Distinct</tspan>
                     <tspan x="0" dy="11">Response to Salience</tspan>
                   </text>
                 </g>
                 <g class="mark-text role-mark layer_6_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text text-anchor="start" transform="translate(-18.33333333333333,-27)" font-family="sans-serif" font-size="9px" fill="#424242">
+                  <text text-anchor="start" transform="translate(-18.33333333333333,-27)" font-family="sans-serif" font-size="9px" fill="#3A3A3A">
                     <tspan>More Distict</tspan>
                     <tspan x="0" dy="11">Response to Salience</tspan>
                   </text>

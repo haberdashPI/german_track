@@ -40,7 +40,7 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
-colorat(i) = ColorSchemes.buda[range(0.1, 0.9, length = 3*3)][i]
+colorat(i) = ColorSchemes.batlow[range(0.1, 0.9, length = 3*3)][i]
 grayify(x) = let c = convert(LCHab, x)
     convert(RGB, LCHab(c.l, 0, 0))
 end
