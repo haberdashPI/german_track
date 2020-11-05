@@ -698,7 +698,7 @@
         </g>
       </g>
       <text x="2" y="10" font-size="12" font-family="Verdana" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">C</text>
-      <g transform="translate(220, 50) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+      <g transform="translate(220, 40) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
         <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
     </g>
     <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">

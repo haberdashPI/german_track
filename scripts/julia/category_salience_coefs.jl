@@ -1386,7 +1386,7 @@ fig = svg.Figure("89mm", "235mm",
         svg.SVG(joinpath(dir, "salience_earlylate.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(220,50)
+            scale(0.1).move(220,40)
     ).move(0, 235 + 235),
 ).scale(1.333).save(joinpath(dir, "fig4.svg"))
 
