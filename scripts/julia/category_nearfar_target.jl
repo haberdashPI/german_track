@@ -217,6 +217,7 @@ best_break_df = @_ rawdata |>
     filter(_.condcount == 6, __) |> # only consider values with the complete conditions covered
     groupby(__, :fold) |>
     combine(__, [:switch_break, :mean] => ((b, mean) -> b[argmax(mean)]) => :best) |>
+    transform!(__, :best => reverse => :best) |>
     transform!(__, :best => ByRow(x -> switchclass[x + 1]) => :early_break)
 
 best_breaks = @_ best_break_df |> Dict(r.fold => r.best for r in eachrow(__))
@@ -471,7 +472,7 @@ fig = svg.Figure("89mm", "160mm", # "240mm",
         svg.SVG(joinpath(dir, "switch_target_earlylate.svg")).move(0,15),
         svg.Text("B", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(220,35)
+            scale(0.1).move(220,30)
     ).move(0, 250),
 ).scale(1.333).save(joinpath(dir, "fig3.svg"))
 
