@@ -672,13 +672,13 @@ plhit = @_ plotfull |>
             scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
     @vlplot({:bar},
         y = {:mean,
-            scale = {domain = [0.5 ,1]},
+            scale = {domain = [0 ,1]},
             title = ytitle}) +
     @vlplot({:rule},
         color = {value = "black"},
         y2 = :upper,
         y = {:lower,
-            scale = {domain = [0.5 ,1]},
+            scale = {domain = [0 ,1]},
             title = ytitle})
     ) +
     (

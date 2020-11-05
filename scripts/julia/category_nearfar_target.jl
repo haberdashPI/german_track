@@ -274,7 +274,7 @@ end
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
-yrange = [0.35, 1.0]
+yrange = [0, 1.0]
 pl = classdiff_best |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
