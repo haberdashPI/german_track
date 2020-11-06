@@ -191,6 +191,7 @@ nullmean, classdiffs, rawdata =
         filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :switch_break]) |>
         transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
+        transform!(__, :mean => ByRow(l) => :logitmean) |>
         transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
 
@@ -272,6 +273,29 @@ classdiff_best =
         ) |>
         transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
 end
+
+rawbest = @_ rawdata |> filter(_.switch_break == best_breaks[_.fold], __)
+pl = rawbest |>
+    @vlplot(
+        facet = {column = {field = :condition}}
+    ) +
+    (
+        @vlplot() +
+        @vlplot({:point, filled = true},
+            x = {:logitnullmean, title = "Null Model Accuracy (Logit Scale)"},
+            y = {:logitmean, title = "Full Model Accuracy (Logit Scale)"},
+            color = :target_time_label, shape = :target_time_label
+        ) +
+        (
+            @vlplot(data = {values = [{x = -6, y = -6}, {x = 6, y = 6}]}) +
+            @vlplot({:line, clip = true, strokeDash = [2 2]},
+                color = {value = "black"},
+                x = {:x, scale = {domain = collect(extrema(rawbest.logitnullmean))}},
+                y = {:y, scale = {domain = collect(extrema(rawbest.logitmean))}}
+            )
+        )
+    );
+pl |>  save(joinpath(dir, "nearfar_earlylate_ind.svg"))
 
 ytitle = ["Neural Switch-Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14

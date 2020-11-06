@@ -10,6 +10,8 @@ options(mc.cores = parallel::detectCores())
 
 df = read.csv(file.path(processed_datadir,'analyses','nearfar_earlylate.csv'))
 
+ggplot(df, aes(x = logitnullmean, y = shrinkmean, color = target_time_label)) + facet_wrap(~condition)
+
 model = stan_glmer(shrinkmean ~ condition * target_time_label + (1 + logitnullmean | sid),
     family = mgcv::betar,
     data = df,
