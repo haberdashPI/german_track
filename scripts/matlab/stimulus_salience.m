@@ -3,6 +3,11 @@ run(fullfile('src','matlab','util','setup.m'));
 addpath(fullfile(base_dir,'src','matlab','salience'));
 addpath(stimulus_dir);
 
+pldir = fullfile(plot_dir, 'compute_salience');
+if ~exist(pldir, 'dir')
+    mkdir(plot_dir, 'compute_salience')
+end
+
 % read in the location of the targets
 config_file = fullfile(stim_datadir,'config.json');
 config = read_json(config_file);
@@ -48,8 +53,9 @@ for k = 1:length(salience)
     title(sprintf('Trial %02d',k))
     axis([0 max(t) minsalience maxsalience])
 end
+saveas(gcf, fullfile(pldir, 'salience'), 'png')
 
-% compute salience of the targets
+% compute salience of the targets, for analayses by salience
 target_salience = zeros(length(salience),1);
 
 for k = 1:length(salience)
@@ -63,4 +69,28 @@ stimulus_index = (1:length(target_salience))';
 salience = target_salience;
 writetable(table(stimulus_index,salience),...
     fullfile(stim_datadir,'target_salience.csv'));
+
+% I think the sample rate (~16Hz) of the salience measure is too coarse
+% for this to be helpful
+% % compute salience for each source, for decoding purposes
+% stimdir = fullfile(stim_datadir,'mixtures','testing','mixture_components');
+% files = dir(fullfile(stimdir,'*.wav'));
+
+% features = cell(1,length(files));
+% file_lengths = zeros(length(features),1);
+% for fi = 1:length(files)
+%     filename = fullfile(stimdir,char(files(fi).name))
+%     [audio,fs] = audioread(filename);
+%     file_lengths(fi) = size(audio,1) / fs;
+%     if fs ~= 22050
+%         error("Expected a sample rate of 22050. Resample the audio first.");
+%     end
+%     features{1,fi} = Calc_Salience_Features(filename)';
+% end
+
+% for fi = 1:length(files)
+%     filename = fullfile(stimdir,[char(files(fi).name(1:end-4)) '_salience.h5']);
+%     h5create(filename,'/salience',length(features{1,fi}));
+%     h5write(filename,'/salience',features{1,fi});
+% end
 

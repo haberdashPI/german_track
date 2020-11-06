@@ -21,6 +21,7 @@ global plot_dir;
 
 fprintf('Base directory is %s\n',base_dir);
 addpath(fullfile(base_dir,'src','matlab','external','noisetools','NoiseTools'));
+addpath(fullfile(base_dir,'src','matlab','external','nsltools'));
 addpath(fullfile(base_dir,'src','matlab','external','sofa','API_MO'));
 addpath(fullfile(base_dir,'src','matlab','util'));
 

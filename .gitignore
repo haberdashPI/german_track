@@ -29,6 +29,7 @@ plots/**/*.html
 plots/**/*.png
 
 src/matlab/external/**/*.mat
+tmpxxx
 
 data/raw
 _research/cache
