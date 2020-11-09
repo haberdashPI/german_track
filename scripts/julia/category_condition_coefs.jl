@@ -705,14 +705,19 @@ nullmean, plotfull =
         C = mean(l.(nullmeans.nullmean)),
         tocor = x -> logistic(x + C)
 
-    logistic(C),
-    @_ predictmeans |>
+
+    rawdata = @_ predictmeans |>
         filter(_.modeltype == "full", __) |>
         innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
         transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
-        transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname) |>
+        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+        transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
+        transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
+    CSV.write(joinpath(processed_datadir("analyses"), "eeg_condition.csv"), rawdata)
+
+    logistic(C), @_ rawdata |>
         groupby(__, [:compname, :hittype, :comparison]) |>
-            combine(__,
+        combine(__,
             :logitmeandiff => tocor ∘ mean => :mean,
             :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.05))) => :lower,
             :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.05))) => :upper,
