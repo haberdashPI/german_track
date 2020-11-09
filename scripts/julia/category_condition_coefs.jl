@@ -188,6 +188,70 @@ means |> @vlplot(
 ) |>
 save(joinpath(dir, "raw_sum_behavior.svg"))
 
+means_byexp = @_ summaries |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+    rename(__,:sbj_id => :sid) |>
+    select(__, :condition, :sid, :hr, :fr, :exp_id) |>
+    stack(__, [:hr, :fr], [:condition, :sid, :exp_id], variable_name = :type, value_name = :prop) |>
+    groupby(__, [:condition, :type, :exp_id]) |>
+    combine(__,
+        :prop => mean => :prop,
+        :prop => lowerboot => :lower,
+        :prop => upperboot => :upper
+    )
+
+barwidth = 20
+means_byexp |> @vlplot(
+    facet = {field = :exp_id, type = :nominal, title = "",
+        header = {labelExpr = "'Experiment '+datum.label"}},
+    config = {
+        legend = {disable = true},
+        bar = {discreteBandSize = barwidth},
+        facet = {columns = 3}
+    }) + (
+        @vlplot(
+            width = {step = 60},
+        ) +
+        @vlplot({:bar, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.type == 'hr'"}],
+            x = {:condition, axis = {title = "", labelAngle = 0,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:prop, type = :quantitative, aggregate = :mean,
+                    scale = {domain = [0, 1]}, title = "Response Rate"},
+            color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot({:bar, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.type == 'fr'"}],
+            x = {:condition, axis = {title = ""}},
+            y = {:prop, type = :quantitative, aggregate = :mean},
+            color = {value = "#"*hex(neutral)}) +
+        @vlplot({:rule, xOffset = -(barwidth/2)},
+            transform = [{filter = "datum.type == 'hr'"}],
+            color = {value = "black"},
+            x = {:condition, axis = {title = ""}},
+            y = {:lower, title = ""}, y2 = :upper
+        ) +
+        @vlplot({:rule, xOffset = (barwidth/2)},
+            transform = [{filter = "datum.type == 'fr'"}],
+            color = {value = "black"},
+            x = {:condition, axis = {title = ""}},
+            y = {:lower, title = ""}, y2 = :upper
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
+            transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
+            # x = {datum = "spatial"}, y = {datum = 0.},
+            x = {:condition, axis = {title = ""}},
+            y = {:prop, aggregate = :mean, type = :quantitative},
+            text = {value = "Hits"},
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+            transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
+            # x = {datum = "spatial"}, y = {datum = },
+            x = {:condition, axis = {title = ""}},
+            y = {datum = 0},
+            text = {value = "False Positives"},
+        )
+    ) |> save(joinpath(dir, "raw_sum_behavior_byexp.svg"))
+
 # Raw Behavioral Experiment Analysis
 # -----------------------------------------------------------------
 
