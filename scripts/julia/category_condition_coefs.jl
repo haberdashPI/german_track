@@ -128,11 +128,16 @@ ascondition = Dict(
     "object" => "object"
 )
 
-means = @_ summaries |>
+rawdata = @_ summaries |>
     transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
     rename(__,:sbj_id => :sid) |>
-    select(__, :condition, :sid, :hr, :fr) |>
-    stack(__, [:hr, :fr], [:condition, :sid], variable_name = :type, value_name = :prop) |>
+    select(__, :condition, :sid, :hr, :fr, :exp_id) |>
+    stack(__, [:hr, :fr], [:condition, :sid, :exp_id],
+        variable_name = :type, value_name = :prop)
+
+CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), rawdata)
+
+means = @_ rawdata |>
     groupby(__, [:condition, :type]) |>
     combine(__,
         :prop => mean => :prop,
