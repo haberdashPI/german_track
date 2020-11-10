@@ -17,15 +17,27 @@ model = stan_glmer(shrinkmean ~ condition * target_time_label + (1 + logitnullme
     data = df,
     iter = 4000)
 
-coefnames = p_direction(model)[[1]]
-pval = pd_to_p(p_direction(model)[[2]])
-# Yes: p-values are terrible, so bad in fact that stan_glmer refuses to compute them for you
-# Yes: we need to report them; that's the reality of the publication process right now
-knitr::kable(cbind(
-    round(summary(model)[coefnames,c(1,3)], digits = 2),
-    "p-value" = ifelse(pval < 1e-3, "<1e-3", round(pval, digits=3)),
-    "sig" = ifelse(pval <= 0.001,"***",
-            ifelse(pval <= 0.01, "**",
-            ifelse(pval <= 0.05, "*",
-            ifelse(pval <= 0.1,  "~",""))))))
+p = pp_check(model)
+ggsave(file.path(plot_dir, 'category_nearfar_target', 'eeg_pp_check.svg'), p)
 
+posterior_interval(matrix(c(predictive_error(model))))
+
+coefs = as.data.frame(model) %>%
+    mutate(
+        global_latediff = target_time_labellate,
+        object_latediff = target_time_labellate + `conditionobject:target_time_labellate`,
+        spatial_latediff = target_time_labellate + `conditionspatial:target_time_labellate`,
+    ) %>%
+    gather(global_latediff:spatial_latediff, key = 'comparison', value = 'value') %>%
+    group_by(comparison) %>%
+    summarize(
+        mean = mean(value),
+        meanint05 = posterior_interval(matrix(value))[,1],
+        meanint95 = posterior_interval(matrix(value))[,2],
+        pval = pd_to_p(p_direction(value))[[1]],
+        d = mean(value / `(phi)`),
+        dint05 = posterior_interval(matrix(value / `(phi)`))[,1],
+        dint95 = posterior_interval(matrix(value / `(phi)`))[,2],
+    )
+knitr::kable(coefs, digits = 3)
+print(coefs)
