@@ -1,3 +1,15 @@
+## plans
+
+- unpack merve's steps for a single subject,
+  why is it different than mine?
+- look at stripes for early late
+- set scales (0.5 - 1 mostly)
+- focus on angle for the buildup curve (don't need hit rate)
+- include angle in fig 4 (fig 3 data)
+- maybe a difference between neuarl
+- change y axis for neuarl data near/far
+- look into null model for late/spatial early/late condition
+
 ## new figure changes
 
 + show icons for eeg / behavior
@@ -13,6 +25,8 @@
         are categorized
     - the switch categorization is crucial; the "bad" way yields a more convincing result
     let's look into why...
+- we need to figure out what the raw data is for the continuous salience plot
+  (search through merve's code): maybe we can get away with this by just using one overall analysis that includes the salience term??
 
 - decoding:
 - pick range
