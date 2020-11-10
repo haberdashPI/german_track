@@ -132,11 +132,12 @@ if isfile(resultdf_earlylate_file) && mtime(resultdf_earlylate_file) > mtime(cla
 else
     factors = [:fold, :winlen, :winstart, :condition, :target_time_label, :switch_break]
     groups = groupby(classdf_earlylate, factors)
+    lambdas = 10.0 .^ range(-2, 0, length=100)
 
     progress = Progress(length(groups))
     function findclass((key, sdf))
         λ = λ_map[first(sdf.fold)]
-        result = testclassifier(LassoPathClassifiers([1.0, λ]),
+        result = testclassifier(LassoPathClassifiers(lambdas),
             data               = sdf,
             y                  = :target_switch_label,
             X                  = r"channel",
@@ -164,6 +165,37 @@ else
 
     ProgressMeter.finish!(progress)
     CSV.write(resultdf_earlylate_file, resultdf_earlylate)
+end
+
+# Plot by λ and switch_break
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf_earlylate |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label, :switch_break]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label, :switch_break]) |>
+    combine(__, :mean => mean => :mean) |>
+    transform!(__, :λ => ByRow(log) => :logλ)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, [:λ, :logλ])
+
+logitshrink = logit ∘ shrinktowards(0.5, by = 0.01)
+
+let l = logitshrink, C = mean(l.(nullmeans.nullmean)), tocor = x -> logistic(x + C)
+    rawdata = @_ classmeans_sum |>
+        filter(_.λ != 1.0, __) |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :switch_break]) |>
+        transform!(__, :nullmean => ByRow(l) => :logitnullmean) |>
+        transform!(__, :mean => ByRow(l) => :logitmean) |>
+        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff)
+
+    CSV.write(joinpath(processed_datadir("analyses"), "nearfar_lambda_switchbreak.csv"), rawdata)
 end
 
 # Plot salience by early/late targets
@@ -277,21 +309,21 @@ end
 rawbest = @_ rawdata |> filter(_.switch_break == best_breaks[_.fold], __)
 pl = rawbest |>
     @vlplot(
-        facet = {column = {field = :condition}}
+        facet = {column = {field = :condition, type = :nominal}}
     ) +
     (
         @vlplot() +
         @vlplot({:point, filled = true},
-            x = {:logitnullmean, title = "Null Model Accuracy (Logit Scale)"},
-            y = {:logitmean, title = "Full Model Accuracy (Logit Scale)"},
+            x = {"logitnullmean:q", title = "Null Model Accuracy (Logit Scale)"},
+            y = {"logitmean:q", title = "Full Model Accuracy (Logit Scale)"},
             color = :target_time_label, shape = :target_time_label
         ) +
         (
             @vlplot(data = {values = [{x = -6, y = -6}, {x = 6, y = 6}]}) +
             @vlplot({:line, clip = true, strokeDash = [2 2]},
                 color = {value = "black"},
-                x = {:x, scale = {domain = collect(extrema(rawbest.logitnullmean))}},
-                y = {:y, scale = {domain = collect(extrema(rawbest.logitmean))}}
+                x = {"x:q", scale = {domain = collect(extrema(rawbest.logitnullmean))}},
+                y = {"y:q", type = :quantitative, scale = {domain = collect(extrema(rawbest.logitmean))}}
             )
         )
     );
