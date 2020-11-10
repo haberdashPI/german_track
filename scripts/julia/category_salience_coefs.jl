@@ -219,6 +219,8 @@ indmeans = @_ summaries |>
     stack(__, [:high, :low], [:condition, :sid],
         variable_name = :salience_label, value_name = :prop)
 
+CSV.write(joinpath(processed_datadir("analyses"), "behavior_salience.csv"), indmeans)
+
 means = @_ indmeans |>
     groupby(__, [:condition, :salience_label]) |>
     combine(__,
@@ -611,17 +613,25 @@ pl |> save(joinpath(dir, "salience_timeline_hitmiss.svg"))
 # Job app plot
 # -----------------------------------------------------------------
 
-nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
-   logistic(C),
+nullmean, classdiffs =
+let l = logit ∘ shrinktowards(0.5, by = 0.01),
+    C = mean(l.(nullmeans.nullmean))
+    logistic(C),
     @_ classmeans_sum |>
         innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
         filter(_.λ != 1.0, __) |>
         transform!(__, :condition => ByRow(uppercasefirst) => :condition_label) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff)
+        transform!(__, [:mean, :nullmean] =>
+            ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
+        transform!(__, [:mean, :nullmean] =>
+            ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
+        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+        transform!(__, :nullmean => ByRow(l) => :logitnullmean)
 end
 
 timeslice = 2.8
+
+CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), classdiffs)
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"]
