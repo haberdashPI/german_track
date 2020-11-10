@@ -27,14 +27,14 @@ ggsave(file.path(plot_dir, 'condition', 'behavior_pp_check.svg'), p)
 posterior_interval(matrix(c(predictive_error(model))))
 
 coefs = as.data.frame(model) %>%
-    mutate(gvt_hr = typehr + conditionobject + `conditionobject:typehr`,
-           gvl_hr = typehr + conditionspatial + `conditionspatial:typehr`,
-           ovl_hr = conditionobject - conditionspatial +
+    mutate(gvo_hr = typehr + conditionobject + `conditionobject:typehr`,
+           gvs_hr = typehr + conditionspatial + `conditionspatial:typehr`,
+           ovs_hr = conditionobject - conditionspatial +
                 `conditionobject:typehr` - `conditionspatial:typehr`,
-           gvt_fr = conditionobject,
-           gvl_fr = conditionspatial,
-           ovl_fr = conditionobject - conditionspatial) %>%
-    gather(gvt_hr:ovl_fr, key = 'comparison', value = 'value') %>%
+           gvo_fr = conditionobject,
+           gvs_fr = conditionspatial,
+           ovs_fr = conditionobject - conditionspatial) %>%
+    gather(gvo_hrovs_fr, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
     summarize(
         mean = mean(value),
