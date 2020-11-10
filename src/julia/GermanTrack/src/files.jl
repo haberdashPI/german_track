@@ -2,13 +2,29 @@ export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
     load_directions, load_all_subjects, processed_datadir, raw_datadir,
     stimulus_dir, raw_stim_dir
 
+function mkpathfile(args...)
+    if length(args) == 0
+        return ""
+    end
+
+    if occursin(r"\.[a-z]+$", args[end])
+        if length(args) > 1
+            mkpath(joinpath(args[1:(end-1)]...))
+        end
+    else
+        mkpath(joinpath(args...))
+    end
+
+    joinpath(args...)
+end
+
 """
     processed_datadir(subdir1,subdir2,....)
 
 Get (and possibly create) a directory for processed data.
 """
 processed_datadir(args...) =
-    mkpath(joinpath(datadir(), "processed", args...))
+    mkpathfile(joinpath(datadir(), "processed", args...))
 """
     raw_datadir(subdir1,subdri2,...)
 
@@ -21,7 +37,7 @@ raw_datadir(args...) = joinpath(datadir(), "raw", args...)
 
 Get the directory where processed stimuli data are stored.
 """
-stimulus_dir() = processed_datadir("stimuli")
+stimulus_dir(args...) = processed_datadir("stimuli", args...)
 
 """
     raw_stim_dir()
