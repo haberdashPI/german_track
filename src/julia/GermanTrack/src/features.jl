@@ -476,7 +476,7 @@ return value of `load_all_subjects`. The windows should be created using the win
 functions (see above).
 
 """
-function compute_freqbins(subjects, groupdf, windows, reducerfn = foldxt;
+function compute_freqbins(;subjects, groupdf, windows, reducerfn = foldxt,
     kwds...)
 
     progress = Progress(length(groupdf) * length(windows),

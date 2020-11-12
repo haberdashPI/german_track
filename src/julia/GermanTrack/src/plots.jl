@@ -40,7 +40,7 @@ function addpatterns(filename, patterns::Dict{String,<:Any}; size=4)
     open(io -> prettyprint(io, vgplot), filename, write = true)
 end
 
-colorat(i) = ColorSchemes.batlow[range(0.1, 0.9, length = 3*3)][i]
+colorat(i) = ColorSchemes.batlow[range(0.1, 0.9, length = 3*5)][i]
 grayify(x) = let c = convert(LCHab, x)
     convert(RGB, LCHab(c.l, 0, 0))
 end
@@ -50,12 +50,12 @@ end
 
 The neurtral color used for "null" values in our plots
 """
-neutral = grayify(colorat(3))
+neutral = grayify(colorat(5))
 
 """
     darkgray
 
-The darkgray used to represent the default condition (Global)
+The darkgray used to represent some annotation text
 """
 darkgray = grayify(colorat(1))
 
@@ -64,9 +64,9 @@ darkgray = grayify(colorat(1))
 
 The three colors used to distinguish between the three conditions (Global, Object & Spatial)
 """
-colors = colorat([1, 5, 8])
+colors = colorat([1, 7, 12])
 
-lightdark = colorat([1, 2, 5, 6, 8, 9])
+lightdark = colorat([1, 3, 7, 9, 12, 14])
 
 """
     patterns
@@ -77,8 +77,19 @@ and Object v. Spatial.
 patterns = begin
     Dict(
         "mix1_2" => colorat([1,5]),
-        "mix1_3"    => colorat([1,8]),
-        "mix2_3"  => colorat([5,8])
+        "mix1_3" => colorat([1,8]),
+        "mix2_3" => colorat([5,8])
+    )
+end
+
+inpatterns = begin
+    Dict(
+        "stripe1a" => colorat([1,2]),
+        "stripe1b" => colorat([3,4]),
+        "stripe2a" => colorat([7,8]),
+        "stripe2b" => colorat([9,10]),
+        "stripe3a" => colorat([12,13]),
+        "stripe3b" => colorat([14,15]),
     )
 end
 

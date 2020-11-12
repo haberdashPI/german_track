@@ -1,5 +1,5 @@
-export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pickλ
-
+export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pickλ,
+    addfold!, splayby, mapgroups
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)
@@ -282,3 +282,121 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
     return test_fold_map, λ_map
 end
 
+"""
+    mapgroups(fn, groups, folder = foldxt; desc = "Progress")
+
+Apply `fn` to each group in a grouped data frame, in parallel (by default), `append!!`ing
+the returned values together. Set `folder = foldl` if you want to run the process in
+serial.
+
+Since this assumes a long running process, it creates a progress bar. You can change
+the description for the progress bar using `desc`.
+
+"""
+function mapgroups(fn, groups, folder = foldxt; desc = "Progress")
+    progress = Progress(length(groups), desc = desc)
+    function fn_((key,sdf))
+        result = fn(sdf)
+        if !isempty(result)
+            result[!, keys(key)] .= permutedims(collect(values(key)))
+        end
+        next!(progress)
+
+        result
+    end
+
+    folder(append!!, Map(fn_), collect(pairs(groups)))
+end
+
+"""
+    addfold!(df, n, col; rng = Random.GLOBAL_RNG)
+
+Insert a new column in dataframe `df` for the fold. There are `n` folds. The fold of a row
+is determined by the identity of the coluimn `col`.
+
+"""
+function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
+    train,test = folds(n, unique(df[:,col]), rng = rng)
+    train,test = Set.(train), Set.(test)
+    df[!, :fold] = map(colval -> findfirst(fold -> colval ∈ fold, train), df[:,col])
+    df[!, :test_fold] = map(colval -> findfirst(fold -> colval ∈ fold, test), df[:,col])
+
+    df
+end
+
+"""
+    splayby(df, groups, splay => (value1 => filterfn1, etc...))
+
+Create groups of the data where one of these groups' rows are not mutually exclusive with
+one another. The first two arguments are the same as those to `groupby` and work as
+expected. The `splay` argument specifies an additional group: it's name is `splay`, and the
+values of the group variable are `valueN`; group `valueN` contains all rows that match the
+filtering function `filterfnN`
+
+"""
+function splayby(df, groups, splays)
+    splay, pairs = splays
+    df[!, splay] .= first(first(pairs))
+    function filterby(pair)
+        result = filter(pair[2], df)
+        result[!, splay] .= pair[1]
+        result
+    end
+    foldxt(append!!, Map(filterby), collect(pairs))
+
+    groupby(df, vcat(groups, splay))
+end
+
+macro cache_results(file, args...)
+
+    body = args[end]
+    symbols = args[1:end-1]
+    if !@_ all(_ isa Symbol, symbols)
+        error("Expected variable names and a code body")
+    end
+
+    quote
+        begin
+            function run(ignore)
+                $(esc(body))
+                Dict($((map(x -> :($(QuoteNode(x)) => $(esc(x))), symbols))...))
+            end
+            results = if isfile($(esc(file)))
+                cleanup_json_data(open(io -> JSON3.read(io), $(esc(file))))
+            else
+                produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)
+            end
+
+            $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
+        end
+    end
+end
+
+cleanup_json_data(x) = x
+function cleanup_json_data(data::AbstractDict)
+    Dict(cleanup_key(k) => cleanup_json_data(v) for (k,v) in pairs(data))
+end
+function cleanup_key(x::Symbol)
+    if occursin(r"^[0-9-]+$", string(x))
+        parse(Int, string(x))
+    elseif occursin(r"^[0-9.-]+$", string(x))
+        parse(Float64, string(x))
+    else
+        x
+    end
+end
+cleanup_key(x) = x
+
+function cache_results_parser(filename)
+    @show filename
+    parts = splitpath(filename)
+    dir = joinpath(parts[1:(end-1)]...)
+    prefixmatch = match(r"^(.+)\.([a-z]+)$", parts[end])
+    if isnothing(prefixmatch)
+        error("Could not find filetype in file name.")
+    end
+    prefix = prefixmatch[1]
+    suffix = prefixmatch[2]
+
+    string.((dir, prefix, suffix))
+end

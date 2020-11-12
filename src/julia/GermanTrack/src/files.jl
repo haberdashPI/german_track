@@ -326,5 +326,3 @@ function load_directions(file)
         Directions(dir1, dir2, dir3, framerate)
     end
 end
-
-
