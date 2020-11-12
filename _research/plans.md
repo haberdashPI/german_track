@@ -1,13 +1,16 @@
 ## plans
 
-- unpack merve's steps for a single subject,
-  why is it different than mine?
-- look at stripes for early late
+nitpicks:
 - set scales (0.5 - 1 mostly)
+- change y axis labels for neuarl data near/far
+- look at stripes for early late
 - focus on angle for the buildup curve (don't need hit rate)
 - include angle in fig 4 (fig 3 data)
 - maybe a difference between neuarl
-- change y axis for neuarl data near/far
+
+analysis:
+- unpack merve's steps for a single subject,
+  why is it different than mine?
 - look into null model for late/spatial early/late condition
 
 ## new figure changes
