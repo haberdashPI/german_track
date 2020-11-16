@@ -2,16 +2,16 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="1.7976931348623157e+308" height="1.7976931348623157e+308" viewBox="0 0 1.7976931348623157e+308 1.7976931348623157e+308" version="1.1">
   <defs><pattern id="mix2_3" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#6F860C;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#C4AD31;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#3B6D56;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#818232;"/>
 </pattern>
 <pattern id="mix1_2" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#2A5A34;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#6F860C;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#3B6D56;"/>
 </pattern>
 <pattern id="mix1_3" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#2A5A34;"/>
-    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#C4AD31;"/>
+    <rect x="0" y="0" width="4" height="8" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="4" y="0" width="4" height="8" style="stroke:none;         fill:#818232;"/>
 </pattern>
 </defs>
   <rect width="1.7976931348623157e+308" height="1.7976931348623157e+308" fill="white"/>

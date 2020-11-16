@@ -5,7 +5,8 @@ using DrWatson; @quickactivate("german_track")
 
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
-    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding
+    StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding,
+    JSON3
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -102,8 +103,7 @@ GermanTrack.@cache_results file fold_map λ_map begin
 
     classdf = compute_freqbins(
         subjects = subjects,
-        groupdf = @_( events |>
-            filter(ishit(_, region = "target") == "hit", __) |>
+        groupdf = @_( events |> filter(ishit, __) |>
             groupby(__, [:sid, :condition])),
         windows = [windowtarget(len = len, start = start)
             for len in 2.0 .^ range(-1, 1, length = 10),
@@ -112,17 +112,17 @@ GermanTrack.@cache_results file fold_map λ_map begin
 
     resultdf = @_ classdf |>
         addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
-        splayby(__, [:winstart, :winlen, :fold], :comparison => (
-                "global-v-object"  => x -> x.condition in ["global", "object"],
-                "global-v-spatial" => x -> x.condition in ["global", "spatial"],
-                "object-v-spatial" => x -> x.condition in ["object", "spatial"],
-            )) |>
-        mapgroups(desc = "Computing classification accuracy...", function(sdf)
-            testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
-            X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
-            weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
-            on_model_exception = :print)
-        end, __)
+        filteringmap(__, [:winstart, :winlen, :fold], :comparison => (
+                "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+                "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+                "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+            ),
+            function(sdf, comparison)
+                testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
+                X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
+                weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
+                on_model_exception = :print)
+            end)
 
     fold_map, λ_map = pickλ(resultdf, 2, [:comparison, :winlen, :winstart], :comparison,
         smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02,
@@ -132,106 +132,65 @@ end
 # Different baseline models
 # =================================================================
 
-# TODO: stopped here
-
-# Features
-# -----------------------------------------------------------------
-
-classbasedf_file = joinpath(cache_dir("features"), savename("baseline-freqmeans",
-    (n_winlens = n_winlens, ), "csv"))
-
-if isfile(classbasedf_file)
-    classbasedf = CSV.read(classbasedf_file)
-else
-
+file = joinpath(processed_datadir("analyses"), "condition-and-baseline.json")
+GermanTrack.@cache_results file predictbasedf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-    classbasedf_groups = @_ events |>
-        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
-        groupby(__, [:sid, :condition, :hittype])
 
-    baseparams = (mindist = 0.5, minlength = 0.5, onempty = missing)
     windowtypes = [
         "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
         "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
             mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
 
-    windows = [
-        winfn(len = len, start = 0.0) for len in GermanTrack.spread(1, 0.5, n_winlens)
-        for (name, winfn) in windowtypes
-    ]
-
-    classbasedf = compute_freqbins(subjects, classbasedf_groups, windows)
-    CSV.write(classbasedf_file, classbasedf)
-    alert("Feature computation complete!")
-end
-
-# Classification for different baselines
-# -----------------------------------------------------------------
-
-classbasedf[!,:fold] = getindex.(Ref(fold_map), classbasedf.sid)
-classbasedf[!,:λ] = getindex.(Ref(λ_map), classbasedf.fold)
-
-modeltype = [
-    "full" => (
-        filterfn = @_(filter(_.windowtype == "target", __)),
-        λfn = df -> df.λ |> first
-    ),
-    "null" => (
-        filterfn = @_(filter(_.windowtype == "target", __)),
-        λfn = df -> 1.0,
-    ),
-    "random-labels" => (
-        filterfn = df ->
-            @_(df |> filter(_.windowtype == "target", __) |>
-                     groupby(__, [:sid, :winlen, :windowtype]) |>
-                     transform!(__, :condition => shuffle => :condition)),
-        λfn = df -> df.λ |> first
-    ),
-    "random-window-before" => (
-        filterfn = @_(filter(_.windowtype == "rndbefore", __)),
-        λfn = df -> df.λ |> first
-    ),
-    "random-trialtype" => (
-        filterfn = df ->
-            @_(df |> filter(_.windowtype == "target", __) |>
-                     groupby(__, [:sid, :condition, :winlen, :windowtype]) |>
-                     transform!(__, :hittype => shuffle => :hittype)),
-        λfn = df -> df.λ |> first
+    classdf = compute_freqbins(
+        subjects = subjects,
+        groupdf = @_(events |>
+            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+            groupby(__, [:sid, :condition, :hittype])),
+        windows = [
+            winfn(len = len, start = 0.0) for len in GermanTrack.spread(1, 0.5, n_winlens)
+            for (name, winfn) in windowtypes
+        ]
     )
-]
 
-comparisons = [
-    "global-v-object"  => @_(filter(_.condition ∈ ["global", "object"],  __)),
-    "global-v-spatial" => @_(filter(_.condition ∈ ["global", "spatial"], __)),
-    "object-v-spatial" => @_(filter(_.condition ∈ ["object", "spatial"], __)),
-]
-
-function bymodeltype(((key, df_), type, comp))
-    df = df_ |> comp[2] |> type[2].filterfn
-
-    result = testclassifier(LassoClassifier(type[2].λfn(df)),
-        data = df, y = :condition, X = r"channel",
-        crossval = :sid, n_folds = 10,
-        seed = stablehash(:cond_baseline,2019_11_18),
-        irls_maxiter = 100,
-        weight = :weight, on_model_exception = :throw
+    modeltypes = (
+        "full" => x -> x.windowtype == "target",
+        "null" => x -> x.windowtype == "target",
+        "random-labels" => x -> x.windowtype == "target",
+        "random-window-before" => x -> x.windowtype == "rndbefore",
+        "random-trialtype" => x -> x.windowtype == "target"
     )
-    if !isempty(result)
-        result[!, :modeltype]  .= type[1]
-        result[!, :comparison] .= comp[1]
-        for (k,v) in pairs(key)
-            result[!, k] .= v
-        end
-    end
 
-    return result
+    modelshufflers = Dict(
+        "random-labels" => df -> @_ (df |>
+            groupby(__, [:sid, :winlen, :windowtype]) |>
+            transform(__, :condition => shuffle => :condition)),
+        "random-trialtype" => df -> @_ (df |>
+            groupby(__, [:sid, :condition, :winlen, :windowtype]) |>
+            transform(__, :hittype => shuffle => :hittype))
+    )
+
+    predictbasedf = @_ classdf |>
+        addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :condition_baselines)) |>
+        groupby(__, [:winlen, :fold, :hittype]) |>
+        filteringmap(__,desc = "Computing classificaiton accuracy...",
+            :comparison => (
+                "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+                "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+                "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+            ),
+            :modeltype => modeltypes,
+            function (sdf, comparison, modeltype)
+                λ = modeltype == "null" ? 1.0 : λ_map[sdf.fold[1]]
+                sdf = get(modelshufflers, modeltype, identity)(sdf)
+                result = testclassifier(LassoClassifier(λ),
+                    data = sdf, y = :condition, X = r"channel",
+                    crossval = :sid, n_folds = 10,
+                    seed = stablehash(:cond_baseline,2019_11_18),
+                    irls_maxiter = 100,
+                    weight = :weight, on_model_exception = :throw)
+            end)
 end
-
-predictbasedf = @_ classbasedf |>
-    groupby(__, [:fold, :winlen, :hittype]) |> pairs |>
-    Iterators.product(__, modeltype, comparisons) |>
-    collect |> foldxt(append!!, Map(bymodeltype), __)
 
 # Main classification results
 # -----------------------------------------------------------------

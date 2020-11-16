@@ -1,5 +1,5 @@
 export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pickλ,
-    addfold!, splayby, mapgroups
+    addfold!, splayby, mapgroups, filteringmap
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)
@@ -325,27 +325,60 @@ function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 end
 
 """
-    splayby(df, groups, splay => (value1 => filterfn1, etc...))
+    filteringmap(df,filtering1 => (value1 => filterfn1, etc...), filtering2 => etc..., fn,
+        folder = foldxt, desc = "Progres...")
 
-Create groups of the data where one of these groups' rows are not mutually exclusive with
-one another. The first two arguments are the same as those to `groupby` and work as
-expected. The `splay` argument specifies an additional group: it's name is `splay`, and the
-values of the group variable are `valueN`; group `valueN` contains all rows that match the
-filtering function `filterfnN`
+Repeatedly map a function `fn` over a data frame or a grouped data frame, applying the
+function for each group and each set of filtersings. These filterings behave like the groups
+of a grouped data frame, but they can include rows are not mutually exlusive to one another.
+The `filtering` arguments specify the overlapping groups: group N's name is the value of
+`mapN`, and the values of the group variable are `valueK`; group `valueK` contains all rows
+that match the filtering function `filterfnK`
 
 """
-function splayby(df, groups, splays)
-    splay, pairs = splays
-    df[!, splay] .= first(first(pairs))
-    function filterby(pair)
-        result = filter(pair[2], df)
-        result[!, splay] .= pair[1]
+function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...")
+    fn = filterings_fn[end]
+    filterings = filterings_fn[1:(end-1)]
+
+    flattened = mapreduce(f -> collect(map(pair -> (f[1], pair...), f[2])),
+        Iterators.product, filterings) |> collect
+    groupings = filtermap_groupings(df, flattened)
+    progress = Progress(length(groupings), desc = desc)
+
+    function filtermap(((key, group), filterings))
+        filtered = group
+        for (name, val, filterfn) in filterings
+            filtered = filter(filterfn,filtered)
+        end
+
+        local result
+        if !isempty(filtered)
+            result = fn(group, getindex.(filterings, 3)...)
+            if !isempty(result)
+                for (name, val, filterfn) in filterings
+                    result[!, name] .= val
+                end
+                if !isempty(key)
+                    result[!, keys(key)] .= permutedims(collect(values(key)))
+                end
+            end
+        else
+            result = Empty(DataFrame)
+        end
+        next!(progress)
+
         result
     end
-    foldxt(append!!, Map(filterby), collect(pairs))
 
-    groupby(df, vcat(groups, splay))
+    folder(append!!, Map(filtermap), collect(groupings))
 end
+
+filtermap_groupings(df::GroupedDataFrame, flattened) =
+    Iterators.product(pairs(df), flattened) |> collect
+
+struct EmptyKey; end
+Base.isempty(x::EmptyKey) = true
+filtermap_groupings(df::DataFrame...) = map(x -> ((EmptyKey(), df), x), flattened)
 
 macro cache_results(file, args...)
 
@@ -359,12 +392,14 @@ macro cache_results(file, args...)
         begin
             function run(ignore)
                 $(esc(body))
-                Dict($((map(x -> :($(QuoteNode(x)) => $(esc(x))), symbols))...))
+                Dict($((map(x -> :($(QuoteNode(x)) => cleanup_forjson($(esc(x)))), symbols))...))
             end
             results = if isfile($(esc(file)))
                 cleanup_json_data(open(io -> JSON3.read(io), $(esc(file))))
             else
-                produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)
+                let (dir, prefix, suffix) = cache_results_parser($(esc(file)))
+                    produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)[1]
+                end
             end
 
             $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
@@ -372,9 +407,17 @@ macro cache_results(file, args...)
     end
 end
 
+function cleanup_forjson(x::DataFrame)
+    Dict(:isdataframe => true, :columns => JSONTables.ObjectTable(Tables.columns(x)))
+end
+
 cleanup_json_data(x) = x
 function cleanup_json_data(data::AbstractDict)
-    Dict(cleanup_key(k) => cleanup_json_data(v) for (k,v) in pairs(data))
+    if haskey(data, :isdataframe) && data[:isdataframe]
+        jsontable(data[:columns]) |> DataFrame
+    else
+        Dict(cleanup_key(k) => cleanup_json_data(v) for (k,v) in pairs(data))
+    end
 end
 function cleanup_key(x::Symbol)
     if occursin(r"^[0-9-]+$", string(x))

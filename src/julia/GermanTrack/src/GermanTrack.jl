@@ -10,7 +10,8 @@ module GermanTrack
 using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, Dates,
     Unitful, Distributions, CSV, Random, Statistics, JSON3, HDF5, CRC, RandomNumbers,
     Random123, Colors, EzXML, Underscores, DataStructures, StatsBase, Lasso, BangBang,
-    Transducers, FFTW, Bootstrap, ColorSchemes, VegaLite, StatsFuns, DSP, Peaks
+    Transducers, FFTW, Bootstrap, ColorSchemes, VegaLite, StatsFuns, DSP, Peaks,
+    JSONTables
 
 # ## Files
 
