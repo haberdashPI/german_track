@@ -2,6 +2,9 @@ export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
     load_directions, load_all_subjects, processed_datadir, raw_datadir,
     stimulus_dir, raw_stim_dir
 
+# we save cached results in JSON fromat
+DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
+
 function mkpathfile(args...)
     if length(args) == 0
         return ""
