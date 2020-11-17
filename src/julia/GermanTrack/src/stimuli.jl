@@ -61,14 +61,15 @@ function load_stimulus_metadata(
 
         return (
             switch_length    = switch_length,
-            trial_lengths    = CSV.read(trial_lengths_filename).sound_length |> Array,
+            trial_lengths    = CSV.File(trial_lengths_filename).sound_length,
             speakers         = stim_info.test_block_cfg.trial_target_speakers,
             directions       = stim_info.test_block_cfg.trial_target_dir,
             target_times     = stim_info.test_block_cfg.target_times,
             critical_times   = critical_times,
-            switch_regions   = critical_times_to_switch_regions.(critical_times, switch_length),
-            target_salience  = @_(CSV.read(joinpath(stimulus_dir(), "target_salience.csv")) |>
-                                    __.salience |> Array),
+            switch_regions   = critical_times_to_switch_regions.(critical_times,
+                                    switch_length),
+            target_salience  = CSV.File(joinpath(stimulus_dir(),
+                                    "target_salience.csv")).salience
         ) |> derived_metadata
     end
 end
