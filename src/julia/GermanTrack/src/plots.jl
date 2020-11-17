@@ -76,9 +76,9 @@ and Object v. Spatial.
 """
 patterns = begin
     Dict(
-        "mix1_2" => colorat([1,5]),
-        "mix1_3" => colorat([1,8]),
-        "mix2_3" => colorat([5,8])
+        "mix1_2" => colorat([1,7]),
+        "mix1_3" => colorat([1,12]),
+        "mix2_3" => colorat([7,12])
     )
 end
 
