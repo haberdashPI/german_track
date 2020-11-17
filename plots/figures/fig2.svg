@@ -80,23 +80,23 @@
                 </g>
                 <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
                   <path aria-label=": global; Response Rate: 0.695934139785; condition: global" role="graphics-symbol" aria-roledescription="bar" d="M14.166666666666671,54.12372311827957h20v123.87627688172043h-20Z" fill="#0F3C5F"/>
-                  <path aria-label=": spatial; Response Rate: 0.794946236559; condition: spatial" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,36.49956989247308h20v141.5004301075269h-20Z" fill="#FBA689"/>
-                  <path aria-label=": object; Response Rate: 0.854193548387; condition: object" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.953548387096745h20v152.04645161290324h-20Z" fill="#818232"/>
+                  <path aria-label=": spatial; Response Rate: 0.794946236559; condition: spatial" role="graphics-symbol" aria-roledescription="bar" d="M150.83333333333331,36.49956989247308h20v141.5004301075269h-20Z" fill="#EB9A60"/>
+                  <path aria-label=": object; Response Rate: 0.854193548387; condition: object" role="graphics-symbol" aria-roledescription="bar" d="M82.5,25.953548387096745h20v152.04645161290324h-20Z" fill="#687B3E"/>
                 </g>
                 <g class="mark-rect role-mark layer_1_marks" role="graphics-object" aria-roledescription="rect mark container">
-                  <path aria-label=": global; Mean of prop: 0.297580645161" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,125.03064516129035h20v52.96935483870965h-20Z" fill="#5F5F5F"/>
-                  <path aria-label=": spatial; Mean of prop: 0.294677419355" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,125.54741935483875h20v52.45258064516125h-20Z" fill="#5F5F5F"/>
-                  <path aria-label=": object; Mean of prop: 0.231505376344" role="graphics-symbol" aria-roledescription="bar" d="M102.5,136.7920430107527h20v41.20795698924729h-20Z" fill="#5F5F5F"/>
+                  <path aria-label=": global; Mean of prop: 0.297580645161" role="graphics-symbol" aria-roledescription="bar" d="M34.16666666666667,125.03064516129035h20v52.96935483870965h-20Z" fill="#636363"/>
+                  <path aria-label=": spatial; Mean of prop: 0.294677419355" role="graphics-symbol" aria-roledescription="bar" d="M170.83333333333331,125.54741935483875h20v52.45258064516125h-20Z" fill="#636363"/>
+                  <path aria-label=": object; Mean of prop: 0.231505376344" role="graphics-symbol" aria-roledescription="bar" d="M102.5,136.7920430107527h20v41.20795698924729h-20Z" fill="#636363"/>
                 </g>
                 <g class="mark-rule role-mark layer_2_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label=": 0.669656418011; upper: 0.721136592742" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,58.801157594086035)" x2="0" y2="-9.163471102150602" stroke="black"/>
-                  <line aria-label=": 0.757525537634; upper: 0.833818548387" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,43.1604543010752)" x2="0" y2="-13.580155913978505" stroke="black"/>
-                  <line aria-label=": 0.827741935484; upper: 0.880970430108" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,30.661935483870906)" x2="0" y2="-9.474672043010763" stroke="black"/>
+                  <line aria-label=": 0.670060483871; upper: 0.721875840054" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,58.729233870967725)" x2="0" y2="-9.223133400537606" stroke="black"/>
+                  <line aria-label=": 0.75827688172; upper: 0.833978494624" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(160.83333333333331,43.02671505376337)" x2="0" y2="-13.474887096774161" stroke="black"/>
+                  <line aria-label=": 0.827951612903; upper: 0.880430107527" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(92.5,30.624612903225763)" x2="0" y2="-9.341172043010758" stroke="black"/>
                 </g>
                 <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label=": 0.24529233871; upper: 0.34811827957" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.3379637096775)" x2="0" y2="-18.303017473118317" stroke="black"/>
-                  <line aria-label=": 0.257364247312; upper: 0.33247311828" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,132.18916397849466)" x2="0" y2="-13.369379032258067" stroke="black"/>
-                  <line aria-label=": 0.200698924731; upper: 0.262044354839" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,142.27559139784947)" x2="0" y2="-10.919486559139784" stroke="black"/>
+                  <line aria-label=": 0.244086021505; upper: 0.347849462366" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(44.16666666666667,134.55268817204308)" x2="0" y2="-18.469892473118307" stroke="black"/>
+                  <line aria-label=": 0.256931451613; upper: 0.332043010753" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(180.83333333333331,132.26620161290327)" x2="0" y2="-13.36985752688173" stroke="black"/>
+                  <line aria-label=": 0.200053763441; upper: 0.262422043011" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(112.5,142.3904301075269)" x2="0" y2="-11.101553763440876" stroke="black"/>
                 </g>
                 <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
                   <text aria-label=": global; Mean of prop: 0.695934139785" role="graphics-symbol" aria-roledescription="text mark" text-anchor="end" transform="translate(34.16666666666667,54.12372311827957) rotate(-90) translate(0,-24)" font-family="sans-serif" font-size="9px" fill="black">Hits</text>
@@ -127,16 +127,16 @@
     </g>
     <g transform="translate(0, 225) scale(1) ">
       <g class="marks" transform="translate(0, 15) scale(1) "><defs><pattern id="mix2_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#818232;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FBA689;"/>
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
 </pattern>
 <pattern id="mix1_2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#818232;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
 </pattern>
 <pattern id="mix1_3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
-    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FBA689;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
 </pattern>
 </defs>
   <rect width="252" height="210" fill="white"/>
@@ -191,7 +191,7 @@
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Neural Classification Accuracy (Null Model Corrected)' for a linear scale with values from 0.0 to 1.0">
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Classification Accuracy (Null Model Corrected)' for a linear scale with values from 0.5 to 1.0">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
@@ -204,11 +204,11 @@
                   <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(-7,169)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.0</text>
-                  <text text-anchor="end" transform="translate(-7,135.8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.2</text>
-                  <text text-anchor="end" transform="translate(-7,102.6)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.4</text>
-                  <text text-anchor="end" transform="translate(-7,69.4)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
-                  <text text-anchor="end" transform="translate(-7,36.199999999999996)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                  <text text-anchor="end" transform="translate(-7,169)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.5</text>
+                  <text text-anchor="end" transform="translate(-7,135.8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                  <text text-anchor="end" transform="translate(-7,102.60000000000001)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.7</text>
+                  <text text-anchor="end" transform="translate(-7,69.39999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                  <text text-anchor="end" transform="translate(-7,36.199999999999996)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.9</text>
                   <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
@@ -216,7 +216,7 @@
                 </g>
                 <g class="mark-text role-axis-title" pointer-events="none">
                   <text text-anchor="middle" transform="translate(-39,83) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">
-                    <tspan>Neural Classification Accuracy</tspan>
+                    <tspan>Classification Accuracy</tspan>
                     <tspan x="0" dy="13">(Null Model Corrected)</tspan>
                   </text>
                 </g>
@@ -225,20 +225,20 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Neural Classification Accuracy, (Null Model Corrected): 0.894003438564" role="graphics-symbol" aria-roledescription="bar" d="M15.166666666666668,17.59542919829865h25v148.40457080170134h-25Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Neural Classification Accuracy, (Null Model Corrected): 0.977208634788" role="graphics-symbol" aria-roledescription="bar" d="M70.5,3.783366625186431h25v162.21663337481357h-25Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Neural Classification Accuracy, (Null Model Corrected): 0.875489163313" role="graphics-symbol" aria-roledescription="bar" d="M125.83333333333334,20.668798890065208h25v145.3312011099348h-25Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Classification Accuracy, (Null Model Corrected): 0.892789938895" role="graphics-symbol" aria-roledescription="bar" d="M15.166666666666668,35.59374028689881h25v130.40625971310118h-25Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Classification Accuracy, (Null Model Corrected): 0.914673624324" role="graphics-symbol" aria-roledescription="bar" d="M70.5,28.32835672459436h25v137.67164327540564h-25Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Classification Accuracy, (Null Model Corrected): 0.834700217632" role="graphics-symbol" aria-roledescription="bar" d="M125.83333333333334,54.87952774630616h25v111.12047225369383h-25Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.945566970352; Neural Classification Accuracy, (Null Model Corrected): 0.795017321915" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(27.666666666666668,34.02712456212431)" x2="0" y2="-24.99124164050422" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.988672303439; Neural Classification Accuracy, (Null Model Corrected): 0.957987356673" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(83,6.97409879232602)" x2="0" y2="-5.09370116318893" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.949617909341; Neural Classification Accuracy, (Null Model Corrected): 0.728232846151" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(138.33333333333334,45.11334753887865)" x2="0" y2="-36.74992048941163" stroke="black"/>
+            <line aria-label=": Global vs.  Object; meanint95: 0.929347061866; Classification Accuracy, (Null Model Corrected): 0.844403971576" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(27.666666666666668,51.65788143663715)" x2="0" y2="-28.20110597599464" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; meanint95: 0.947254996422; Classification Accuracy, (Null Model Corrected): 0.8613676772" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(83,46.02593116972305)" x2="0" y2="-28.514589981916565" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; meanint95: 0.887445850299; Classification Accuracy, (Null Model Corrected): 0.763952801518" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(138.33333333333334,78.36766989599958)" x2="0" y2="-40.99969219533862" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_1_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-            <line transform="translate(166,49.98724069573094)" x2="-166" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+            <line transform="translate(166,99.04983398962474)" x2="-166" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
           </g>
           <g class="mark-text role-mark layer_1_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text text-anchor="start" transform="translate(153.33333333333334,46.98724069573094)" font-family="sans-serif" font-size="9px" fill="black">
+            <text text-anchor="start" transform="translate(153.33333333333334,96.04983398962474)" font-family="sans-serif" font-size="9px" fill="black">
               <tspan>Null Model</tspan>
               <tspan x="0" dy="11">Accuracy</tspan>
             </text>

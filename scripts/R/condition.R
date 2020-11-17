@@ -34,7 +34,7 @@ coefs = as.data.frame(model) %>%
            gvo_fr = conditionobject,
            gvs_fr = conditionspatial,
            ovs_fr = conditionobject - conditionspatial) %>%
-    gather(gvo_hrovs_fr, key = 'comparison', value = 'value') %>%
+    gather(gvo_hr:ovs_fr, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
     summarize(
         mean = mean(value),

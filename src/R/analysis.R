@@ -1,3 +1,5 @@
+library(bayestestR)
+library(purrr)
 
 read_experiment_events = function(presfile, response_codes = c('y','n')){
     raw_pf = read.table(presfile,header=TRUE,skip=3,sep="\t",
@@ -29,4 +31,18 @@ read_experiment_events = function(presfile, response_codes = c('y','n')){
     )
 
     return(pf)
+}
+
+effect_summary = function(.df, ...){
+    .df %>% transmute(...) %>% effect_summary_helper
+}
+
+effect_summary_helper = function(df){
+    cols = names(df)
+    cols = cols[!(cols %in% group_vars(df))]
+    df = summarize(df,
+        across(all_of(cols), mean, .names = '{.col}_mean'),
+        across(all_of(cols), .names = '{.col}_05', ~ posterior_interval(matrix(.x))[,1]),
+        across(all_of(cols), .names = '{.col}_95', ~ posterior_interval(matrix(.x))[,2]),
+    )
 }

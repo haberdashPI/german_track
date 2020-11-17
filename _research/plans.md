@@ -1,5 +1,8 @@
 ## plans
 
+codecleanup:
+  - rename ishit
+
 nitpicks:
 - set scales (0.5 - 1 mostly)
 - change y axis labels for neuarl data near/far
