@@ -340,8 +340,8 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
     fn = filterings_fn[end]
     filterings = filterings_fn[1:(end-1)]
 
-    flattened = mapreduce(f -> collect(map(pair -> (f[1], pair...), f[2])),
-        Iterators.product, filterings) |> collect
+    flattened = @_ map(f -> collect(map(pair -> (f[1], pair...), f[2])), filterings) |>
+        Iterators.product(__...) |> collect
     groupings = filtermap_groupings(df, flattened)
     progress = Progress(length(groupings), desc = desc)
 
@@ -353,7 +353,7 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
 
         local result
         if !isempty(filtered)
-            result = fn(group, getindex.(filterings, 3)...)
+            result = fn(filtered, getindex.(filterings, 2)...)
             if !isempty(result)
                 for (name, val, filterfn) in filterings
                     result[!, name] .= val
@@ -378,7 +378,8 @@ filtermap_groupings(df::GroupedDataFrame, flattened) =
 
 struct EmptyKey; end
 Base.isempty(x::EmptyKey) = true
-filtermap_groupings(df::DataFrame...) = map(x -> ((EmptyKey(), df), x), flattened)
+filtermap_groupings(df::DataFrame, flattened) =
+    Iterators.product([(EmptyKey(), df)], flattened) |> collect
 
 macro cache_results(file, args...)
 
@@ -392,31 +393,58 @@ macro cache_results(file, args...)
         begin
             function run(ignore)
                 $(esc(body))
-                Dict($((map(x -> :($(QuoteNode(x)) => cleanup_forjson($(esc(x)))), symbols))...))
+                Dict($((map(x -> :($(QuoteNode(x)) => jsonout($(esc(x)))), symbols))...))
             end
             results = if isfile($(esc(file)))
-                cleanup_json_data(open(io -> JSON3.read(io), $(esc(file))))
+                jsonin(open(io -> JSON3.read(io), $(esc(file))))
             else
                 let (dir, prefix, suffix) = cache_results_parser($(esc(file)))
-                    produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)[1]
+                    produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)[1] |>
+                        jsonin
                 end
             end
 
             $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
+
+            nothing
         end
     end
 end
 
-function cleanup_forjson(x::DataFrame)
-    Dict(:isdataframe => true, :columns => JSONTables.ObjectTable(Tables.columns(x)))
+macro load_cache(file, args...)
+    symbols = args[1:end]
+    if !@_ all(_ isa Symbol, symbols)
+        error("Expected variable names")
+    end
+
+    quote
+        begin
+            results = if isfile($(esc(file)))
+                jsonin(open(io -> JSON3.read(io), $(esc(file))))
+            end
+
+            $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
+
+            nothing
+        end
+    end
 end
 
-cleanup_json_data(x) = x
-function cleanup_json_data(data::AbstractDict)
+function jsonout(x::DataFrame)
+    Dict(:isdataframe => true, :columns => JSONTables.ObjectTable(Tables.columns(x)))
+end
+jsonout(x) = x
+
+jsonin(x) = x
+function jsonin(data::AbstractDict)
     if haskey(data, :isdataframe) && data[:isdataframe]
-        jsontable(data[:columns]) |> DataFrame
+        if data[:columns] isa JSONTables.ObjectTable
+            data[:columns].x
+        else
+            jsontable(data[:columns]) |> DataFrame
+        end
     else
-        Dict(cleanup_key(k) => cleanup_json_data(v) for (k,v) in pairs(data))
+        Dict(cleanup_key(k) => jsonin(v) for (k,v) in pairs(data))
     end
 end
 function cleanup_key(x::Symbol)
