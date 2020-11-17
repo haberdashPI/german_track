@@ -82,6 +82,7 @@ end
 
 function loss(A,x,y,w)
     error = zero(eltype(A))
+    # @tullio error[k] += (x[i,j,k] * A[j,h] - y[i,h,l,k] * w[l,k])^2
     for i in 1:size(x)[end]
         xi, yi, wi = view(x,:,:,i), view(y,:,:,:,i), view(w,:,i)
         xA = xi*A
@@ -89,10 +90,12 @@ function loss(A,x,y,w)
         diff = (xA .- yw).^2
         error += sum(diff)
 
+
         # NOTE: potentially better than freeing these intermediate computations
         # from the GPU would be doing in place operations but then i'd have to
         # manually write the adjoint... worth considering if the model is too slow
         # as is (which I don't think it is)
+        # Might also be worth using Tullio.jl
 
         unsafe_gpu_free!(xA)
         unsafe_gpu_free!(yw)
