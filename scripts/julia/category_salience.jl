@@ -10,201 +10,15 @@ using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Und
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
     StatsFuns, Colors, CSV
 
-using GermanTrack: colors, gray, patterns, lightdark, darkgray
+using GermanTrack: colors, gray, patterns, lightdark, darkgray, seqpatterns
 
-dir = mkpath(plotsdir("category_salience"))
+dir = mkpath(plotsdir("figure3_parts"))
 
-# Behavioral Data
+# Hit rate x salience level (Figure 3A-B)
 # =================================================================
 
-# Plot merve's analysis
-# -----------------------------------------------------------------
-
-salience_hit = @_ CSV.read(joinpath(processed_datadir("plots"),
-    "condition_by_salience.csv")) |>
-    transform!(__, :salience => ByRow(x -> [uppercasefirst(x), " Salience"]) => :salience,
-                   :condition => ByRow(uppercasefirst) => :condition)
-
-salience_colors = "#".*hex.(vcat(
-    colors[1],
-    RGB(0.3,0.3,0.3),
-    RGB(0.6,0.6,0.6),
-    colors[2:3])
-)
-
-@_ salience_hit |>
-    @vlplot(
-        transform = [
-            {calculate = "datum.pmean + datum.err", as = "upper"},
-            {calculate = "datum.pmean - datum.err", as = "lower"}
-        ],
-        config = {legend = {disable = true}},
-        spacing = 2
-    ) +
-    hcat(
-        (
-            @vlplot(
-                width = 90, height = 125, autosize = "pad",
-                transform = [{filter = "datum.comparison == 'global_v_object'"}]) +
-            @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
-                y = {:pmean, title = "Hit Rate", scale = {domain = [0.5, 1]}},
-                color = :salience) +
-            @vlplot({:point, filled = true},
-                x = :condition,
-                y = :pmean,
-                color = {:condition, scale = {range = salience_colors}}) +
-            @vlplot({:text, align = :left, dy = -10, dx = 5},
-                transform = [{filter = "datum.condition == 'Global'"}],
-                x = :condition,
-                y = :lower,
-                text = :salience,
-                color = :salience
-            ) +
-            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
-        ),
-        (
-            @vlplot(
-                width = 90, height = 125, autosize = "pad",
-                transform = [{filter = "datum.comparison == 'global_v_spatial'"}],
-            ) +
-            @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
-                y = {:pmean, title = "", scale = {domain = [0.5, 1]}},
-                color = :salience) +
-            @vlplot({:point, filled = true},
-                x = :condition,
-                y = :pmean,
-                color = {:condition, scale = {range = salience_colors}}) +
-            @vlplot({:text, align = :left, dy = -10, dx = 5},
-                transform = [{filter = "datum.condition == 'Global'"}],
-                x = :condition,
-                y = :lower,
-                text = :salience,
-                color = :salience
-            ) +
-            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
-        )
-    ) |>
-    save(joinpath(dir, "behavior_salience.svg"))
-
-# Re-analyze from raw data
-# -----------------------------------------------------------------
-
-info = GermanTrack.load_behavioral_stimulus_metadata()
-events = @_ readdir(processed_datadir("behavioral"), join=true) |>
-    filter(occursin(r"csv$", _), __) |>
-    mapreduce(GermanTrack.events(_, info), append!!, __)
-
-bad_sids = CSV.read(joinpath(processed_datadir("behavioral", "outliers"), "sids.csv")).sid
-
-indmeans = @_ events |>
-    transform!(__, AsTable(:) =>
-        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
-    groupby(__, [:condition, :sid, :salience_label]) |>
-    combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits)
-
-means = @_ indmeans |>
-    filter(_.sid ∉ bad_sids, __) |>
-    groupby(__, [:condition, :salience_label]) |>
-    combine(__, :hits => boot => :prop,
-                :hits => (x -> lowerboot(x, alpha = 0.05)) => :lower,
-                :hits => (x -> upperboot(x, alpha = 0.05)) => :upper)
-
-@_ means |>
-    @vlplot(
-        config = {legend = {disable = true}},
-        spacing = 2
-    ) +
-    hcat(
-        (
-            @vlplot(
-                width = 90, height = 125, autosize = "pad",
-                transform = [{filter = "datum.condition == 'global' || datum.condition == 'object'"}]) +
-            @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
-                y = {:prop, title = "Hit Rate", scale = {domain = [0, 1]}},
-                color = :salience_label) +
-            @vlplot({:point, filled = true},
-                x = :condition,
-                y = :prop,
-                color = {:condition, scale = {range = "#".*hex.(vcat(colors[1], RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors[2:3]))}}) +
-            @vlplot({:text, align = :left, dy = -10, dx = 5},
-                transform = [{filter = "datum.condition == 'global'"}],
-                x = :condition,
-                y = :lower,
-                text = :salience_label,
-                color = :salience_label
-            ) +
-            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
-        ),
-        (
-            @vlplot(
-                width = 90, height = 125, autosize = "pad",
-                transform = [{filter = "datum.condition == 'global' || datum.condition == 'spatial'"}]
-            ) +
-            @vlplot(:line,
-                x = {:condition, axis = {labelAngle = 0, labelAlign = "center", title = ""}},
-                y = {:prop, title = "", scale = {domain = [0, 1]}},
-                color = :salience_label) +
-            @vlplot({:point, filled = true},
-                x = :condition,
-                y = :prop,
-                color = {:condition, scale = {range = "#".*hex.(vcat(RGB(0.3,0.3,0.3), RGB(0.6,0.6,0.6), colors))}}) +
-            @vlplot({:text, align = :left, dy = -10, dx = 5},
-                transform = [{filter = "datum.condition == 'global'"}],
-                x = :condition,
-                y = :lower,
-                text = :salience_label,
-                color = :salience_label
-            ) +
-            @vlplot(:rule, x = :condition, y = :lower, y2 = :upper, color = :condition)
-        )
-    ) |>
-    save(joinpath(dir, "raw_behavior_salience.svg"))
-
-# Difference in hit rate across salience levels
-# -----------------------------------------------------------------
-
-diffmeans = @_ indmeans |>
-    unstack(__, [:condition, :sid], :salience_label, :hits) |>
-    transform!(__, [:high, :low] => (-) => :meandiff) |>
-    groupby(__, :condition) |>
-    combine(__,
-        :meandiff => mean => :meandiff,
-        :meandiff => lowerboot => :lower,
-        :meandiff => upperboot => :upper
-    )
-
-barwidth = 18
-@_ diffmeans |>
-    @vlplot(
-        width = 111, autosize = "fit",
-        config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
-        }
-    ) +
-    @vlplot(:bar,
-        x = {:condition,
-            title = "",
-            axis = {labelAngle = -32, labelAlign = "right",
-                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
-        },
-        color = {:condition, scale = {range = "#".*hex.(colors)}},
-        y = {:meandiff,
-            title = "High - Low Salience (Hit Rate)"
-        }
-    ) +
-    @vlplot(:errorbar,
-        x = {:condition, title = ""},
-        y = {:lower, title = ""}, y2 = :upper,
-    ) |> save(joinpath(dir, "raw_behavior_diff_salience.svg"))
-
-# Difference in hit rate across salience levels (merve's summaries)
-# -----------------------------------------------------------------
-
-summaries = CSV.read(joinpath(processed_datadir("behavioral", "merve_summaries"), "export_salience.csv"))
+summaries = CSV.read(joinpath(processed_datadir("behavioral", "merve_summaries"),
+    "export_salience.csv"), DataFrame)
 
 ascondition = Dict(
     "test" => "global",
@@ -220,6 +34,9 @@ indmeans = @_ summaries |>
         variable_name = :salience_label, value_name = :prop)
 
 CSV.write(joinpath(processed_datadir("analyses"), "behavior_salience.csv"), indmeans)
+
+# Absolute values (Figure 3A)
+# -----------------------------------------------------------------
 
 means = @_ indmeans |>
     groupby(__, [:condition, :salience_label]) |>
@@ -298,7 +115,10 @@ pl = means |>
     #         text = {datum = ["More distinct", "response during switch"]}
     #     )
     # ) +
-pl |> save(joinpath(dir, "raw_sum_behavior_salience.svg"))
+pl |> save(joinpath(dir, "fig3a.svg"))
+
+# Differences (Figure 3B)
+# -----------------------------------------------------------------
 
 diffmeans = @_ indmeans |>
     unstack(__, [:condition, :sid], :salience_label, :prop) |>
@@ -311,7 +131,7 @@ diffmeans = @_ indmeans |>
     )
 
 barwidth = 18
-@_ diffmeans |>
+pl = @_ diffmeans |>
     @vlplot(
         width = 111, autosize = "fit",
         config = {
@@ -325,7 +145,8 @@ barwidth = 18
             axis = {labelAngle = -32, labelAlign = "right",
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
         },
-        color = {:condition, scale = {range = "#".*hex.(colors)}},
+        color = {:condition, scale = {
+            range = urlcol.(keys(seqpatterns))}},
         y = {:meandiff,
             title = "High - Low Salience (Hit Rate)"
         }
@@ -333,124 +154,57 @@ barwidth = 18
     @vlplot(:errorbar,
         x = {:condition, title = ""},
         y = {:lower, title = ""}, y2 = :upper,
-    ) |> save(joinpath(dir, "raw_sum_behavior_diff_salience.svg"))
+    );
+plotfile =  joinpath(dir, "fig3b.svg")
+pl |> save(plotfile)
+addpatterns(plotfile, seqpatterns, size = 10)
 
-# Find λ
+# Find hyperparameters (λ and winlen)
 # =================================================================
 
-# Mean Frequency Bin Analysis
-# -----------------------------------------------------------------
-
-classdf_file = joinpath(cache_dir("features"), "salience-freqmeans.csv")
-
-if isfile(classdf_file)
-    classdf = CSV.read(classdf_file)
-else
+file = joinpath(processed_datadir("analyses"), "salience-hyperparams.json")
+GermanTrack.@cache_results file fold_map λ_map winlen_map begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-
-    classdf_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
-        groupby(__, [:sid, :condition, :salience_label])
-
-    windows = [windowtarget(len = len, start = start)
-        for len in 2.0 .^ range(-1, 1, length = 10),
-            start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-
-    classdf = compute_freqbins(subjects, classdf_groups, windows)
-
-    CSV.write(classdf_file, classdf)
-end
-
-# Compute classification accuracy
-# -----------------------------------------------------------------
-
-resultdf_file = joinpath(cache_dir("models"), "salience-target-time.csv")
-
-λ_folds = folds(2, unique(classdf.sid), rng = stableRNG(2019_11_18, :lambda_folds,
-    :salience))
-classdf[!,:fold] = in.(classdf.sid, Ref(Set(λ_folds[1][1]))) .+ 1
-
-if isfile(resultdf_file) && mtime(resultdf_file) > mtime(classdf_file)
-    resultdf = CSV.read(resultdf_file)
-else
     lambdas = 10.0 .^ range(-2, 0, length=100)
-    factors = [:fold, :winlen, :winstart, :condition]
-    groups = groupby(classdf, factors)
 
-    progress = Progress(length(groups))
-    function findclass((key, sdf))
-        result = testclassifier(LassoPathClassifiers(lambdas),
-            data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
-            n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
-            maxncoef = size(sdf[:,r"channel"], 2),
-            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-        result[!, keys(key)] .= permutedims(collect(values(key)))
-        next!(progress)
+    classdf = compute_freqbins(
+        subjects = subjects,
+        groupdf  = @_( events |> filter(ishit(_) == "hit", __) |>
+            groupby(__, [:sid, :condition, :salience_label])),
+        windows  = [windowtarget(len = len, start = start)
+            for len in 2.0 .^ range(-1, 1, length = 10),
+                start in [0; 2.0 .^ range(-2, 2, length = 10)]]
+    )
 
-        result
-    end
+    resultdf = @_ classdf |>
+        addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
+        mapgroups(__, desc = "Evaluating hyperparameters...",
+            [:winstart, :winlen, :fold, :condition],
+            function(sdf)
+                testclassifier(LassoPathClassifiers(lambdas),
+                    data         = sdf,
+                    y            = :salience_label,
+                    X            = r"channel",
+                    crossval     = :sid,
+                    n_folds      = 10,
+                    seed         = 2017_09_16,
+                    weight       = :weight,
+                    maxncoef     = size(sdf[:, r"channel"], 2),
+                    irls_maxiter = 600,
+                )
+            end)
 
-    resultdf = @_ groups |> pairs |> collect |>
-        foldxt(append!!, Map(findclass), __)
+    fold_map = @_ resultdf |>
+        groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
+        Dict(row.sid => row.fold for row in eachrow(__))
 
-    ProgressMeter.finish!(progress)
-    CSV.write(resultdf_file, resultdf)
+    λ_map, winlen_map = pick_λ_winlen(resultdf,
+        [:condition, :sid, :winstart], :condition,
+        smoothing = 0.75, slope_thresh = 0.15, flat_thresh = 0.01,
+        dir = mkpath(joinpath(dir, "supplement")))
 
-    alert("Completed salience/target-time classification!")
+    @info "Saving plots to $(joinpath(dir, "supplement"))"
 end
-
-# λ selection
-# -----------------------------------------------------------------
-
-fold_map, λ_map = pickλ(resultdf, 2, [:condition, :winlen, :winstart], :condition,
-    smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02, dir = dir)
-
-# Compute the best window length
-# -----------------------------------------------------------------
-
-windowmeans = @_ resultdf |>
-    filter(_.λ ∈ (1.0, λ_map[_.fold]), __) |>
-    groupby(__,[:condition, :sid, :fold, :λ, :winlen, :winstart]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean) |>
-    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean)
-
-nullmeans = @_ windowmeans |>
-    filter(_.λ == 1.0, __) |>
-    deletecols!(__, [:λ, :mean]) |>
-    rename!(__, :logitmean => :logitnullmean)
-
-windowdiff = @_ windowmeans |>
-    filter(_.λ != 1.0, __) |>
-    innerjoin(nullmeans, __, on = [:condition, :sid, :fold, :winlen, :winstart]) |>
-    transform!(__, [:logitmean, :logitnullmean] => (-) => :logitmeandiff)
-
-windavg = @_ windowdiff |> groupby(__, [:condition, :fold, :winlen, :winstart]) |>
-    combine(__, :logitmeandiff => mean => :logitmeandiff) |>
-    groupby(__, [:fold, :winlen]) |>
-    combine(__, :logitmeandiff => maximum => :logitmeandiff)
-
-bestlens = @_ windavg |> groupby(__, [:fold]) |>
-    combine(__, [:logitmeandiff, :winlen] =>
-        ((m,l) -> l[argmax(m)]) => :winlen,
-        :logitmeandiff => maximum => :logitmeandiff)
-
-bestlen_bysid = @_ bestlens |>
-    groupby(__, [:fold, :winlen, :logitmeandiff]) |>
-    combine(__, :fold => (f -> λ_folds[f |> first][2]) => :sid) |>
-    groupby(__, :sid)
-    winlen_bysid(sid) = bestlen_bysid[(sid = sid,)].winlen |> first
-
-pl = windowdiff |>
-    @vlplot(:rect,
-        config =  {view = {stroke = :transparent}},
-        column = :condition,
-        # row = :fold,
-        y = {:winlen, type = :ordinal, axis = {format = ".2f"}, sort = :descending,
-            title = "Length (s)"},
-        x = {:winstart, type = :ordinal, axis = {format = ".2f"}, title = "Start (s)"},
-        color = {:logitmeandiff, aggregate = :mean, type = :quantitative,
-            scale = {scheme = "redblue", domainMid = 0}}) |>
-    save(joinpath(dir, "salience_windows.svg"))
 
 # Plot timeline
 # =================================================================
@@ -458,63 +212,41 @@ pl = windowdiff |>
 # Compute frequency bins
 # -----------------------------------------------------------------
 
-classdf_timeline_file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.csv")
-
-if isfile(classdf_timeline_file)
-    classdf_timeline = CSV.read(classdf_timeline_file)
-else
+file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.json")
+GermanTrack.@cache_results file restuldf_timeline begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf_timeline_groups = @_ events |>
-        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
-        filter(_.hittype ∈ ["hit", "miss"], __) |>
-        groupby(__, [:sid, :condition, :salience_label, :hittype])
+    classdf = compute_freqbins(
+        subjects = subjects,
+        groupdf  = @_( events |>
+            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+            transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+            filter(_.hittype ∈ ["hit", "miss"], __) |>
+            groupby(__, [:sid, :fold, :condition, :salience_label, :hittype])
+        ),
+        windows = [
+            windowtarget(windowfn = event -> (
+                start = start,
+                len = winlen_map[event.fold[1]] |>
+                    GermanTrack.spread(0.5,n_winlens,indices=k)))
+            for start in range(0, 3, length = 64) for k in 1:n_winlens
+        ]
+    )
 
-    windows = [
-        windowtarget(windowfn = event -> (
-            start = start,
-            len = winlen_bysid(event.sid[1]) |> GermanTrack.spread(0.5,n_winlens,indices=k)))
-        for start in range(0, 3, length = 64) for k in 1:n_winlens
-    ]
-    classdf_timeline = compute_freqbins(subjects, classdf_timeline_groups, windows)
-
-    CSV.write(classdf_timeline_file, classdf_timeline)
-end
-
-# Compute classification accuracy
-# -----------------------------------------------------------------
-
-resultdf_timeline_file = joinpath(cache_dir("models"), "salience-timeline.csv")
-classdf_timeline[!,:fold] = getindex.(Ref(fold_map), classdf_timeline.sid)
-
-if isfile(resultdf_timeline_file) && mtime(resultdf_timeline_file) > mtime(classdf_timeline_file)
-    resultdf_timeline = CSV.read(resultdf_timeline_file)
-else
-    factors = [:fold, :winlen, :winstart, :condition, :hittype]
-    groups = groupby(classdf_timeline, factors)
-
-    progress = Progress(length(groups))
-    function findclass((key, sdf))
-        λ = λ_map[first(sdf.fold)]
-        result = testclassifier(LassoPathClassifiers([1.0, λ]),
-            data = sdf, y = :salience_label, X = r"channel", crossval = :sid,
-            n_folds = n_folds, seed = stablehash(:salience_classification, 2019_11_18),
-            maxncoef = size(sdf[:,r"channel"], 2),
-            irls_maxiter = 600, weight = :weight, on_model_exception = :throw)
-        result[!, keys(key)] .= permutedims(collect(values(key)))
-        next!(progress)
-
-        result
-    end
-
-    resultdf_timeline = @_ groups |> pairs |> collect |>
-        # foldl(append!!, Map(findclass), __)
-        foldxt(append!!, Map(findclass), __)
-
-    ProgressMeter.finish!(progress)
-    CSV.write(resultdf_timeline_file, resultdf_timeline)
-
-    alert("Completed salience timeline classification!")
+    resultdf_timeline = @_ classdf |>
+        mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
+            function (sdf)
+                result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
+                    data         = sdf,
+                    y            = :salience_label,
+                    X            = r"channel",
+                    crossval     = :sid,
+                    n_folds      = n_folds,
+                    seed         = stablehash(:salience_classification, 2019_11_18),
+                    maxncoef     = size(sdf[:, r"channel"], 2),
+                    irls_maxiter = 600,
+                    weight       = :weight)
+            end)
 end
 
 # Display classification timeline
@@ -634,8 +366,8 @@ timeslice = 2.8
 CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), classdiffs)
 
 annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
-ytitle = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"]
-target_len_y = 0.75
+ytitle = ["Salience Classification (High/Low)", "Accuracy (Null Model Corrected)"]
+target_len_y = 0.8
 pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
@@ -646,7 +378,8 @@ pl = @_ classdiffs |>
         color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
     ) +
     # data lines
-    @vlplot(:line,
+    @vlplot({:line, strokeCap = :round},
+        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
             scale = {domain = [0.5,1.0]}}) +
@@ -656,26 +389,51 @@ pl = @_ classdiffs |>
         y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter = "datum.winstart > 2.45 && datum.winstart <= 2.55"}],
+        transform =
+            [{filter = "(datum.condition != 'spatial' && "*
+                "datum.winstart > 2.95 && datum.winstart <= 3.0) ||"*
+                "(datum.condition == 'spatial' && "*
+                "datum.winstart > 2.45 && datum.winstart <= 2.55)"}],
         x = {datum = 3.0},
         y = {:meancor, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
-    # Basline (0 %) dotted line
+    # "Time Slice" annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot({:rule, strokeDash = [2 2]},
+            x = {datum = timeslice},
+            color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "right", dx = -2},
+            x = {datum = timeslice},
+            y = {datum = 0.98},
+            text = {value = ["panel C", "time slice"]},
+            color = {value = "black"}
+        )
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(:rect,
+            x = {datum = 2.5}, x2 = {datum = 3},
+            y = {datum = 0.5}, y2 = {datum = nullmean},
+            color = {value = "white"},
+            opacity = {value = 1.0}
+        ) +
+        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 2, align = "center"},
+            x = {datum = 3}, y = {datum = nullmean},
+            text = {value = ["Null Model", "Accuracy"]},
+            color = {value = "black"}
+        )
+    ) +
+    # Dotted line
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
             y = {datum = nullmean},
             color = {value = "black"})
-    ) +
-    # "Null Model" text annotation
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 2, align = "right"},
-            x = {datum = 3}, y = {datum = nullmean},
-            text = {value = ["Null Model Accur."]},
-            color = {value = "black"}
-        )
     ) +
     # "Target Length" arrow annotation
     (
@@ -692,20 +450,6 @@ pl = @_ classdiffs |>
             color = {value = "black"}
         )
     ) +
-    # "Time Slice" annotation
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot({:rule, strokeDash = [2 2]},
-            x = {datum = timeslice},
-            color = {value = "black"}
-        ) +
-        @vlplot({:text, align = "right", dx = -2},
-            x = {datum = timeslice},
-            y = {datum = 0.95},
-            text = {value = "Figure C Slice"},
-            color = {value = "black"}
-        )
-    ) +
     # "Target Length" text annotation
     (
         @vlplot(data = {values = [{}]}) +
@@ -715,7 +459,7 @@ pl = @_ classdiffs |>
             color = {value = "black"}
         )
     ));
-pl |> save(joinpath(dir, "salience_timeline.svg"))
+pl |> save(joinpath(dir, "fig3d.svg"))
 
 # Salience class accuracy at fixed time point
 # -----------------------------------------------------------------
@@ -724,7 +468,8 @@ times = classdiffs.winstart |> unique
 real_timeslice = times[argmin(abs.(times .- timeslice))]
 barwidth = 16
 
-@_ classdiffs |>
+ytitle = ["Salience Classification (High/Low)", "Accuracy (Null Model Corrected)"]
+pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     filter(_.winstart == real_timeslice, __) |>
     groupby(__, [:condition]) |>
@@ -746,10 +491,10 @@ barwidth = 16
             axis = {labelAngle = -32, labelAlign = "right",
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
         },
-        color = {:condition, scale = {range = "#".*hex.(colors)}},
+        color = {:condition, scale = {range = urlcol.(keys(seqpatterns))}},
         y = {:meancor,
-            title = ["Neural Classification Accuracy", "of Salience (Null Model Corrected)"],
-            scale = {domain = [0.4, 1.0]}
+            title = ytitle,
+            scale = {domain = [0.5, 1.0]}
         }
     ) +
     @vlplot(:errorbar,
@@ -761,7 +506,10 @@ barwidth = 16
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
             y = {datum = nullmean},
             color = {value = "black"})
-    ) |> save(joinpath(dir, "neural_diff_salience.svg"))
+    )
+plotfile = joinpath(dir, "fig3c.svg")
+pl |> save(plotfile)
+addpatterns(plotfile, seqpatterns, size = 10)
 
 # Final, combined plots for data fig 2
 # -----------------------------------------------------------------
@@ -781,30 +529,30 @@ background = pyimport("svgutils").transform.fromstring("""
 fig = svg.Figure("89mm", "240mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "raw_sum_behavior_salience.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3a.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(220,15)
     ).move(0, 0),
     svg.Panel(
-        svg.SVG(joinpath(dir, "raw_sum_behavior_diff_salience.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
         svg.Text("B", 2, 10, size = 12, weight="bold"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(90,15)
     ).move(0, 225),
     svg.Panel(
-        svg.SVG(joinpath(dir, "neural_diff_salience.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3c.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(90,15)
     ).move(125, 225),
     svg.Panel(
-        svg.SVG(joinpath(dir, "salience_timeline.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3d.svg")).move(0,15),
         svg.Text("D", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(215,15)
     ).move(0, 450)
-).scale(1.333).save(joinpath(dir, "fig2.svg"))
+).scale(1.333).save(joinpath(dir, "fig3.svg"))
 
 # hit miss plot
 # -----------------------------------------------------------------

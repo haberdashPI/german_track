@@ -117,14 +117,22 @@ GermanTrack.@cache_results file fold_map λ_map begin
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
             function(sdf, comparison)
-                testclassifier(LassoPathClassifiers(lambdas), data = sdf, y = :condition,
-                X = r"channel", crossval = :sid, n_folds = 10, seed = 2017_09_16,
-                weight = :weight, maxncoef = size(sdf[:,r"channel"],2), irls_maxiter = 400,
-                on_model_exception = :print)
+                testclassifier(LassoPathClassifiers(lambdas),
+                    data               = sdf,
+                    y                  = :condition,
+                    X                  = r"channel",
+                    crossval           = :sid,
+                    n_folds            = 10,
+                    seed               = 2017_09_16,
+                    weight             = :weight,
+                    maxncoef           = size(sdf[:, r"channel"], 2),
+                    irls_maxiter       = 400,
+                    on_model_exception = :print
+                )
             end)
 
-    fold_map, λ_map = pickλ(resultdf, 2, [:comparison, :winlen, :winstart], :comparison,
-        smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02,
+    λ_map, winlen_map = pick_λ_winlen(resultdf, [:sid, :comparison, :winstart],
+        :comparison, smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02,
         dir = mkpath(joinpath(dir, "supplement")))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"

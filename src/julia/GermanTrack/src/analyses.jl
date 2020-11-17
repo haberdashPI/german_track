@@ -1,4 +1,4 @@
-export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pickλ,
+export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ_winlen,
     addfold!, splayby, mapgroups, filteringmap
 
 """
@@ -135,19 +135,28 @@ myfirst(x) = first(x)
 myfirst(x::Symbol) = x
 
 """
-    pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = :λ, smoothing,
-        slope_thresh, flat_thresh, dir, grand_mean_plot = "grandmean",
-        lambda_plot = "lambdas")
+    pick_λ_winlen(df, n_folds, factors, maximize_across; fold_col = fold_col,
+        λ_col = :λ, winlen_col = :winlen, smoothing, slope_thresh, flat_thresh, dir,
+        grand_mean_plot = "grandmean", lambda_plot = "lambdas")
 
-Divide `df` into `n_folds` by `fold_id`, then pick the best λ for classification. The
-classification accuracy is assumed to be encoded in a `:correct` column (and optionally a
-`:weight`) column. Any additional factors in the anlaysis should be included in `factors`.
-The analysis looks at the maximum performance for each value of `maximize_across` factors
-and then averages these performance values. The λ is selected assuming there is a peak in
-the derivative (`slope_thresh`) that then levels off (`flat_thresh`) as we move from larger
-to smaller λ values (a reverse sigmoid shape), and it tries to find the point where
+Pick the best λ and window length for classification. The classification accuracy is assumed
+to be encoded in a `:correct` column (and optionally a `:weight`) column. Any additional
+factors in the anlaysis should be included in `factors`. The folds can be added to a data
+set using [`addfold!`](#).
+
+To pick λ, the analysis looks at the maximum performance for each value of `maximize_across`
+factors and then averages these performance values. The λ is selected assuming there is a
+peak in the derivative (`slope_thresh`) that then levels off (`flat_thresh`) as we move from
+larger to smaller λ values (a reverse sigmoid shape), and it tries to find the point where
 performance levels off. The derivative is computed from a smoothed version of the
 performance, where `smoothing` ranges from 0 to 1.
+
+To pick winlen, the analysis uses the selected λ for the given fold, and picks the best
+performing window length across all `maximize_acorss` factors. This selection uses the same
+subjects that were seen during λ selection.
+
+The returned map of λ and winlen is assigned to the left out subjects of a fold, so the
+resulting λ and winlen have been selected by a process that never employes these subjects.
 
 You can view the generated plots to verify that the assumptions of the analysis are
 reasonable and a sensible λ value for each fold is selected.
@@ -156,32 +165,18 @@ reasonable and a sensible λ value for each fold is selected.
 - `df` The data to analyze
 
 """
-function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = :λ,
-    smoothing, slope_thresh, flat_thresh,
-    dir, grand_mean_plot = "grandmean", lambda_plot = "lambdas")
-
-    λ_folds = folds(n_folds, unique(df[:,fold_id]),
-        rng = stableRNG(2019_11_18, dir, grand_mean_plot, lambda_plot))
-
-    train_fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
-        for id in train_ids)
-    test_fold_map = Dict(id => fold for (fold, (train_ids, test_ids)) in enumerate(λ_folds)
-        for id in test_ids)
-
-    if :fold ∉ propertynames(df)
-        df[!,:fold] = getindex.(Ref(train_fold_map), df[:, fold_id])
-    elseif length(unique(df.fold)) != n_folds
-        error("Data folds do not match `n_folds` parameters")
-    end
+function pick_λ_winlen(df, factors, maximize_across; λ_col = :λ, fold_col = :fold,
+    winlen_col = :winlen, sid_col = :sid, smoothing, slope_thresh, flat_thresh,
+    dir, windows_plot = "windows", grand_mean_plot = "grandmean", lambda_plot = "lambdas")
 
     means = @_ df |>
-        groupby(__, vcat(factors, [λ_col, fold_id, :fold])) |>
+        groupby(__, vcat(factors, [λ_col, fold_col, :winlen])) |>
         combine(__,
             :nzcoef => mean => :nzcoef,
             [:correct, :weight] => GermanTrack.wmean => :mean)
 
     bestmeans = @_ means |>
-        groupby(__, vcat(maximize_across, [λ_col, fold_id, :fold])) |>
+        groupby(__, vcat(maximize_across, [sid_col, λ_col, fold_col])) |>
         combine(__, :nzcoef => mean => :nzcoef,
                     :mean => maximum => :mean,
                     :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ maximum => :logitmean)
@@ -189,22 +184,24 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
     logitmeandiff = @_ filter(_.λ == 1.0, bestmeans) |>
         deletecols!(__, [λ_col, :nzcoef, :mean]) |>
         rename!(__, :logitmean => :logitnullmean) |>
-        innerjoin(__, bestmeans, on = vcat(maximize_across, [fold_id, :fold])) |>
+        innerjoin(__, bestmeans, on = vcat(maximize_across, sid_col, fold_col)) |>
         transform!(__, [:logitmean,:logitnullmean] => (-) => :logitmeandiff)
 
     diff0(x) = vcat(0,diff(x))
     filtfn(x) = filtfilt(digitalfilter(Lowpass(1 - smoothing), Butterworth(5)), x)
     grandlogitmeandiff = @_ logitmeandiff |>
-        groupby(__, [λ_col, :fold]) |>
-        combine(__, :logitmeandiff => mean => :logitmeandiff) |>
+        groupby(__, λ_col) |>
+        filteringmap(__, folder=foldl,
+            :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(df.fold)),
+            (sdf, fold) -> DataFrame(logitmeandiff = mean(sdf.logitmeandiff))) |>
         sort!(__, [λ_col]) |>
-        groupby(__, [:fold]) |>
+        groupby(__, [:train_fold]) |>
         transform!(__, :logitmeandiff => (x -> abs.(diff0(filtfn(x)))) => :logitmeandiff)
 
     pl = grandlogitmeandiff |> @vlplot() +
     @vlplot(:line,
         config = {},
-        color = {:fold, type = :nominal,
+        color = {:train_fold, type = :nominal,
             legend = {orient = :none, legendX = 175, legendY = 0.5}},
         x     = {λ_col, scale = {type = :log, domain = [0.01, 0.35]},
         title = "Regularization Parameter (λ)"},
@@ -218,11 +215,48 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
         first_near_zero = @_ findlast(_ < flat_thresh, df[1:peaks[end],:logitmeandiff])
         df[(1:peaks[end])[first_near_zero],[λ_col]]
     end
-    λs = @_ grandlogitmeandiff |> groupby(__,:fold) |> combine(pickλ,__)
+    λs = @_ grandlogitmeandiff |> groupby(__,:train_fold) |> combine(pickλ,__)
 
-    λs[!,:fold_text] .= string.("Fold: ",λs.fold)
+    λs[!,:fold_text] .= string.("Fold: ",λs.train_fold)
     λs[!,:yoff] = [0.1,0.15]
-    λ_map = Dict(row.fold => row.λ for row in eachrow(λs))
+    λ_map = Dict(row.train_fold => row.λ for row in eachrow(λs))
+
+    windowmeans = @_ means |>
+        groupby(__, vcat(maximize_across, [λ_col, fold_col, winlen_col])) |>
+        combine(__, :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ mean => :logitmean)
+
+    winmeandiff = @_ windowmeans |>
+        filter(_.λ == 1.0, __) |>
+        deletecols!(__, [λ_col]) |>
+        rename!(__, :logitmean => :logitnullmean) |>
+        innerjoin(__, filter(x -> x.λ ∈ values(λ_map), windowmeans),
+            on = vcat(maximize_across, fold_col, winlen_col)) |>
+        transform!(__, [:logitmean, :logitnullmean] => (-) => :logitmeandiff)
+
+    @_ means |>
+        groupby(__, vcat(maximize_across, [λ_col, fold_col, winlen_col, :winstart])) |>
+        combine(__, :mean => logit ∘ shrinktowards(0.5, by = 0.01) ∘ mean => :logitmean) |>
+        filter(_.λ ∈ values(λ_map), __) |>
+    @vlplot(:line,
+        x = :winlen,
+        y = {:logitmean, aggregate = :mean, type = :quantitative},
+        column = {:fold, type = :nominal},
+        color = :winstart
+    ) |> save(joinpath(dir, string(windows_plot, ".svg")))
+
+    bestlens = @_ winmeandiff |>
+        groupby(__, [winlen_col]) |>
+        filteringmap(__, folder=foldl,
+            :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(df.fold)),
+            function(sdf, fold)
+                sdf = filter(x -> x.λ == λ_map[fold], sdf)
+                DataFrame(logitmeandiff = maximum(sdf.logitmeandiff))
+            end) |>
+        groupby(__, :train_fold) |>
+        combine(__, [:winlen, :logitmeandiff] =>
+            ((len, diff) -> len[argmax(diff)]) => :bestlen)
+
+    winlen_map = Dict(row.train_fold => row.bestlen for row in eachrow(bestlens))
 
     @vlplot() +
     vcat(
@@ -279,11 +313,11 @@ function pickλ(df, n_folds, factors, maximize_across; fold_id = :sid, λ_col = 
         )
     ) |> save(joinpath(dir, string(lambda_plot,".svg")))
 
-    return test_fold_map, λ_map
+    return λ_map, winlen_map
 end
 
 """
-    mapgroups(fn, groups, folder = foldxt; desc = "Progress")
+    mapgroups(df, groups, fn;folder = foldxt, desc = "Progress")
 
 Apply `fn` to each group in a grouped data frame, in parallel (by default), `append!!`ing
 the returned values together. Set `folder = foldl` if you want to run the process in
@@ -293,7 +327,8 @@ Since this assumes a long running process, it creates a progress bar. You can ch
 the description for the progress bar using `desc`.
 
 """
-function mapgroups(fn, groups, folder = foldxt; desc = "Progress")
+function mapgroups(df, vars, fn, ;folder = foldxt, desc = "Progress")
+    groups = groupby(df, vars)
     progress = Progress(length(groups), desc = desc)
     function fn_((key,sdf))
         result = fn(sdf)
@@ -311,16 +346,13 @@ end
 """
     addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 
-Insert a new column in dataframe `df` for the fold. There are `n` folds. The fold of a row
-is determined by the identity of the coluimn `col`.
-
+Insert a new column in dataframe `df` for the fold, and a column for the train_folds. There
+are `n` folds. The fold of a row is determined by the identity of the column `col`.
 """
 function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
     train,test = folds(n, unique(df[:,col]), rng = rng)
     train,test = Set.(train), Set.(test)
-    df[!, :fold] = map(colval -> findfirst(fold -> colval ∈ fold, train), df[:,col])
-    df[!, :test_fold] = map(colval -> findfirst(fold -> colval ∈ fold, test), df[:,col])
-
+    df[!, :fold] = map(colval -> findfirst(fold -> colval ∈ fold, test), df[:,col])
     df
 end
 
@@ -354,12 +386,15 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
         local result
         if !isempty(filtered)
             result = fn(filtered, getindex.(filterings, 2)...)
+
             if !isempty(result)
                 for (name, val, filterfn) in filterings
                     result[!, name] .= val
                 end
                 if !isempty(key)
-                    result[!, keys(key)] .= permutedims(collect(values(key)))
+                    for (k,v) in pairs(key)
+                        result[!, k] .= v
+                    end
                 end
             end
         else
@@ -370,7 +405,8 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
         result
     end
 
-    folder(append!!, Map(filtermap), collect(groupings))
+    folder(append!!, Map(filtermap), collect(groupings),
+        init = Empty(DataFrame))
 end
 
 filtermap_groupings(df::GroupedDataFrame, flattened) =

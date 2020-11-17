@@ -9,7 +9,7 @@ using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
 wmean = GermanTrack.wmean
 n_winlens = 6
 
-dir = mkpath(joinpath(plotsdir(), "condition", "supplement"))
+dir = mkpath(joinpath(plotsdir(), "figure2_parts", "supplement"))
 
 using GermanTrack: colors, neutral, patterns
 
