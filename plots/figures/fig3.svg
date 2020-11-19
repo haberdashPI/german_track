@@ -350,9 +350,9 @@
             <path aria-label=": spatial; condition: spatial; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.635240406512" role="graphics-symbol" aria-roledescription="bar" d="M41.166666666666664,117.4525891030387h16v43.547410896961296h-16Z" fill="url(#stipre3)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": global; upper_lower: 0.898248044003; upper: 0.898248044003; lower: 0.75549425805" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(9.833333333333332,78.7308489079701)" x2="0" y2="-45.966719077091305" stroke="black"/>
-            <line aria-label=": object; upper_lower: 0.743921252939; upper: 0.743921252939; lower: 0.564763225712" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(29.5,140.14624132066092)" x2="0" y2="-57.68888476713619" stroke="black"/>
-            <line aria-label=": spatial; upper_lower: 0.704623937873; upper: 0.704623937873; lower: 0.566633843345" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(49.166666666666664,139.54390244295868)" x2="0" y2="-44.432810437957414" stroke="black"/>
+            <line aria-label=": global; upper_lower: 0.898779455342; upper: 0.898779455342; lower: 0.756082111978" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(9.833333333333332,78.54155994322721)" x2="0" y2="-45.948544563458135" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.744279266801; upper: 0.744279266801; lower: 0.564495785998" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(29.5,140.23235690874924)" x2="0" y2="-57.89028081856624" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.705160626748; upper: 0.705160626748; lower: 0.56371319939" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(49.166666666666664,140.48434979642283)" x2="0" y2="-45.54607160913311" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_2_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
             <line transform="translate(59,135.76652628745495)" x2="-59" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>

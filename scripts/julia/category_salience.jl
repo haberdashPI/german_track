@@ -200,7 +200,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map begin
 
     λ_map, winlen_map = pick_λ_winlen(resultdf,
         [:condition, :sid, :winstart], :condition,
-        smoothing = 0.75, slope_thresh = 0.15, flat_thresh = 0.01,
+        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.01,
         dir = mkpath(joinpath(dir, "supplement")))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
@@ -209,7 +209,7 @@ end
 # Plot timeline (Fig 3d)
 # =================================================================
 
-# Compute frequency bins
+# Compute classificaiton accuracy
 # -----------------------------------------------------------------
 
 file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.json")
@@ -389,6 +389,7 @@ real_timeslice = times[argmin(abs.(times .- timeslice))]
 barwidth = 16
 
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
+yrange = [0.5, 1]
 pl = @_ classdiffs |>
     filter(_.hittype == "hit", __) |>
     filter(_.winstart == real_timeslice, __) |>
@@ -414,7 +415,7 @@ pl = @_ classdiffs |>
         color = {:condition, scale = {range = urlcol.(keys(seqpatterns))}},
         y = {:meancor,
             title = ytitle,
-            scale = {domain = [0.5, 1.0]}
+            scale = {domain = yrange}
         }
     ) +
     @vlplot(:errorbar,
@@ -426,7 +427,7 @@ pl = @_ classdiffs |>
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
             y = {datum = nullmean},
             color = {value = "black"})
-    )
+    );
 plotfile = joinpath(dir, "fig3c.svg")
 pl |> save(plotfile)
 addpatterns(plotfile, seqpatterns, size = 10)
