@@ -92,6 +92,8 @@ end
 
 urlcol(x) = "url(#$x)"
 
+allcols = colorat(vcat(1:4, 7:10, 12:15))
+
 inpatterns = begin
     OrderedDict(
         "stripe1a" => colorat([1,2]),

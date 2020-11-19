@@ -151,6 +151,8 @@ GermanTrack.@cache_results file predictbasedf begin
             mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
 
+    # TODO: use folds from hyperparam setup above
+
     classdf = compute_freqbins(
         subjects = subjects,
         groupdf = @_(events |>
