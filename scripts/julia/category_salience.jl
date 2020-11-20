@@ -213,7 +213,7 @@ end
 # -----------------------------------------------------------------
 
 file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.json")
-GermanTrack.@cache_results file restuldf_timeline begin
+GermanTrack.@cache_results file resultdf_timeline begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf = compute_freqbins(
@@ -229,7 +229,7 @@ GermanTrack.@cache_results file restuldf_timeline begin
                 start = start,
                 len = winlen_map[event.fold[1]] |>
                     GermanTrack.spread(0.5,n_winlens,indices=k)))
-            for start in range(0, 3, length = 64) for k in 1:n_winlens
+            for start in range(0, 3, length = 32) for k in 1:n_winlens
         ]
     )
 
@@ -254,16 +254,24 @@ end
 
 classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :hittype]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+        combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
+                    :weight => sum => :weight)
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:winstart, :sid, :λ, :fold, :condition, :hittype]) |>
-    combine(__, :mean => mean => :mean)
+    combine(__, :mean => mean => :mean, :weight => sum => :weight)
 
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
     deletecols!(__, :λ)
+
+statdata = @_ classmeans_sum |>
+    filter(_.λ != 1.0, __) |>
+    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
+    transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
+
+CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), statdata)
 
 nullmean, classdiffs =
 let l = logit ∘ shrinktowards(0.5, by = 0.01),

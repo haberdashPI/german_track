@@ -425,6 +425,21 @@ macro cache_results(file, args...)
         error("Expected variable names and a code body")
     end
 
+    # check for all symbols before running the code
+    # (avoids getting the error after running some long-running piece of code)
+    found_symbols = Set{Symbol}()
+    MacroTools.postwalk(body) do expr
+        if expr isa Symbol && expr ∈ symbols
+            push!(found_symbols, expr)
+        end
+        expr
+    end
+    missing_index = @_ findfirst(_ ∉ found_symbols, symbols)
+
+    if !isnothing(missing_index)
+        error("Could not find symbol `$(symbols[missing_index])` in cache body, check spelling.")
+    end
+
     quote
         begin
             function run(ignore)
