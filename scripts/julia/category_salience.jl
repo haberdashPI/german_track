@@ -255,16 +255,21 @@ end
 classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :hittype]) |>
         combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
-                    :weight => sum => :weight)
+                    :weight => sum => :weight,
+                    :correct => length => :count) |>
+        transform(__, :weight => (x -> x ./ mean(x)) => :weight)
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:winstart, :sid, :λ, :fold, :condition, :hittype]) |>
-    combine(__, :mean => mean => :mean, :weight => sum => :weight)
+    combine(__,
+        [:mean, :weight] => GermanTrack.wmean => :mean,
+        :weight => sum => :weight,
+        :count => length => :count)
 
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    deletecols!(__, [:λ, :weight, :count])
 
 statdata = @_ classmeans_sum |>
     filter(_.λ != 1.0, __) |>
@@ -273,30 +278,14 @@ statdata = @_ classmeans_sum |>
 
 CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), statdata)
 
-nullmean, classdiffs =
-let l = logit ∘ shrinktowards(0.5, by = 0.01),
-    C = mean(l.(nullmeans.nullmean))
-    logistic(C),
-    @_ classmeans_sum |>
-        innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
-        filter(_.λ != 1.0, __) |>
-        transform!(__, :condition => ByRow(uppercasefirst) => :condition_label) |>
-        transform!(__, [:mean, :nullmean] =>
-            ByRow((x,y) -> logistic(l(x) - l(y) + C)) => :meancor) |>
-        transform!(__, [:mean, :nullmean] =>
-            ByRow((x,y) -> l(x) - l(y)) => :logitmeandiff) |>
-        transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
-        transform!(__, :nullmean => ByRow(l) => :logitnullmean)
-end
+corrected_data = CSV.read(processed_datadir("analyses", "eeg_salience_timeline_correct.csv"), DataFrame)
+nullmean = 0.52
 
 timeslice = 2.8
 
-CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), classdiffs)
-
-annotate = @_ map(abs(_ - 3.0), classdiffs.winstart) |> classdiffs.winstart[argmin(__)]
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
 target_len_y = 0.8
-pl = @_ classdiffs |>
+pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
         width = 242, height = 200, autosize = "fit",
@@ -309,12 +298,12 @@ pl = @_ classdiffs |>
     @vlplot({:line, strokeCap = :round},
         strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
-        y = {:meancor, aggregate = :mean, type = :quantitative, title = ytitle,
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
             scale = {domain = [0.5,1.0]}}) +
     # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative},
-        y = {:meancor, aggregate = :ci, type = :quantitative, title = ytitle}) +
+        y = {:corrected_mean, aggregate = :ci, type = :quantitative, title = ytitle}) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
         transform =
@@ -323,7 +312,7 @@ pl = @_ classdiffs |>
                 "(datum.condition == 'spatial' && "*
                 "datum.winstart > 2.45 && datum.winstart <= 2.55)"}],
         x = {datum = 3.0},
-        y = {:meancor, aggregate = :mean, type = :quantitative},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
     # "Time Slice" annotation
@@ -403,9 +392,9 @@ pl = @_ classdiffs |>
     filter(_.winstart == real_timeslice, __) |>
     groupby(__, [:condition]) |>
     combine(__,
-        :meancor => mean => :meancor,
-        :meancor => lowerboot => :lower,
-        :meancor => upperboot => :upper,
+        :corrected_mean => mean => :corrected_mean,
+        :corrected_mean => lowerboot => :lower,
+        :corrected_mean => upperboot => :upper,
     ) |>
     @vlplot(
         width = 111, autosize = "fit",

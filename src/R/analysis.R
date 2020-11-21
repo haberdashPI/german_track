@@ -46,3 +46,20 @@ effect_summary_helper = function(df){
         across(all_of(cols), .names = '{.col}_95', ~ posterior_interval(matrix(.x))[,2]),
     )
 }
+
+pairwise = function(df){
+    cols = names(df)
+    n = length(cols)
+    newdf = NULL
+    for(i in 1:(n-1)){
+        for(j in (i+1):n){
+            if(length(newdf) == 0){
+                newdf = data.frame(newcol = df[,cols[i]] - df[,cols[j]])
+            }else{
+                newdf = cbind(newdf, data.frame(newcol = df[,cols[i]] - df[,cols[j]]))
+            }
+            names(newdf)[names(newdf) == "newcol"] = str_c(cols[i],' - ',cols[j])
+        }
+    }
+    newdf
+}
