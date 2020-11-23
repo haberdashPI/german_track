@@ -27,10 +27,10 @@
 </pattern>
 </defs>
   <defs>
-    <clipPath id="clip1">
+    <clipPath id="clip1_neural">
       <rect x="0" y="0" width="160" height="144"/>
     </clipPath>
-    <clipPath id="clip2">
+    <clipPath id="clip2_neural">
       <rect x="0" y="0" width="160" height="144"/>
     </clipPath>
   </defs>
@@ -110,7 +110,7 @@
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1)" role="graphics-object" aria-roledescription="rect mark container">
+          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1_neural)" role="graphics-object" aria-roledescription="rect mark container">
             <path aria-label="condition_time: globalearly; : global; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.950020107609" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,7.197104504297714h14v136.80289549570227h-14Z" fill="url(#stripe1a)"/>
             <path aria-label="condition_time: objectearly; : object; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.694548212182" role="graphics-symbol" aria-roledescription="bar" d="M66,43.985057445796855h14v100.01494255420315h-14Z" fill="url(#stripe2a)"/>
             <path aria-label="condition_time: spatialearly; : spatial; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.747128359211" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,36.413516273571624h14v107.58648372642838h-14Z" fill="url(#stripe3a)"/>
@@ -120,7 +120,7 @@
             <line aria-label="condition: object; : 0.653545271091; upper: 0.73267071416" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,49.88948096293101)" x2="0" y2="-11.394063801922051" stroke="black"/>
             <line aria-label="condition: spatial; : 0.615770326849; upper: 0.843868407321" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,55.32907293373564)" x2="0" y2="-32.846123588019026" stroke="black"/>
           </g>
-          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2)" role="graphics-object" aria-roledescription="rect mark container">
+          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2_neural)" role="graphics-object" aria-roledescription="rect mark container">
             <path aria-label="condition_time: globallate; condition: global; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.670138900371" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,47.49999834664399h14v96.50000165335601h-14Z" fill="url(#stripe1b)"/>
             <path aria-label="condition_time: objectlate; condition: object; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.780761545057" role="graphics-symbol" aria-roledescription="bar" d="M80,31.570337511781496h14v112.4296624882185h-14Z" fill="url(#stripe2b)"/>
             <path aria-label="condition_time: spatiallate; condition: spatial; High/Low Salience Classification, Accuracy (Null Model Corrected): 0.616155823495" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,55.273561416783615h14v88.72643858321638h-14Z" fill="url(#stripe3b)"/>

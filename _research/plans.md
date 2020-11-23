@@ -1,5 +1,22 @@
 ## plans
 
+sequence:
+
+TASK: try to check merve data & get individual data needed for fig5 & fig4
+1. load merve data, see what differences exist (can do now)
+  a. can we regenerate hit rates from purely raw data? what is happening here
+  b. can we generate the angles again, so we can combine those
+  TIME LIMIT: 2 hours
+2. stop-gap: (if above fails) - find individual angle data in merve's script and use that
+
+TASK: correct salience by logitnull mean, and replot (30 min tops)
+
+TASK: correct fig5 & fig4 by logitnullmean (can do now; hopefully fast)
+  FIRST TIME LIMIT: 1 hour
+  could address issues with lower than null mean
+
+TASK: use semi-supervised as template for basic decoding setup, use L1? probably
+
 codecleanup:
   - rename ishit
 

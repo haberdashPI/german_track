@@ -8,11 +8,12 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, Colors, CSV
+    StatsFuns, Colors, CSV, DataFramesMeta
 
 using GermanTrack: colors, gray, patterns, lightdark, darkgray, inpatterns, allcols
 
 dir = mkpath(plotsdir("figure5_parts"))
+dir_supplement = mkpath(plotsdir("figure5_parts","supplement"))
 
 # Behavioral early/late salience (fig 5a)
 # =================================================================
@@ -109,7 +110,7 @@ file = joinpath(processed_datadir("analyses"), "salience-hyperparams.json")
 GermanTrack.@load_cache file fold_map λ_map winlen_map
 
 file = joinpath(processed_datadir("analyses"), "salience-earlylate.json")
-GermanTrack.@cache_results file resultdf_earlylate
+GermanTrack.@cache_results file resultdf_earlylate begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf = compute_freqbins(
@@ -150,34 +151,42 @@ end
 
 classmeans = @_ resultdf_earlylate |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
+    @based_on(__,
+        mean   = GermanTrack.wmean(:correct, :weight),
+        weight = sum(:weight),
+        count  = length(:correct)
+    )
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
-    combine(__, :mean => mean => :mean)
+    @based_on(__,
+        mean = mean(:mean),
+        weight = sum(:weight),
+        count = length(:mean)
+    )
 
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    deletecols!(__, [:λ, :weight, :count])
 
-nullmean, classdiffs =
-    let l = logit ∘ shrinktowards(0.5, by = 0.01),
-        C = mean(l.(nullmeans.nullmean)),
-        tocor = x -> logistic(x + C)
-    logistic(C),
-    @_ classmeans_sum |>
-        filter(_.λ != 1.0, __) |>
-        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
-        transform!(__, [:mean, :nullmean] => ByRow((x,y) -> (l(x)-l(y))) => :logitmeandiff) |>
-        groupby(__, [:condition, :target_time_label]) |>
-        combine(__,
-            :logitmeandiff => tocor ∘ mean => :mean,
-            :logitmeandiff => (x -> tocor(lowerboot(x, alpha = 0.318))) => :lower,
-            :logitmeandiff => (x -> tocor(upperboot(x, alpha = 0.318))) => :upper,
-        ) |>
-        transform!(__, [:condition, :target_time_label] => ByRow(string) => :condition_time)
-end
+statdata = @_ classmeans_sum |>
+    filter(_.λ != 1.0, __) |>
+    innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+    @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01))) |>
+    @transform(__, logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01)))
+CSV.write(processed_datadir("analyses", "eeg_salience_earlylate.csv"), statdata)
+
+# supplemental figure
+
+pl = statdata |>
+    @vlplot(:point,
+        column = :condition,
+        color = :target_time_label,
+        x = :logitnullmean,
+        y = :logitmean
+    );
+pl |> save(joinpath(dir_supplement, "earlylate_ind.svg"))
 
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
 barwidth = 14
@@ -264,9 +273,9 @@ background = pyimport("svgutils").transform.fromstring("""
 # NOTE: we have to make all of the `clipN` definitions distinct
 # across the three files we're combining
 for (suffix, file) in [
-    ("behavior_hitrate", "behavior_earlylate_hitrate.svg"),
-    ("behavior_angle", "behavior_earlylate_angle.svg"),
-    ("neural", "salience_earlylate.svg")]
+    ("behavior_hitrate", "fig5a.svg"),
+    # ("behavior_angle", "behavior_earlylate_angle.svg"),
+    ("neural", "fig5c.svg")]
     filereplace(joinpath(dir, file), r"\bclip([0-9]+)\b" =>
         SubstitutionString("clip\\1_$suffix"))
 end
@@ -274,26 +283,26 @@ end
 fig = svg.Figure("89mm", "235mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "behavior_earlylate_hitrate.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig5a.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(115,35),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(220,35)
     ).move(0, 0),
+    # svg.Panel(
+    #     svg.SVG(joinpath(dir, "behavior_earlylate_angle.svg")).move(0,15),
+    #     svg.Text("B", 2, 10, size = 12, weight = "bold"),
+    #     svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+    #         scale(0.1).move(115,35),
+    #     svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+    #         scale(0.1).move(220,35)
+    # ).move(0, 235),
     svg.Panel(
-        svg.SVG(joinpath(dir, "behavior_earlylate_angle.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight = "bold"),
-        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(115,35),
-        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,35)
-    ).move(0, 235),
-    svg.Panel(
-        svg.SVG(joinpath(dir, "salience_earlylate.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig5c.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(220,40)
+            scale(0.1).move(220,15)
     ).move(0, 235 + 235),
-).scale(1.333).save(joinpath(dir, "fig4.svg"))
+).scale(1.333).save(joinpath(dir, "fig5.svg"))
 
