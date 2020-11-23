@@ -132,7 +132,7 @@ dfbinfull = df %>% mutate(winbin = cut(winstart, 5))
 
 fit_bin2_full = stan_glmer(mean ~ winbin*condition + logitnullmean + (winbin | sid),
     family = binomial(link = "logit"), weights = count,
-    data = dfbinfull, iter = 2000)
+    data = dfbinfull, iter = 3000, adapt_delta = 0.99)
 posterior_interval(matrix(c(predictive_error(fit_bin2_full))))
 p = pp_check(fit_bin2_full)
 ggsave(file.path(plot_dir, 'figure3_parts', 'supplement', 'eeg_salience_modelcheck_bin2_full.svg'), p)
@@ -143,10 +143,9 @@ grandnull = df %>%
     summarize(logitnullmean = mean(logitnullmean)) %>%
     {mean(.$logitnullmean)}
 
-dfcorrect = df %>%
-    mutate(corrected_mean = invlogit(logit(mean) - nullslope*logitnullmean + grandnull))
+df %<>% mutate(corrected_mean = invlogit(logit(mean) - nullslope*logitnullmean + grandnull))
 
-write.csv(dfcorrect,
+write.csv(df,
     file.path(processed_datadir, 'analyses', 'eeg_salience_timeline_correct.csv'))
 
 # Other attempted model variants (they don't go anywhere fruitful, y_rep starts to look really wonky)
