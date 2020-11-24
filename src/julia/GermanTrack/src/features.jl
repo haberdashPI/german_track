@@ -370,25 +370,26 @@ const default_freqbins = OrderedDict(
 # -----------------------------------------------------------------
 
 """
-    compute_powerbin_features(data, eeg, windowing; freqbins = default_freqbins,
+    compute_powerbin_features(events, eeg, windowing; freqbins = default_freqbins,
         channels = Colon())
 
-For a given subset of data and windowing (defined by `windowing`) compute a single feature
+For a given subset of events and windowing (defined by `windowing`) compute a single feature
 vector; there are nchannels x nfreqbins total features. The features are computed using
 [`computebands`](#).
 
 Features are weighted by the number of observations (valid windows) they represent.
 """
-function compute_powerbin_features(data, eeg, windowing; kwds...)
-    @assert data.sid |> unique |> length >= 1 "No subject data!"
-    @assert data.sid |> unique |> length == 1 "Expected one subject's data"
-    sid = data.sid |> first
+function compute_powerbin_features(events, subjects, windowing; kwds...)
+    @assert events.sid |> unique |> length >= 1 "No subject events!"
+    @assert events.sid |> unique |> length == 1 "Expected one subject's events"
+    sid = events.sid |> first
+    eeg = subjects[sid].eeg
 
     # TODO: this code is likely to be type unstable; could gain some speed
     # by optimizing it, but hasn't been worth it to me yet
     fs = framerate(eeg)
-    windowing = resolve(windowing, data)
-    windows = @_ map(slice(windowing, eeg[_1.trial_index], _1, fs), eachrow(data))
+    windowing = resolve(windowing, events)
+    windows = @_ map(slice(windowing, eeg[_1.trial_index], _1, fs), eachrow(events))
     isempty(skipmissing(windows)) && return Empty(DataFrame)
 
     signal = reduce(hcat, skipmissing(windows))
@@ -477,13 +478,12 @@ return value of `load_all_subjects`. The windows should be created using the win
 functions (see above).
 
 """
-function compute_freqbins(groupdf ;subjects, windows, reducerfn = foldxt, kwds...)
+function compute_freqbins(groupdf ; subjects, windows, reducerfn = foldxt, kwds...)
     progress = Progress(length(groupdf) * length(windows),
         desc = "Computing frequency bins...")
     function helper(((key, sdf), window))
         # compute features in each window
-        result = compute_powerbin_features(sdf, subjects[sdf.sid[1]].eeg,
-            window; kwds...)
+        result = compute_powerbin_features(sdf, subjects, window; kwds...)
         if !isempty(result)
             insertcols!(result, 1, (keys(key) .=> values(key))...)
         end

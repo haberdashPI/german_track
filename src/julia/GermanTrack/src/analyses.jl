@@ -1,5 +1,5 @@
 export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ_winlen,
-    addfold!, splayby, mapgroups, filteringmap
+    addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)

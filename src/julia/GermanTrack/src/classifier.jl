@@ -151,12 +151,12 @@ Results are returned as a data frame, with appropriately named columns.
 ## Additional keyword args
 - `weight`: a column to weight individual observations in `data`
 - `on_model_exception`: what to do when an exception occurs in the mode; options include:
-    - `:debug` (default): runs @infiltrate at the site of the error allowing user
+    - `:debug`: runs @infiltrate at the site of the error allowing user
         to examine data (refer to `runclassifier` source for other relevant variables).
         **NOT THREAD SAFE**
     - `:print`: display the error, but use missing values for the particular fold
         where the error occured.
-    - `:throw`: throw an exception
+    - `:error` (default): throw an error
 - `on_missing_case`
     - `:error` (default): throw an error if there is only one label value for `y`
     - `:missing`: return missing data if there is only one label value for `y`
@@ -165,9 +165,9 @@ Results are returned as a data frame, with appropriately named columns.
  for display and interpretation of the model.
 """
 function testclassifier(model; data, y, X, crossval, n_folds = 10,
-    seed  = nothing, weight = nothing, on_model_exception = :debug,
+    seed  = nothing, weight = nothing, on_model_exception = :error,
     on_missing_case = :error, include_model_coefs = false, ycoding = DummyCoding, kwds...)
-    @assert on_model_exception ∈ [:debug, :print, :throw]
+    @assert on_model_exception ∈ [:debug, :print, :error]
 
     if !isnothing(seed); seedmodel(model, seed); end
 
@@ -244,7 +244,7 @@ function testclassifier(model; data, y, X, crossval, n_folds = 10,
                     end
                     @error "Exception while fitting model: $(String(take!(buffer)))"
                     return fill(missing, size(test, 1)), nothing
-                elseif on_model_exception == :throw
+                elseif on_model_exception == :error
                     rethrow(e)
                 end
             end

@@ -17,40 +17,35 @@ using GermanTrack: neutral, colors, lightdark, darkgray
 # Find hyperparameters (λ and winlen)
 # =================================================================
 
+nbins = 10
+switchbreaks = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
+    skipmissing |>
+    quantile(__, range(0,1,length = nbins+1)[2:(end-1)])
+
 file = joinpath(processed_datadir("analyses"), "nearfar-hyperparams.json")
 GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
-    nbins = 10
-    breaks = range(0,1,length = nbins+1)[2:(end-1)]
-    switchclass = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
-        skipmissing |> quantile(__, breaks)
+    function compute_powerbin_withbreak(sdf, switch_break, target_switch, window)
+        filtered = @_ sdf |>
+            filter(!ismissing(_.switch_class), __) |>
+            filter(target_switch == "far" ? (_.switch_class > switch_break) :
+                (_.switch_class <= switch_break), __)
+        isempty(filtered) && return Empty(DataFrame)
+        compute_powerbin_features(filtered, subjects, window)
+    end
 
     classdf = @_ events |> filter(ishit(_) == "hit", __) |>
-        @transform(__, switch_class = map(x -> sum(x .> switchclass), :switch_distance)) |>
-        groupby(__, [:sid, :condition, :target_time_label, :target_switch_label]) |>
+        @transform(__, switch_class = map(x -> sum(x .> switchbreaks), :switch_distance)) |>
+        groupby(__, [:sid, :condition, :target_time_label]) |>
         filteringmap(__, desc = "Computing features...",
             :switch_break => 1:(nbins-2),
+            :target_switch_label => ["near", "far"],
             :windows => [windowtarget(len = len, start = start)
                 for len in 2.0 .^ range(-1, 1, length = 10),
                     start in [0; 2.0 .^ range(-2, 2, length = 10)]],
-            function(sdf, switch_break, window)
-                # TODO: this is all very hacky; make it prettier and easier to read
-                label(x) = ismissing(x) ? missing : x > switch_break ? "early" : "late"
-                sdf[!, :target_switch_label] = label.(sdf.switch_class)
-                resulta = !any(sdf.target_switch_label .== "early") ?
-                    Empty(DataFrame) :
-                    GermanTrack.compute_powerbin_features(
-                        filter(x -> x.target_switch_label == "early", sdf),
-                        subjects[sdf.sid[1]].eeg, window)
-                resultb = !any(sdf.target_switch_label .== "late") ?
-                    Empty(DataFrame) :
-                    GermanTrack.compute_powerbin_features(
-                        filter(x -> x.target_switch_label == "late", sdf),
-                        subjects[sdf.sid[1]].eeg, window)
-                append!!(resulta, resultb)
-            end)
+            compute_powerbin_withbreak)
 
     resultdf = @_ classdf |>
         addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
@@ -66,7 +61,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
                     seed         = 2017_09_16,
                     weight       = :weight,
                     maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 1200,
+                    irls_maxiter = 600
                 )
             end)
 
@@ -105,7 +100,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
         filteringmap(__,
             :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(__.fold)),
             (sdf, fold) -> DataFrame(best = sdf.switch_break[argmax(sdf.mean)])) |>
-        @transform(__, early_break = switchclass[:best .+ 1]) |>
+        @transform(__, early_break = switchbreaks[:best .+ 1]) |>
         Dict(r.train_fold => r.best for r in eachrow(__))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
@@ -116,6 +111,43 @@ end
 
 # Classification accuracy
 # -----------------------------------------------------------------
+
+file = joinpath(cache_dir("features"), "nearfar-target.json")
+GermanTrack.@cache_results file resultdf begin
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    classdf = compute_freqbins(
+        subjects = subjects,
+        groupdf  = @_( events |>
+            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+            transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+            filter(_.hittype ∈ ["hit", "miss"], __) |>
+            groupby(__, [:sid, :fold, :condition, :salience_label, :hittype])
+        ),
+        windows = [
+            windowtarget(windowfn = event -> (
+                start = start,
+                len = winlen_map[event.fold[1]] |>
+                    GermanTrack.spread(0.5,n_winlens,indices=k)))
+            for start in range(0, 3, length = 32) for k in 1:n_winlens
+        ]
+    )
+
+    resultdf = @_ classdf |>
+        mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
+            function (sdf)
+                result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
+                    data         = sdf,
+                    y            = :salience_label,
+                    X            = r"channel",
+                    crossval     = :sid,
+                    n_folds      = n_folds,
+                    seed         = stablehash(:salience_classification, 2019_11_18),
+                    maxncoef     = size(sdf[:, r"channel"], 2),
+                    irls_maxiter = 600,
+                    weight       = :weight)
+            end)
+end
 
 
 
