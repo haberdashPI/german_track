@@ -27,7 +27,6 @@ data/processed/features
 # vega lite html output is large and messy, don't save it to git
 plots/**/*.html
 plots/**/*.png
-plots/figures/*.pdf
 
 src/matlab/external/**/*.mat
 
