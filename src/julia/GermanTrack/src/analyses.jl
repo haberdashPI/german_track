@@ -372,7 +372,8 @@ filtering functions for a given filtering are `(x -> true)` (include all rows), 
 specify the `filteringfn`, using `filtering1 => (value1, value2, etc...)` instead.
 
 """
-function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...")
+function filteringmap(df, filterings_fn...; folder = foldxt,
+    desc = "Progress...", addlabels = true)
     fn = filterings_fn[end]
     filterings = filterings_fn[1:(end-1)]
 
@@ -396,8 +397,10 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
             result = fn(filtered, getindex.(filterings, 2)...)
 
             if !isempty(result)
-                for (name, val, filterfn) in filterings
-                    result[!, name] .= Ref(val)
+                if addlabels
+                    for (name, val, filterfn) in filterings
+                        result[!, name] .= Ref(val)
+                    end
                 end
                 if !isempty(key)
                     for (k,v) in pairs(key)

@@ -101,7 +101,9 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
             :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(__.fold)),
             (sdf, fold) -> DataFrame(best = sdf.switch_break[argmax(sdf.mean)])) |>
         @transform(__, early_break = switchbreaks[:best .+ 1]) |>
-        Dict(r.train_fold => r.best for r in eachrow(__))
+        Dict(r.train_fold => r.early_break for r in eachrow(__))
+
+    # TODO: plot results across the different breaks, see what they look like
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
 end
@@ -116,13 +118,15 @@ file = joinpath(cache_dir("features"), "nearfar-target.json")
 GermanTrack.@cache_results file resultdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    # TODO: setup the switch break, and then use that in the classifier below
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-        filter(_.hittype ∈ ["hit", "miss"], __) |>
-        groupby(__, [:sid, :fold, :condition, :switch_break, :hittype]) |>
-        filteringmap(__, desc = "Computing freq bins...",
+        transform!(__, [:fold, :switch_distance] =>
+            ByRow((f,d) -> ismissing(d) ? missing :
+                (d >= break_map[f] ? "near" : "far")) => :target_switch_label) |>
+        filter(_.hittype ∈ ["hit"], __) |>
+        groupby(__, [:sid, :fold, :condition, :target_switch_label, :target_time_label, :hittype]) |>
+        filteringmap(__, desc = "Computing freq bins...", addlabels = false,
             :window => [
                 windowtarget(windowfn = event -> (
                     start = start,
@@ -130,14 +134,15 @@ GermanTrack.@cache_results file resultdf begin
                         GermanTrack.spread(0.5,n_winlens,indices=k)))
                 for start in range(0, 3, length = 32) for k in 1:n_winlens
             ],
-            compute_powerbin_features(_1, subjects, _2))
+            compute_powerbin_features(_1, subjects, _2)) |>
 
     resultdf = @_ classdf |>
-        mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
+        mapgroups(__, [:winlen, :fold, :hittype, :condition, :target_time_label],
+            desc = "Classifying target proximity...",
             function (sdf)
                 result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
                     data         = sdf,
-                    y            = :salience_label,
+                    y            = :target_switch_label,
                     X            = r"channel",
                     crossval     = :sid,
                     n_folds      = n_folds,
@@ -146,7 +151,30 @@ GermanTrack.@cache_results file resultdf begin
                     irls_maxiter = 600,
                     weight       = :weight)
             end)
+
+    # GermanTrack.@store_cache file resultdf
 end
 
+# Plot data
+# -----------------------------------------------------------------
 
+classmeans = @_ resultdf |>
+    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
+classmeans_sum = @_ classmeans |>
+    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
+    combine(__, :mean => mean => :mean) |>
+    transform!(__, :λ => ByRow(log) => :logλ)
+
+nullmeans = @_ classmeans_sum |>
+    filter(_.λ == 1.0, __) |>
+    rename!(__, :mean => :nullmean) |>
+    deletecols!(__, [:λ, :logλ])
+
+statdata = @_ classmeans_sum |>
+    filter(_.λ != 1.0, __) |>
+    innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
+    transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
+
+CSV.write(processed_datadir("analyses", "eeg_nearfar.csv"), statdata)
