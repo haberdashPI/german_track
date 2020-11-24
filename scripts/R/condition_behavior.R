@@ -52,8 +52,18 @@ coefdf %>%
     group_by(type, condition) %>%
     filter(str_detect(condition, '-')) %>%
     effect_summary(r = value, d = value / `(phi)`) %>%
-    select(-r_p) %>%
+    select(-r_pd) %>%
     mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}')) %>%
     arrange(desc(type), condition) %>%
+    effect_table()
+
+coefdf %>%
+    group_by(type, condition) %>%
+    filter(str_detect(condition, '-')) %>%
+    effect_summary(r = -value, d = -value / `(phi)`) %>%
+    # select(-r_p) %>%
+    mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}')) %>%
+    arrange(desc(type), condition) %>%
+    select(-matches('^r_')) %>%
     effect_table()
 

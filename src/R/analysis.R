@@ -45,7 +45,7 @@ effect_summary_helper = function(df){
             med = median,
             `05` = ~ posterior_interval(matrix(.x))[,1],
             `95` = ~ posterior_interval(matrix(.x))[,2],
-            p = ~ pd_to_p(p_direction(.x))[[1]]
+            pd = ~ p_direction(.x)[[1]]
         )))
 }
 
