@@ -71,7 +71,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
 
     λ_map, winlen_map = pick_λ_winlen(resultdf,
         [:condition, :sid, :winstart, :switch_break], :condition,
-        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.01,
+        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.05,
         dir = mkpath(joinpath(dir, "supplement")))
 
     classmeans_sum = @_ resultdf |>
@@ -116,22 +116,21 @@ file = joinpath(cache_dir("features"), "nearfar-target.json")
 GermanTrack.@cache_results file resultdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf  = @_( events |>
-            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
-            transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-            filter(_.hittype ∈ ["hit", "miss"], __) |>
-            groupby(__, [:sid, :fold, :condition, :salience_label, :hittype])
-        ),
-        windows = [
-            windowtarget(windowfn = event -> (
-                start = start,
-                len = winlen_map[event.fold[1]] |>
-                    GermanTrack.spread(0.5,n_winlens,indices=k)))
-            for start in range(0, 3, length = 32) for k in 1:n_winlens
-        ]
-    )
+    # TODO: setup the switch break, and then use that in the classifier below
+    classdf = @_ events |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |>
+        groupby(__, [:sid, :fold, :condition, :switch_break, :hittype]) |>
+        filteringmap(__, desc = "Computing freq bins...",
+            :window => [
+                windowtarget(windowfn = event -> (
+                    start = start,
+                    len = winlen_map[event.fold[1]] |>
+                        GermanTrack.spread(0.5,n_winlens,indices=k)))
+                for start in range(0, 3, length = 32) for k in 1:n_winlens
+            ],
+            compute_powerbin_features(_1, subjects, _2))
 
     resultdf = @_ classdf |>
         mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
