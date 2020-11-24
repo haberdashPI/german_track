@@ -370,7 +370,7 @@ const default_freqbins = OrderedDict(
 # -----------------------------------------------------------------
 
 """
-    compute_powerbin_features(eeg, data, windowing; freqbins = default_freqbins,
+    compute_powerbin_features(data, eeg, windowing; freqbins = default_freqbins,
         channels = Colon())
 
 For a given subset of data and windowing (defined by `windowing`) compute a single feature
@@ -379,7 +379,8 @@ vector; there are nchannels x nfreqbins total features. The features are compute
 
 Features are weighted by the number of observations (valid windows) they represent.
 """
-function compute_powerbin_features(eeg, data, windowing; kwds...)
+function compute_powerbin_features(data, eeg, windowing; kwds...)
+    @assert data.sid |> unique |> length >= 1 "No subject data!"
     @assert data.sid |> unique |> length == 1 "Expected one subject's data"
     sid = data.sid |> first
 
@@ -467,7 +468,7 @@ function computebands(signal, fs; freqbins = default_freqbins, channels = Colon(
 end
 
 """
-    compute_freqbins(subjects, groupdf, windows, [reducerfn = foldxt])
+    compute_freqbins(groupdf; subjects, windows, [reducerfn = foldxt])
 
 Compute features for a given set of subjects, according to the grouped events,
 using `windows`. The subjects are the first return value of `load_all_subjects`,
@@ -476,14 +477,12 @@ return value of `load_all_subjects`. The windows should be created using the win
 functions (see above).
 
 """
-function compute_freqbins(;subjects, groupdf, windows, reducerfn = foldxt,
-    kwds...)
-
+function compute_freqbins(groupdf ;subjects, windows, reducerfn = foldxt, kwds...)
     progress = Progress(length(groupdf) * length(windows),
         desc = "Computing frequency bins...")
     function helper(((key, sdf), window))
         # compute features in each window
-        result = compute_powerbin_features(subjects[sdf.sid[1]].eeg, sdf,
+        result = compute_powerbin_features(sdf, subjects[sdf.sid[1]].eeg,
             window; kwds...)
         if !isempty(result)
             insertcols!(result, 1, (keys(key) .=> values(key))...)

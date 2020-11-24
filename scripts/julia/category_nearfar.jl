@@ -1,0 +1,121 @@
+# Setup
+# =================================================================
+
+n_winlens = 12
+n_folds = 10
+
+using DrWatson; @quickactivate("german_track")
+using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
+    Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
+    Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
+    StatsFuns, CSV, Colors, DataFramesMeta
+
+dir = mkpath(plotsdir("figure4_parts"))
+
+using GermanTrack: neutral, colors, lightdark, darkgray
+
+# Find hyperparameters (λ and winlen)
+# =================================================================
+
+file = joinpath(processed_datadir("analyses"), "nearfar-hyperparams.json")
+GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+    lambdas = 10.0 .^ range(-2, 0, length=100)
+
+    nbins = 10
+    breaks = range(0,1,length = nbins+1)[2:(end-1)]
+    switchclass = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
+        skipmissing |> quantile(__, breaks)
+
+    classdf = @_ events |> filter(ishit(_) == "hit", __) |>
+        @transform(__, switch_class = map(x -> sum(x .> switchclass), :switch_distance)) |>
+        groupby(__, [:sid, :condition, :target_time_label, :target_switch_label]) |>
+        filteringmap(__, desc = "Computing features...",
+            :switch_break => 1:(nbins-2),
+            :windows => [windowtarget(len = len, start = start)
+                for len in 2.0 .^ range(-1, 1, length = 10),
+                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+            function(sdf, switch_break, window)
+                # TODO: this is all very hacky; make it prettier and easier to read
+                label(x) = ismissing(x) ? missing : x > switch_break ? "early" : "late"
+                sdf[!, :target_switch_label] = label.(sdf.switch_class)
+                resulta = !any(sdf.target_switch_label .== "early") ?
+                    Empty(DataFrame) :
+                    GermanTrack.compute_powerbin_features(
+                        filter(x -> x.target_switch_label == "early", sdf),
+                        subjects[sdf.sid[1]].eeg, window)
+                resultb = !any(sdf.target_switch_label .== "late") ?
+                    Empty(DataFrame) :
+                    GermanTrack.compute_powerbin_features(
+                        filter(x -> x.target_switch_label == "late", sdf),
+                        subjects[sdf.sid[1]].eeg, window)
+                append!!(resulta, resultb)
+            end)
+
+    resultdf = @_ classdf |>
+        addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
+        mapgroups(__, folder = foldl, desc = "Evaluating hyperparameters...",
+            [:winstart, :winlen, :fold, :condition, :switch_break],
+            function(sdf)
+                testclassifier(LassoPathClassifiers(lambdas),
+                    data         = sdf,
+                    y            = :target_switch_label,
+                    X            = r"channel",
+                    crossval     = :sid,
+                    n_folds      = 10,
+                    seed         = 2017_09_16,
+                    weight       = :weight,
+                    maxncoef     = size(sdf[:, r"channel"], 2),
+                    irls_maxiter = 1200,
+                )
+            end)
+
+    fold_map = @_ resultdf |>
+        groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
+        Dict(row.sid => row.fold for row in eachrow(__))
+
+    λ_map, winlen_map = pick_λ_winlen(resultdf,
+        [:condition, :sid, :winstart, :switch_break], :condition,
+        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.01,
+        dir = mkpath(joinpath(dir, "supplement")))
+
+    classmeans_sum = @_ resultdf |>
+        groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label,
+            :switch_break]) |>
+        combine(__, [:correct, :weight] => GermanTrack.wmean => :mean) |>
+        groupby(__, [:sid, :λ, :fold, :condition, :target_time_label, :switch_break]) |>
+        combine(__, :mean => mean => :mean)
+
+    nullmeans = @_ classmeans_sum |>
+        filter(_.λ == 1.0, __) |>
+        rename!(__, :mean => :nullmean) |>
+        deletecols!(__, :λ)
+
+    break_map = @_ classmeans_sum |>
+        filter(_.λ != 1.0, __) |>
+        innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :switch_break]) |>
+        @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)),
+                       logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01))) |>
+        groupby(__, [:switch_break, :fold]) |>
+        @based_on(__,
+            mean = mean(:logitmean .- :logitnullmean),
+            count = length(unique(string.(:condition, :target_time_label)))
+        ) |>
+        filter(_.count == 6, __) |> # ignore conditions with missing data
+        filteringmap(__,
+            :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(__.fold)),
+            (sdf, fold) -> DataFrame(best = sdf.switch_break[argmax(sdf.mean)])) |>
+        @transform(__, early_break = switchclass[:best .+ 1]) |>
+        Dict(r.train_fold => r.best for r in eachrow(__))
+
+    @info "Saving plots to $(joinpath(dir, "supplement"))"
+end
+
+# Plot near/far across early/late (Fig 4c)
+# =================================================================
+
+# Classification accuracy
+# -----------------------------------------------------------------
+
+
+

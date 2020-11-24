@@ -357,22 +357,30 @@ function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 end
 
 """
-    filteringmap(df,filtering1 => (value1 => filterfn1, etc...), filtering2 => etc..., fn,
+    filteringmap(df,filtering1 => (value1 => filterfn1 | value1, etc...),
+        filtering2 => etc..., fn,
         folder = foldxt, desc = "Progres...")
 
 Repeatedly map a function `fn` over a data frame or a grouped data frame, applying the
-function for each group and each set of filtersings. These filterings behave like the groups
-of a grouped data frame, but they can include rows are not mutually exlusive to one another.
-The `filtering` arguments specify the overlapping groups: group N's name is the value of
-`mapN`, and the values of the group variable are `valueK`; group `valueK` contains all rows
-that match the filtering function `filterfnK`
+function for each group and each set of filtersings. `fn` takes each group of `df` as its
+first argument, and the current value for each filtering as its remaining arguments. These
+filterings behave like the groups of a grouped data frame, but they can include rows are not
+mutually exlusive to one another. The `filtering` arguments specify the overlapping groups:
+group N's name is the value of `mapN`, and the values of the group variable are `valueK`;
+group `valueK` contains all rows that match the filtering function `filterfnK`. If all
+filtering functions for a given filtering are `(x -> true)` (include all rows), you need not
+specify the `filteringfn`, using `filtering1 => (value1, value2, etc...)` instead.
 
 """
 function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...")
     fn = filterings_fn[end]
     filterings = filterings_fn[1:(end-1)]
 
-    flattened = @_ map(f -> collect(map(pair -> (f[1], pair...), f[2])), filterings) |>
+    defaultpair(x::Pair) = x
+    defaultpair(x) = x => (x -> true)
+
+    flattened = @_ filterings |>
+        map(f -> collect(map(pair -> (f[1], defaultpair(pair)...), f[2])), __) |>
         Iterators.product(__...) |> collect
     groupings = filtermap_groupings(df, flattened)
     progress = Progress(length(groupings), desc = desc)
@@ -389,7 +397,7 @@ function filteringmap(df, filterings_fn...; folder = foldxt, desc = "Progress...
 
             if !isempty(result)
                 for (name, val, filterfn) in filterings
-                    result[!, name] .= val
+                    result[!, name] .= Ref(val)
                 end
                 if !isempty(key)
                     for (k,v) in pairs(key)
@@ -456,6 +464,27 @@ macro cache_results(file, args...)
             end
 
             $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
+
+            nothing
+        end
+    end
+end
+
+macro store_cache(file, args...)
+    symbols = args[1:end]
+    if !@_ all(_ isa Symbol, symbols)
+        error("Expected variable names")
+    end
+
+    quote
+        begin
+            function run(ignore)
+                Dict($((map(x -> :($(QuoteNode(x)) => jsonout($(esc(x)))), symbols))...))
+            end
+            let (dir, prefix, suffix) = cache_results_parser($(esc(file)))
+                produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix, force = true)[1] |>
+                    jsonin
+            end
 
             nothing
         end
