@@ -41,25 +41,31 @@ effect_summary_helper = function(df){
     cols = names(df)
     cols = cols[!(cols %in% group_vars(df))]
     df = summarize(df,
-        across(all_of(cols), mean, .names = '{.col}_mean'),
-        across(all_of(cols), .names = '{.col}_05', ~ posterior_interval(matrix(.x))[,1]),
-        across(all_of(cols), .names = '{.col}_95', ~ posterior_interval(matrix(.x))[,2]),
-    )
+        across(all_of(cols), list(
+            med = median,
+            `05` = ~ posterior_interval(matrix(.x))[,1],
+            `95` = ~ posterior_interval(matrix(.x))[,2],
+            p = ~ pd_to_p(p_direction(.x))[[1]]
+        )))
 }
 
-pairwise = function(df){
-    cols = names(df)
+effect_table = function(df, digits = 3){
+    limit = 10^(-digits)
+    df %>%
+        mutate(across(matches('_p$'), ~ ifelse(.x <= limit,
+            str_c('≤',limit),
+            str_c(' ',as.character(round(.x, digits = digits)))))) %>%
+        knitr::kable(digits = digits)
+}
+
+pairwise = function(df, ...){
+    cols = names(select(df, ...))
     n = length(cols)
-    newdf = NULL
     for(i in 1:(n-1)){
         for(j in (i+1):n){
-            if(length(newdf) == 0){
-                newdf = data.frame(newcol = df[,cols[i]] - df[,cols[j]])
-            }else{
-                newdf = cbind(newdf, data.frame(newcol = df[,cols[i]] - df[,cols[j]]))
-            }
-            names(newdf)[names(newdf) == "newcol"] = str_c(cols[i],' - ',cols[j])
+            df = cbind(df, newcol = df[,cols[i]] - df[,cols[j]])
+            names(df)[names(df) == "newcol"] = str_c(cols[i],' - ',cols[j])
         }
     }
-    newdf
+    df
 }

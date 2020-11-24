@@ -6,7 +6,7 @@ using DrWatson; @quickactivate("german_track")
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
     StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding,
-    JSON3
+    JSON3, DataFramesMeta
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -35,13 +35,11 @@ rawdata = @_ summaries |>
 
 CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), rawdata)
 
-means = @_ rawdata |>
-    groupby(__, [:condition, :type]) |>
-    combine(__,
-        :prop => mean => :prop,
-        :prop => lowerboot => :lower,
-        :prop => upperboot => :upper
-    )
+run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
+
+file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
+means = @_ CSV.read(file, DataFrame) |>
+    rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper)
 
 barwidth = 20
 means |> @vlplot(
@@ -131,6 +129,10 @@ GermanTrack.@cache_results file fold_map λ_map begin
                 )
             end)
 
+    fold_map = @_ resultdf |>
+        groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
+        Dict(row.sid => row.fold for row in eachrow(__))
+
     λ_map, winlen_map = pick_λ_winlen(resultdf, [:sid, :comparison, :winstart],
         :comparison, smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02,
         dir = mkpath(joinpath(dir, "supplement")))
@@ -150,8 +152,6 @@ GermanTrack.@cache_results file predictbasedf begin
         "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
             mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
-
-    # TODO: use folds from hyperparam setup above
 
     classdf = compute_freqbins(
         subjects = subjects,
@@ -215,11 +215,6 @@ predictmeans = @_ predictbasedf |>
         :correct => mean => :mean,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
 
-compnames = OrderedDict(
-    "global_v_object"  => "Global vs.\n Object",
-    "global_v_spatial" => "Global vs.\n Spatial",
-    "object_v_spatial" => "Object vs.\n Spatial")
-
 nullmeans = @_ predictmeans |>
     filter(_.modeltype == "null", __) |>
     deletecols!(__, [:logitcorrect, :modeltype]) |>
@@ -232,22 +227,20 @@ statdata = @_ predictmeans |>
     transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean) |>
     transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
 
+file = joinpath(processed_datadir("analyses"), "eeg_condition.csv")
+CSV.write(file, statdata)
+run(`Rscript $(joinpath(scriptsdir("R"), "condition_eeg.R"))`)
+
+compnames = OrderedDict(
+    "global_v_object"  => "Global vs.\n Object",
+    "global_v_spatial" => "Global vs.\n Spatial",
+    "object_v_spatial" => "Object vs.\n Spatial")
 
 statfile = joinpath(processed_datadir("analyses"), "eeg_condition_coefs.csv")
-if !isfile(statfile)
-    file = joinpath(processed_datadir("analyses"), "eeg_condition.csv")
-    CSV.write(file, statdata)
-    run(`Rscript $(joinpath(scriptsdir("R"), "condition_eeg_model.R"))`)
-end
-coefs = CSV.read(statfile, DataFrame)
-logitnullmean = mean(statdata.logitnullmean)
-nullmean = logistic(logitnullmean)
-
-plotdata = @_ coefs |>
-    stack(__, Between(:mean, :meanint95), :comparison) |>
-    transform!(__, :value => ByRow(x -> logistic(x + logitnullmean)) => :value) |>
-    unstack(__, :comparison, :variable, :value) |>
-    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
+plotdata = @_ CSV.read(statfile, DataFrame) |>
+    rename(__, :propr_med => :mean, :propr_05 => :lower, :propr_95 => :upper) |>
+    @transform(__, compname = map(x -> compnames[x], :comparison))
+nullmean = logistic(mean(statdata.logitnullmean))
 
 ytitle= ["Classification Accuracy", "(Null Model Corrected)"]
 barwidth = 25
@@ -274,8 +267,8 @@ plhit = @_ plotdata |>
             title = ytitle}) +
     @vlplot({:rule},
         color = {value = "black"},
-        y2 = :meanint95,
-        y = {:meanint05,
+        y2 = :upper,
+        y = {:lower,
             scale = {domain = [0.5, 1]},
             title = ytitle})
     ) +

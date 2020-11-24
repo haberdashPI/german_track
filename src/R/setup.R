@@ -10,6 +10,8 @@ library(tidyr)
 library(stringr)
 library(rjson)
 library(forcats)
+library(rstanarm)
+options(mc.cores = parallel::detectCores())
 
 source("src/R/analysis.R")
 
