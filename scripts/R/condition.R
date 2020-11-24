@@ -22,35 +22,75 @@ model = stan_glmer(prop ~ condition * type + (1 | sid),
     iter = 2000)
 
 p = pp_check(model)
-ggsave(file.path(plot_dir, 'condition', 'behavior_pp_check.svg'), p)
+ggsave(file.path(plot_dir, 'figure2_parts', 'supplement', 'behavior_pp_check.svg'), p)
 
 posterior_interval(matrix(c(predictive_error(model))))
 
-coefs = as.data.frame(model) %>%
-    mutate(gvo_hr = typehr + conditionobject + `conditionobject:typehr`,
-           gvs_hr = typehr + conditionspatial + `conditionspatial:typehr`,
-           ovs_hr = conditionobject - conditionspatial +
-                `conditionobject:typehr` - `conditionspatial:typehr`,
-           gvo_fr = conditionobject,
-           gvs_fr = conditionspatial,
-           ovs_fr = conditionobject - conditionspatial) %>%
-    gather(gvo_hr:ovs_fr, key = 'comparison', value = 'value') %>%
-    group_by(comparison) %>%
-    summarize(
-        mean = mean(value),
-        meanint05 = posterior_interval(matrix(value))[,1],
-        meanint95 = posterior_interval(matrix(value))[,2],
-        pval = pd_to_p(p_direction(value))[[1]],
-        d = mean(value / `(phi)`),
-        dint05 = posterior_interval(matrix(value / `(phi)`))[,1],
-        dint95 = posterior_interval(matrix(value / `(phi)`))[,2],
-    )
-knitr::kable(coefs, digits = 3)
-print(coefs)
+coefdf = as.data.frame(model) %>%
+    mutate(
+        global_hr = typehr + `(Intercept)`,
+        object_hr = typehr + `(Intercept)` + conditionobject + `conditionobject:typehr`,
+        spatial_hr = typehr + `(Intercept)` + conditionspatial + `conditionspatial:typehr`,
+        global_fr = `(Intercept)`,
+        object_fr = `(Intercept)` + conditionobject,
+        spatial_fr = `(Intercept)` + conditionspatial,
+    ) %>%
+    select(global_hr:spatial_fr, `(phi)`) %>%
+    mutate(sample = 1:n()) %>%
+    gather(global_hr:spatial_fr, key = 'condition', value = 'value')
+
+coefdf %>%
+    filter(str_detect(as.character(condition), 'hr')) %>%
+    group_by(condition) %>%
+    effect_summary(value) %>%
+    mutate(across(-condition,exp)) %>%
+    print
+
+coefdf %>%
+    filter(str_detect(as.character(condition), 'fr')) %>%
+    group_by(condition) %>%
+    effect_summary(invlogit(value)) %>%
+    print
+
+pairdf = coefdf %>%
+    select(-`(phi)`) %>%
+    filter(str_detect(as.character(condition), 'hr')) %>%
+    spread(condition, value) %>%
+    select(-sample) %>%
+    pairwise() %>%
+    gather(everything(), key = 'condition', value = 'value') %>%
+    group_by(condition) %>%
+    effect_summary(value) %>%
+    mutate(across(-condition, function(x){exp(-x)})) %>%
+    print
+
+pairdf = coefdf %>%
+    select(-`(phi)`) %>%
+    filter(str_detect(as.character(condition), 'hr')) %>%
+    spread(condition, value) %>%
+    select(-sample) %>%
+    pairwise() %>%
+    gather(everything(), key = 'condition', value = 'value') %>%
+    group_by(condition) %>%
+    effect_summary(value) %>%
+    mutate(across(-condition, function(x){exp(x)})) %>%
+    print
+
+pairdf = coefdf %>%
+    select(-`(phi)`) %>%
+    filter(str_detect(as.character(condition), 'fr')) %>%
+    spread(condition, value) %>%
+    select(-sample) %>%
+    pairwise() %>%
+    gather(everything(), key = 'condition', value = 'value') %>%
+    group_by(condition) %>%
+    effect_summary(value) %>%
+    mutate(across(-condition, function(x){exp(-x)})) %>%
+    print
 
 df = read.csv(file.path(processed_datadir,'analyses','eeg_condition.csv'))
 
-model = stan_glmer(shrinkmean ~ comparison + (1 + logitnullmean | sid),
+model = stan_glmer(shrinkmean ~ comparison + logitnullmean + (1 | sid),
     family = mgcv::betar,
     prior = normal(0,2.5),
     prior_intercept = normal(0,2.5),
@@ -60,7 +100,7 @@ model = stan_glmer(shrinkmean ~ comparison + (1 + logitnullmean | sid),
     iter = 2000)
 
 p = pp_check(model)
-ggsave(file.path(plot_dir, 'condition', 'eeg_pp_check.svg'), p)
+ggsave(file.path(plot_dir, 'figure2_parts', 'supplement', 'eeg_pp_check.svg'), p)
 
 posterior_interval(matrix(c(predictive_error(model))))
 

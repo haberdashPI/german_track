@@ -5,6 +5,7 @@ library(dplyr)
 library(rstanarm)
 library(bayestestR)
 library(gamm4)
+library(magrittr)
 
 options(mc.cores = parallel::detectCores())
 
@@ -132,7 +133,7 @@ dfbinfull = df %>% mutate(winbin = cut(winstart, 5))
 
 fit_bin2_full = stan_glmer(mean ~ winbin*condition + logitnullmean + (winbin | sid),
     family = binomial(link = "logit"), weights = count,
-    data = dfbinfull, iter = 3000, adapt_delta = 0.99)
+    data = dfbinfull, iter = 2000, adapt_delta = 0.999)
 posterior_interval(matrix(c(predictive_error(fit_bin2_full))))
 p = pp_check(fit_bin2_full)
 ggsave(file.path(plot_dir, 'figure3_parts', 'supplement', 'eeg_salience_modelcheck_bin2_full.svg'), p)

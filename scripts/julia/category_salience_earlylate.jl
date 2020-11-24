@@ -304,5 +304,5 @@ fig = svg.Figure("89mm", "235mm",
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(220,15)
     ).move(0, 235 + 235),
-).scale(1.333).save(joinpath(dir, "fig5.svg"))
+).scale(1.333).save(joinpath(plotsdir("figures"), "fig5.svg"))
 

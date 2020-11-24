@@ -278,10 +278,17 @@ statdata = @_ classmeans_sum |>
 
 CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), statdata)
 
-corrected_data = CSV.read(processed_datadir("analyses", "eeg_salience_timeline_correct.csv"), DataFrame)
-nullmean = 0.52
+file = processed_datadir("analyses", "eeg_salience_timeline_correct.csv")
+corrected_data = @_ CSV.read(file, DataFrame) |>
+    @transform(__, condition_label = uppercasefirst.(:condition))
+nullmean = 0.53
 
-timeslice = 2.8
+timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition]) |>
+    @based_on(__, mean = mean(:corrected_mean)) |>
+    groupby(__, :winstart) |>
+    @based_on(__, mean = maximum(:mean)) |>
+    @based_on(__, best = :winstart[argmax(:mean)]) |>
+    __.best |> first
 
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
 target_len_y = 0.8
@@ -381,13 +388,13 @@ pl |> save(joinpath(dir, "fig3d.svg"))
 # Salience class accuracy at fixed time point (fig 3c)
 # =================================================================
 
-times = classdiffs.winstart |> unique
+times = corrected_data.winstart |> unique
 real_timeslice = times[argmin(abs.(times .- timeslice))]
 barwidth = 16
 
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
 yrange = [0.5, 1]
-pl = @_ classdiffs |>
+pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     filter(_.winstart == real_timeslice, __) |>
     groupby(__, [:condition]) |>
@@ -410,7 +417,7 @@ pl = @_ classdiffs |>
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
         },
         color = {:condition, scale = {range = urlcol.(keys(seqpatterns))}},
-        y = {:meancor,
+        y = {:corrected_mean,
             title = ytitle,
             scale = {domain = yrange}
         }
