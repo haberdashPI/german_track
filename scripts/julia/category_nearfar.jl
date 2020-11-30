@@ -23,7 +23,7 @@ switchbreaks = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
     quantile(__, range(0,1,length = nbins+1)[2:(end-1)])
 
 file = joinpath(processed_datadir("analyses"), "nearfar-hyperparams.json")
-GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
+GermanTrack.@cache_results file fold_map λ_map winlen_map break_map resultdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
@@ -49,7 +49,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
 
     resultdf = @_ classdf |>
         addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
-        mapgroups(__, folder = foldl, desc = "Evaluating hyperparameters...",
+        mapgroups(__, folder = foldxt, desc = "Evaluating hyperparameters...",
             [:winstart, :winlen, :fold, :condition, :switch_break],
             function(sdf)
                 testclassifier(LassoPathClassifiers(lambdas),
@@ -61,9 +61,10 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
                     seed         = 2017_09_16,
                     weight       = :weight,
                     maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 600
+                    irls_maxiter = 1200
                 )
-            end)
+            end) |>
+        deletecols!(__, :windows)
 
     fold_map = @_ resultdf |>
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
@@ -86,11 +87,14 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
         rename!(__, :mean => :nullmean) |>
         deletecols!(__, :λ)
 
-    break_map = @_ classmeans_sum |>
+    break_diffs = @_ classmeans_sum |>
         filter(_.λ != 1.0, __) |>
         innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label, :switch_break]) |>
         @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)),
-                       logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01))) |>
+                       logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01)),
+                       early_break = switchbreaks[:switch_break .+ 1])
+
+    break_map_df = @_ break_diffs |>
         groupby(__, [:switch_break, :fold]) |>
         @combine(__,
             mean = mean(:logitmean .- :logitnullmean),
@@ -100,8 +104,49 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
         filteringmap(__,
             :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold), unique(__.fold)),
             (sdf, fold) -> DataFrame(best = sdf.switch_break[argmax(sdf.mean)])) |>
-        @transform(__, early_break = switchbreaks[:best .+ 1]) |>
+        @transform(__, early_break = switchbreaks[:best .+ 1])
+
+    break_map = @_ break_map_df |>
         Dict(r.train_fold => r.early_break for r in eachrow(__))
+
+    @_ break_diffs |>
+        groupby(__, [:condition, :target_time_label, :switch_break, :early_break]) |>
+        @combine(__,
+            mean  = mean(:logitmean .- :logitnullmean),
+            lower = lowerboot(:logitmean .- :logitnullmean),
+            upper = upperboot(:logitmean .- :logitnullmean),
+        ) |>
+        @vlplot(
+            facet = {row = {field = :condition, title = ""}},
+        ) + (
+            @vlplot() +
+            @vlplot(:line,
+                color = :target_time_label,
+                x = {:early_break, title = "Near/Far Divide (s)", scale = {domain = [0, 2.5]}},
+                y = {:mean, title = ["Classsification Accuracy", "(Null Mean Corrected)"]}
+            ) +
+            @vlplot(:point,
+                color = :target_time_label,
+                x = :early_break,
+                y = {:mean, title = ""}
+            ) +
+            @vlplot(:errorband,
+                color = :target_time_label,
+                x = :early_break,
+                y = {:lower, title = ""}, y2 = :upper
+            ) + (
+                break_map_df |> @vlplot() +
+                @vlplot({:rule, strokeDash = [2,2]},
+                    x = :early_break,
+                ) +
+                @vlplot({:text, align = :left, fontSiz = 9, xOffset = 2},
+                    transform = [{calculate = "'Fold '+datum.train_fold", as = :fold_label}],
+                    x = :early_break,
+                    y = {datum = 0.2},
+                    text = :fold_label
+                )
+            )
+        ) |> save(joinpath(dir, "supplement", "switch_target_earlylate_multibreak.svg"))
 
     # TODO: plot results across the different breaks, see what they look like
 
@@ -118,26 +163,23 @@ file = joinpath(cache_dir("features"), "nearfar-target.json")
 GermanTrack.@cache_results file resultdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+    classdf = @_ events |> filter(ishit(_) == "hit", __) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         transform!(__, [:fold, :switch_distance] =>
             ByRow((f,d) -> ismissing(d) ? missing :
                 (d >= break_map[f] ? "near" : "far")) => :target_switch_label) |>
-        filter(_.hittype ∈ ["hit"], __) |>
-        groupby(__, [:sid, :fold, :condition, :target_switch_label, :target_time_label, :hittype]) |>
-        filteringmap(__, desc = "Computing freq bins...", addlabels = false,
-            :window => [
-                windowtarget(windowfn = event -> (
-                    start = start,
-                    len = winlen_map[event.fold[1]] |>
-                        GermanTrack.spread(0.5,n_winlens,indices=k)))
-                for start in range(0, 3, length = 32) for k in 1:n_winlens
-            ],
+        groupby(__, [:sid, :fold, :condition, :target_time_label, :target_switch_label]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [windowtarget(windowfn = event -> (
+                start = start,
+                len = winlen_map[event.fold[1]] |>
+                    GermanTrack.spread(0.5,n_winlens,indices=k)
+            )) for start in [0; 2.0 .^ range(-2, 2, length = 10)] for k in 1:n_winlens],
             compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     resultdf = @_ classdf |>
-        mapgroups(__, [:winlen, :fold, :hittype, :condition, :target_time_label],
+        mapgroups(__, [:winstart, :fold, :condition, :target_time_label],
             desc = "Classifying target proximity...",
             function (sdf)
                 result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
@@ -148,7 +190,7 @@ GermanTrack.@cache_results file resultdf begin
                     n_folds      = n_folds,
                     seed         = stablehash(:salience_classification, 2019_11_18),
                     maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 600,
+                    irls_maxiter = 1200,
                     weight       = :weight)
             end)
 
@@ -163,8 +205,10 @@ classmeans = @_ resultdf |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 classmeans_sum = @_ classmeans |>
+    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    @combine(__, mean = maximum(:mean)) |>
     groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
-    combine(__, :mean => mean => :mean) |>
+    @combine(__, mean = mean(:mean)) |>
     transform!(__, :λ => ByRow(log) => :logλ)
 
 nullmeans = @_ classmeans_sum |>
