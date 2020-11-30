@@ -8,6 +8,8 @@ verify_ssl = true
 [packages]
 dvc = "*"
 svgutils = "~=0.3"
+crepe = "*"
+tensorflow = "*"
 
 [requires]
 python_version = "3.8"

@@ -172,12 +172,15 @@ dataframe of all event data.
 
 Caches subject loading to speed it up.
 """
-function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata())
+function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata();
+    encoding = RawEncoding(), framerate = missing)
+
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
     subjects = Dict(
         sidfor(file) => load_subject(
             joinpath(dir, file), stim_info,
-            encoding = RawEncoding()
+            encoding = encoding,
+            framerate = framerate
         ) for file in eeg_files)
     events = @_ mapreduce(_.events, append!!, values(subjects))
 

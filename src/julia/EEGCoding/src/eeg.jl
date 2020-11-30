@@ -13,6 +13,9 @@ Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
 SignalOperators.framerate(x::EEGData) = x.fs
 Base.getindex(x::EEGData,i) = x.data[i]
+SignalOperators.nchannels(x::EEGData) = size(x.data[1], 1)
+maxframes(x::EEGData) = maximum(x -> size(x, 2), x.data)
+trial_eltype(x::EEGData) = eltype(x.data[1])
 
 resample!(eeg::EEGData,::Missing) = eeg
 function resample!(eeg::EEGData,sr)
@@ -21,7 +24,8 @@ function resample!(eeg::EEGData,sr)
         return eeg
     end
 
-    @showprogress 0.5 for i in eachindex(eeg.data)
+    progress = Progress(length(eeg.data))
+    Threads.@threads for i in eachindex(eeg.data)
         old = eeg.data[i]
 
         # first channel
@@ -33,6 +37,8 @@ function resample!(eeg::EEGData,sr)
         for chan in 2:size(old,1)
             eeg.data[i][chan,:] = DSP.resample(old[chan,:],ratio)
         end
+
+        next!(progress)
     end
     eeg.fs = sr
 
@@ -142,6 +148,73 @@ function encode(x::EEGData,tofs,filter::FFTFiltered)
         end
     end
     EEGData(labels,tofs,trials)
+end
+
+struct FFTFilteredPower <: EEGEncoding
+    name::String
+    cuts::Vector{Float64}
+end
+
+function find_sample_step(fromfs, tofs)
+    sample_step = round(Int, fromfs / tofs)
+    err = (fromfs/cutdown - tofs)/tofs
+    if err > 1.05 || err < 0.95
+        @warn "Imperfect resampling, true resample rate of $(fromfs/cutdown)."
+    end
+
+    sample_step
+end
+
+function encode(x::EEGData, tofs, filter::FFTFilteredPower)
+    binpower = similar(x.data)
+    fromfs = framerate(x)
+
+    step = find_sample_step(fromfs, tofs)
+    n, m = nchannels(x), nextprod([2], maxframes(x))
+    mid = m >> 1
+
+    buffers = [Array{trial_eltype(x)}(undef, m, n) for _ in 1:Threads.nthreads()]
+    ibuffer = [Array{complex(trial_eltype(x)),2}(undef, m, n) for _ in 1:Threads.nthreads()]
+    plan = plan_fft!(buffer, 1, flags = FFTW.PATIENT, timelimit = 4)
+    iplan = plat_ifft!(ibuffer, 1, flags = FFTW.PATIENT, timelimit = 4)
+
+    nbins = length(filter.cuts) - 1
+    cuts = round(Int, mid .* filter.cuts ./ (fromfs/2))
+
+    splitdims = size(ibuffer)
+    splits = [similar(x.data[trial], splitdims) for _ in 1:nbins]
+    splitindices = Array{Array{Int}}(undef, nbins)
+    for bin in 1:nbins
+        splitindices[bin] = vcat(
+            mid .- (cut[bin+1]:-1:cut[bin]) .+ 1,
+            mid .+ (cut[bin]:cut[bin+1])
+        )
+    end
+
+    Threads.@threads for trial in 1:length(x.data)
+        tid = Threads.threadid()
+        len = size(x.data[trial],2)
+        result = similar(x.data, (len, n*nbins))
+
+        buffer[tid][1:len, :] = x.data[trial]'
+        buffer[tid][(len+1):end, :] .= 0
+        freqs = buffer[tid] * plan
+
+        freqs[1:mid, :] .*= im
+        freqs[(mid+1):end, :] .*= -im
+
+        binpower[trial] = Array{trial_eltype(x)(undef, n*nbins, len)}
+        for bin in 1:nbins
+            ibuffer[tid] .= 0
+            ibuffer[tid][splitindices[bin]] = freqs[splitindices[bin]]
+            result[:, (1:n) .+ (1-bin)*n] = abs.(ibuffer[tid] * iplan)[1:len, :]
+        end
+
+        for ch in 1:size(result,1)
+            binpower[trial][ch,:] = DSP.resample(result[:,ch], 1//step)
+        end
+    end
+    EEGData(x.label, tofs, binpower)
 end
 
 struct FilteredPower{D} <: EEGEncoding
