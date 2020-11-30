@@ -92,7 +92,7 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
         @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)),
                        logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01))) |>
         groupby(__, [:switch_break, :fold]) |>
-        @based_on(__,
+        @combine(__,
             mean = mean(:logitmean .- :logitnullmean),
             count = length(unique(string.(:condition, :target_time_label)))
         ) |>

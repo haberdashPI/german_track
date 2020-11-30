@@ -151,7 +151,7 @@ end
 
 classmeans = @_ resultdf_earlylate |>
     groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
-    @based_on(__,
+    @combine(__,
         mean   = GermanTrack.wmean(:correct, :weight),
         weight = sum(:weight),
         count  = length(:correct)
@@ -159,7 +159,7 @@ classmeans = @_ resultdf_earlylate |>
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
-    @based_on(__,
+    @combine(__,
         mean = mean(:mean),
         weight = sum(:weight),
         count = length(:mean)

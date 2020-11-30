@@ -284,10 +284,10 @@ corrected_data = @_ CSV.read(file, DataFrame) |>
 nullmean = 0.53
 
 timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition]) |>
-    @based_on(__, mean = mean(:corrected_mean)) |>
+    @combine(__, mean = mean(:corrected_mean)) |>
     groupby(__, :winstart) |>
-    @based_on(__, mean = maximum(:mean)) |>
-    @based_on(__, best = :winstart[argmax(:mean)]) |>
+    @combine(__, mean = maximum(:mean)) |>
+    @combine(__, best = :winstart[argmax(:mean)]) |>
     __.best |> first
 
 ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
