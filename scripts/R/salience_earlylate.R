@@ -119,6 +119,7 @@ coefs = as.data.frame(fit_mm) %>%
 
 print(coefs)
 
+nullmean = mean(df$logitnullmean)
 coefs = as.data.frame(fit_mm) %>%
     mutate(
         timeglobal = target_time_labellate,
@@ -136,6 +137,6 @@ coefs = as.data.frame(fit_mm) %>%
     gather(global_early:spatial_late, key = 'condition', value = 'value') %>%
     group_by(condition) %>%
     effect_summary(value) %>%
-    mutate(across(contains('mean'), invlogit))
-print(coefs)
+    mutate(across(matches('(med|[0-9]+)'), ~invlogit(.x + nullmean))) %>%
+    write.csv(file.path(processed_datadir, 'analyses', 'eeg_salience_earlylate_coefs.csv'))
 

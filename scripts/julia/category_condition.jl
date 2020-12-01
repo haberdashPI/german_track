@@ -97,19 +97,20 @@ GermanTrack.@cache_results file fold_map λ_map begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf = @_( events |> filter(ishit(_) == "hit", __) |>
-            groupby(__, [:sid, :condition])),
-        windows = [windowtarget(len = len, start = start)
-            for len in 2.0 .^ range(-1, 1, length = 10),
-                start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    )
+    classdf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [windowtarget(len = len, start = start)
+                for len in 2.0 .^ range(-1, 1, length = 10),
+                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
         groupby(__, [:winstart, :winlen, :fold]) |>
-        filteringmap(__, desc = "Selecting lambdas...", :comparison => (
+        filteringmap(__, desc = "Evaluating lambdas...", :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
@@ -153,16 +154,17 @@ GermanTrack.@cache_results file predictbasedf begin
             mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf = @_(events |>
-            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
-            groupby(__, [:sid, :condition, :hittype])),
-        windows = [
-            winfn(len = len, start = 0.0) for len in GermanTrack.spread(1, 0.5, n_winlens)
-            for (name, winfn) in windowtypes
-        ]
-    )
+    classdf = @_ events |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        groupby(__, [:sid, :condition, :hittype]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [
+                winfn(len = len, start = 0.0)
+                for len in GermanTrack.spread(1, 0.5, n_winlens)
+                for (name, winfn) in windowtypes
+            ],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     modeltypes = (
         "full" => x -> x.windowtype == "target",
@@ -195,11 +197,17 @@ GermanTrack.@cache_results file predictbasedf begin
                 λ = modeltype == "null" ? 1.0 : λ_map[sdf.fold[1]]
                 sdf = get(modelshufflers, modeltype, identity)(sdf)
                 result = testclassifier(LassoClassifier(λ),
-                    data = sdf, y = :condition, X = r"channel",
-                    crossval = :sid, n_folds = 10,
-                    seed = stablehash(:cond_baseline,2019_11_18),
-                    irls_maxiter = 100,
-                    weight = :weight, on_model_exception = :throw)
+                    data               = sdf,
+                    y                  = :condition,
+                    X                  = r"channel",
+                    crossval           = :sid,
+                    n_folds            = 10,
+                    seed               = stablehash(:cond_baseline, 2019_11_18),
+                    irls_maxiter       = 100,
+                    weight             = :weight,
+                    maxncoef           = size(sdf[:, r"channel"], 2),
+                    on_model_exception = :error
+                )
             end)
 end
 
@@ -242,7 +250,7 @@ plotdata = @_ CSV.read(statfile, DataFrame) |>
     @transform(__, compname = map(x -> compnames[x], :comparison))
 nullmean = logistic(mean(statdata.logitnullmean))
 
-ytitle= ["Classification Accuracy", "(Null Model Corrected)"]
+ytitle = "Condition Classification"
 barwidth = 25
 plhit = @_ plotdata |>
     @vlplot(

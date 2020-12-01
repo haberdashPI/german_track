@@ -22,9 +22,9 @@ means = @_ CSV.read(joinpath(processed_datadir("plots"),
     "hitrate_angle_byswitch_andtarget.csv"), DataFrame) |>
     transform!(__, [:condition, :target_time, :salience] => ByRow(string) => :condition_time_salience)
 cts_order = [
-     "globalearlylow", "globallatelow" , "globalearlyhigh" , "globallatehigh" ,
-     "objectearlylow", "objectlatelow" , "objectearlyhigh" , "objectlatehigh" ,
-    "spatialearlylow", "spatiallatelow", "spatialearlyhigh", "spatiallatehigh",
+     "globalearlylow", "globalearlyhigh" , "globallatelow" , "globallatehigh" ,
+     "objectearlylow", "objectearlyhigh" , "objectlatelow" , "objectlatehigh" ,
+    "spatialearlylow", "spatialearlyhigh", "spatiallatelow", "spatiallatehigh",
 ]
 
 barwidth = 8
@@ -177,6 +177,8 @@ statdata = @_ classmeans_sum |>
     @transform(__, logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01)))
 CSV.write(processed_datadir("analyses", "eeg_salience_earlylate.csv"), statdata)
 
+nullmean = logistic.(mean(logit.(shrinktowards.(nullmeans.nullmean, 0.5, by = 0.01))))
+
 # supplemental figure
 
 pl = statdata |>
@@ -188,9 +190,20 @@ pl = statdata |>
     );
 pl |> save(joinpath(dir_supplement, "earlylate_ind.svg"))
 
-ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
+# TODO: run salience early/late script here
+
+file = processed_datadir("analyses", "eeg_salience_earlylate_coefs.csv")
+classdiffs = @_ CSV.read(file, DataFrame) |>
+    rename(__, :value_med => :mean, :value_05 => :lower, :value_95 => :upper) |>
+    @transform(__,
+        condition_time = :condition,
+        condition = getindex.(split.(:condition, "_"),1),
+        target_time_label = getindex.(split.(:condition, "_"),2)
+    )
+
+ytitle = ["High/Low Salience Classification"]
 barwidth = 14
-yrange = [0, 1]
+yrange = [0.5, 1]
 pl = classdiffs |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",

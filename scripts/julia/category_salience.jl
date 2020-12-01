@@ -8,9 +8,9 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, Colors, CSV
+    StatsFuns, Colors, CSV, DataFramesMeta
 
-using GermanTrack: colors, gray, patterns, lightdark, darkgray, seqpatterns
+using GermanTrack: colors, gray, patterns, lightdark, darkgray, seqpatterns, neutral
 
 dir = mkpath(plotsdir("figure3_parts"))
 
@@ -167,14 +167,15 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf  = @_( events |> filter(ishit(_) == "hit", __) |>
-            groupby(__, [:sid, :condition, :salience_label])),
-        windows  = [windowtarget(len = len, start = start)
-            for len in 2.0 .^ range(-1, 1, length = 10),
-                start in [0; 2.0 .^ range(-2, 2, length = 10)]]
-    )
+    classdf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition, :salience_label]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [windowtarget(len = len, start = start)
+                for len in 2.0 .^ range(-1, 1, length = 10),
+                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
@@ -212,26 +213,25 @@ end
 # Compute classificaiton accuracy
 # -----------------------------------------------------------------
 
-file = joinpath(cache_dir("features"), "salience-freqmeans-timeline.json")
+file = joinpath(processed_datadir("analyses"), "salience-freqmeans-timeline.json")
 GermanTrack.@cache_results file resultdf_timeline begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf  = @_( events |>
-            transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
-            transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-            filter(_.hittype ∈ ["hit", "miss"], __) |>
-            groupby(__, [:sid, :fold, :condition, :salience_label, :hittype])
-        ),
-        windows = [
-            windowtarget(windowfn = event -> (
-                start = start,
-                len = winlen_map[event.fold[1]] |>
-                    GermanTrack.spread(0.5,n_winlens,indices=k)))
-            for start in range(0, 3, length = 32) for k in 1:n_winlens
-        ]
-    )
+    classdf = @_ events |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |>
+        groupby(__, [:sid, :fold, :condition, :salience_label, :hittype]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [
+                windowtarget(windowfn = event -> (
+                    start = start,
+                    len = winlen_map[event.fold[1]] |>
+                        GermanTrack.spread(0.5,n_winlens,indices=k)))
+                for start in range(0, 3, length = 32) for k in 1:n_winlens
+            ],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     resultdf_timeline = @_ classdf |>
         mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
@@ -274,23 +274,34 @@ nullmeans = @_ classmeans_sum |>
 statdata = @_ classmeans_sum |>
     filter(_.λ != 1.0, __) |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
-    transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
+    @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)))
 
 CSV.write(processed_datadir("analyses", "eeg_salience_timeline.csv"), statdata)
 
-file = processed_datadir("analyses", "eeg_salience_timeline_correct.csv")
-corrected_data = @_ CSV.read(file, DataFrame) |>
-    @transform(__, condition_label = uppercasefirst.(:condition))
-nullmean = 0.53
+logitnullmean = mean(statdata.logitnullmean)
+nullmean = logistic.(logitnullmean)
+corrected_data = @_ statdata |>
+    @transform(__,
+        corrected_mean =
+            logistic.(logit.(shrinktowards.(:mean, 0.5, by = 0.01)) .-
+                :logitnullmean .+ logitnullmean),
+        condition_label = uppercasefirst.(:condition))
 
-timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition]) |>
+maxdiff(xs) = maximum(abs(xs[i] - xs[j]) for i in 1:(length(xs)-1) for j in (i+1):length(xs))
+timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
     @combine(__, mean = mean(:corrected_mean)) |>
-    groupby(__, :winstart) |>
-    @combine(__, mean = maximum(:mean)) |>
-    @combine(__, best = :winstart[argmax(:mean)]) |>
-    __.best |> first
+    groupby(__, [:winstart, :condition]) |>
+    filteringmap(__,
+        :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold),
+            unique(corrected_data.fold)),
+        (sdf, fold) -> DataFrame(foldmean = mean(sdf.mean))) |>
+    groupby(__, [:winstart, :train_fold]) |>
+    @combine(__, score = maximum(:foldmean)) |>
+    groupby(__, :train_fold) |>
+    @combine(__, best = :winstart[argmax(:score)])
+labelfn(fold) = "fold $fold"
 
-ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
+ytitle = ["High/Low Salience Classification"]
 target_len_y = 0.8
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
@@ -314,25 +325,35 @@ pl = @_ corrected_data |>
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
         transform =
-            [{filter = "(datum.condition != 'spatial' && "*
+            [{filter = "(datum.condition != 'object' && "*
                 "datum.winstart > 2.95 && datum.winstart <= 3.0) ||"*
-                "(datum.condition == 'spatial' && "*
-                "datum.winstart > 2.45 && datum.winstart <= 2.55)"}],
+                "(datum.condition == 'object' && "*
+                "datum.winstart > 2.85 && datum.winstart <= 2.95)"}],
         x = {datum = 3.0},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
     # "Time Slice" annotation
     (
-        @vlplot(data = {values = [{}]}) +
+        @transform(timeslice, fold_label = labelfn.(:train_fold)) |>
+        @vlplot() +
         @vlplot({:rule, strokeDash = [2 2]},
-            x = {datum = timeslice},
+            x = :best,
             color = {value = "black"}
         ) +
+        @vlplot({:text, align = "center", baseline = "bottom", angle = 90},
+            x = :best,
+            y = {datum = 0.95},
+            text = :fold_label,
+            color = {value = "#"*hex(neutral)}
+        )
+    ) +
+    (
+        @vlplot(data = {values = [{}]}) +
         @vlplot({:text, align = "right", dx = -2},
-            x = {datum = timeslice},
-            y = {datum = 0.98},
-            text = {value = ["panel C", "time slice"]},
+            x = {datum = minimum(timeslice.best)},
+            y = {datum = 0.95},
+            text = {value = "Panel C slice →"},
             color = {value = "black"}
         )
     ) +
@@ -340,13 +361,8 @@ pl = @_ corrected_data |>
     (
         @vlplot(data = {values = [{}]}) +
         # white rectangle to give text a background
-        @vlplot(:rect,
-            x = {datum = 2.5}, x2 = {datum = 3},
-            y = {datum = 0.5}, y2 = {datum = nullmean},
-            color = {value = "white"},
-            opacity = {value = 1.0}
-        ) +
-        @vlplot(mark = {:text, size = 11, baseline = "line-top", dy = 2, align = "center"},
+        @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 5,
+            align = "left"},
             x = {datum = 3}, y = {datum = nullmean},
             text = {value = ["Null Model", "Accuracy"]},
             color = {value = "black"}
@@ -388,20 +404,20 @@ pl |> save(joinpath(dir, "fig3d.svg"))
 # Salience class accuracy at fixed time point (fig 3c)
 # =================================================================
 
-times = corrected_data.winstart |> unique
-real_timeslice = times[argmin(abs.(times .- timeslice))]
+timeslice_map = Dict(row.train_fold => row.best for row in eachrow(timeslice))
+
 barwidth = 16
 
-ytitle = ["High/Low Salience Classification", "Accuracy (Null Model Corrected)"]
+ytitle = ["High/Low Salience Classification"]
 yrange = [0.5, 1]
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
-    filter(_.winstart == real_timeslice, __) |>
+    filter(_.winstart == timeslice_map[_.fold], __) |>
     groupby(__, [:condition]) |>
-    combine(__,
-        :corrected_mean => mean => :corrected_mean,
-        :corrected_mean => lowerboot => :lower,
-        :corrected_mean => upperboot => :upper,
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
     ) |>
     @vlplot(
         width = 111, autosize = "fit",

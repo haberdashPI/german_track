@@ -96,9 +96,9 @@
             <path aria-label=": spatial; condition: spatial; High - Low Salience (Hit Rate): 0.115258576549" role="graphics-symbol" aria-roledescription="bar" d="M47.66666666666667,99.14456391875748h18v61.855436081242516h-18Z" fill="url(#stipre3)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": global; upper_lower: 0.2788031234; upper: 0.2788031234; lower: 0.155638760881" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(11.333333333333334,77.4738649940263)" x2="0" y2="-66.09820788530466" stroke="black"/>
-            <line aria-label=": object; upper_lower: 0.125769009217; upper: 0.125769009217; lower: 0.031142953149" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(34,144.2866151433692)" x2="0" y2="-50.78265008960574" stroke="black"/>
-            <line aria-label=": spatial; upper_lower: 0.172702412954; upper: 0.172702412954; lower: 0.0598556707629" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(56.66666666666667,128.87745669056156)" x2="0" y2="-60.56108497610515" stroke="black"/>
+            <line aria-label=": global; upper_lower: 0.27861015105; upper: 0.27861015105; lower: 0.153513504864" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(11.333333333333334,78.61441905615287)" x2="0" y2="-67.1352001194743" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.125711885561; upper: 0.125711885561; lower: 0.031643625192" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(34,144.0179211469534)" x2="0" y2="-50.48329973118278" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.171052547363; upper: 0.171052547363; lower: 0.0611679147465" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(56.66666666666667,128.1732190860216)" x2="0" y2="-58.971419504181625" stroke="black"/>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
