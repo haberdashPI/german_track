@@ -1,5 +1,6 @@
 export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ_winlen,
-    addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features
+    addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features, cross_folds,
+    pick_λ, shrink
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)
@@ -41,6 +42,7 @@ You can exclude the `x` argument to curry the function.
 """
 shrinktowards(mu;by=0.01) = x -> shrinktowards(x,mu,by=by)
 shrinktowards(x,mu;by=0.01) = (1-by)*(x-mu) + mu
+shrink(x) = shrinktowards(x,0.5)
 
 """
     spread([x,]scale,npoints,[indices=Colon()])
@@ -133,6 +135,103 @@ end
 
 myfirst(x) = first(x)
 myfirst(x::Symbol) = x
+
+function pick_λ(df, factors, maximize_across; λ_col = :λ, sid_col = :sid,
+    diffplot, lambda_plot, smoothing, slope_thresh_quantile, flat_thresh_ratio, dir)
+
+    diffs = @_ df |>
+        groupby(__, vcat(factors, sid_col, λ_col)) |>
+        @combine(__,
+            nzcoef = mean(:nzcoef),
+            mean = wmean(:correct, :weight),
+        ) |>
+        groupby(__, vcat(maximize_across, sid_col, λ_col)) |>
+        @combine(__,
+            nzcoef = mean(:nzcoef),
+            mean = maximum(:mean)
+        ) |>
+        @transform(__, logitmean = logit.(shrink.(:mean))) |>
+        groupby(__, vcat(maximize_across, sid_col)) |>
+        @transform(__, logitnullmean = only(:logitmean[cols(λ_col) .== 1.0])) |>
+        @transform(__, logitdiff = :logitmean .- :logitnullmean)
+
+    diff0(x) = vcat(0,diff(x))
+    filtfn(x) = filtfilt(digitalfilter(Lowpass(1 - smoothing), Butterworth(5)), x)
+    granddiff = @_ diffs |>
+        groupby(__, λ_col) |> @combine(__, logitdiff = mean(:logitdiff)) |>
+        sort!(__, λ_col) |> @transform(__, logitdiff = abs.(diff0(filtfn(:logitdiff))))
+
+    pl = granddiff |> @vlplot() +
+    @vlplot(:line,
+        config = {},
+        x     = {λ_col, scale = {type = :log, domain = [0.01, 0.35]},
+        title = "Regularization Parameter (λ)"},
+        y     = {:logitdiff, aggregate = :mean, type = :quantitative,
+                title = "Model - Null Model Accuracy (logit scale)"}
+    ) |> save(joinpath(dir, string(diffplot,".svg")))
+
+    slope_thresh = quantile(granddiff.logitdiff, slope_thresh_quantile)
+    flat_thresh = flat_thresh_ratio * slope_thresh
+    peaks = @_ maxima(granddiff.logitdiff) |>
+        filter(granddiff.logitdiff[_] > slope_thresh, __)
+    first_near_zero = @_ findlast(_ < flat_thresh, granddiff[1:peaks[end],:logitdiff])
+        granddiff[(1:peaks[end])[first_near_zero],[λ_col]]
+    best = granddiff[(1:peaks[end])[first_near_zero],λ_col]
+
+    @vlplot() +
+    vcat(
+        diffs |> @vlplot(
+        :line, width = 750, height = 100,
+            color = {field = myfirst(maximize_across), type = :nominal},
+            x     = {λ_col, scale = {type = :log, domain = [0.01, 0.35]},
+                    title = "Regularization Parameter (λ)"},
+            y     = {:nzcoef, aggregate = :max, type = :quantitative,
+                    title = "# of non-zero coefficients (max)"}
+        ),
+        (
+            @_ diffs |> DataFrames.transform(__, :mean => ByRow(x -> 100x) => :mean) |>
+            @vlplot(
+                width = 750, height = 200,
+                x = {λ_col, scale = {type = :log}},
+                color = {field = myfirst(maximize_across), type = :nominal},
+            ) +
+            @vlplot(
+                :line,
+                y = {:mean, aggregate = :mean, type = :quantitative,
+                    title = "% Correct", scale = {domain = [50, 100]}},
+            ) +
+            @vlplot(
+                :errorband,
+                y = {:mean, aggregate = :ci, type = :quantitative}
+            )
+        ),
+        (
+            @vlplot() +
+            (
+                diffs |> @vlplot(
+                    width = 750, height = 200,
+                    x     = {λ_col, scale = {type = :log},
+                            title = "Regularization Parameter (λ)"},
+                    color = {field = myfirst(maximize_across), type = :nominal}) +
+                @vlplot(:errorband,
+                    y = {:logitdiff, aggregate = :ci,   type = :quantitative,
+                        title = "Model - Null Model Accuracy (logit scale)"}) +
+                @vlplot(:line,
+                    y = {:logitdiff, aggregate = :mean, type = :quantitative})
+            ) +
+            (
+                @vlplot(data = {values = [{}]}, encoding = {y = {datum = 0}}) +
+                @vlplot(mark = {type = :rule, strokeDash = [2, 2], size = 2})
+            ) +
+            (
+                @vlplot(data = {values = [{}]}) +
+                @vlplot({:rule, strokeDash = [4, 4], size = 3},
+                    x = {datum = best},
+                    color = {value = "green"})
+            )
+        )
+    ) |> save(joinpath(dir, string(lambda_plot,".svg")))
+end
 
 """
     pick_λ_winlen(df, n_folds, factors, maximize_across; fold_col = fold_col,
@@ -357,6 +456,20 @@ function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 end
 
 """
+    cross_folds(folds)
+
+Supply the fold specification for `filteringmap` to do a cross-validated parameter selection
+across the given folds. For each fold, the mapping function of `filteringmap` will get all
+data not belonging to that fold.
+"""
+cross_folds(folds) = map(fold -> fold => (sdf -> sdf.fold != fold), unique(df.fold))
+
+struct NoProgress; end
+ProgressMeter.next!(::NoProgress) = nothing
+setupprogress(n, ::Nothing) = NoProgress
+setupprogress(n, str::String) = Progress(n, desc = str)
+
+"""
     filteringmap(df,filtering1 => (value1 => filterfn1 | value1, etc...),
         filtering2 => etc..., fn,
         folder = foldxt, desc = "Progres...")
@@ -371,6 +484,7 @@ group `valueK` contains all rows that match the filtering function `filterfnK`. 
 filtering functions for a given filtering are `(x -> true)` (include all rows), you need not
 specify the `filteringfn`, using `filtering1 => (value1, value2, etc...)` instead.
 
+If desc is set to `nothing`, no progress bar will be shown
 """
 function filteringmap(df, filterings_fn...; folder = foldxt,
     desc = "Progress...", addlabels = true)
@@ -384,7 +498,7 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
         map(f -> collect(map(pair -> (f[1], defaultpair(pair)...), f[2])), __) |>
         Iterators.product(__...) |> collect
     groupings = filtermap_groupings(df, flattened)
-    progress = Progress(length(groupings), desc = desc)
+    progress = setupprogress(length(groupings), desc)
 
     function filtermap(((key, group), filterings))
         filtered = group
