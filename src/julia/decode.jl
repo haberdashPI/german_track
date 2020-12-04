@@ -3,7 +3,9 @@
 
 using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso
+    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite
+
+dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
 # Setup EEG Data
 # -----------------------------------------------------------------
@@ -114,9 +116,20 @@ end
 # Train Model
 # -----------------------------------------------------------------
 
-decoders = @_ stimuli |>
-    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-    groupby(__, [:encoding, :source]) |>
+@_ stimuli |>
+    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding))
+
+sdf = @where(stimuli, (:fold .!= 1) .& (:encoding .== "pitch") .& :is_target_source)
+
+model = fit(LassoPath, @views(x[sdf.observation, :]), sdf.value)
+
+@vlplot(:line, model.λ, model.pct_dev) |> save(joinpath(dir, "supplement", "lambdas2.svg"))
+
+# TODO: compute correlation and L1 distance for each element in actual fold
+
+# WIP:....
+decoders = |>
+    groupby(__, [:encoding, :is_target_source]) |>
     filteringmap(__, folder = foldxt, desc = "Building decoders...",
         :fold => cross_folds(1:10),
         function(sdf, fold)
