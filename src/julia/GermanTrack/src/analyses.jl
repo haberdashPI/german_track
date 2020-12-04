@@ -462,7 +462,7 @@ Supply the fold specification for `filteringmap` to do a cross-validated paramet
 across the given folds. For each fold, the mapping function of `filteringmap` will get all
 data not belonging to that fold.
 """
-cross_folds(folds) = map(fold -> fold => (sdf -> sdf.fold != fold), unique(df.fold))
+cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
 
 struct NoProgress; end
 ProgressMeter.next!(::NoProgress) = nothing
