@@ -75,17 +75,20 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
             :train_fold = cross_folds(1:2),
             function (sdf, fold)
                 λ = pick_λ(sdf, [:condition, :winstart, :winlen, :switch_break],
-                    :condition, diffplot = "diffs_fold$fold", lambda
+                    :condition, diffplot = "diffs_fold$fold",
                     smoothing = 0.85, slope_thresh_quantile = 0.95,
-                    flat_thresh_ratio = 0.1)
-                winlen = 0 # TODO: stopped here
+                    flat_thresh_ratio = 0.1, dir = joinpath(dir, "supplement"))
+
+                winlen = @_ sdf |>
+                    @where(__, :λ .∈ Ref([1.0, λ])) |>
+                    pick_winlen(__, [:condition, :winstart, :switch_break],
+                        :condition, windows_plot = "windows_fold$fold",
+                        dir = joinpath(dir, "supplement"))
+
+                # TODO: break diffs in here
+                # TODO: new pick_winstart
             end
         )
-
-    λ_map, winlen_map = pick_λ_winlen(resultdf,
-        [:condition, :sid, :winstart, :switch_break], :condition,
-        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.05,
-        dir = mkpath(joinpath(dir, "supplement")))
 
     classmeans_sum = @_ resultdf |>
         groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label,
@@ -96,8 +99,8 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
 
     break_diffs = @_ classmeans_sum |>
         groupby(__, [:sid, :condition, :target_time_label, :fold, :switch_break]) |>
-        @transform(__, logitnullmean = logit(shrinktowards(only(:mean[:λ .== 1.0]), 0.5, by = 0.01)),
-                       logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01)),
+        @transform(__, logitnullmean = logit(shrink(only(:mean[:λ .== 1.0]))),
+                       logitmean = logit.(shrink.(:mean)),
                        early_break = switchbreaks[:switch_break .+ 1]) |>
         filter(_.λ != 1.0, __)
 
