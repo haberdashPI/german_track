@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ_winlen,
     addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features, cross_folds,
-    pick_λ, shrink
+    pick_λ, shrink, pick_winlen
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)
@@ -137,7 +137,8 @@ myfirst(x) = first(x)
 myfirst(x::Symbol) = x
 
 function pick_λ(df, factors, maximize_across; λ_col = :λ, sid_col = :sid,
-    diffplot, lambda_plot, smoothing, slope_thresh_quantile, flat_thresh_ratio, dir)
+    diffplot = "diffs", lambda_plot = "lambdas", smoothing, slope_thresh_quantile,
+    flat_thresh_ratio, dir)
 
     diffs = @_ df |>
         groupby(__, vcat(factors, sid_col, λ_col)) |>
@@ -153,7 +154,8 @@ function pick_λ(df, factors, maximize_across; λ_col = :λ, sid_col = :sid,
         @transform(__, logitmean = logit.(shrink.(:mean))) |>
         groupby(__, vcat(maximize_across, sid_col)) |>
         @transform(__, logitnullmean = only(:logitmean[cols(λ_col) .== 1.0])) |>
-        @transform(__, logitdiff = :logitmean .- :logitnullmean)
+        @transform(__, logitdiff = :logitmean .- :logitnullmean) |>
+        filter(_[λ_col] != 1.0, __)
 
     diff0(x) = vcat(0,diff(x))
     filtfn(x) = filtfilt(digitalfilter(Lowpass(1 - smoothing), Butterworth(5)), x)
@@ -231,6 +233,39 @@ function pick_λ(df, factors, maximize_across; λ_col = :λ, sid_col = :sid,
             )
         )
     ) |> save(joinpath(dir, string(lambda_plot,".svg")))
+
+    best
+end
+
+function pick_winlen(df, factors, mean_across; sid_col = :sid, λ_col = :λ,
+    winlen_col = :winlen, windows_plot = "windows", dir)
+
+    means = @_ df |>
+        groupby(__, vcat(factors, winlen_col, sid_col, λ_col)) |>
+        @combine(__, mean = wmean(:correct, :weight))
+
+    diffs = @_ means |>
+        groupby(__, vcat(mean_across, sid_col, λ_col, winlen_col)) |>
+        @combine(__, mean = maximum(:mean)) |>
+        @transform(__, logitmean = logit.(shrink.(:mean))) |>
+        groupby(__, vcat(mean_across, winlen_col, λ_col)) |>
+        @combine(__, logitmean = mean(:logitmean)) |>
+        groupby(__, vcat(mean_across, winlen_col)) |>
+        @transform(__, logitnullmean = only(:logitmean[cols(λ_col) .== 1.0])) |>
+        @transform(__, logitdiff = :logitmean .- :logitnullmean) |>
+        @where(__, cols(λ_col) != 1.0)
+
+    @_ means |>
+        groupby(__, vcat(mean_across, λ_col, winlen_col, :winstart)) |>
+        @combine(__, logitmean = logit.(shrink.(mean(:mean)))) |>
+        filter(_.λ != 1.0, __) |>
+    @vlplot(:line,
+        x = :winlen,
+        y = {:logitmean, type = :quantitative, aggregate = :mean},
+        color = :winstart
+    ) |> save(joinpath(dir, string(windows_plot, ".svg")))
+
+    @with(diffs, :winlen[argmax(:logitdiff)])
 end
 
 """
@@ -466,7 +501,7 @@ cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
 
 struct NoProgress; end
 ProgressMeter.next!(::NoProgress) = nothing
-setupprogress(n, ::Nothing) = NoProgress
+setupprogress(n, ::Nothing) = NoProgress()
 setupprogress(n, str::String) = Progress(n, desc = str)
 
 """
