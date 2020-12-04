@@ -261,7 +261,7 @@ function pick_winlen(df, factors, mean_across; sid_col = :sid, λ_col = :λ,
         filter(_.λ != 1.0, __) |>
     @vlplot(:line,
         x = :winlen,
-        y = {:logitmean, aggregate = :mean},
+        y = {:logitmean, type = :quantitative, aggregate = :mean},
         color = :winstart
     ) |> save(joinpath(dir, string(windows_plot, ".svg")))
 
@@ -501,7 +501,7 @@ cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
 
 struct NoProgress; end
 ProgressMeter.next!(::NoProgress) = nothing
-setupprogress(n, ::Nothing) = NoProgress
+setupprogress(n, ::Nothing) = NoProgress()
 setupprogress(n, str::String) = Progress(n, desc = str)
 
 """
