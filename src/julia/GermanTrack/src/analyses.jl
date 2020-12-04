@@ -449,8 +449,8 @@ Insert a new column in dataframe `df` for the fold, and a column for the train_f
 are `n` folds. The fold of a row is determined by the identity of the column `col`.
 """
 function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
-    train,test = folds(n, unique(df[:,col]), rng = rng)
-    train,test = Set.(train), Set.(test)
+    foldvals = folds(n, unique(df[:,col]), rng = rng)
+    test = Set.(getindex.(foldvals, 2))
     df[!, :fold] = map(colval -> findfirst(fold -> colval ∈ fold, test), df[:,col])
     df
 end
