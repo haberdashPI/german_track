@@ -76,7 +76,8 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map break_map begin
             function (sdf, fold)
                 λ = pick_λ(sdf, [:condition, :winstart, :winlen, :switch_break],
                     :condition, diffplot = "diffs_fold$fold", lambda
-                    smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.05)
+                    smoothing = 0.85, slope_thresh_quantile = 0.95,
+                    flat_thresh_ratio = 0.1)
                 winlen = 0 # TODO: stopped here
             end
         )
