@@ -13,7 +13,7 @@ Base.copy(x) = EEGData(copy(x.label),x.fs,copy(x.data))
 
 SignalOperators.framerate(x::EEGData) = x.fs
 Base.getindex(x::EEGData,i) = x.data[i]
-nchannels(x::EEGData) = size(x.data[1], 1)
+SignalOperators.nchannels(x::EEGData) = size(x.data[1], 1)
 maxframes(x::EEGData) = maximum(x -> size(x, 2), x.data)
 trial_eltype(x::EEGData) = eltype(x.data[1])
 

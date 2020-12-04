@@ -6,64 +6,84 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5
 
 traindata = joinpath(cache_dir(), "data") |> mkpath
-trainfile = joinpath(traindir, "decode-train.h5")
+trainfile = joinpath(traindata, "decode-train.h5")
 if isfile(trainfile)
     x, y = h5open(trainfile, "r") do stream
         data["x"], data["y"]
     end
 else
-    eeg_encoding = FFTFilteredPower("freqbins", Float64[1, 3, 7, 15, 30, 100])
+    # eeg_encoding = FFTFilteredPower("freqbins", Float64[1, 3, 7, 15, 30, 100])
+    # eeg_encoding = JointEncoding(
+    #     FilteredPower("delta", 1, 3),
+    #     FilteredPower("theta", 3, 7),
+    #     FilteredPower("alpha", 7, 15),
+    #     FilteredPower("beta", 15, 30),
+    #     FilteredPower("gamma", 30, 100),
+    # )
+    eeg_encoding = RawEncoding()
 
     sr = 32
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
         encoding = eeg_encoding, framerate = sr)
     meta = GermanTrack.load_stimulus_metadata()
 
+    target_length = 1.0
+    max_lag = 2.0
+
+    target_samples = round(Int, sr*target_length)
     windows = @_ events |>
         filter(ishit(_) == "hit", __) |> eachrow |>
-        foldl(push!!, init = Empty(Vector), Map(trial -> (
-            start = max(1, round(Int, sr*meta.target_times[trial.sound_index])),
-            len = max(1, round(Int, sr*meta.trial_lengths[trial.sound_index])),
-            trialnum = trial.trial,
-            trial[[:condition, :sid]]...
-        )), __) |>
+        map(function(event)
+            triallen     = size(subjects[event.sid].eeg[event.trial], 2)
+            start        = clamp(round(Int, sr*meta.target_times[event.sound_index]), 1,
+                                triallen)
+            len          = clamp(target_samples, 1, triallen-start)
+            (
+                start    = start,
+                len      = len,
+                trialnum = event.trial,
+                event[[:condition, :sid, :target_source, :sound_index]]...
+            )
+            end, __) |>
         DataFrame
 
-    ntimes = windows.len |> maximum
-    nsegments = @_ windows |> size(__, 1)
-    nmcca = size(first(subjects)[2].eeg[1],1)
-    nfreqbins = eeg_encoding.children |> length
-    nfeatures = nmcca * nfreqbins
-    nlags = round(Int,sr*2)
+    nobs = sum(windows.len)
+    starts = vcat(1,1 .+ cumsum(windows.len))
+    nfeatures = size(first(subjects)[2].eeg[1],1)
+    nlags = round(Int,sr*max_lag)
+    x = Array{Float64}(undef, nobs, nfeatures*nlags)
 
-    x = Array{Float32}(undef, ntimes, nfeatures*nlags, nsegments)
     progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
-    Threads.@threads for (i, trial) in enumerate(eachrow(windows))
+    Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
         start = trial.start
         stop = trial.start + trial.len - 1
         trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):0)
-        x[1:trial.len,:,i] = @view(trialdata[start:stop, :])
+        x[starts[i] : (starts[i+1]-1), :] = @view(trialdata[start:stop, :])
         next!(progress)
     end
 
     stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
     nenc = length(stim_encoding.children)
-    y = Array{Float32}(undef, ntimes, nenc, nsegments)
-    progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
-    Threads.@threads for (i, trial) in enumerate(eachrow(windows))
+    y = Array{Float64}(undef, nobs, nenc)
+
+    progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
+    for (i, trial) in enumerate(eachrow(windows))
         source = trial.target_source == "male" ? male_source : fem1_source
-        stim, stim_id = load_stimulus(source, trial, stim_encoding, tofs, meta)
+        stim, stim_id = load_stimulus(source, trial, stim_encoding, sr, meta)
         start = trial.start
-        stop = min(size(stim,1), trial.start + start.len - 1)
+        stop = min(size(stim,1), trial.start + trial.len - 1)
         if stop >= start
             len = stop - start + 1
-            y[1:len, :, i] = @view(stim[start:stop, :])
-            y[(len+1):end, :, i] .= zero(eltype(y))
+            y[starts[i] : (starts[i] + len - 1), :] = @view(stim[start:stop, :])
+            y[(starts[i] + len) : (starts[i+1] - 1), :] .= zero(eltype(y))
         else
             y[:, :, i] .= zero(eltype(y))
         end
         next!(progress)
     end
+
+    decode(x,y) = fit(LassoPath, x, y)
+    decoders = foldxt(push!!, init = Empty(Vector), Map(i -> decode(x,y[:,i])), axes(y, 2))
 
     h5open(trainfile, "w") do stream
         stream["x"] = x
