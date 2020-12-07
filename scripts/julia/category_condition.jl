@@ -89,6 +89,86 @@ means |> @vlplot(
 ) |>
 save(joinpath(dir, "fig2a.svg"))
 
+# Attempt to replicate above results using the raw data....
+# -----------------------------------------------------------------
+
+ascondition = Dict(
+    "test" => "global",
+    "feature" => "spatial",
+    "object" => "object"
+)
+
+file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
+rawdata = @_ CSV.read(file, DataFrame) |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition)
+
+meansraw = @_ rawdata |>
+    groupby(__, [:sid, :condition]) |>
+    @combine(__,
+        hr = mean(:perf .== "hit"),
+        fr = mean(:perf .== "false"),
+    ) |>
+    stack(__, [:hr, :fr], [:sid, :condition], variable_name = :type, value_name = :prop)
+
+
+CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), meansraw)
+
+run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
+
+file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
+means = @_ CSV.read(file, DataFrame) |>
+    rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper)
+
+barwidth = 20
+means |> @vlplot(
+        width = 242, autosize = "fit",
+        # width = {step = 50},
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}
+        }) +
+    @vlplot({:bar, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.type == 'hr'"}],
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+    @vlplot({:bar, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.type == 'fr'"}],
+        x = {:condition, axis = {title = ""}},
+        y = {:prop, type = :quantitative, aggregate = :mean},
+        color = {value = "#"*hex(neutral)}) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.type == 'hr'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.type == 'fr'"}],
+        color = {value = "black"},
+        x = {:condition, axis = {title = ""}},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {:prop, aggregate = :mean, type = :quantitative},
+        text = {value = "Hits"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {datum = 0},
+        text = {value = "False Positives"},
+    ) |>
+    save(joinpath(dir, "fig2a_raw.svg"))
+
+# TODO: look at supplement to figure out how to reproduce the figure here
+
 # Find best λs
 # =================================================================
 
