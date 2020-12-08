@@ -1,3 +1,5 @@
 outs:
-- md5: c63a7a6135a9f784f4ea33bddd2fd378.dir
+- md5: dbf803e5a4ec88ccb5f7fa13d4ba9828.dir
   path: analyses
+  size: 53625797
+  nfiles: 12
