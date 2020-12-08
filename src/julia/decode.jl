@@ -1,11 +1,13 @@
 # Setup
 # =================================================================
 
-using DrWatson; @quickactivate("german_track")
+using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite
+    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
+
+using GermanTrack: colors
 
 # Setup EEG Data
 # -----------------------------------------------------------------
@@ -49,14 +51,14 @@ nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
 nlags = round(Int,sr*max_lag)
-x = Array{Float64}(undef, nobs, nfeatures*nlags)
+x = Array{Float64}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
 Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     start = trial.start
     stop = trial.start + trial.len - 1
     trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):0)
-    x[starts[i] : (starts[i+1]-1), :] = @view(trialdata[start:stop, :])
+    x[:, starts[i] : (starts[i+1]-1)] = @view(trialdata[start:stop, :])'
     next!(progress)
 end
 
@@ -116,26 +118,91 @@ end
 # Train Model
 # -----------------------------------------------------------------
 
-@_ stimuli |>
-    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding))
-
-sdf = @where(stimuli, (:fold .!= 1) .& (:encoding .== "pitch") .& :is_target_source)
-
-model = fit(LassoPath, @views(x[sdf.observation, :]), sdf.value)
-
-@vlplot(:line, model.λ, model.pct_dev) |> save(joinpath(dir, "supplement", "lambdas2.svg"))
-
-# TODO: compute correlation and L1 distance for each element in actual fold
-
-# WIP:....
-decoders = |>
+@info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
+predictions = @_ stimuli |>
+    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+    @transform(__, predict = 0.0) |>
     groupby(__, [:encoding, :is_target_source]) |>
-    filteringmap(__, folder = foldxt, desc = "Building decoders...",
-        :fold => cross_folds(1:10),
+    filteringmap(__, folder = foldxt, desc = "Gerating predictions...",
+        :fold => 1:10,
         function(sdf, fold)
-            DataFrame(coefs = fit(LassoPath, x[sdf.observation, :], sdf.value))
+            train = filter(x -> x.fold != fold, sdf)
+            test  = filter(x -> x.fold == fold, sdf)
+            model = fit(LassoPath, @view(x[:, train.observation])', train.value)
+            test.predict = predict(model, @view(x[:, test.observation])',
+                select = MinAICc())
+            test
         end
     )
+
+scores = @_ predictions |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :trial]) |>
+    @combine(__,
+        cor = cor(:value, :predict),
+        l1  = mean(abs.(:value .- :predict))
+    ) |>
+    stack(__, [:cor, :l1], [:sid, :condition, :is_target_source, :source, :trial],
+        variable_name = :measure)
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @where(__, :measure .!= "l1") |> # l1 is no good
+    @transform(__,
+        condition = string.(:condition),
+        measure   = string.(:measure),
+    ) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :measure]) |>
+    @combine(__, value = mean(:value)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :measure]) |>
+    @combine(__, value = mean(:value)) |>
+    @vlplot(
+        width = 242, autosize = "fit",
+        config = {legend = {disable = true}},
+        color = {"is_target_source:o", scale = {range = "#".*hex.(colors[[1,3]])}},
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        y = {:value, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+            scale = {zero = false}},
+    ) +
+    @vlplot({:point, xOffset = -mean_offset},
+        transform = [{filter = "datum.is_target_source"}],
+        y = "mean(value)",
+    ) +
+    @vlplot({:point, filled = true, xOffset = -ind_offset},
+        transform = [{filter = "datum.is_target_source"}],
+    ) +
+    @vlplot({:point, xOffset = mean_offset},
+        transform = [{filter = "!datum.is_target_source" }],
+        y = "mean(value)",
+    ) +
+    @vlplot({:point, filled = true, xOffset = ind_offset},
+        transform = [{filter = "!datum.is_target_source" }],
+    ) +
+    @vlplot({:rule, xOffset = -mean_offset},
+        transform = [{filter = "datum.is_target_source"}],
+        color = {value = "black"},
+        y = "ci0(value)",
+        y2 = "ci1(value)",  # {"value:q", aggregate = :ci1}
+    ) +
+    @vlplot({:rule, xOffset = mean_offset},
+        transform = [{filter = "!datum.is_target_source"}],
+        color = {value = "black"},
+        y = "ci0(value)",
+        y2 = "ci1(value)",  # {"value:q", aggregate = :ci1}
+    ) +
+    @vlplot({:text, align = "center", dx = -ind_offset, dy = -10},
+        transform = [{filter = "datum.is_target_source && datum.condition == 'global'"}],
+        y = "max(value)",
+        text = {value = "Target"}
+    ) +
+    @vlplot({:text , align = "center", dx = ind_offset, dy = -10},
+        transform = [{filter = "!datum.is_target_source && datum.condition == 'global'"}],
+        y = "max(value)",
+        text = {value = "Non-target"}
+    );
+pl |> save(joinpath(dir, "decode.svg"))
+
 
 # start with something basic: decoding accuracry (e.g. correlation or L1)
 # for target vs. the two non-target stimuli
