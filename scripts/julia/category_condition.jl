@@ -97,7 +97,7 @@ means |> @vlplot(
         y = {datum = 0},
         text = {value = "False Positives"},
     ) |>
-    save(joinpath(dir, "fig2a_raw.svg"))
+    save(joinpath(dir, "fig2a.svg"))
 
 # Find best λs
 # =================================================================
