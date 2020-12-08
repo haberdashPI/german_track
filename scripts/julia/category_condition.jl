@@ -99,8 +99,6 @@ means |> @vlplot(
     ) |>
     save(joinpath(dir, "fig2a_raw.svg"))
 
-# TODO: look at supplement to figure out how to reproduce the figure here
-
 # Find best λs
 # =================================================================
 
