@@ -1,0 +1,4 @@
+outs:
+- md5: 8ac7b7a40f40db59efb2bcc33fa6e6ed
+  size: 52002124
+  path: nearfar_lambda_switchbreak.csv

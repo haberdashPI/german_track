@@ -1,0 +1,4 @@
+outs:
+- md5: 7425ff1c55b49139ace46125abce4c12
+  size: 280
+  path: eeg_condition_coefs.csv

@@ -1,0 +1,4 @@
+outs:
+- md5: 6f943bea5cb639ddc27c19554f3fa569
+  size: 1921
+  path: main_effects.csv

@@ -1,0 +1,4 @@
+outs:
+- md5: dac5f83840e92e065c8c792ff6696d6c
+  size: 1258
+  path: stim_info.csv

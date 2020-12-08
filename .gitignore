@@ -17,20 +17,12 @@ tags
 #                          DrWatson Project Structure                          #
 ################################################################################
 
-data/processed/eeg
-data/processed/stimuli/mixtures
-data/processed/stimuli/target_salience.csv
-data/processed/stimuli/config.json
-data/processed/classifier_params
-data/processed/features
-
 # vega lite html output is large and messy, don't save it to git
 plots/**/*.html
 plots/**/*.png
 
 src/matlab/external/**/*.mat
 
-data/raw
 _research/cache
 _research/results
 

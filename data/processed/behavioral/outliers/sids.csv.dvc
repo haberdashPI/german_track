@@ -1,0 +1,4 @@
+outs:
+- md5: 093b56af5c7a33d36f9d7ceed3eab83a
+  size: 28
+  path: sids.csv

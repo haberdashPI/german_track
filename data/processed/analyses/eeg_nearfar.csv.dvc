@@ -1,0 +1,4 @@
+outs:
+- md5: 5f2ca7adfa5311fda058afcb09c78281
+  size: 15158
+  path: eeg_nearfar.csv

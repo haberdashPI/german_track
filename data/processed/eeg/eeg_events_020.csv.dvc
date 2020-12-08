@@ -1,0 +1,4 @@
+outs:
+- md5: a58c45a02719856870907f0b3bafb942
+  size: 12862
+  path: eeg_events_020.csv
