@@ -310,28 +310,28 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("57mm", "148mm",
+fig = svg.Figure("57mm", "95mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(plotsdir("figures","job"), "fig3a.svg")).scale(schematic_ratio).move(0,5),
-        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        # svg.Text("A", 2, 10, size = 12, weight="bold"),
     ).move(0, 0),
-    svg.Panel(
-        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,20),
-        svg.Text("B", 2, 10, size = 12, weight="bold"),
-        # svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-        #     scale(0.1).move(90,15)
-    ).move(0, 98),
-    svg.Panel(
-        svg.SVG(joinpath(dir, "fig3c.svg")).move(0,20),
-        svg.Text("C", 2, 10, size = 12, weight = "bold"),
-        # svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-        #     scale(0.1).move(90,15)
-    ).move(85, 98),
+    # svg.Panel(
+    #     svg.SVG(joinpath(dir, "fig3b.svg")).move(0,20),
+    #     svg.Text("B", 2, 10, size = 12, weight="bold"),
+    #     # svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+    #     #     scale(0.1).move(90,15)
+    # ).move(0, 98),
+    # svg.Panel(
+    #     svg.SVG(joinpath(dir, "fig3c.svg")).move(0,20),
+    #     svg.Text("C", 2, 10, size = 12, weight = "bold"),
+    #     # svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+    #     #     scale(0.1).move(90,15)
+    # ).move(85, 98),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3d.svg")).move(0,5),
-        svg.Text("D", 2, 10, size = 12, weight = "bold"),
+        # svg.Text("B", 2, 10, size = 12, weight = "bold"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(215,15)
-    ).move(0, 260)
+    ).move(0, 98)
 ).scale(1.25).save(joinpath(plotsdir("figures","job"), "fig3.svg"))
