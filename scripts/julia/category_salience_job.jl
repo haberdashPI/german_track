@@ -151,7 +151,7 @@ target_len_y = 0.83
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 161, height = 175, autosize = "fit",
+        width = 161, height = 145, autosize = "fit",
         config = {legend = {disable = true}},
     ) +
     (@vlplot(
@@ -239,7 +239,7 @@ pl = @_ corrected_data |>
     # "Target Length" text annotation
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+        @vlplot(mark = {:text, size = 9, baseline = "bottom", align = :left, yOffset = -3},
             x = {datum = 0}, y = {datum = target_len_y},
             text = {value = "Target Length"},
             color = {value = "black"}
@@ -310,7 +310,7 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("57mm", "95mm",
+fig = svg.Figure("57mm", "85mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(plotsdir("figures","job"), "fig3a.svg")).scale(schematic_ratio).move(0,5),
