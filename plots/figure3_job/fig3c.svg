@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="85" height="145" viewBox="0 0 85 145" version="1.1">
+  <defs><pattern id="stripe1" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#226061;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#396C57;"/>
+</pattern>
+<pattern id="stripe2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#767F37;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#9A882B;"/>
+</pattern>
+<pattern id="stripe3" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#E19652;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#F29D6C;"/>
+</pattern>
+</defs>
+  <rect width="85" height="145" fill="white"/>
+  <g fill="none" stroke-miterlimit="10" transform="translate(42,10)">
+    <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+      <g transform="translate(0,0)">
+        <path class="background" aria-hidden="true" d="M0.5,0.5h38v91h-38Z" stroke="#ddd"/>
+        <g>
+          <g class="mark-group role-axis" aria-hidden="true">
+            <g transform="translate(0.5,0.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-grid" pointer-events="none">
+                  <line transform="translate(0,73)" x2="38" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,36)" x2="38" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="38" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
+            <g transform="translate(0.5,91.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-tick" pointer-events="none">
+                  <line transform="translate(6,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(19,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(31,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-label" pointer-events="none">
+                  <text text-anchor="end" transform="translate(5.833333333333337,7) rotate(315) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Global</text>
+                  <text text-anchor="end" transform="translate(18.500000000000004,7) rotate(315) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Object</text>
+                  <text text-anchor="end" transform="translate(31.166666666666668,7) rotate(315) translate(0,8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                </g>
+                <g class="mark-rule role-axis-domain" pointer-events="none">
+                  <line transform="translate(0,0)" x2="38" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Salience Decoding' for a linear scale with values from 0.5 to 1.0">
+            <g transform="translate(0.5,0.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-tick" pointer-events="none">
+                  <line transform="translate(0,73)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,36)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-label" pointer-events="none">
+                  <text text-anchor="end" transform="translate(-7,75.8)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.6</text>
+                  <text text-anchor="end" transform="translate(-7,39.39999999999999)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.8</text>
+                  <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
+                </g>
+                <g class="mark-rule role-axis-domain" pointer-events="none">
+                  <line transform="translate(0,91)" x2="0" y2="-91" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-title" pointer-events="none">
+                  <text text-anchor="middle" transform="translate(-26,45.5) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="normal" fill="#000" opacity="1">Salience Decoding</text>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
+            <path aria-label=": global; condition: global; Salience Decoding: 0.763145671737" role="graphics-symbol" aria-roledescription="bar" d="M1.3333333333333366,43.10748774382755h10v47.89251225617245h-10Z" fill="url(#stripe1)"/>
+            <path aria-label=": object; condition: object; Salience Decoding: 0.662215724722" role="graphics-symbol" aria-roledescription="bar" d="M14.000000000000004,61.47673810059498h10v29.52326189940502h-10Z" fill="url(#stripe2)"/>
+            <path aria-label=": spatial; condition: spatial; Salience Decoding: 0.636701334906" role="graphics-symbol" aria-roledescription="bar" d="M26.666666666666668,66.12035704717893h10v24.879642952821072h-10Z" fill="url(#stripe3)"/>
+          </g>
+          <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+            <line aria-label=": global; upper_lower: 0.806974862334; upper: 0.806974862334; lower: 0.719968910753" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(6.333333333333337,50.96565824297597)" x2="0" y2="-15.835083187687502" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.700827592646; upper: 0.700827592646; lower: 0.624261033042" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(19.000000000000004,68.38449198633256)" x2="0" y2="-13.935113847865935" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.681783181859; upper: 0.681783181859; lower: 0.590992227236" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(31.666666666666668,74.43941464308021)" x2="0" y2="-16.523953741432884" stroke="black"/>
+          </g>
+        </g>
+        <path class="foreground" aria-hidden="true" d="" display="none"/>
+      </g>
+    </g>
+  </g>
+</svg>
