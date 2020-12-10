@@ -463,11 +463,13 @@ the description for the progress bar using `desc`.
 """
 function mapgroups(df, vars, fn, ;folder = foldxt, desc = "Progress")
     groups = groupby(df, vars)
-    progress = Progress(length(groups), desc = desc)
+    progress = setupprogress(length(groups), desc)
     function fn_((key,sdf))
         result = fn(sdf)
         if !isempty(result)
-            result[!, keys(key)] .= permutedims(collect(values(key)))
+            for (k,v) in pairs(key)
+                result[!, k] .= v
+            end
         end
         next!(progress)
 
