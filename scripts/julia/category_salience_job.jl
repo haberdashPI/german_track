@@ -151,7 +151,7 @@ target_len_y = 0.83
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 161, height = 145, autosize = "fit",
+        width = 161, height = 115, autosize = "fit",
         config = {legend = {disable = true}},
     ) +
     (@vlplot(
@@ -163,7 +163,7 @@ pl = @_ corrected_data |>
         x = {:winstart, type = :quantitative, title = "Time from onset (s)",
             axis = {titleFontWeight = "normal"}},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [0.5,1.0]}, axis = {titleFontWeight = "normal"}}) +
+            scale = {domain = [0.5,0.9]}, axis = {titleFontWeight = "normal"}}) +
     # data errorbands
     @vlplot(:errorband,
         x = {:winstart, type = :quantitative},
@@ -180,20 +180,20 @@ pl = @_ corrected_data |>
         text = :condition_label
     ) +
     # "Time Slice" annotation
-    (
-        @transform(timeslice, fold_label = labelfn.(:train_fold)) |>
-        @vlplot() +
-        @vlplot({:rule, strokeDash = [2 2]},
-            x = "mean(best)",
-            color = {value = "black"}
-        ) +
-        @vlplot({:text, align = "left", fontSize = 9, baseline = "bottom", angle = 90},
-            x = "mean(best)",
-            y = {datum = 1.0},
-            text = {value = "Panel C"},
-            color = {value = "#"*hex(neutral)}
-        )
-    ) +
+    # (
+    #     @transform(timeslice, fold_label = labelfn.(:train_fold)) |>
+    #     @vlplot() +
+    #     @vlplot({:rule, strokeDash = [2 2]},
+    #         x = "mean(best)",
+    #         color = {value = "black"}
+    #     ) +
+    #     @vlplot({:text, align = "left", fontSize = 9, baseline = "bottom", angle = 90},
+    #         x = "mean(best)",
+    #         y = {datum = 1.0},
+    #         text = {value = "Panel C"},
+    #         color = {value = "#"*hex(neutral)}
+    #     )
+    # ) +
     # (
     #     @vlplot(data = {values = [{}]}) +
     #     @vlplot({:text, align = "right", dx = -2},
@@ -310,7 +310,7 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("57mm", "85mm",
+fig = svg.Figure("57mm", "75mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(plotsdir("figures","job"), "fig3a.svg")).scale(schematic_ratio).move(0,5),
