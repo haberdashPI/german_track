@@ -18,9 +18,10 @@ using GermanTrack: neutral, colors, lightdark, darkgray, inpatterns
 # =================================================================
 
 nbins = 10
-switchbreaks = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
+switchrange = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
     skipmissing |>
-    quantile(__, range(0,1,length = nbins+1)[2:(end-1)])
+    quantile(__, (0.1, 0.9))
+paramrange = (winlen = (0.1, 2.0), winstart = (0.0, 3.0), nearfar = switchrange)
 
 file = joinpath(processed_datadir("analyses"), "nearfar-hyperparams.json")
 GermanTrack.@cache_results file fold_map hyper_params begin
@@ -36,15 +37,54 @@ GermanTrack.@cache_results file fold_map hyper_params begin
         compute_powerbin_features(filtered, subjects, window)
     end
 
+    function findparams(df, fold)
+        result = bboptimize(SearchRange = collect(values(paramrange)),
+            NThreads = Threads.nthreads()-1, TraceMode = :verbose, MaxTime = 200.0) do params
+            winlen, winstart, nearfar = params
+            window = windowtarget(len = winlen, start = winstart)
+
+            println(".")
+
+            features = @_ df |>
+                @transform(__, target_switch_label =
+                    ifelse.(:switch_distance .< nearfar, "near", "far")) |>
+                mapgroups(__, desc = nothing,
+                    [:sid, :target_switch_label, :target_time_label, :fold],
+                    compute_powerbin_features(_, subjects, window))
+            y = features.target_switch_label .!= "near"
+            all(==(first(y)), y) && return 1.0
+
+            train = findall(features.fold .!= fold)
+            test  = findall(features.fold .== fold)
+            model = fit(ZScoreLasso, Array(view(features,train,r"channel")), view(y,train),
+                Bernoulli(),
+                wts = float.(view(features.weight,train)),
+                maxncoef = size(view(features,:,r"channel"), 2),
+                irls_maxiter = 200,
+            )
+
+            ŷ = predict(model, Array(view(features,test,r"channel")), select = MinAICc())
+            ŷ₀ = predict(model, Array(view(features,test,r"channel")), select = NullSelect())
+            mean(view(y,test) .== ŷ) - mean(view(y,test) .== ŷ₀)
+        end
+        DataFrame(;(keys(paramrange) .=> best_candidate(result))...)
+    end
+
+    resultdf = @_ events |> filter(ishit(_) == "hit", __) |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
+        groupby(__, [:condition]) |>
+        filteringmap(__, desc = nothing, folder = foldl,
+            :fold => 1:10, findparams)
+
     classdf = @_ events |> filter(ishit(_) == "hit", __) |>
         @transform(__, switch_class = map(x -> sum(x .> switchbreaks).+1, :switch_distance)) |>
         groupby(__, [:sid, :condition, :target_time_label]) |>
         filteringmap(__, desc = "Computing features...",
-            :switch_break => 2:nbins,
+            :switch_break => 3:(nbins-1),
             :target_switch_label => ["near", "far"],
             :windows => [windowtarget(len = len, start = start)
                 for len in 2.0 .^ range(-1, 1, length = 10),
-                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+                    start in [0; 2.0 .^ range(-2, 0, length = 10)]],
             compute_powerbin_withbreak)
 
     resultdf = @_ classdf |>

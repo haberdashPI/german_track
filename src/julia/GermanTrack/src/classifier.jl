@@ -1,7 +1,30 @@
-export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier
+export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier, ZScoreLasso
 
 import StatsModels: DummyCoding, FullDummyCoding
 export DummyCoding, FullDummyCoding
+
+struct ZScoreLasso{L}
+    lasso::L
+    μ::Array{Float64,2}
+    σ::Array{Float64,2}
+end
+
+function StatsBase.fit(::Type{<:ZScoreLasso}, X, y, args...; kwds...)
+    if :standardize ∈ keys(kwds)
+        error("Standardize is implied by using ZScoreLasso, do not use this keyword argument.")
+    end
+
+    μ = mean(X, dims = 1)
+    σ = std(X .- μ, dims = 1)
+    zX = zscorecol(X, μ, σ)
+    fit = StatsBase.fit(LassoPath, zX, y, args...; standardize = false, kwds... )
+    ZScoreLasso(fit, μ, σ)
+end
+
+function StatsBase.predict(model::ZScoreLasso, X, args...; kwds...)
+    zX = zscorecol(X, model.μ, model.σ)
+    StatsBase.predict(model, zX, args...; kwds...)
+end
 
 """
     LassoClassifier(λ)
@@ -18,6 +41,10 @@ struct LassoClassifierFit{T}
     μ::Array{Float64,2}
     σ::Array{Float64,2}
 end
+
+struct NullSelect <: SegSelect
+end
+Lasso.segselect(path, select::NullSelect) = 1
 
 zscorecol(X, μ, σ) = zscorecol!(copy(X), μ, σ)
 function zscorecol!(X, μ, σ)
