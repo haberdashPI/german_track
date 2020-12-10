@@ -175,13 +175,17 @@ statdata = @_ classmeans_sum |>
         logitnullmean = logit(shrink(only(:mean[:λ .== 1.0]))),
         logitmean     = logit.(shrink.(:mean)),
     ) |>
+    @transform(__,
+        nullodds = exp.(:logitnullmean),
+        odds     = exp.(:logitmean)
+    ) |>
     @where(__, :λ .!= 1.0)
 
 pl = statdata |> @vlplot(:point,
     column = :condition,
     color = :target_time_label,
-    x     = :logitnullmean,
-    y     = :logitmean,
+    x     = {:nullodds, scale = {type = :log, base = 10}, axis = {grid = false}},
+    y     = {:odds, scale = {type = :log, base = 10}, axis = {grid = false}},
 );
 pl |> save(joinpath(dir, "supplement", "earlylate_nearfar_ind.svg"))
 
@@ -199,7 +203,7 @@ plotdata = @_ CSV.read(processed_datadir("analyses", "eeg_nearfar_coefs.csv"), D
 nullmean = logistic(mean(statdata.logitnullmean))
 ytitle = ["Switch Proximity (Near/Far)", "Classification"]
 barwidth = 14
-yrange = [0.5, 1]
+yrange = [0.9, 1]
 pl = plotdata |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",
