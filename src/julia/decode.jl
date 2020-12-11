@@ -3,7 +3,8 @@
 
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
-    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors
+    BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
+    Printf
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -118,20 +119,32 @@ end
 # Train Model
 # -----------------------------------------------------------------
 
+@_ stimuli |>
+    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding))
+
+sdf = @where(stimuli, (:fold .!= 1) .& (:encoding .== "pitch") .& :is_target_source)
+
+model = fit(LassoRegression, @views(x[:, sdf.observation])', sdf.value)
+
 @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-predictions = @_ stimuli |>
+predictions, coefs = @_ stimuli |>
     addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     @transform(__, predict = 0.0) |>
     groupby(__, [:encoding, :is_target_source]) |>
-    filteringmap(__, folder = foldxt, desc = "Gerating predictions...",
+    filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
         :fold => 1:10,
         function(sdf, fold)
             train = filter(x -> x.fold != fold, sdf)
             test  = filter(x -> x.fold == fold, sdf)
+
             model = fit(LassoPath, @view(x[:, train.observation])', train.value)
             test.predict = predict(model, @view(x[:, test.observation])',
                 select = MinAICc())
-            test
+
+            coefs = DataFrame(coef(model, MinAICc())',
+                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+
+            test, coefs
         end
     )
 
