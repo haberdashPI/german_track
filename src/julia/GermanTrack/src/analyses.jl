@@ -508,23 +508,46 @@ setupprogress(n, str::String) = Progress(n, desc = str)
 
 """
     filteringmap(df,filtering1 => (value1 => filterfn1 | value1, etc...),
-        filtering2 => etc..., fn,
+        filtering2 => etc..., fn, streams = 1
         folder = foldxt, desc = "Progres...")
 
 Repeatedly map a function `fn` over a data frame or a grouped data frame, applying the
-function for each group and each set of filtersings. `fn` takes each group of `df` as its
-first argument, and the current value for each filtering as its remaining arguments. These
-filterings behave like the groups of a grouped data frame, but they can include rows are not
-mutually exlusive to one another. The `filtering` arguments specify the overlapping groups:
-group N's name is the value of `mapN`, and the values of the group variable are `valueK`;
-group `valueK` contains all rows that match the filtering function `filterfnK`. If all
-filtering functions for a given filtering are `(x -> true)` (include all rows), you need not
-specify the `filteringfn`, using `filtering1 => (value1, value2, etc...)` instead.
+function for each group and each set of filterings.
 
-If desc is set to `nothing`, no progress bar will be shown
+## Details
+
+The `fn` takes each group of `df` as its first argument, and the current value for each
+filtering as its remaining arguments. These filterings behave like the groups of a grouped
+data frame, but they can include rows that are not mutually exlusive to one another. The
+`filtering` arguments specify the overlapping groups: group N's name is the value of `mapN`,
+and the values of the group variable are `valueK`; group `valueK` contains all rows that
+match the filtering function `filterfnK`. If all filtering functions for a given filtering
+are `(x -> true)` (include all rows), you need not specify the `filteringfn`, using
+`filtering1 => (value1, value2, etc...)` instead.
+
+If desc is set to `nothing`, no progress bar will be shown.
+
+## Multiple streams
+
+If streams > 1 then `fn` should return a tuple of size `streams`, and filterings
+will return the result of each tuple as separate data frames.
+
+## Example
+
+Here's an example using multiple streams
+
+    df = DataFrame(x = 1:10, group = rand(["joe", "bob"], 10))
+    result = filteringmap(df, streams = 2,
+        :region => (:lower => x -> x.x < 7, :upper => x -> x.x > 4),
+        function(sdf, region)
+            DataFrame(mean = mean(sdf.x), bobs = sum(sdf.group .== "bob")),
+                DataFrame(xnorm = sdf.x ./ mean(sdf.x))
+        end
+    )
+
 """
 function filteringmap(df, filterings_fn...; folder = foldxt,
-    desc = "Progress...", addlabels = true)
+    desc = "Progress...", addlabels = true, streams = 1)
     fn = filterings_fn[end]
     filterings = filterings_fn[1:(end-1)]
 
@@ -537,6 +560,21 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
     groupings = filtermap_groupings(df, flattened)
     progress = setupprogress(length(groupings), desc)
 
+    function addcolumns!(result, key, filterings)
+        if !isempty(result)
+            if addlabels
+                for (name, val, filterfn) in filterings
+                    result[!, name] .= Ref(val)
+                end
+            end
+            if !isempty(key)
+                for (k,v) in pairs(key)
+                    result[!, k] .= v
+                end
+            end
+        end
+    end
+
     function filtermap(((key, group), filterings))
         filtered = group
         for (name, val, filterfn) in filterings
@@ -546,29 +584,32 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
         local result
         if !isempty(filtered)
             result = fn(filtered, getindex.(filterings, 2)...)
-
-            if !isempty(result)
-                if addlabels
-                    for (name, val, filterfn) in filterings
-                        result[!, name] .= Ref(val)
-                    end
-                end
-                if !isempty(key)
-                    for (k,v) in pairs(key)
-                        result[!, k] .= v
-                    end
-                end
+            if streams > 1
+                @_ map(addcolumns!(_, key, filterings), result)
+            else
+                addcolumns!(result, key, filterings)
             end
         else
-            result = Empty(DataFrame)
+            if streams > 1
+                result = Tuple(Empty(DataFrame) for _ in 1:streams)
+            else
+                result = Empty(DataFrame)
+            end
         end
         next!(progress)
 
         result
     end
 
-    folder(append!!, Map(filtermap), collect(groupings),
-        init = Empty(DataFrame))
+    if streams > 1
+        init_result = Tuple(Empty(DataFrame) for _ in 1:streams)
+        append_streams!!(results, streams) = append!!.(results, streams)
+
+        folder(append_streams!!, Map(filtermap), collect(groupings),
+            init = init_result)
+    else
+        folder(append!!, Map(filtermap), collect(groupings), init = Empty(DataFrame))
+    end
 end
 
 filtermap_groupings(df::GroupedDataFrame, flattened) =
