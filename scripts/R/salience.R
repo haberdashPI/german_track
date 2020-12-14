@@ -33,9 +33,20 @@ coefs = as.data.frame(model) %>%
             `conditionspatial:salience_labellow`) %>%
     gather(gvo_saldiff:ovs_saldiff, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
-    effect_summary(value)
-knitr::kable(coefs, digits = 3)
-print(coefs)
+    effect_summary(r = value, d = value / `(phi)`) %>%
+    mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}'))
+
+coefs %>% effect_table()
+
+# TODO: write estimated for differences and group means so they can be plotted
+# directly
+
+coefs %>%
+    select(comparison,
+        value = oddsr_med, pi05 = oddsr_05, pi95 = oddsr_95, pd = r_pd, D = d_med) %>%
+    effect_json('salience_behavior', comparison)
+
+# TODO: stopped
 
 df = read.csv(file.path(processed_datadir, 'analyses', 'eeg_salience_timeline.csv')) %>%
     filter(hittype == 'hit')

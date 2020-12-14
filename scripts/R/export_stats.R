@@ -3,7 +3,8 @@ source("src/R/setup.R")
 # moves the json formatted stats results to the git repository for paper1
 
 data = NULL
-for(file in list.files(stat_dir)){
+for(file in list.files(stat_dir, pattern = "json$")){
+    cat(file, '\n')
     data = c(data, fromJSON(paste(readLines(file.path(stat_dir, file)), collapse="")))
 }
 
