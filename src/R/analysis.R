@@ -58,14 +58,53 @@ effect_table = function(df, digits = 3){
         knitr::kable(digits = digits)
 }
 
-pairwise = function(df, ...){
+pairwise = function(df, bothdir = F, ...){
     cols = names(select(df, ...))
     n = length(cols)
-    for(i in 1:(n-1)){
-        for(j in (i+1):n){
-            df = cbind(df, newcol = df[,cols[i]] - df[,cols[j]])
-            names(df)[names(df) == "newcol"] = str_c(cols[i],' - ',cols[j])
+    if(bothdir){
+        for(i in 1:n){
+            for(j in 1:n){
+                if(i != j){
+                    df = cbind(df, newcol = df[,cols[i]] - df[,cols[j]])
+                    names(df)[names(df) == "newcol"] = str_c(cols[i],' - ',cols[j])
+                }
+            }
+        }
+    }else{
+        for(i in 1:(n-1)){
+            for(j in (i+1):n){
+                df = cbind(df, newcol = df[,cols[i]] - df[,cols[j]])
+                names(df)[names(df) == "newcol"] = str_c(cols[i],' - ',cols[j])
+            }
         }
     }
     df
+}
+
+effect_list = function(df, ...){
+    inlist = function(val, vars, result = list()){
+        if(length(vars) > 1){
+            result[[first(vars)]] = inlist(val, vars[2:length(vars)], result[[first(vars)]])
+            result
+        }else{
+            result[[first(vars[1])]] = as.list(val[[1]])
+            result
+        }
+    }
+    nested = df %>% nest_by(...)
+    result = list()
+    for(r in 1:nrow(nested)){
+        # cat('row: ',r,'\n')
+        result = inlist(nested[r,]$data, select(nested[r,], -data), result)
+    }
+
+    result
+}
+
+effect_json = function(df,  label, ...){
+    result = list()
+    result[[label]] = df %>%
+        mutate(across(everything(), unname)) %>%
+        effect_list(...)
+    result %>% toJSON %>% cat(file = file.path(stat_dir, str_c(label, '.json')))
 }
