@@ -52,11 +52,15 @@ ytitle = "Hit Rate"
 yrange = [0, 1]
 pl = means |>
     @vlplot(
-        height = 175, width = 242, autosize = "fit",
+        height = 140, width = 242, autosize = "fit",
         config = {
-            legend = {disable = true},
             bar = {discreteBandSize = barwidth},
-            axis = {titlePadding = 13}
+            axis = {titlePadding = 13, labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
         },
     ) +
     @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
@@ -133,10 +137,15 @@ diffmeans = @_ indmeans |>
 barwidth = 18
 pl = @_ diffmeans |>
     @vlplot(
-        width = 111, autosize = "fit",
+        width = 111, height = 140, autosize = "fit",
         config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
         }
     ) +
     @vlplot(:bar,
@@ -148,7 +157,7 @@ pl = @_ diffmeans |>
         color = {:condition, scale = {
             range = urlcol.(keys(seqpatterns))}},
         y = {:meandiff,
-            title = "High - Low Salience (Hit Rate)"
+            title = ["High - Low Salience", "(Hit Rate)"]
         }
     ) +
     @vlplot(:errorbar,
@@ -301,13 +310,21 @@ timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
     @combine(__, best = :winstart[argmax(:score)])
 labelfn(fold) = "fold $fold"
 
-ytitle = ["High/Low Salience Classification"]
+ytitle = ["High/Low Salience", "Classification"]
 target_len_y = 0.8
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     @vlplot(
-        width = 242, height = 200, autosize = "fit",
-        config = {legend = {disable = true}},
+        width = 242, height = 170, autosize = "fit",
+        config = {
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        },
     ) +
     (@vlplot(
         color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
@@ -408,7 +425,7 @@ timeslice_map = Dict(row.train_fold => row.best for row in eachrow(timeslice))
 
 barwidth = 16
 
-ytitle = ["High/Low Salience Classification"]
+ytitle = ["High/Low Salience", "Classification"]
 yrange = [0.5, 1]
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
@@ -420,10 +437,15 @@ pl = @_ corrected_data |>
         upper = upperboot(:corrected_mean, alpha = 0.318),
     ) |>
     @vlplot(
-        width = 111, autosize = "fit",
+        width = 111, height = 140, autosize = "fit",
         config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
         }
     ) +
     @vlplot(:bar,
@@ -467,30 +489,30 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "240mm",
+fig = svg.Figure("89mm", "190mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3a.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(220,15)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight="bold"),
+        svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(90,15)
-    ).move(0, 225),
+    ).move(0, 175),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3c.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold"),
+        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(90,15)
-    ).move(125, 225),
+    ).move(125, 175),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3d.svg")).move(0,15),
-        svg.Text("D", 2, 10, size = 12, weight = "bold"),
+        svg.Text("D", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(215,15)
-    ).move(0, 450)
+    ).move(0, 340)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig3.svg"))
