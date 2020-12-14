@@ -53,11 +53,16 @@ means = @_ CSV.read(file, DataFrame) |>
 
 barwidth = 20
 means |> @vlplot(
-        width = 242, autosize = "fit",
+        width = 242, height = 150, autosize = "fit",
         # width = {step = 50},
         config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
         }) +
     @vlplot({:bar, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.type == 'hr'"}],
@@ -265,11 +270,16 @@ barwidth = 25
 plhit = @_ plotdata |>
     @vlplot(
         # facet = { column = { field = :hittype, type = :nominal} },
-        width = 242,
+        width = 237, height = 150,
         autosize = "fit",
         config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth}
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
         }
     ) + (
     @vlplot(x = {:compname, axis = {
@@ -320,20 +330,20 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "160mm",
+fig = svg.Figure("89mm", "125mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2a.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold"),
+        svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(220,15)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2b.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight = "bold"),
+        svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(220,15)
-    ).move(0, 225)
+    ).move(0, 180)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig2.svg"))
 
 
