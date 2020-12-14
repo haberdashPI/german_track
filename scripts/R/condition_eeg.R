@@ -31,12 +31,17 @@ effects = as.data.frame(model) %>%
     group_by(comparison) %>%
     effect_summary(r = value, d = value / `(phi)`)
 
-effects %>%
-    mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}')) %>%
-    effect_table()
+coeftable = effects %>%
+    mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}'))
+coeftable %>% effect_table()
 
 logitnullmean = df$logitnullmean %>% mean
 effects %>% mutate(across(matches('r_[med0-9]+'),
     list(prop = ~ invlogit(.x + logitnullmean)), .names = '{.fn}{.col}')) %>%
     select(comparison, contains('prop')) %>%
     write.csv(file.path(processed_datadir,'analyses','eeg_condition_coefs.csv'))
+
+coeftable %>%
+    select(comparison,
+        value = oddsr_med, pi05 = oddsr_05, pi95 = oddsr_95, pd = d_pd, D = d_med) %>%
+    effect_json('condition_eeg', comparison)

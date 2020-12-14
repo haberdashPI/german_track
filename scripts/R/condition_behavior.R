@@ -27,8 +27,8 @@ coefdf = as.data.frame(rfit) %>%
         spatial_fr = `(Intercept)` + conditionspatial,
     ) %>%
     select(global_hr:spatial_fr, `(phi)`) %>%
-    pairwise(global_hr:spatial_hr) %>%
-    pairwise(global_fr:spatial_fr) %>%
+    pairwise(global_hr:spatial_hr, bothdir = T) %>%
+    pairwise(global_fr:spatial_fr, bothdir = T) %>%
     gather(-`(phi)`, key = 'condition', value = 'value') %>%
     mutate(type = ifelse(str_detect(condition, 'fr'), 'fr', 'hr')) %>%
     mutate(condition = str_replace_all(condition, '([a-z]+)_(fr|hr)', '\\1'))
@@ -57,13 +57,20 @@ coefdf %>%
     arrange(desc(type), condition) %>%
     effect_table()
 
-coefdf %>%
+coeftable = coefdf %>%
     group_by(type, condition) %>%
     filter(str_detect(condition, '-')) %>%
     effect_summary(r = -value, d = -value / `(phi)`) %>%
     # select(-r_p) %>%
     mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}')) %>%
     arrange(desc(type), condition) %>%
-    select(-matches('^r_')) %>%
-    effect_table()
+    select(-matches('^r_')) %>% ungroup()
+
+coeftable %>% effect_table()
+
+coeftable %>%
+    mutate(condition = str_replace(condition, ' - ', '_vs_')) %>%
+    select(type, condition,
+        value = oddsr_med, pi05 = oddsr_05, pi95 = oddsr_95, pd = d_pd, D = d_med) %>%
+    effect_json('condition_behavior', type, condition)
 
