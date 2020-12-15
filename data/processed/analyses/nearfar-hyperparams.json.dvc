@@ -1,4 +1,4 @@
 outs:
-- md5: 51736c61b3114b3c732b86730ac018fc
-  size: 84120
+- md5: 7c12d0258ca07091e902c7a46a186689
+  size: 299041
   path: nearfar-hyperparams.json

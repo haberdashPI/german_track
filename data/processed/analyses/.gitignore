@@ -25,3 +25,5 @@
 /decode-predict.json
 /decode-predict-freqbin.json
 /decode-predict-freqbin.jld
+/nearfar_behavior_coefs.csv
+/hit_by_switch.csv

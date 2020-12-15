@@ -1,0 +1,4 @@
+outs:
+- md5: a6425a21c5189b33f140f228e8d6eba2
+  size: 135165
+  path: export_switch_ind_data_1.csv
