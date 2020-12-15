@@ -14,6 +14,86 @@ dir = mkpath(plotsdir("figure4_parts"))
 
 using GermanTrack: neutral, colors, lightdark, darkgray, inpatterns
 
+# Behavior data
+# -----------------------------------------------------------------
+
+# nearsplit = mean(switchclass[collect(values(best_breaks))])
+
+target_labels = OrderedDict(
+    "early" => ["Early Target", "(before 3rd Switch)"],
+    "late"  => ["Late Target", "(after 3rd Switch)"]
+)
+
+target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "hitrate_timeline_bytarget.csv"), DataFrame) |>
+    groupby(__, :condition) |>
+    transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
+                   [:pmean, :err] => (+) => :upper,
+                   [:pmean, :err] => (-) => :lower,
+                   :target_time => ByRow(x -> target_labels[x]) => :target_time_label)
+
+pl = @_ target_timeline |>
+    filter(_.time < 1.5, __) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        transform = [{calculate = "upper(slice(datum.condition,0,1)) + slice(datum.condition,1)",
+                        as = :condition}],
+        spacing = 1,
+        facet = {
+            column = {
+                field = :target_time_label, type = :ordinal, title = nothing,
+                sort = collect(values(target_labels)),
+                header = {labelFontWeight = "bold"}
+            }
+        }
+    ) +
+    (
+        @vlplot(width = 80, autosize = "fit", height = 130, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot({:trail, clip = true},
+            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
+                title = ["Time after", "Switch (s)"]},
+            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
+            size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
+        ) +
+        @vlplot({:errorband, clip = true},
+            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
+            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
+            y = {:upper, type = :quantitative, title = "", scale = {domain = [0.5, 1]}}, y2 = :lower,
+            # opacity = :weight,
+            color = :condition,
+        ) +
+        @vlplot({:text, align = :left, dx = 5},
+            transform = [
+                {filter = "datum.time > 1 && datum.time < 1.1 && datum.target_time == 'late'"},
+            ],
+            x = {datum = 1.2},
+            y = {:pmean, aggregate = :mean, type = :quantitative},
+            color = :condition,
+            text = {:condition, }
+        ) +
+        (
+            @vlplot(data = {values = [{}]}) +
+            # @vlplot({:rule, strokeDash = [4 4], size = 1},
+            #     x = {datum = nearsplit},
+            #     color = {value = "black"}
+            # ) +
+            @vlplot({:text, fontSize = 9, align = :right, dx = 2, baseline = "bottom"},
+                x = {datum = 1.5},
+                y = {datum = 0.5},
+                text = {value = "Far"},
+                color = {value = "#"*hex(darkgray)}
+            ) +
+            @vlplot({:text, fontSize = 9, align = :left, dx = 2, baseline = "bottom"},
+                x = {datum = 0},
+                y = {datum = 0.5},
+                text = {value = "Near"},
+                color = {value = "#"*hex(darkgray)}
+            )
+        )
+    );
+pl |> save(joinpath(dir, "fig4a.svg"))
+
 # Find hyperparameters (λ and winlen)
 # =================================================================
 
@@ -263,3 +343,44 @@ pl = plotdata |>
 plotfile = joinpath(dir, "fig4c.svg")
 pl |> save(plotfile)
 addpatterns(plotfile, inpatterns, size = 10)
+
+# Combine early/late plots
+# -----------------------------------------------------------------
+
+GermanTrack.@usepython
+
+svg = pyimport("svgutils").compose
+
+background_file = tempname()
+
+background = pyimport("svgutils").transform.fromstring("""
+    <svg>
+        <rect width="100%" height="100%" fill="white"/>
+    </svg>
+""").save(background_file)
+
+for (suffix, file) in [
+    ("behavior_timeline", "fig4a.svg"),
+    ("neural", "fig4c.svg")]
+    filereplace(joinpath(dir, file), r"\bclip([0-9]+)\b" =>
+        SubstitutionString("clip\\1_$suffix"))
+end
+
+fig = svg.Figure("89mm", "160mm", # "240mm",
+    svg.SVG(background_file),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "fig4a.svg")).move(0,15),
+        svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(115,50),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,50)
+    ).move(0, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "fig4c.svg")).move(0,15),
+        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(220,30)
+    ).move(0, 250),
+).scale(1.333).save(joinpath(plotsdir("figures"), "fig4.svg"))
+
