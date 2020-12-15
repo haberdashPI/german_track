@@ -27,11 +27,15 @@ ggsave(file.path(plot_dir, 'category_salience', 'behavior_pp_check.svg'), p)
 posterior_interval(matrix(c(predictive_error(model))))
 
 coefs = as.data.frame(model) %>%
-    mutate(gvo_saldiff = `conditionobject:salience_labellow`,
-           gvs_saldiff = `conditionspatial:salience_labellow`,
-           ovs_saldiff = `conditionobject:salience_labellow` -
-            `conditionspatial:salience_labellow`) %>%
-    gather(gvo_saldiff:ovs_saldiff, key = 'comparison', value = 'value') %>%
+    mutate(
+        global_saldiff = -salience_labellow,
+        object_saldiff = -(conditionobject+salience_labellow+`conditionobject:salience_labellow`),
+        spatial_saldiff = -(conditionobject+salience_labellow+`conditionspatial:salience_labellow`),
+        gvo_saldiff = `conditionobject:salience_labellow`,
+        gvs_saldiff = `conditionspatial:salience_labellow`,
+        ovs_saldiff = `conditionobject:salience_labellow` -
+        `conditionspatial:salience_labellow`) %>%
+    gather(global_saldiff:ovs_saldiff, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
     effect_summary(r = value, d = value / `(phi)`) %>%
     mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}'))
