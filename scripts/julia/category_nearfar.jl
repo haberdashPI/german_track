@@ -8,7 +8,7 @@ using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, CSV, Colors, DataFramesMeta
+    StatsFuns, CSV, Colors, DataFramesMeta, CategoricalArrays
 
 dir = mkpath(plotsdir("figure4_parts"))
 
@@ -32,8 +32,60 @@ target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
                    [:pmean, :err] => (-) => :lower,
                    :target_time => ByRow(x -> target_labels[x]) => :target_time_label)
 
+ascondition = Dict(
+    "test" => "global",
+    "feature" => "spatial",
+    "object" => "object"
+)
+
+file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
+rawdata = @_ CSV.read(file, DataFrame) |>
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition)
+
+function find_switch_distance(time, switches)
+    if time <= 0
+        missing
+    else
+        distances = @_ filter(_ > 0, skipmissing(time .- Array(switches)))
+        if isempty(distances)
+            missing
+        else
+            minimum(distances)
+        end
+    end
+end
+rawdata.switch_distance = map(find_switch_distance, rawdata[!,:dev_time],
+    eachrow(rawdata[!,r"switches"]))
+
+nbins = 8
+qs = quantile(skipmissing(rawdata.switch_distance), range(0, 1, length = nbins+1))
+bin_means = (qs[1:(end-1)] + qs[2:end])/2
+target_timeline = @_ rawdata |>
+    @transform(__, time_bin = cut(:switch_distance, nbins), target_bin = cut(:dev_time, 2)) |>
+    @transform(__, target_time_label =
+        recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
+    @transform(__, time_bin_mean = recode(:time_bin, (levels(:time_bin) .=> bin_means)...)) |>
+    groupby(__, [:sid, :exp_id, :condition, :time_bin, :time_bin_mean, :target_time_label]) |>
+    @combine(__,
+        mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+        weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+    ) |>
+    groupby(__, [:condition, :time_bin_mean, :target_time_label]) |>
+    combine(function(sdf)
+        filt = filter(x -> x.weight > 0, sdf)
+        μ, lower, upper = if isempty(filt)
+            missing, missing, missing
+        else
+            μ, lower, upper = confint(bootstrap(df -> mean(df.mean, weights(df.weight)), filt,
+                BasicSampling(10_000)), BasicConfInt(0.95)
+            )[1]
+        end
+        DataFrame(mean = μ, lower = lower, upper = upper, weight = sum(filt.weight))
+    end, __) |>
+    @transform(__, time_bin_mean = Array(:time_bin_mean)) |>
+    rename!(__, :time_bin_mean => :time)
+
 pl = @_ target_timeline |>
-    filter(_.time < 1.5, __) |>
     @vlplot(
         config = {legend = {disable = true}},
         transform = [{calculate = "upper(slice(datum.condition,0,1)) + slice(datum.condition,1)",
@@ -42,20 +94,22 @@ pl = @_ target_timeline |>
         facet = {
             column = {
                 field = :target_time_label, type = :ordinal, title = nothing,
-                sort = collect(values(target_labels)),
+                sort = ["early", "late"],
                 header = {labelFontWeight = "bold"}
             }
         }
     ) +
     (
-        @vlplot(width = 80, autosize = "fit", height = 130, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(width = 80, autosize = "fit", height = 130,
+            color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot({:trail, clip = true},
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
-            y = {:pmean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
+            y = {:mean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
         ) +
+        @vlplot({:point, filled = true, size = 15}, x = :time, y = :mean) +
         @vlplot({:errorband, clip = true},
             transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
             x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
@@ -68,7 +122,7 @@ pl = @_ target_timeline |>
                 {filter = "datum.time > 1 && datum.time < 1.1 && datum.target_time == 'late'"},
             ],
             x = {datum = 1.2},
-            y = {:pmean, aggregate = :mean, type = :quantitative},
+            y = {:mean, aggregate = :mean, type = :quantitative},
             color = :condition,
             text = {:condition, }
         ) +
