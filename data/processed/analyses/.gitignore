@@ -22,3 +22,4 @@
 /salience-target-time_classifier=svm_radial.csv
 /salience-target-time_classifier=gradient_boosting.csv
 /baseline-switch-by-hit_classifier=svm_radial.csv
+/decode-predict.json

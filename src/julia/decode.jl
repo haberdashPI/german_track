@@ -4,7 +4,7 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf
+    Printf, LambdaFn
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -81,7 +81,8 @@ stimuli = DataFrame(
     sid              = Array{Int}(undef, prod(dims)),
     condition        = CategoricalArray{String}(undef, prod(dims),
                                                 levels = levels(windows.condition)),
-    trial            = Array{Int}(undef, prod(dims))
+    trial            = Array{Int}(undef, prod(dims)),
+    stim_id          = Array{Int}(undef, prod(dims))
 )
 
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
@@ -111,6 +112,7 @@ for (i, trial) in enumerate(eachrow(windows))
             stimuli[indices[fullrange], :sid]              .= trial.sid
             stimuli[indices[fullrange], :condition]        .= trial.condition
             stimuli[indices[fullrange], :trial]            .= trial.trialnum
+            stimuli[indices[fullrange], :stim_id]          .= stim_id
         end
     end
     next!(progress)
@@ -119,75 +121,71 @@ end
 # Train Model
 # -----------------------------------------------------------------
 
-@_ stimuli |>
-    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding))
+# TODO: try a decoder per
 
-sdf = @where(stimuli, (:fold .!= 1) .& (:encoding .== "pitch") .& :is_target_source)
+file = processed_datadir("analyses", "decode-predict.json")
+GermanTrack.@store_cache file predictions coefs begin
+    @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
+    predictions, coefs = @_ stimuli |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        @transform(__, predict = 0.0) |>
+        groupby(__, [:encoding, :is_target_source]) |>
+        filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
+            :fold => 1:10,
+            function(sdf, fold)
+                train = filter(x -> x.fold != fold, sdf)
+                test  = filter(x -> x.fold == fold, sdf)
 
-model = fit(LassoRegression, @views(x[:, sdf.observation])', sdf.value)
+                model = fit(LassoPath, @view(x[:, train.observation])', train.value)
+                test.predict = predict(model, @view(x[:, test.observation])',
+                    select = MinAICc())
 
-@info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-predictions, coefs = @_ stimuli |>
-    addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-    @transform(__, predict = 0.0) |>
-    groupby(__, [:encoding, :is_target_source]) |>
-    filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
-        :fold => 1:10,
-        function(sdf, fold)
-            train = filter(x -> x.fold != fold, sdf)
-            test  = filter(x -> x.fold == fold, sdf)
+                coefs = DataFrame(coef(model, MinAICc())',
+                    map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
 
-            model = fit(LassoPath, @view(x[:, train.observation])', train.value)
-            test.predict = predict(model, @view(x[:, test.observation])',
-                select = MinAICc())
+                test, coefs
+            end
+        )
+end
 
-            coefs = DataFrame(coef(model, MinAICc())',
-                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
-
-            test, coefs
-        end
-    )
-
+meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :trial]) |>
-    @combine(__,
-        cor = cor(:value, :predict),
-        l1  = mean(abs.(:value .- :predict))
-    ) |>
-    stack(__, [:cor, :l1], [:sid, :condition, :is_target_source, :source, :trial],
-        variable_name = :measure)
+    groupby(__, [:sid, :condition, :is_target_source, :source, :trial, :stim_id]) |>
+    @combine(__, cor = cor(:value, :predict)) |>
+    transform!(__,
+        :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
+        :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
+        :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
+        :stim_id => (x -> meta.target_salience[x]) => :target_salience_level
+    )
 
 mean_offset = 15
 ind_offset = 6
 pl = @_ scores |>
-    @where(__, :measure .!= "l1") |> # l1 is no good
-    @transform(__,
-        condition = string.(:condition),
-        measure   = string.(:measure),
-    ) |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :measure]) |>
-    @combine(__, value = mean(:value)) |>
-    groupby(__, [:sid, :condition, :is_target_source, :measure]) |>
-    @combine(__, value = mean(:value)) |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :is_target_source]) |>
+    @combine(__, cor = mean(:cor)) |>
     @vlplot(
         width = 242, autosize = "fit",
         config = {legend = {disable = true}},
         color = {"is_target_source:o", scale = {range = "#".*hex.(colors[[1,3]])}},
         x = {:condition, axis = {title = "", labelAngle = 0,
             labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
-        y = {:value, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+        y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
             scale = {zero = false}},
     ) +
     @vlplot({:point, xOffset = -mean_offset},
         transform = [{filter = "datum.is_target_source"}],
-        y = "mean(value)",
+        y = "mean(cor)",
     ) +
     @vlplot({:point, filled = true, xOffset = -ind_offset},
         transform = [{filter = "datum.is_target_source"}],
     ) +
     @vlplot({:point, xOffset = mean_offset},
         transform = [{filter = "!datum.is_target_source" }],
-        y = "mean(value)",
+        y = "mean(cor)",
     ) +
     @vlplot({:point, filled = true, xOffset = ind_offset},
         transform = [{filter = "!datum.is_target_source" }],
@@ -195,26 +193,239 @@ pl = @_ scores |>
     @vlplot({:rule, xOffset = -mean_offset},
         transform = [{filter = "datum.is_target_source"}],
         color = {value = "black"},
-        y = "ci0(value)",
-        y2 = "ci1(value)",  # {"value:q", aggregate = :ci1}
+        y = "ci0(cor)",
+        y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
     ) +
     @vlplot({:rule, xOffset = mean_offset},
         transform = [{filter = "!datum.is_target_source"}],
         color = {value = "black"},
-        y = "ci0(value)",
-        y2 = "ci1(value)",  # {"value:q", aggregate = :ci1}
+        y = "ci0(cor)",
+        y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
     ) +
     @vlplot({:text, align = "center", dx = -ind_offset, dy = -10},
         transform = [{filter = "datum.is_target_source && datum.condition == 'global'"}],
-        y = "max(value)",
+        y = "max(cor)",
         text = {value = "Target"}
     ) +
     @vlplot({:text , align = "center", dx = ind_offset, dy = -10},
         transform = [{filter = "!datum.is_target_source && datum.condition == 'global'"}],
-        y = "max(value)",
+        y = "max(cor)",
         text = {value = "Non-target"}
     );
 pl |> save(joinpath(dir, "decode.svg"))
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
+        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
+    ) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :target_salience]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :target_salience]) |>
+    @combine(__, cor = mean(:cor)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet  = {column = {field = :is_target_source, type = :nominal}}
+    ) + (
+        @vlplot(
+            width = 175,
+            color = {"target_salience:o", scale = {range = "#".*hex.(colors[[1,3]])}},
+            x = {:condition, axis = {title = "", labelAngle = 0,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_salience == 'Low')"}],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = -ind_offset},
+            transform = [{filter = "(datum.target_salience == 'Low')"}],
+        ) +
+        @vlplot({:point, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_salience == 'Low')" }],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = ind_offset},
+            transform = [{filter = "!(datum.target_salience == 'Low')" }],
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_salience == 'Low')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:rule, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_salience == 'Low')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
+            transform = [{filter = "(datum.target_salience == 'Low') && datum.condition == 'global'"}],
+            y = "min(cor)",
+            text = {value = "Low"}
+        ) +
+        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
+            transform = [{filter = "!(datum.target_salience == 'Low') && datum.condition == 'global'"}],
+            y = "max(cor)",
+            text = {value = "High"}
+        )
+    )
+pl |> save(joinpath(dir, "decode_salience.svg"))
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
+    ) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :target_switch_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :target_switch_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet  = {column = {field = :is_target_source, type = :nominal}}
+    ) + (
+        @vlplot(
+            width = 175,
+            color = {"target_switch_label:o", scale = {range = "#".*hex.(colors[[1,3]])}},
+            x = {:condition, axis = {title = "", labelAngle = 0,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = -ind_offset},
+            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+        ) +
+        @vlplot({:point, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_switch_label == 'near')" }],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = ind_offset},
+            transform = [{filter = "!(datum.target_switch_label == 'near')" }],
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:rule, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_switch_label == 'near')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
+            transform = [{filter = "(datum.target_switch_label == 'near') && datum.condition == 'global'"}],
+            y = "min(cor)",
+            text = {value = "Near"}
+        ) +
+        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
+            transform = [{filter = "!(datum.target_switch_label == 'near') && datum.condition == 'global'"}],
+            y = "max(cor)",
+            text = {value = "Far"}
+        )
+    )
+pl |> save(joinpath(dir, "decode_switch.svg"))
+
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
+    ) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :target_time_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :target_time_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet  = {column = {field = :is_target_source, type = :nominal}}
+    ) + (
+        @vlplot(
+            width = 175,
+            color = {"target_time_label:o", scale = {range = "#".*hex.(colors[[1,3]])}},
+            x = {:condition, axis = {title = "", labelAngle = 0,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_time_label == 'early')"}],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = -ind_offset},
+            transform = [{filter = "(datum.target_time_label == 'early')"}],
+        ) +
+        @vlplot({:point, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_time_label == 'early')" }],
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = ind_offset},
+            transform = [{filter = "!(datum.target_time_label == 'early')" }],
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset},
+            transform = [{filter = "(datum.target_time_label == 'early')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:rule, xOffset = mean_offset},
+            transform = [{filter = "!(datum.target_time_label == 'early')"}],
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        ) +
+        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
+            transform = [{filter = "(datum.target_time_label == 'early') && datum.condition == 'global'"}],
+            y = "min(cor)",
+            text = {value = "Early"}
+        ) +
+        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
+            transform = [{filter = "!(datum.target_time_label == 'early') && datum.condition == 'global'"}],
+            y = "max(cor)",
+            text = {value = "Late"}
+        )
+    )
+pl |> save(joinpath(dir, "decode_timing.svg"))
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
+    ) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source, :target_salience_level]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :is_target_source, :target_salience_level]) |>
+    @combine(__, cor = mean(:cor)) |>
+    @vlplot(
+        facet = {
+            column = {field = :condition, type = :ordinal},
+            # row = {field = :is_target_source, type = :ordinal}
+        }
+    ) + (
+        @vlplot({:point, filled = true},
+            x     = :target_salience_level,
+            y     = :cor,
+            color = {:is_target_source, scale = {range = "#".*hex.(colors[[1,3]])}}
+        )
+    );
+pl |> save(joinpath(dir, "decode_salience_continuous.svg"))
 
 
 # start with something basic: decoding accuracry (e.g. correlation or L1)
