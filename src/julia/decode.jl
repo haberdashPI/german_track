@@ -4,7 +4,7 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn
+    Printf, LambdaFn, ShiftedArrays
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -31,22 +31,37 @@ meta = GermanTrack.load_stimulus_metadata()
 target_length = 1.0
 max_lag = 2.0
 
+seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
+function event2window(event, windowing)
+    triallen     = size(subjects[event.sid].eeg[event.trial], 2)
+    start_time = if windowing == "target"
+        meta.target_times[event.sound_index]
+    else
+        max_time = meta.target_times[event.sound_index]-1.5
+        if max_time <= 0
+            0.0
+        else
+            max_time*rand(GermanTrack.trialrng((:decode_windowing, seed), event))
+        end
+    end
+    start = clamp(round(Int, sr*start_time), 1, triallen)
+    len   = clamp(target_samples, 1, triallen-start)
+    (
+        windowing = windowing,
+        start     = start,
+        len       = len,
+        trialnum  = event.trial,
+        event[[:condition, :sid, :target_source, :sound_index]]...
+    )
+end
+
 windows = @_ events |>
     filter(ishit(_) == "hit", __) |> eachrow |>
-    map(function(event)
-        triallen     = size(subjects[event.sid].eeg[event.trial], 2)
-        start        = clamp(round(Int, sr*meta.target_times[event.sound_index]), 1,
-                            triallen)
-        len          = clamp(target_samples, 1, triallen-start)
-        (
-            start    = start,
-            len      = len,
-            trialnum = event.trial,
-            event[[:condition, :sid, :target_source, :sound_index]]...
-        )
-        end, __) |>
-    DataFrame
+    Iterators.product(__, ["target", "pre-target"]) |>
+    map(event2window(_...), __) |> vec |>
+    DataFrame |>
+    transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
 
 nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
@@ -56,10 +71,13 @@ x = Array{Float64}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
 Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
-    start = trial.start
-    stop = trial.start + trial.len - 1
+    tstart = trial.start
+    tstop = trial.start + trial.len - 1
+    xstart = trial.offset
+    xstop = trial.offset + trial.len - 1
+
     trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):0)
-    x[:, starts[i] : (starts[i+1]-1)] = @view(trialdata[start:stop, :])'
+    x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
 
@@ -70,20 +88,8 @@ stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 encodings = ["pitch", "envelope"]
 source_names = ["male", "fem1", "fem2"]
 sources = [male_source, fem1_source, fem2_source]
-dims = (nobs,length(encodings),length(source_names))
-dimindex(dims, n) = getindex.(CartesianIndices(dims), n) |> vec
-stimuli = DataFrame(
-    value            = Array{Float64}(undef, prod(dims)),
-    observation      = dimindex(dims, 1),
-    encoding         = categorical(encodings[dimindex(dims, 2)]),
-    source           = categorical(source_names[dimindex(dims,3)]),
-    is_target_source = BitArray(undef, prod(dims)),
-    sid              = Array{Int}(undef, prod(dims)),
-    condition        = CategoricalArray{String}(undef, prod(dims),
-                                                levels = levels(windows.condition)),
-    trial            = Array{Int}(undef, prod(dims)),
-    stim_id          = Array{Int}(undef, prod(dims))
-)
+
+stimuli = Empty(Vector)
 
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
@@ -94,51 +100,65 @@ for (i, trial) in enumerate(eachrow(windows))
             stop = min(size(stim,1), trial.start + trial.len - 1)
             fullrange = starts[i] : (starts[i+1] - 1)
 
-            if stop >= start
-                indices = @with(stimuli,
-                    findall((:encoding .== encoding) .& (:source .== source_name)))
-
-                len = stop - start + 1
-                fillrange =  starts[i]        : (starts[i] + len - 1)
-                zerorange = (starts[i] + len) : (starts[i+1]     - 1)
-
-                stimuli[indices[fillrange], :value]  = @view(stim[start:stop, j])
-                stimuli[indices[zerorange], :value] .= zero(eltype(stimuli.value))
+            stimulus = if stop >= start
+                stimulus = @view(stim[start:stop, j])
             else
-                stimuli[indices[fullrange], :value] .= zero(eltype(stimuli.value))
+                Float64[]
             end
 
-            stimuli[indices[fullrange], :is_target_source] .= trial.target_source == source_name
-            stimuli[indices[fullrange], :sid]              .= trial.sid
-            stimuli[indices[fullrange], :condition]        .= trial.condition
-            stimuli[indices[fullrange], :trial]            .= trial.trialnum
-            stimuli[indices[fullrange], :stim_id]          .= stim_id
+            stimuli = push!!(stimuli, (
+                trial...,
+                source           = source_name,
+                encoding         = encoding,
+                start            = start,
+                stop             = stop,
+                len              = stop - start + 1,
+                data             = stimulus,
+                is_target_source = trial.target_source == source_name,
+                stim_id          = stim_id,
+
+            ))
         end
     end
     next!(progress)
 end
+
+stimulidf = DataFrame(stimuli)
 
 # Train Model
 # -----------------------------------------------------------------
 
 # TODO: try a decoder per
 
+function eegindices(df)
+    mapreduce(append!!, eachrow(df), init = Empty(Vector)) do row
+        start = row.offset
+        stop  = row.offset + row.len + 1
+        start:stop
+    end
+end
+
 file = processed_datadir("analyses", "decode-predict.json")
-GermanTrack.@store_cache file predictions coefs begin
+GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    predictions, coefs = @_ stimuli |>
+    predictions, coefs = @_ stimulidf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        @transform(__, predict = 0.0) |>
-        groupby(__, [:encoding, :is_target_source]) |>
-        filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
+        insertcols!(__, :predict => Float64[]) |>
+        transform!(__, [:is_target_source, :source] =>
+            ByRow((is_target, s) -> is_target ? "target" : "non_target_"*s) =>
+            :source_model) |>
+        groupby(__, [:encoding, :source_model, :windowing]) |>
+        filteringmap(__, folder = foldl, streams = 2, desc = "Gerating predictions...",
             :fold => 1:10,
             function(sdf, fold)
                 train = filter(x -> x.fold != fold, sdf)
                 test  = filter(x -> x.fold == fold, sdf)
 
-                model = fit(LassoPath, @view(x[:, train.observation])', train.value)
-                test.predict = predict(model, @view(x[:, test.observation])',
+                model = fit(LassoPath, @view(x[:, eegindices(train)])',
+                    reduce(vcat, train.data))
+                ŷ = predict(model, @view(x[:, eegindices(test)])',
                     select = MinAICc())
+                # TODO: index into separate arrays, for each row
 
                 coefs = DataFrame(coef(model, MinAICc())',
                     map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
@@ -150,7 +170,7 @@ end
 
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :trial, :stim_id]) |>
+    groupby(__, [:sid, :condition, :is_target_source, :source_model, :trial, :stim_id]) |>
     @combine(__, cor = cor(:value, :predict)) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
