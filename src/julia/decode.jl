@@ -42,6 +42,8 @@ function event2window(event, windowing)
         if max_time <= 0
             0.0
         else
+            # generates a random number that has the same value for
+            # the same event (so windows are shared across subjects)
             max_time*rand(GermanTrack.trialrng((:decode_windowing, seed), event))
         end
     end
@@ -123,42 +125,38 @@ for (i, trial) in enumerate(eachrow(windows))
     next!(progress)
 end
 
-stimulidf = DataFrame(stimuli)
-
 # Train Model
 # -----------------------------------------------------------------
 
 # TODO: try a decoder per
 
-function eegindices(df)
-    mapreduce(append!!, eachrow(df), init = Empty(Vector)) do row
-        start = row.offset
-        stop  = row.offset + row.len + 1
-        start:stop
-    end
+eegindices(row::DataFrameRow) = (row.offset):(row.offset + row.len - 1)
+function eegindices(df::DataFrame)
+    mapreduce(eegindices, vcat, eachrow(df))
 end
 
+# try alternative controll model training
+# where we have a different model for each type of non-target
+# and another where we have a different model for each type of target *and*
+# non-target
 file = processed_datadir("analyses", "decode-predict.json")
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    predictions, coefs = @_ stimulidf |>
+    predictions, coefs = @_ DataFrame(stimuli) |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        insertcols!(__, :predict => Float64[]) |>
-        transform!(__, [:is_target_source, :source] =>
-            ByRow((is_target, s) -> is_target ? "target" : "non_target_"*s) =>
-            :source_model) |>
-        groupby(__, [:encoding, :source_model, :windowing]) |>
-        filteringmap(__, folder = foldl, streams = 2, desc = "Gerating predictions...",
+        insertcols!(__, :predict => Ref(Float64[])) |>
+        groupby(__, [:encoding, :is_target_source, :windowing]) |>
+        filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
             :fold => 1:10,
             function(sdf, fold)
                 train = filter(x -> x.fold != fold, sdf)
                 test  = filter(x -> x.fold == fold, sdf)
 
-                model = fit(LassoPath, @view(x[:, eegindices(train)])',
+                model = fit(LassoPath, copy(@view(x[:, eegindices(train)])'),
                     reduce(vcat, train.data))
-                ŷ = predict(model, @view(x[:, eegindices(test)])',
-                    select = MinAICc())
-                # TODO: index into separate arrays, for each row
+                test.predict = map(eachrow(test)) do testrow
+                    predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+                end
 
                 coefs = DataFrame(coef(model, MinAICc())',
                     map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
@@ -170,8 +168,9 @@ end
 
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    groupby(__, [:sid, :condition, :is_target_source, :source_model, :trial, :stim_id]) |>
-    @combine(__, cor = cor(:value, :predict)) |>
+    @where(__, (:windowing .== "target") .== :is_target_source) |>
+    groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing]) |>
+    @combine(__, cor = cor(reduce(vcat,:data), reduce(vcat,:predict))) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
         :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
