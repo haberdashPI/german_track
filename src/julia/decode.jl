@@ -310,7 +310,7 @@ pl = @_ scores |>
     );
 pl |> save(joinpath(dir, "decode_salience_diff.svg"))
 
-scolors = ColorSchemes.davos[[0.2,0.7]]
+scolors = ColorSchemes.acton[[0.2,0.7]]
 mean_offset = 6
 pl = @_ scores |>
     @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
@@ -351,6 +351,57 @@ pl = @_ scores |>
         )
     );
 pl |> save(joinpath(dir, "decode_nearfar.svg"))
+
+scolors = ColorSchemes.acton[[0.2,0.7]]
+mean_offset = 6
+pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @transform(__,
+        condition = string.(:condition),
+        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
+    ) |>
+    groupby(__, [:sid, :condition, :target_window, :target_switch_label, :source]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :target_window, :target_switch_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    unstack(__, [:sid, :condition, :target_switch_label], :target_window, :cor) |>
+    @transform(__,
+        # NOTE: some syntax highlighters fail on this line without the #"
+        # at the end of the line (e.g. VSCode)
+        cordiff = :Target - :var"Non-target" #"
+    ) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_switch_label,
+                sort = ["near", "far"],
+                type = :ordinal,
+                scale = {range = "#".*hex.(scolors)}},
+            x = {:target_switch_label, type = :nominal,
+                sort = ["near", "far"],
+                type = :ordinal,
+                axis = {title = ["Target Switch", "Proximity"], labelAngle = 0,
+                    labelExpr = "slice(datum.label,'\\n')"}, },
+            y = {:cordiff, title = ["Target - Non-target Correlation"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(cordiff)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(cordiff)",
+            y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_nearfar_diff.svg"))
 
 
 scolors = ColorSchemes.imola[[0.2,0.7]]
