@@ -168,258 +168,285 @@ end
 
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    @where(__, (:windowing .== "target") .== :is_target_source) |>
     groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing]) |>
     @combine(__, cor = cor(reduce(vcat,:data), reduce(vcat,:predict))) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
         :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
         :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
-        :stim_id => (x -> meta.target_salience[x]) => :target_salience_level
+        :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
+        [:windowing, :is_target_source] =>
+            ByRow((w,t) ->
+                (w == "target"     &&  t) ? "Target" :
+                (w == "target"     && !t) ? "Non-target" :
+                (w == "pre-target" &&  t) ? "Before target" :
+              #=(w == "non-target" && !t)=# "Before non-target"
+            ) => :target_window
     )
 
-mean_offset = 15
-ind_offset = 6
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+mean_offset = 6
 pl = @_ scores |>
     @transform(__, condition = string.(:condition)) |>
-    groupby(__, [:sid, :condition, :is_target_source, :source]) |>
+    groupby(__, [:sid, :condition, :target_window, :source]) |>
     @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :is_target_source]) |>
+    groupby(__, [:sid, :condition, :target_window]) |>
     @combine(__, cor = mean(:cor)) |>
     @vlplot(
-        width = 242, autosize = "fit",
         config = {legend = {disable = true}},
-        color = {"is_target_source:o", scale = {range = "#".*hex.(colors[[1,3]])}},
-        x = {:condition, axis = {title = "", labelAngle = 0,
-            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
-        y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
-            scale = {zero = false}},
-    ) +
-    @vlplot({:point, xOffset = -mean_offset},
-        transform = [{filter = "datum.is_target_source"}],
-        y = "mean(cor)",
-    ) +
-    @vlplot({:point, filled = true, xOffset = -ind_offset},
-        transform = [{filter = "datum.is_target_source"}],
-    ) +
-    @vlplot({:point, xOffset = mean_offset},
-        transform = [{filter = "!datum.is_target_source" }],
-        y = "mean(cor)",
-    ) +
-    @vlplot({:point, filled = true, xOffset = ind_offset},
-        transform = [{filter = "!datum.is_target_source" }],
-    ) +
-    @vlplot({:rule, xOffset = -mean_offset},
-        transform = [{filter = "datum.is_target_source"}],
-        color = {value = "black"},
-        y = "ci0(cor)",
-        y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-    ) +
-    @vlplot({:rule, xOffset = mean_offset},
-        transform = [{filter = "!datum.is_target_source"}],
-        color = {value = "black"},
-        y = "ci0(cor)",
-        y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-    ) +
-    @vlplot({:text, align = "center", dx = -ind_offset, dy = -10},
-        transform = [{filter = "datum.is_target_source && datum.condition == 'global'"}],
-        y = "max(cor)",
-        text = {value = "Target"}
-    ) +
-    @vlplot({:text , align = "center", dx = ind_offset, dy = -10},
-        transform = [{filter = "!datum.is_target_source && datum.condition == 'global'"}],
-        y = "max(cor)",
-        text = {value = "Non-target"}
+        facet = {column = {field = :condition, type = :nominal}},
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_window, scale = {range = "#".*hex.(tcolors)}},
+            x = {:target_window, axis = {title = "Source", labelAngle = -45,
+                labelExpr = "split(datum.label,'\\n')"}, },
+            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(cor)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(cor)",
+            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+        )
     );
 pl |> save(joinpath(dir, "decode.svg"))
 
-mean_offset = 15
-ind_offset = 6
+
+scolors = ColorSchemes.bamako[[0.2,0.8]]
+mean_offset = 6
 pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
     @transform(__,
         condition = string.(:condition),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
-        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
     ) |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :target_salience]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_salience, :source]) |>
     @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :is_target_source, :target_salience]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_salience]) |>
     @combine(__, cor = mean(:cor)) |>
     @vlplot(
         config = {legend = {disable = true}},
-        facet  = {column = {field = :is_target_source, type = :nominal}}
+        facet = {
+            column = {field = :condition, type = :nominal},
+            row = {field = :target_window, type = :nominal, title = "Source"},
+        },
     ) + (
         @vlplot(
-            width = 175,
-            color = {"target_salience:o", scale = {range = "#".*hex.(colors[[1,3]])}},
-            x = {:condition, axis = {title = "", labelAngle = 0,
-                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            width = 75, autosize = "fit",
+            color = {:target_salience, scale = {range = "#".*hex.(scolors)}},
+            x = {:target_salience, type = :nominal,
+                axis = {title = "Salience", labelAngle = -45,
+                    labelExpr = "split(datum.label,'\\n')"}, },
             y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
         ) +
-        @vlplot({:point, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_salience == 'Low')"}],
+        @vlplot({:point, xOffset = -mean_offset/2},
             y = "mean(cor)",
         ) +
-        @vlplot({:point, filled = true, xOffset = -ind_offset},
-            transform = [{filter = "(datum.target_salience == 'Low')"}],
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +
-        @vlplot({:point, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_salience == 'Low')" }],
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = ind_offset},
-            transform = [{filter = "!(datum.target_salience == 'Low')" }],
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_salience == 'Low')"}],
+        @vlplot({:rule, xOffset = -mean_offset/2},
             color = {value = "black"},
             y = "ci0(cor)",
             y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:rule, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_salience == 'Low')"}],
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
-            transform = [{filter = "(datum.target_salience == 'Low') && datum.condition == 'global'"}],
-            y = "min(cor)",
-            text = {value = "Low"}
-        ) +
-        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
-            transform = [{filter = "!(datum.target_salience == 'Low') && datum.condition == 'global'"}],
-            y = "max(cor)",
-            text = {value = "High"}
         )
-    )
+    );
 pl |> save(joinpath(dir, "decode_salience.svg"))
 
-mean_offset = 15
-ind_offset = 6
+scolors = ColorSchemes.bamako[[0.2,0.8]]
+mean_offset = 6
 pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
     @transform(__,
         condition = string.(:condition),
-        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
+        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :target_switch_label]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_salience, :source]) |>
     @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :is_target_source, :target_switch_label]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_salience]) |>
+    @combine(__, cor = mean(:cor)) |>
+    unstack(__, [:sid, :condition, :target_salience], :target_window, :cor) |>
+    @transform(__,
+        # NOTE: some syntax highlighters fail on this line without the #"
+        # at the end of the line (e.g. VSCode)
+        cordiff = :Target - :var"Non-target" #"
+    ) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_salience,
+                sort = ["Low", "High"],
+                type = :ordinal,
+                scale = {range = "#".*hex.(scolors)}},
+            x = {:target_salience, type = :nominal,
+                sort = ["Low", "High"],
+                type = :ordinal,
+                axis = {title = "Salience", labelAngle = -45,
+                    labelExpr = "slice(datum.label,'\\n')"}, },
+            y = {:cordiff, title = ["Target - Non-target Correlation"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(cordiff)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(cordiff)",
+            y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_salience_diff.svg"))
+
+scolors = ColorSchemes.davos[[0.2,0.7]]
+mean_offset = 6
+pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @transform(__,
+        condition = string.(:condition),
+    ) |>
+    groupby(__, [:sid, :condition, :target_window, :target_switch_label, :source]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :target_window, :target_switch_label]) |>
     @combine(__, cor = mean(:cor)) |>
     @vlplot(
         config = {legend = {disable = true}},
-        facet  = {column = {field = :is_target_source, type = :nominal}}
+        facet = {
+            column = {field = :condition, type = :nominal},
+            row = {field = :target_window, type = :nominal, title = "Source"},
+        },
     ) + (
         @vlplot(
-            width = 175,
-            color = {"target_switch_label:o", scale = {range = "#".*hex.(colors[[1,3]])}},
-            x = {:condition, axis = {title = "", labelAngle = 0,
-                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            width = 75, autosize = "fit",
+            color = {:target_switch_label, scale = {range = "#".*hex.(scolors)}},
+            x = {:target_switch_label, type = :nominal,
+                sort = ["near", "high"],
+                type = :ordinal,
+                axis = {title = "Switch Proximity", labelAngle = 0,
+                    labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
         ) +
-        @vlplot({:point, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+        @vlplot({:point, xOffset = -mean_offset/2},
             y = "mean(cor)",
         ) +
-        @vlplot({:point, filled = true, xOffset = -ind_offset},
-            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +
-        @vlplot({:point, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_switch_label == 'near')" }],
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = ind_offset},
-            transform = [{filter = "!(datum.target_switch_label == 'near')" }],
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_switch_label == 'near')"}],
+        @vlplot({:rule, xOffset = -mean_offset/2},
             color = {value = "black"},
             y = "ci0(cor)",
             y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:rule, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_switch_label == 'near')"}],
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
-            transform = [{filter = "(datum.target_switch_label == 'near') && datum.condition == 'global'"}],
-            y = "min(cor)",
-            text = {value = "Near"}
-        ) +
-        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
-            transform = [{filter = "!(datum.target_switch_label == 'near') && datum.condition == 'global'"}],
-            y = "max(cor)",
-            text = {value = "Far"}
         )
-    )
-pl |> save(joinpath(dir, "decode_switch.svg"))
+    );
+pl |> save(joinpath(dir, "decode_nearfar.svg"))
 
 
-mean_offset = 15
-ind_offset = 6
+scolors = ColorSchemes.imola[[0.2,0.7]]
+mean_offset = 6
 pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
     @transform(__,
         condition = string.(:condition),
-        is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
     ) |>
-    groupby(__, [:sid, :condition, :is_target_source, :source, :target_time_label]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_time_label, :source]) |>
     @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :is_target_source, :target_time_label]) |>
+    groupby(__, [:sid, :condition, :target_window, :target_time_label]) |>
     @combine(__, cor = mean(:cor)) |>
     @vlplot(
         config = {legend = {disable = true}},
-        facet  = {column = {field = :is_target_source, type = :nominal}}
+        facet = {
+            column = {field = :condition, type = :nominal},
+            row = {field = :target_window, type = :nominal, title = "Source"},
+        },
     ) + (
         @vlplot(
-            width = 175,
-            color = {"target_time_label:o", scale = {range = "#".*hex.(colors[[1,3]])}},
-            x = {:condition, axis = {title = "", labelAngle = 0,
-                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+            width = 75, autosize = "fit",
+            color = {:target_time_label, scale = {range = "#".*hex.(scolors)}},
+            x = {:target_time_label, type = :nominal,
+                sort = ["early", "late"],
+                type = :ordinal,
+                axis = {title = "Switch Proximity", labelAngle = 0,
+                    labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
         ) +
-        @vlplot({:point, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_time_label == 'early')"}],
+        @vlplot({:point, xOffset = -mean_offset/2},
             y = "mean(cor)",
         ) +
-        @vlplot({:point, filled = true, xOffset = -ind_offset},
-            transform = [{filter = "(datum.target_time_label == 'early')"}],
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +
-        @vlplot({:point, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_time_label == 'early')" }],
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = ind_offset},
-            transform = [{filter = "!(datum.target_time_label == 'early')" }],
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset},
-            transform = [{filter = "(datum.target_time_label == 'early')"}],
+        @vlplot({:rule, xOffset = -mean_offset/2},
             color = {value = "black"},
             y = "ci0(cor)",
             y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:rule, xOffset = mean_offset},
-            transform = [{filter = "!(datum.target_time_label == 'early')"}],
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        ) +
-        @vlplot({:text, align = "right", baseline = "top", dx = -ind_offset, dy = 10},
-            transform = [{filter = "(datum.target_time_label == 'early') && datum.condition == 'global'"}],
-            y = "min(cor)",
-            text = {value = "Early"}
-        ) +
-        @vlplot({:text , align = "left", dx = ind_offset, dy = -10},
-            transform = [{filter = "!(datum.target_time_label == 'early') && datum.condition == 'global'"}],
-            y = "max(cor)",
-            text = {value = "Late"}
         )
-    )
-pl |> save(joinpath(dir, "decode_timing.svg"))
+    );
+pl |> save(joinpath(dir, "decode_earlylate.svg"))
+
+tcolors = ColorSchemes.imola[[0.2,0.7]]
+mean_offset = 6
+pl = @_ scores |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @transform(__,
+        condition = string.(:condition),
+        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
+    ) |>
+    groupby(__, [:sid, :condition, :target_window, :target_time_label, :source]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :target_window, :target_time_label]) |>
+    @combine(__, cor = mean(:cor)) |>
+    unstack(__, [:sid, :condition, :target_time_label], :target_window, :cor) |>
+    @transform(__,
+        # NOTE: some syntax highlighters fail on this line without the #"
+        # at the end of the line (e.g. VSCode)
+        cordiff = :Target - :var"Non-target" #"
+    ) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_time_label,
+                sort = ["early", "late"],
+                type = :ordinal,
+                scale = {range = "#".*hex.(tcolors)}},
+            x = {:target_time_label, type = :nominal,
+                sort = ["early", "late"],
+                type = :ordinal,
+                axis = {title = "Target Timing", labelAngle = 0,
+                    labelExpr = "slice(datum.label,'\\n')"}, },
+            y = {:cordiff, title = ["Target - Non-target Correlation"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(cordiff)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(cordiff)",
+            y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_earlylate_diff.svg"))
+
+# TODO: run stats on these various cases
 
 mean_offset = 15
 ind_offset = 6
