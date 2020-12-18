@@ -128,8 +128,6 @@ end
 # Train Model
 # -----------------------------------------------------------------
 
-# TODO: try a decoder per
-
 eegindices(row::DataFrameRow) = (row.offset):(row.offset + row.len - 1)
 function eegindices(df::DataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
@@ -221,9 +219,11 @@ pl |> save(joinpath(dir, "decode.svg"))
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
+        target_window = recode(:target_window,
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :target_window, :target_salience, :source]) |>
@@ -262,21 +262,19 @@ pl |> save(joinpath(dir, "decode_salience.svg"))
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
+        target_window = recode(:target_window,
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_salience, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_salience]) |>
-    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_window]) |>
+    @combine(__, cor = maximum(:cor)) |>
     unstack(__, [:sid, :condition, :target_salience], :target_window, :cor) |>
-    @transform(__,
-        # NOTE: some syntax highlighters fail on this line without the #"
-        # at the end of the line (e.g. VSCode)
-        cordiff = :Target - :var"Non-target" #"
-    ) |>
+    @transform(__, cordiff = :target .- :nontarget) |>
+    groupby(__, [:sid, :condition, :target_salience]) |>
+    @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
         config = {legend = {disable = true}},
         facet = {
@@ -355,21 +353,19 @@ pl |> save(joinpath(dir, "decode_nearfar.svg"))
 scolors = ColorSchemes.acton[[0.2,0.7]]
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
+        target_window = recode(:target_window,
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_switch_label, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_switch_label]) |>
-    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :trialnum, :target_switch_label, :target_window]) |>
+    @combine(__, cor = maximum(:cor)) |>
     unstack(__, [:sid, :condition, :target_switch_label], :target_window, :cor) |>
-    @transform(__,
-        # NOTE: some syntax highlighters fail on this line without the #"
-        # at the end of the line (e.g. VSCode)
-        cordiff = :Target - :var"Non-target" #"
-    ) |>
+    @transform(__, cordiff = :target .- :nontarget) |>
+    groupby(__, [:sid, :condition, :target_switch_label]) |>
+    @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
         config = {legend = {disable = true}},
         facet = {
@@ -449,21 +445,19 @@ pl |> save(joinpath(dir, "decode_earlylate.svg"))
 tcolors = ColorSchemes.imola[[0.2,0.7]]
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
+        target_window = recode(:target_window,
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_time_label, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_time_label]) |>
-    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:sid, :condition, :trialnum, :target_time_label, :target_window]) |>
+    @combine(__, cor = maximum(:cor)) |>
     unstack(__, [:sid, :condition, :target_time_label], :target_window, :cor) |>
-    @transform(__,
-        # NOTE: some syntax highlighters fail on this line without the #"
-        # at the end of the line (e.g. VSCode)
-        cordiff = :Target - :var"Non-target" #"
-    ) |>
+    @transform(__, cordiff = :target .- :nontarget) |>
+    groupby(__, [:sid, :condition, :target_time_label]) |>
+    @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
         config = {legend = {disable = true}},
         facet = {
