@@ -263,9 +263,9 @@ pldata = @_ scores |>
             "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
-    groupby(__, [:sid, :condition, :trialnum, :target_window]) |>
+    groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
     @combine(__, cor = maximum(:cor)) |>
-    unstack(__, [:sid, :condition, :trialnum], :target_window, :cor) |>
+    unstack(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label], :target_window, :cor) |>
     @transform(__, cordiff = :nontarget .- :target)
 
 pl = @_ pldata |>
@@ -277,13 +277,11 @@ pl = @_ pldata |>
         @vlplot(
             width = 75, autosize = "fit",
             color = {:condition,
-                sort = ["Low", "High"],
-                type = :ordinal,
+                type = :nominal,
                 scale = {range = "#".*hex.(colors)}},
             x = {:condition, type = :nominal,
-                sort = ["Low", "High"],
-                type = :ordinal,
-                axis = {title = "Salience", labelAngle = -45,
+                type = :nominal,
+                axis = {title = "", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cordiff, title = ["Target - Non-target Correlation"],
                 scale = {zero = false}},
@@ -301,64 +299,7 @@ pl = @_ pldata |>
     );
 pl |> save(joinpath(dir, "decode_diff.svg"))
 
-
-scolors = ColorSchemes.bamako[[0.2,0.8]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-        target_window = recode(:target_window,
-            "Target" => "target", "Non-target" => "nontarget"),
-        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
-    ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_salience, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_salience]) |>
-    @combine(__, cor = mean(:cor)) |>
-    @vlplot(
-        config = {legend = {disable = true}},
-        facet = {
-            column = {field = :condition, type = :nominal},
-            row = {field = :target_window, type = :nominal, title = "Source"},
-        },
-    ) + (
-        @vlplot(
-            width = 75, autosize = "fit",
-            color = {:target_salience, scale = {range = "#".*hex.(scolors)}},
-            x = {:target_salience, type = :nominal,
-                axis = {title = "Salience", labelAngle = -45,
-                    labelExpr = "split(datum.label,'\\n')"}, },
-            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
-                scale = {zero = false}},
-        ) +
-        @vlplot({:point, xOffset = -mean_offset/2},
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = mean_offset/2},
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset/2},
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        )
-    );
-pl |> save(joinpath(dir, "decode_salience.svg"))
-
-scolors = ColorSchemes.bamako[[0.2,0.8]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-        target_window = recode(:target_window,
-            "Target" => "target", "Before non-target" => "nontarget"),
-        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
-    ) |>
-    groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_window]) |>
-    @combine(__, cor = maximum(:cor)) |>
-    unstack(__, [:sid, :condition, :target_salience, :trialnum], :target_window, :cor) |>
-    @transform(__, cordiff = :nontarget .- :target) |>
+pl = @_ pldata |>
     groupby(__, [:sid, :condition, :target_salience]) |>
     @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
@@ -372,7 +313,7 @@ pl = @_ scores |>
             color = {:target_salience,
                 sort = ["Low", "High"],
                 type = :ordinal,
-                scale = {range = "#".*hex.(scolors)}},
+                scale = {range = "#".*hex.(colors)}},
             x = {:target_salience, type = :nominal,
                 sort = ["Low", "High"],
                 type = :ordinal,
@@ -392,64 +333,10 @@ pl = @_ scores |>
             y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode_salience_diff.svg"))
+pl |> save(joinpath(dir, "decode_diff_salience.svg"))
 
-scolors = ColorSchemes.acton[[0.2,0.7]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-    ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_switch_label, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_switch_label]) |>
-    @combine(__, cor = mean(:cor)) |>
-    @vlplot(
-        config = {legend = {disable = true}},
-        facet = {
-            column = {field = :condition, type = :nominal},
-            row = {field = :target_window, type = :nominal, title = "Source"},
-        },
-    ) + (
-        @vlplot(
-            width = 75, autosize = "fit",
-            color = {:target_switch_label, scale = {range = "#".*hex.(scolors)}},
-            x = {:target_switch_label, type = :nominal,
-                sort = ["near", "high"],
-                type = :ordinal,
-                axis = {title = "Switch Proximity", labelAngle = 0,
-                    labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
-                scale = {zero = false}},
-        ) +
-        @vlplot({:point, xOffset = -mean_offset/2},
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = mean_offset/2},
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset/2},
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        )
-    );
-pl |> save(joinpath(dir, "decode_nearfar.svg"))
-
-scolors = ColorSchemes.acton[[0.2,0.7]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-        target_window = recode(:target_window,
-            "Target" => "target", "Non-target" => "nontarget"),
-        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
-    ) |>
-    groupby(__, [:sid, :condition, :trialnum, :target_switch_label, :target_window]) |>
-    @combine(__, cor = maximum(:cor)) |>
-    unstack(__, [:sid, :condition, :target_switch_label, :trialnum], :target_window, :cor) |>
-    @transform(__, cordiff = :target .- :nontarget) |>
+scolors = ColorSchemes.imola[[0.2,0.7]]
+pl = @_ pldata |>
     groupby(__, [:sid, :condition, :target_switch_label]) |>
     @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
@@ -461,13 +348,13 @@ pl = @_ scores |>
         @vlplot(
             width = 75, autosize = "fit",
             color = {:target_switch_label,
-                sort = ["near", "far"],
+                sort = ["Low", "High"],
                 type = :ordinal,
-                scale = {range = "#".*hex.(scolors)}},
+                scale = {range = "#".*hex.(colors)}},
             x = {:target_switch_label, type = :nominal,
-                sort = ["near", "far"],
+                sort = ["Low", "High"],
                 type = :ordinal,
-                axis = {title = ["Target Switch", "Proximity"], labelAngle = 0,
+                axis = {title = "Salience", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cordiff, title = ["Target - Non-target Correlation"],
                 scale = {zero = false}},
@@ -483,65 +370,10 @@ pl = @_ scores |>
             y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode_nearfar_diff.svg"))
-
+pl |> save(joinpath(dir, "decode_diff_switch.svg"))
 
 scolors = ColorSchemes.imola[[0.2,0.7]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-    ) |>
-    groupby(__, [:sid, :condition, :target_window, :target_time_label, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window, :target_time_label]) |>
-    @combine(__, cor = mean(:cor)) |>
-    @vlplot(
-        config = {legend = {disable = true}},
-        facet = {
-            column = {field = :condition, type = :nominal},
-            row = {field = :target_window, type = :nominal, title = "Source"},
-        },
-    ) + (
-        @vlplot(
-            width = 75, autosize = "fit",
-            color = {:target_time_label, scale = {range = "#".*hex.(scolors)}},
-            x = {:target_time_label, type = :nominal,
-                sort = ["early", "late"],
-                type = :ordinal,
-                axis = {title = "Switch Proximity", labelAngle = 0,
-                    labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
-                scale = {zero = false}},
-        ) +
-        @vlplot({:point, xOffset = -mean_offset/2},
-            y = "mean(cor)",
-        ) +
-        @vlplot({:point, filled = true, xOffset = mean_offset/2},
-        ) +
-        @vlplot({:rule, xOffset = -mean_offset/2},
-            color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
-        )
-    );
-pl |> save(joinpath(dir, "decode_earlylate.svg"))
-
-tcolors = ColorSchemes.imola[[0.2,0.7]]
-mean_offset = 6
-pl = @_ scores |>
-    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
-    @transform(__,
-        condition = string.(:condition),
-        target_window = recode(:target_window,
-            "Target" => "target", "Non-target" => "nontarget"),
-        target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
-    ) |>
-    groupby(__, [:sid, :condition, :trialnum, :target_time_label, :target_window]) |>
-    @combine(__, cor = maximum(:cor)) |>
-    unstack(__, [:sid, :condition, :target_time_label], :target_window, :cor) |>
-    @transform(__, cordiff = :nontarget .- :target) |>
+pl = @_ pldata |>
     groupby(__, [:sid, :condition, :target_time_label]) |>
     @combine(__, cordiff = mean(:cordiff)) |>
     @vlplot(
@@ -553,13 +385,13 @@ pl = @_ scores |>
         @vlplot(
             width = 75, autosize = "fit",
             color = {:target_time_label,
-                sort = ["early", "late"],
+                sort = ["Low", "High"],
                 type = :ordinal,
-                scale = {range = "#".*hex.(tcolors)}},
+                scale = {range = "#".*hex.(colors)}},
             x = {:target_time_label, type = :nominal,
-                sort = ["early", "late"],
+                sort = ["Low", "High"],
                 type = :ordinal,
-                axis = {title = "Target Timing", labelAngle = 0,
+                axis = {title = "Salience", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cordiff, title = ["Target - Non-target Correlation"],
                 scale = {zero = false}},
@@ -575,8 +407,7 @@ pl = @_ scores |>
             y2 = "ci1(cordiff)",  # {"cordiff:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode_earlylate_diff.svg"))
-
+pl |> save(joinpath(dir, "decode_diff_earlylate.svg"))
 # TODO: run stats on these various cases
 
 mean_offset = 15
@@ -604,6 +435,7 @@ pl = @_ scores |>
     );
 pl |> save(joinpath(dir, "decode_salience_continuous.svg"))
 
+# TODO: plot decoding scores vs. hit-rate
 
 # start with something basic: decoding accuracry (e.g. correlation or L1)
 # for target vs. the two non-target stimuli
