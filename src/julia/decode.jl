@@ -4,7 +4,7 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -14,16 +14,16 @@ using GermanTrack: colors
 # -----------------------------------------------------------------
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float64[1, 3, 7, 15, 30, 100])
-# eeg_encoding = JointEncoding(
-#     FilteredPower("delta", 1, 3),
-#     FilteredPower("theta", 3, 7),
-#     FilteredPower("alpha", 7, 15),
-#     FilteredPower("beta", 15, 30),
-#     FilteredPower("gamma", 30, 100),
-# )
-eeg_encoding = RawEncoding()
+eeg_encoding = JointEncoding(
+    FilteredPower("delta", 1, 3),
+    FilteredPower("theta", 3, 7),
+    FilteredPower("alpha", 7, 15),
+    FilteredPower("beta", 15, 30),
+    FilteredPower("gamma", 30, 100),
+)
+# eeg_encoding = RawEncoding()
 
-sr = 32
+sr = 16
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
     encoding = eeg_encoding, framerate = sr)
 meta = GermanTrack.load_stimulus_metadata()
@@ -69,7 +69,7 @@ nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
 nlags = round(Int,sr*max_lag)
-x = Array{Float64}(undef, nfeatures*nlags, nobs)
+x = Array{Float64}(undef, nfeatures*div(nlags,2), nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
 Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
@@ -78,7 +78,7 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     xstart = trial.offset
     xstop = trial.offset + trial.len - 1
 
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):0)
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):2:0)
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
@@ -133,11 +133,8 @@ function eegindices(df::DataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-# try alternative controll model training
-# where we have a different model for each type of non-target
-# and another where we have a different model for each type of target *and*
-# non-target
-file = processed_datadir("analyses", "decode-predict.json")
+file = processed_datadir("analyses", "decode-predict-freqbin.json")
+# TODO: use a less memory intensive approach to model fitting (MLJ?)
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
     predictions, coefs = @_ DataFrame(stimuli) |>
