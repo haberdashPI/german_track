@@ -269,7 +269,7 @@ pldata = @_ scores |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
     @combine(__, cor = maximum(:cor)) |>
     unstack(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label], :target_window, :cor) |>
-    @transform(__, cordiff = :nontarget .- :target)
+    @transform(__, cordiff = :target .- :nontarget)
 
 pl = @_ pldata |>
     groupby(__, [:sid, :condition]) |>
