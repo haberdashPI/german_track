@@ -88,14 +88,14 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.853723511918" role="graphics-symbol" aria-roledescription="bar" d="M17.333333333333332,33.93614523496228h25v82.06385476503772h-25Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.90349467451" role="graphics-symbol" aria-roledescription="bar" d="M77,22.38923551368719h25v93.6107644863128h-25Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.827965442097" role="graphics-symbol" aria-roledescription="bar" d="M136.66666666666666,39.91201743338139h25v76.0879825666186h-25Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.854793779541" role="graphics-symbol" aria-roledescription="bar" d="M17.333333333333332,33.687843146417016h25v82.31215685358299h-25Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.902835756139" role="graphics-symbol" aria-roledescription="bar" d="M77,22.542104575728093h25v93.45789542427191h-25Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.826835728084" role="graphics-symbol" aria-roledescription="bar" d="M136.66666666666666,40.17411108454472h25v75.82588891545528h-25Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.896132774091; Condition Classification: 0.800263589224" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(29.833333333333332,46.338847300015985)" x2="0" y2="-22.241650889152584" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.933558822083; Condition Classification: 0.862786843504" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(89.5,31.833452306990573)" x2="0" y2="-16.419099030268853" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.875937747522; Condition Classification: 0.764828866217" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(149.16666666666666,54.55970303759197)" x2="0" y2="-25.77726046272241" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.896964319685; Condition Classification: 0.799719767788" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(29.833333333333332,46.465013873169625)" x2="0" y2="-22.56073604003649" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.932815477721; Condition Classification: 0.861898464952" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(89.5,32.039556131221836)" x2="0" y2="-16.452746962530732" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.875610089976; Condition Classification: 0.767063068568" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(149.16666666666666,54.04136809217411)" x2="0" y2="-25.182908966609354" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_1_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
             <line transform="translate(179,69.21554664335224)" x2="-179" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>

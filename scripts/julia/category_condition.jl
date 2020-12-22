@@ -49,12 +49,20 @@ run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
 
 file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
 means = @_ CSV.read(file, DataFrame) |>
-    rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper)
+    rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper) |>
+    @transform(__, condition = categorical(:condition,
+        levels = ["global", "spatial", "object"], ordered = true)) |>
+    sort!(__, :condition)
 
 barwidth = 20
-means |> @vlplot(
+pl = means |> @vlplot(
         width = 242, height = 150, autosize = "fit",
         # width = {step = 50},
+        x = {:condition,
+            type = :nominal,
+            sort = ["global", "spatial", "object"],
+            axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -66,43 +74,46 @@ means |> @vlplot(
         }) +
     @vlplot({:bar, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.type == 'hr'"}],
-        x = {:condition, axis = {title = "", labelAngle = 0,
-            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
         y = {:prop, type = :quantitative, aggregate = :mean,
                 scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+    @vlplot({:line, xOffset = -(barwidth/2), size = 1},
+        transform = [{filter = "datum.type == 'hr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {value = "black"}) +
     @vlplot({:bar, xOffset = (barwidth/2)},
         transform = [{filter = "datum.type == 'fr'"}],
-        x = {:condition, axis = {title = ""}},
         y = {:prop, type = :quantitative, aggregate = :mean},
         color = {value = "#"*hex(neutral)}) +
+    @vlplot({:line, xOffset = (barwidth/2), size = 1},
+        transform = [{filter = "datum.type == 'fr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {value = "black"}) +
     @vlplot({:rule, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.type == 'hr'"}],
         color = {value = "black"},
-        x = {:condition, axis = {title = ""}},
         y = {:lower, title = ""}, y2 = :upper
     ) +
     @vlplot({:rule, xOffset = (barwidth/2)},
         transform = [{filter = "datum.type == 'fr'"}],
         color = {value = "black"},
-        x = {:condition, axis = {title = ""}},
         y = {:lower, title = ""}, y2 = :upper
     ) +
     @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
         transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
         # x = {datum = "spatial"}, y = {datum = 0.},
-        x = {:condition, axis = {title = ""}},
         y = {:prop, aggregate = :mean, type = :quantitative},
         text = {value = "Hits"},
     ) +
     @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
         transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
         # x = {datum = "spatial"}, y = {datum = },
-        x = {:condition, axis = {title = ""}},
         y = {datum = 0},
         text = {value = "False Positives"},
-    ) |>
-    save(joinpath(dir, "fig2a.svg"))
+    );
+pl |> save(joinpath(dir, "fig2a.svg"))
 
 # Find best λs
 # =================================================================
