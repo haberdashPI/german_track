@@ -24,14 +24,6 @@ target_labels = OrderedDict(
     "late"  => ["Late Target", "(after 3rd Switch)"]
 )
 
-target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
-    "hitrate_timeline_bytarget.csv"), DataFrame) |>
-    groupby(__, :condition) |>
-    transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
-                   [:pmean, :err] => (+) => :upper,
-                   [:pmean, :err] => (-) => :lower,
-                   :target_time => ByRow(x -> target_labels[x]) => :target_time_label)
-
 ascondition = Dict(
     "test" => "global",
     "feature" => "spatial",
@@ -57,10 +49,33 @@ end
 rawdata.switch_distance = map(find_switch_distance, rawdata[!,:dev_time],
     eachrow(rawdata[!,r"switches"]))
 
+function extend(xs)
+    nonmissing = missing
+    ys = similar(xs)
+    ys[1] = xs[1]
+    for i in 2:length(xs)
+        ys[i] = xs[i] !== missing ? xs[i] : ys[i-1]
+    end
+    ys
+end
+
+meansraw = @_ rawdata |>
+    groupby(__, [:sid, :condition, :exp_id]) |>
+    @combine(__,
+        hr = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+        fr = sum(:perf .== "false") / sum(:perf .∈ Ref(Set(["false", "reject"]))),
+    )
+
+bad_sids = @_ meansraw |>
+    @where(__, :condition .== "global") |>
+    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
+
+
 nbins = 8
 qs = quantile(skipmissing(rawdata.switch_distance), range(0, 1, length = nbins+1))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
 target_timeline = @_ rawdata |>
+    @where(__, :sid .∉ bad_sids) |>
     @transform(__, time_bin = cut(:switch_distance, nbins), target_bin = cut(:dev_time, 2)) |>
     @transform(__, target_time_label =
         recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
@@ -70,20 +85,27 @@ target_timeline = @_ rawdata |>
         mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
         weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
     ) |>
+    @transform(__, mean = extend(ifelse.(iszero.(:weight), missing, :mean))) |>
+    groupby(__, [:condition, :time_bin_mean, :target_time_label, :sid, :exp_id]) |>
+    @combine(__, mean = all(ismissing, :mean) ? missing : mean(skipmissing(:mean))) |>
     groupby(__, [:condition, :time_bin_mean, :target_time_label]) |>
     combine(function(sdf)
-        filt = filter(x -> x.weight > 0, sdf)
+        filt = filter(x -> !ismissing(x.mean), sdf)
         μ, lower, upper = if isempty(filt)
             missing, missing, missing
         else
-            μ, lower, upper = confint(bootstrap(df -> mean(df.mean, weights(df.weight)), filt,
+            μ, lower, upper = confint(bootstrap(df -> mean(df.mean), filt,
                 BasicSampling(10_000)), BasicConfInt(0.95)
             )[1]
         end
-        DataFrame(mean = μ, lower = lower, upper = upper, weight = sum(filt.weight))
+        DataFrame(mean = μ, lower = lower, upper = upper, weight = size(filt,1))
     end, __) |>
     @transform(__, time_bin_mean = Array(:time_bin_mean)) |>
     rename!(__, :time_bin_mean => :time)
+
+# TODO: compute times by creating lines for missing data (e.g. each individual
+# subject data should have a value for each bin that is equal to the
+# most recent or the current value)
 
 pl = @_ target_timeline |>
     @vlplot(
