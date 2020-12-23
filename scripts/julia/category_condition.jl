@@ -6,7 +6,7 @@ using DrWatson; @quickactivate("german_track")
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
     StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding,
-    JSON3, DataFramesMeta
+    JSON3, DataFramesMeta, Lasso
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -119,9 +119,8 @@ pl |> save(joinpath(dir, "fig2a.svg"))
 # =================================================================
 
 file = joinpath(processed_datadir("analyses"), "condition_lambdas.json")
-GermanTrack.@cache_results file fold_map λ_map begin
+GermanTrack.@cache_results file fold_map hyperparams begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-    lambdas = 10.0 .^ range(-2, 0, length=100)
 
     classdf = @_ events |>
         filter(ishit(_) == "hit", __) |>
@@ -134,35 +133,60 @@ GermanTrack.@cache_results file fold_map λ_map begin
         deletecols!(__, :window)
 
     resultdf = @_ classdf |>
-        addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
-        groupby(__, [:winstart, :winlen, :fold]) |>
-        filteringmap(__, desc = "Evaluating lambdas...", :comparison => (
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
+        groupby(__, [:winstart, :winlen]) |>
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+            :cross_fold => 1:10,
+            :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
-            function(sdf, comparison)
-                testclassifier(LassoPathClassifiers(lambdas),
-                    data               = sdf,
-                    y                  = :condition,
-                    X                  = r"channel",
-                    crossval           = :sid,
-                    n_folds            = 10,
-                    seed               = 2017_09_16,
-                    weight             = :weight,
-                    maxncoef           = size(sdf[:, r"channel"], 2),
-                    irls_maxiter       = 400,
-                    on_model_exception = :print
-                )
+            function(sdf, fold, comparison)
+                train = filter(x -> x.fold != fold, sdf)
+                test  = filter(x -> x.fold != fold, sdf)
+                conds = split(comparison, "-v-")
+
+                y = train.condition .== first(conds)
+                model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
+                    Array(train[:,r"channel"]), y, Bernoulli(), standardize = false)
+
+                y = test.condition .== first(conds)
+                ŷ = predict(model, Array(test[:,r"channel"]), select = MinAICc())
+                test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
+                test.correct = test.predict .== test.condition
+                test.nzero = sum(!iszero, coef(model, MinAICc()))
+
+                test
             end)
 
     fold_map = @_ resultdf |>
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
         Dict(row.sid => row.fold for row in eachrow(__))
 
-    λ_map, winlen_map = pick_λ_winlen(resultdf, [:sid, :comparison, :winstart],
-        :comparison, smoothing = 0.8, slope_thresh = 0.15, flat_thresh = 0.02,
-        dir = mkpath(joinpath(dir, "supplement")))
+    win_means = @_ resultdf |>
+        groupby(__, [:comparison, :winlen, :winstart, :sid, :fold]) |>
+        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
+        groupby(__, [:winlen, :winstart]) |>
+        filteringmap(__, desc = nothing,
+            :fold => cross_folds(1:10),
+            (sdf, fold) -> DataFrame(mean = mean(sdf.mean)))
+
+    @_ win_means |>
+        @vlplot(:line,
+            # column = :comparison,
+            x = :winstart, y = :mean,
+            color = :winlen
+        ) |> save(joinpath(dir, "supplement", "window_means.svg"))
+
+    hyperparams = @_ win_means |>
+        groupby(__, :fold) |>
+        @combine(__,
+            best = maximum(:mean),
+            winlen = :winlen[argmax(:mean)],
+            winstart = :winstart[argmax(:mean)]
+        ) |>
+        Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
 end
@@ -182,13 +206,13 @@ GermanTrack.@cache_results file predictbasedf begin
 
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
-            :window => [
-                winfn(len = len, start = 0.0)
-                for len in GermanTrack.spread(1, 0.5, n_winlens)
-                for (name, winfn) in windowtypes
-            ],
+            :window => [winfn(windowfn = event -> (
+                start = hyperparams[event.fold |> first].winstart,
+                len = hyperparams[event.fold |> first].winlen,
+            )) for (name, winfn) in windowtypes],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
@@ -213,27 +237,34 @@ GermanTrack.@cache_results file predictbasedf begin
         transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
         groupby(__, [:winlen, :fold, :hittype]) |>
         filteringmap(__, folder = foldxt, desc = "Classifying conditions...",
+            :cross_fold => cross_folds(1:10),
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
             :modeltype => modeltypes,
-            function (sdf, comparison, modeltype)
-                λ = modeltype == "null" ? 1.0 : λ_map[sdf.fold[1]]
+            function (sdf, fold, comparison, modeltype)
+                selector = modeltype == "null" ? NullSelect() : MinAICc()
                 sdf = get(modelshufflers, modeltype, identity)(sdf)
-                result = testclassifier(LassoClassifier(λ),
-                    data               = sdf,
-                    y                  = :condition,
-                    X                  = r"channel",
-                    crossval           = :sid,
-                    n_folds            = 10,
-                    seed               = stablehash(:cond_baseline, 2019_11_18),
-                    irls_maxiter       = 100,
-                    weight             = :weight,
-                    maxncoef           = size(sdf[:, r"channel"], 2),
-                    on_model_exception = :error
+
+                train = filter(x -> x.fold != fold, sdf)
+                test  = filter(x -> x.fold != fold, sdf)
+                conds = split(comparison, "-v-")
+
+                y = train.condition .== first(conds)
+                model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
+                    Array(train[:,r"channel"]), y, Bernoulli(), standardize = false,
+                    maxncoef = size(view(train,:,r"channel"), 2)
                 )
+
+                y = test.condition .== first(conds)
+                ŷ = predict(model, Array(test[:,r"channel"]), select = selector)
+                test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
+                test.correct = test.predict .== test.condition
+                test.nzero = sum(!iszero, coef(model, selector))
+
+                test
             end)
 end
 
@@ -325,6 +356,21 @@ plhit = @_ plotdata |>
 plotfile = joinpath(dir, "fig2b.svg")
 plhit |> save(plotfile)
 addpatterns(plotfile, patterns, size = 10)
+
+# EEG Cross-validated Features
+# =================================================================
+
+GermanTrack.@cache_results file coefdf begin
+    classdf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [windowtarget(len = len, start = start)
+                for len in 2.0 .^ range(-1, 1, length = 10),
+                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
+end
 
 # Combine Figures (Full Figure 2)
 # =================================================================
