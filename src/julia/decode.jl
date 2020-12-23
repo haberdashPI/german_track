@@ -13,13 +13,13 @@ using GermanTrack: colors
 # Setup EEG Data
 # -----------------------------------------------------------------
 
+# TODO: do we need to z-score these values?
+
 # eeg_encoding = FFTFilteredPower("freqbins", Float64[1, 3, 7, 15, 30, 100])
 eeg_encoding = JointEncoding(
-    FilteredPower("delta", 1, 3),
-    FilteredPower("theta", 3, 7),
-    FilteredPower("alpha", 7, 15),
-    FilteredPower("beta", 15, 30),
-    FilteredPower("gamma", 30, 100),
+    FilteredPower("delta-theta", 0.1, 5),
+    FilteredPower("alpha-beta", 5, 25),
+    FilteredPower("beta-gamma", 25, 100),
 )
 # eeg_encoding = RawEncoding()
 
@@ -68,7 +68,8 @@ windows = @_ events |>
 nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
-nlags = round(Int,sr*max_lag)
+lags = [0:5:20; 21:2:47; 48:64];
+nlags = length(lags)
 x = Array{Float64}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
@@ -78,7 +79,7 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     xstart = trial.offset
     xstop = trial.offset + trial.len - 1
 
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):1:0)
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', .-reverse(lags))
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
@@ -146,8 +147,11 @@ file = processed_datadir("analyses", "decode-predict-freqbin.json")
 # TODO: use a less memory intensive approach to model fitting (MLJ?)
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    predictions, coefs = |>
-        filteringmap(__, folder = foldl, streams = 2, desc = "Gerating predictions...",
+    predictions, coefs = @_ DataFrame(stimuli) |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        insertcols!(__, :predict => Ref(Float64[])) |>
+        groupby(__, [:encoding, :is_target_source, :windowing]) |>
+        filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
             :fold => 1:10,
             function(sdf, fold)
                 train = filter(x -> x.fold != fold, sdf)

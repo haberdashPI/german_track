@@ -1,7 +1,75 @@
-export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier
+export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier, ZScoring,
+    NullSelect, traintest
 
 import StatsModels: DummyCoding, FullDummyCoding
 export DummyCoding, FullDummyCoding
+
+struct ZScoringFit{F,B,T}
+    fit::F
+    groupings::B
+    μ::Vector{T}
+    σ::Vector{T}
+end
+struct ZScoring{M,G}
+    parent::M
+    groupings::G
+end
+ZScoring(parent) = ZScoring(parent, :)
+mapgroupings(X, fn, groupings) = map(bins -> fn(view(X, :, bins)), groupings)
+mapgroupings(X, fn, ::Colon) = fn(X, dims = 1)
+enumgroupings(X, groupings) = enumerate(groupings)
+enumgroupings(X, ::Colon) = enumerate(axes(X, 2))
+
+function StatsBase.fit(model::ZScoring, X, y, args...; kwds...)
+    μ = mapgroupings(X, mean, model.groupings)
+    for (i, bins) in enumgroupings(X, model.groupings)
+        X[:, bins] .-= μ[i]
+    end
+
+    σ = mapgroupings(X, std, model.groupings)
+    for (i, bins) in enumgroupings(X, model.groupings)
+        X[:, bins] .-= σ[i]
+    end
+
+    result = fit(model.parent, X, y; kwds...)
+
+    ZScoringFit(result, model.groupings, μ, σ)
+end
+
+function StatsBase.predict(fit::ZScoringFit, X, args...; kwds...)
+    for (i, bins) in enumgroupings(X, fit.groupings)
+        X[:, bins] .-= fit.μ[i]
+    end
+
+    for (i, bins) in enumgroupings(X, fit.groupings)
+        X[:, bins] .-= fit.σ[i]
+    end
+
+    predict(fit.fit, X, args...; kwds...)
+end
+
+StatsBase.coef(fit::ZScoringFit, args...; kwds...) = StatsBase.coef(fit.fit, args...; kwds...)
+
+struct NullSelect <: SegSelect
+end
+Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
+
+function traintest(df, fold; y, X = r"channel", selector = MinAICc())
+    train = filter(x -> x.fold != fold, df)
+    test  = filter(x -> x.fold == fold, df)
+
+    use(y, df) = df[:,df]
+    use(y::Function, df) = y(df)
+
+    model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
+        Array(train[:,X]), use(y, train), Bernoulli(), standardize = false,
+        maxncoef = size(view(train,:,X), 2)
+    )
+
+    ŷ = predict(model, Array(test[:,X]), select = selector)
+
+    test, ŷ, model
+end
 
 """
     LassoClassifier(λ)
