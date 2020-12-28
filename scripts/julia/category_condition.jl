@@ -143,16 +143,10 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
             function(sdf, fold, comparison)
-                train = filter(x -> x.fold != fold, sdf)
-                test  = filter(x -> x.fold == fold, sdf)
                 conds = split(comparison, "-v-")
 
-                y = train.condition .== first(conds)
-                model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
-                    Array(train[:,r"channel"]), y, Bernoulli(), standardize = false)
-
-                y = test.condition .== first(conds)
-                ŷ = predict(model, Array(test[:,r"channel"]), select = MinAICc())
+                test, ŷ, model = traintest(sdf, fold,
+                    y = df -> df.condition .== first(conds))
                 test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
                 test.correct = test.predict .== test.condition
                 test.nzero = sum(!iszero, coef(model, MinAICc()))
@@ -251,19 +245,11 @@ GermanTrack.@cache_results file predictbasedf begin
 
                 win = hyperparams[fold]
                 sdf = filter(x -> x.winstart == win.winstart && x.winlen == win.winlen, sdf)
-                train = filter(x -> x.fold != fold, sdf)
-                test  = filter(x -> x.fold == fold, sdf)
                 conds = split(comparison, "-v-")
 
-                y = train.condition .== first(conds)
-
-                model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
-                    Array(train[:,r"channel"]), y, Bernoulli(), standardize = false,
-                    maxncoef = size(view(train,:,r"channel"), 2)
-                )
-
-                y = test.condition .== first(conds)
-                ŷ = predict(model, Array(test[:,r"channel"]), select = selector)
+                test, ŷ, model = traintest(sdf, fold,
+                    y = df -> df.condition .== first(conds),
+                    selector = selector)
                 test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
                 test.correct = test.predict .== test.condition
                 test.nzero = sum(!iszero, coef(model, selector))

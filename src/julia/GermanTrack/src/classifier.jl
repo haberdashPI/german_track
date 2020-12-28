@@ -53,6 +53,23 @@ struct NullSelect <: SegSelect
 end
 Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
 
+function traintest(df, fold; y, X = r"channel", selector = MinAICc())
+    train = filter(x -> x.fold != fold, df)
+    test  = filter(x -> x.fold == fold, df)
+
+    use(y, df) = df[:,df]
+    use(y::Function, df) = y(df)
+
+    model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
+        Array(train[:,X]), use(y, train), Bernoulli(), standardize = false,
+        maxncoef = size(view(train,:,X), 2)
+    )
+
+    ŷ = predict(model, Array(test[:,X]), select = selector)
+
+    test, ŷ, model
+end
+
 """
     LassoClassifier(λ)
 
