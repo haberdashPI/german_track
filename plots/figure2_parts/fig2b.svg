@@ -88,20 +88,20 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.502551477128" role="graphics-symbol" aria-roledescription="bar" d="M17.333333333333332,115.40805730636619h25v0.5919426936338112h-25Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.58993934754" role="graphics-symbol" aria-roledescription="bar" d="M77,95.13407137082996h25v20.865928629170043h-25Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.502512722687" role="graphics-symbol" aria-roledescription="bar" d="M136.66666666666666,115.41704833658446h25v0.5829516634155425h-25Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.709078134831" role="graphics-symbol" aria-roledescription="bar" d="M17.333333333333332,67.49387271919431h25v48.506127280805686h-25Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.835440898694" role="graphics-symbol" aria-roledescription="bar" d="M77,38.17771150303214h25v77.82228849696786h-25Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.68451654548" role="graphics-symbol" aria-roledescription="bar" d="M136.66666666666666,73.19216144863465h25v42.80783855136535h-25Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.553117813618; Condition Classification: 0.452429288486" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(29.833333333333332,127.03640507130483)" x2="0" y2="-23.359737830655547" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.638729707193; Condition Classification: 0.540875611025" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(89.5,106.51685824215268)" x2="0" y2="-22.70215031088992" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.550855816241; Condition Classification: 0.452747573582" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(149.16666666666666,126.9625629289869)" x2="0" y2="-22.7611122968395" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.788671725421; Condition Classification: 0.617245230881" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(29.833333333333332,88.79910643559107)" x2="0" y2="-39.770946733233615" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.888833598458; Condition Classification: 0.768381569101" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(89.5,53.73547596846848)" x2="0" y2="-27.94487081075789" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.768687234702; Condition Classification: 0.591480609562" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(149.16666666666666,94.77649858167308)" x2="0" y2="-41.111937032439634" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_1_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-            <line transform="translate(179,115.5223483497801)" x2="-179" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+            <line transform="translate(179,116.4776516502199)" x2="-179" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
           </g>
           <g class="mark-text role-mark layer_1_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text text-anchor="start" transform="translate(164.16666666666666,112.5223483497801)" font-family="Helvetica" font-size="9px" fill="black">
+            <text text-anchor="start" transform="translate(164.16666666666666,113.4776516502199)" font-family="Helvetica" font-size="9px" fill="black">
               <tspan>Null Model</tspan>
               <tspan x="0" dy="11">Accuracy</tspan>
             </text>

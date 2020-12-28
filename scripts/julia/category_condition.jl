@@ -144,7 +144,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
             ),
             function(sdf, fold, comparison)
                 train = filter(x -> x.fold != fold, sdf)
-                test  = filter(x -> x.fold != fold, sdf)
+                test  = filter(x -> x.fold == fold, sdf)
                 conds = split(comparison, "-v-")
 
                 y = train.condition .== first(conds)
@@ -204,15 +204,16 @@ GermanTrack.@cache_results file predictbasedf begin
             mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
     ]
 
+    start_len = unique((x.winstart, x.winlen) for x in values(hyperparams))
+
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
-            :window => [winfn(windowfn = event -> (
-                start = hyperparams[event.fold |> first].winstart,
-                len = hyperparams[event.fold |> first].winlen,
-            )) for (name, winfn) in windowtypes],
+            :window => [winfn(start = start, len = len)
+                for (name, winfn) in windowtypes
+                for (start, len) in start_len],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
@@ -235,9 +236,9 @@ GermanTrack.@cache_results file predictbasedf begin
 
     predictbasedf = @_ classdf |>
         transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
-        groupby(__, [:winlen, :fold, :hittype]) |>
-        filteringmap(__, folder = foldxt, desc = "Classifying conditions...",
-            :cross_fold => cross_folds(1:10),
+        groupby(__, :hittype) |>
+        filteringmap(__, folder = foldl, desc = "Classifying conditions...",
+            :cross_fold => 1:10,
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
@@ -248,11 +249,14 @@ GermanTrack.@cache_results file predictbasedf begin
                 selector = modeltype == "null" ? NullSelect() : MinAICc()
                 sdf = get(modelshufflers, modeltype, identity)(sdf)
 
+                win = hyperparams[fold]
+                sdf = filter(x -> x.winstart == win.winstart && x.winlen == win.winlen, sdf)
                 train = filter(x -> x.fold != fold, sdf)
-                test  = filter(x -> x.fold != fold, sdf)
+                test  = filter(x -> x.fold == fold, sdf)
                 conds = split(comparison, "-v-")
 
                 y = train.condition .== first(conds)
+
                 model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
                     Array(train[:,r"channel"]), y, Bernoulli(), standardize = false,
                     maxncoef = size(view(train,:,r"channel"), 2)
