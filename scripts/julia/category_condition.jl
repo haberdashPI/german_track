@@ -350,16 +350,96 @@ addpatterns(plotfile, patterns, size = 10)
 # =================================================================
 
 GermanTrack.@cache_results file coefdf begin
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    start_len = unique((x.winstart, x.winlen) for x in values(hyperparams))
+
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        @where(__, :hittype .== "hit") |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
-            :window => [windowtarget(len = len, start = start)
-                for len in 2.0 .^ range(-1, 1, length = 10),
-                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
+            :window => [windowtarget(start = start, len = len)
+                for (start, len) in start_len],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
+
+    coefdf = @_ classdf |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
+            :cross_fold => 1:10,
+            :comparison => (
+                "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+                "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+                "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+            ),
+            function(sdf, fold, comparison)
+                conds = split(comparison, "-v-")
+
+                test, ŷ, model = traintest(sdf, fold,
+                    y = df -> df.condition .== first(conds))
+
+                @infiltrate
+                coefs = coef(model, MinAICc())'
+                DataFrame(coefs, vcat("I", names(view(sdf, r"channel"))))
+            end)
+
+    longdf = @_ coefdf |>
+        stack(__, All(r"channel"), [:cross_fold, :comparison]) |>
+        @transform(__,
+            channel = parse.(Int, getindex.(match.(r"channel_([0-9]+)", :variable), 1)),
+            freqbin = getindex.(match.(r"channel_[0-9]+_(.*)$", :variable), 1)
+        )
+
 end
+
+pl = @_ longdf |>
+    groupby(__, [:freqbin, :comparison, :cross_fold]) |>
+    @combine(__, value = sum(!iszero, :value)) |>
+    groupby(__, [:freqbin, :comparison]) |>
+    @combine(__,
+        value = mean(:value),
+        lower = lowerboot(:value, alpha = 0.05),
+        upper = upperboot(:value, alpha = 0.05),
+    ) |>
+    @vlplot(
+        facet = {column = {field = :comparison, type = :nominal}}
+    ) + (
+        @vlplot() +
+        (
+            @vlplot(x = {:freqbin,
+                sort = string.(keys(GermanTrack.default_freqbins)),
+                type = :ordinal,
+            }) +
+            @vlplot(:point, y = :value) +
+            @vlplot(:rule, y = :lower, y2 = :upper)
+        ) + (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot({:rule, strokeDash = [2 2]}, y = {datum = 1})
+        )
+    );
+pl |> save(joinpath(dir, "fig2c.svg"))
+
+pl = @_ longdf |>
+    groupby(__, [:channel, :comparison, :cross_fold]) |>
+    @combine(__, value = sum(!iszero, :value)) |>
+    groupby(__, [:channel, :comparison]) |>
+    @combine(__,
+        value = mean(:value),
+        lower = lowerboot(:value, alpha = 0.05),
+        upper = upperboot(:value, alpha = 0.05),
+    ) |>
+    @vlplot(
+        facet = {row = {field = :comparison, type = :nominal}},
+        resolve = {scale = {x = "independent"}}
+    ) + (
+        @vlplot(x = {:channel, type = :ordinal, sort = {field = :value, op = :mean, order = :descending}}) +
+        @vlplot(:point, y = :value) +
+        @vlplot(:rule, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "fig2d.svg"))
+
 
 # Combine Figures (Full Figure 2)
 # =================================================================
