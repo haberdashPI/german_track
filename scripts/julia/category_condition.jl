@@ -57,7 +57,7 @@ means = @_ CSV.read(file, DataFrame) |>
 
 barwidth = 20
 pl = means |> @vlplot(
-        width = 242, height = 150, autosize = "fit",
+        width = 190, height = 130,
         # width = {step = 50},
         x = {:condition,
             type = :nominal,
@@ -232,7 +232,7 @@ GermanTrack.@cache_results file predictbasedf begin
     predictbasedf = @_ classdf |>
         transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
         groupby(__, :hittype) |>
-        filteringmap(__, folder = foldl, desc = "Classifying conditions...",
+        filteringmap(__, desc = "Classifying conditions...",
             :cross_fold => 1:10,
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
@@ -303,8 +303,7 @@ barwidth = 25
 plhit = @_ plotdata |>
     @vlplot(
         # facet = { column = { field = :hittype, type = :nominal} },
-        width = 237, height = 150,
-        autosize = "fit",
+        width = 180, height = 130,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -378,20 +377,20 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "125mm",
+fig = svg.Figure("174mm", "125mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2a.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,15)
+            scale(0.1).move(210,15)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2b.svg")).move(0,15),
         svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(220,15)
-    ).move(0, 180)
+    ).move(240, 0)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig2.svg"))
 
 
