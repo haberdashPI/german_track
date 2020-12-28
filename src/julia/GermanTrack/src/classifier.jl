@@ -28,7 +28,7 @@ function StatsBase.fit(model::ZScoring, X, y, args...; kwds...)
 
     σ = mapgroupings(X, std, model.groupings)
     for (i, bins) in enumgroupings(X, model.groupings)
-        X[:, bins] .-= σ[i]
+        X[:, bins] ./= σ[i]
     end
 
     result = fit(model.parent, X, y; kwds...)
@@ -42,7 +42,7 @@ function StatsBase.predict(fit::ZScoringFit, X, args...; kwds...)
     end
 
     for (i, bins) in enumgroupings(X, fit.groupings)
-        X[:, bins] .-= fit.σ[i]
+        X[:, bins] ./= fit.σ[i]
     end
 
     predict(fit.fit, X, args...; kwds...)
