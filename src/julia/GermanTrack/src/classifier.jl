@@ -1,4 +1,5 @@
-export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier, ZScoring, NullSelect
+export runclassifier, testclassifier, LassoPathClassifiers, LassoClassifier, ZScoring,
+    NullSelect, traintest
 
 import StatsModels: DummyCoding, FullDummyCoding
 export DummyCoding, FullDummyCoding
