@@ -1,14 +1,14 @@
 # Setup
 # =================================================================
 
-n_winlens = 12
+n_winlens = 6
 n_folds = 10
 
 using DrWatson; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, Colors, CSV, DataFramesMeta
+    StatsFuns, Colors, CSV, DataFramesMeta, Lasso
 
 using GermanTrack: colors, gray, patterns, lightdark, darkgray, seqpatterns, neutral
 
@@ -172,7 +172,7 @@ addpatterns(plotfile, seqpatterns, size = 10)
 # =================================================================
 
 file = joinpath(processed_datadir("analyses"), "salience-hyperparams.json")
-GermanTrack.@cache_results file fold_map λ_map winlen_map begin
+GermanTrack.@cache_results file fold_map hyperparams begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
@@ -187,31 +187,38 @@ GermanTrack.@cache_results file fold_map λ_map winlen_map begin
         deletecols!(__, :window)
 
     resultdf = @_ classdf |>
-        addfold!(__, 2, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
-        mapgroups(__, desc = "Evaluating hyperparameters...",
-            [:winstart, :winlen, :fold, :condition],
-            function(sdf)
-                testclassifier(LassoPathClassifiers(lambdas),
-                    data         = sdf,
-                    y            = :salience_label,
-                    X            = r"channel",
-                    crossval     = :sid,
-                    n_folds      = 10,
-                    seed         = 2017_09_16,
-                    weight       = :weight,
-                    maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 600,
-                )
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
+        groupby(__, [:winstart, :winlen, :condition]) |>
+        filteringmap(__, desc = "Evaluating hyperparameters...", folder = foldxt,
+            :cross_fold => 1:10,
+            function(sdf, fold)
+                test, model = traintest(sdf, fold, y = :salience_label, weight = :weight)
+                test.nzero = sum(!iszero, coef(model, MinAICc()))
+
+                test
             end)
 
     fold_map = @_ resultdf |>
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
         Dict(row.sid => row.fold for row in eachrow(__))
 
-    λ_map, winlen_map = pick_λ_winlen(resultdf,
-        [:condition, :sid, :winstart], :condition,
-        smoothing = 0.85, slope_thresh = 0.15, flat_thresh = 0.01,
-        dir = mkpath(joinpath(dir, "supplement")))
+    win_means = @_ resultdf |>
+        groupby(__, [:condition, :winlen, :winstart, :sid, :fold]) |>
+        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
+        groupby(__, [:winlen, :condition, :fold]) |>
+        @combine(__, mean = maximum(:mean)) |>
+        groupby(__, :winlen) |>
+        filteringmap(__, desc = nothing,
+            :fold => cross_folds(1:10),
+            (sdf, fold) -> DataFrame(mean = mean(sdf.mean)))
+
+    hyperparams = @_ win_means |>
+        groupby(__, :fold) |>
+        @combine(__,
+            best = maximum(:mean),
+            winlen = :winlen[argmax(:mean)],
+        ) |>
+        Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
 end
@@ -226,6 +233,8 @@ file = joinpath(processed_datadir("analyses"), "salience-freqmeans-timeline.json
 GermanTrack.@cache_results file resultdf_timeline begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
+    lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
+        GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
@@ -233,28 +242,31 @@ GermanTrack.@cache_results file resultdf_timeline begin
         groupby(__, [:sid, :fold, :condition, :salience_label, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
             :window => [
-                windowtarget(windowfn = event -> (
-                    start = start,
-                    len = winlen_map[event.fold[1]] |>
-                        GermanTrack.spread(0.5,n_winlens,indices=k)))
-                for start in range(0, 3, length = 32) for k in 1:n_winlens
+                windowtarget(start = start, len = len)
+                for len in lens
+                for start in range(0, 3, length = 32)
             ],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
+    # hypothesis: what's going wrong is were selecting too many coefficients
+    # if so: we can cheat, and pick a specific lambda, based on old results
     resultdf_timeline = @_ classdf |>
-        mapgroups(__, [:winlen, :fold, :hittype, :condition], desc = "Classifying salience...",
-            function (sdf)
-                result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
-                    data         = sdf,
-                    y            = :salience_label,
-                    X            = r"channel",
-                    crossval     = :sid,
-                    n_folds      = n_folds,
-                    seed         = stablehash(:salience_classification, 2019_11_18),
-                    maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 600,
-                    weight       = :weight)
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
+        groupby(__, [:hittype, :condition]) |>
+        filteringmap(__, desc = "Classifying salience...",
+            :cross_fold => 1:10, folder = foldxt,
+            :modeltype => ["full", "null"],
+            function (sdf, fold, modeltype)
+                selector = modeltype == "null" ? m -> NullSelect() : m -> MinBIC()
+                lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+
+                sdf = filter(x -> x.winlen ∈ lens, sdf)
+                test, model = traintest(sdf, fold, y = :salience_label, selector = selector,
+                    weight = :weight)
+                test.nzero = sum(!iszero, coef(model, selector(model)))
+
+                test
             end)
 end
 
@@ -262,26 +274,26 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf_timeline |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :hittype]) |>
+    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype]) |>
         combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
                     :weight => sum => :weight,
+                    :nzero => mean => :nzero,
                     :correct => length => :count) |>
         transform(__, :weight => (x -> x ./ mean(x)) => :weight)
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :hittype]) |>
+    groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :hittype]) |>
     combine(__,
         [:mean, :weight] => GermanTrack.wmean => :mean,
         :weight => sum => :weight,
+        :nzero => mean => :nzero,
         :count => length => :count)
-
 nullmeans = @_ classmeans_sum |>
-    filter(_.λ == 1.0, __) |>
-    rename!(__, :mean => :nullmean) |>
-    deletecols!(__, [:λ, :weight, :count])
-
+    @where(__, :modeltype .== "null")  |>
+    rename(__, :mean => :nullmean) |>
+    deletecols!(__, [:modeltype, :weight, :nzero, :count])
 statdata = @_ classmeans_sum |>
-    filter(_.λ != 1.0, __) |>
+    @where(__, :modeltype .!= "nullmean") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
     @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)))
 
@@ -317,7 +329,6 @@ pl = @_ corrected_data |>
     @vlplot(
         width = 242, height = 170, autosize = "fit",
         config = {
-            bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
             header = {labelFont = "Helvetica", titleFont = "Helvetica"},

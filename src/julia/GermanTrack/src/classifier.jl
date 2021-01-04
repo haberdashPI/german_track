@@ -20,6 +20,9 @@ mapgroupings(X, fn, ::Colon) = fn(X, dims = 1)
 enumgroupings(X, groupings) = enumerate(groupings)
 enumgroupings(X, ::Colon) = enumerate(axes(X, 2))
 
+Lasso.MinCVmse(m::ZScoringFit, args...) = MinCVmse(m.fit, args...)
+Lasso.MinCV1se(m::ZScoringFit, args...) = MinCV1se(m.fit, args...)
+
 function StatsBase.fit(model::ZScoring, X, y, args...; kwds...)
     μ = mapgroupings(X, mean, model.groupings)
     for (i, bins) in enumgroupings(X, model.groupings)
@@ -54,21 +57,25 @@ struct NullSelect <: SegSelect
 end
 Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
 
-function traintest(df, fold; y, X = r"channel", selector = MinAICc())
+function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weight = nothing)
     train = filter(x -> x.fold != fold, df)
     test  = filter(x -> x.fold == fold, df)
 
-    use(y, df) = df[:,df]
-    use(y::Function, df) = y(df)
+    vals = unique(df[:, y])
+    @assert vals |> length == 2
 
     model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
-        Array(train[:,X]), use(y, train), Bernoulli(), standardize = false,
-        maxncoef = size(view(train,:,X), 2)
+        Array(train[:,X]), train[:, y] .== first(vals), Bernoulli(), standardize = false,
+        maxncoef = size(view(train,:,X), 2),
+        wts = isnothing(weight) ? ones(size(train, 1)) : float(train[:, weight])
     )
 
-    ŷ = predict(model, Array(test[:,X]), select = selector)
+    ŷ = predict(model, Array(test[:,X]), select = selector(model))
 
-    test, ŷ, model
+    test.predict = vals[ifelse.(ŷ .> 0.5, 1, 2)]
+    test.correct = test.predict .== test[:, y]
+
+    test, model
 end
 
 """

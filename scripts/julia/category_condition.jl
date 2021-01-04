@@ -143,12 +143,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
             function(sdf, fold, comparison)
-                conds = split(comparison, "-v-")
-
-                test, ŷ, model = traintest(sdf, fold,
-                    y = df -> df.condition .== first(conds))
-                test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
-                test.correct = test.predict .== test.condition
+                test, model = traintest(sdf, fold, y = :condition)
                 test.nzero = sum(!iszero, coef(model, MinAICc()))
 
                 test
@@ -247,11 +242,7 @@ GermanTrack.@cache_results file predictbasedf begin
                 sdf = filter(x -> x.winstart == win.winstart && x.winlen == win.winlen, sdf)
                 conds = split(comparison, "-v-")
 
-                test, ŷ, model = traintest(sdf, fold,
-                    y = df -> df.condition .== first(conds),
-                    selector = selector)
-                test.predict = conds[ifelse.(ŷ .> 0.5, 1, 2)]
-                test.correct = test.predict .== test.condition
+                test, model = traintest(sdf, fold, y = :condition, selector = selector)
                 test.nzero = sum(!iszero, coef(model, selector))
 
                 test
@@ -377,8 +368,7 @@ GermanTrack.@cache_results file coefdf begin
             function(sdf, fold, comparison)
                 conds = split(comparison, "-v-")
 
-                test, ŷ, model = traintest(sdf, fold,
-                    y = df -> df.condition .== first(conds))
+                test, model = traintest(sdf, fold, y = :condition)
 
                 coefs = coef(model, MinAICc())'
                 DataFrame(coefs, vcat("I", names(view(sdf, r"channel"))))
