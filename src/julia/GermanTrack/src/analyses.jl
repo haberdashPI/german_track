@@ -7,23 +7,23 @@ export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ
 
 Lower bound of the bootstrapped confidnece interval.
 """
-lowerboot(x; alpha = 0.05, n = 10_000) =
-    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][2]
+lowerboot(x; stat = mean, alpha = 0.05, n = 10_000) =
+    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][2]
 """
     boot(x; alpha = 0.05, n = 10_000)
 
 Bootstrapped estimate
 """
-boot(x; alpha = 0.05, n = 10_000) =
-    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][1]
+boot(x; stat = mean, alpha = 0.05, n = 10_000) =
+    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][1]
 
 """
     uppperboot(x; alpha = 0.05, n = 10_000)
 
 Upper bound of the bootstrapped confidnece interval.
 """
-upperboot(x; alpha = 0.05, n = 10_000) =
-    confint(bootstrap(mean, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][3]
+upperboot(x; stat = mean, alpha = 0.05, n = 10_000) =
+    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][3]
 
 
 """
