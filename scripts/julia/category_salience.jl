@@ -205,6 +205,8 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     win_means = @_ resultdf |>
         groupby(__, [:condition, :winlen, :winstart, :sid, :fold]) |>
         @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
+        groupby(__, [:winlen, :condition, :fold, :sid]) |>
+        @combine(__, mean = mean(:mean)) |>
         groupby(__, [:winlen, :condition, :fold]) |>
         @combine(__, mean = maximum(:mean)) |>
         groupby(__, :winlen) |>
@@ -258,13 +260,17 @@ GermanTrack.@cache_results file resultdf_timeline begin
             :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
-                selector = modeltype == "null" ? m -> NullSelect() : m -> MinBIC()
+                selector = modeltype == "null" ? m -> NullSelect() : 0.125
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
                 sdf = filter(x -> x.winlen ∈ lens, sdf)
                 test, model = traintest(sdf, fold, y = :salience_label, selector = selector,
                     weight = :weight)
-                test.nzero = sum(!iszero, coef(model, selector(model)))
+                if selector isa Number
+                    test.nzero = sum(!iszero, coef(model))
+                else
+                    test.nzero = sum(!iszero, coef(model, selector(model)))
+                end
 
                 test
             end)

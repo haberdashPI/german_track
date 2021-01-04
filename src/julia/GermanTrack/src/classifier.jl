@@ -64,13 +64,21 @@ function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weigh
     vals = unique(df[:, y])
     @assert vals |> length == 2
 
-    model = fit(ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150]),
+    initmodel(selector) = ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150])
+    initmodel(selector::Number)  = ZScoring(LassoModel, [(0:29) .+ i for i in 1:30:150])
+    initmodelkwds(selector) = (;)
+    initmodelkwds(selector::Number) = (λ = selector)
+
+    model = fit(initmodel(selector),
         Array(train[:,X]), train[:, y] .== first(vals), Bernoulli(), standardize = false,
         maxncoef = size(view(train,:,X), 2),
-        wts = isnothing(weight) ? ones(size(train, 1)) : float(train[:, weight])
+        wts = isnothing(weight) ? ones(size(train, 1)) : float(train[:, weight]),
+        initmodelkwds(selector)...
     )
 
-    ŷ = predict(model, Array(test[:,X]), select = selector(model))
+    predictmodel(model, x, selector) = predict(model, x, select = selector(model))
+    predictmodel(model, x, selector::Number) = predict(model, x)
+    ŷ = predictmodel(model, Array(test[:,X]), selector)
 
     test.predict = vals[ifelse.(ŷ .> 0.5, 1, 2)]
     test.correct = test.predict .== test[:, y]
