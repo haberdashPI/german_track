@@ -253,12 +253,11 @@ GermanTrack.@cache_results file resultdf_timeline begin
 
     # hypothesis: what's going wrong is were selecting too many coefficients
     # if so: we can cheat, and pick a specific lambda, based on old results
-    # that didin't work: and this lambad value is yielding a large set of
-    # nonzero coefficients... something else has changed
-
+    # that worked: we want to find some way of selecting lambda before hand
+    # or our own selector
     resultdf_timeline = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
-        groupby(__, [:hittype, :condition]) |>
+        groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
             :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
@@ -267,13 +266,22 @@ GermanTrack.@cache_results file resultdf_timeline begin
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
                 sdf = filter(x -> x.winlen ∈ lens, sdf)
-                test, model = traintest(sdf, fold, y = :salience_label, selector = selector,
-                    weight = :weight)
+                test, model = traintest(sdf, fold, y = :salience_label, selector = selector)
 
                 if selector isa Number
-                    test.nzero = sum(!iszero, coef(model))
+                    C = coef(model)
+                    test.nzero = sum(!iszero, C)
+                    nzbins = mean(abs, reshape(C[2:end, :], :, 5), dims = 1)
+                    for (i, nzb) in enumerate(nzbins)
+                        test[:,Symbol("nz", i)] = nzb
+                    end
                 else
-                    test.nzero = sum(!iszero, coef(model, selector(model)))
+                    C = coef(model, selector(model))
+                    test.nzero = sum(!iszero, C)
+                    nzbins = mean(abs, reshape(C[2:end, :], :, 5), dims = 1)
+                    for (i, nzb) in enumerate(nzbins)
+                        test[:,Symbol("nz", i)] = nzb
+                    end
                 end
 
                 test
@@ -283,11 +291,12 @@ end
 # Display classification timeline
 # -----------------------------------------------------------------
 
+nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
 classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype]) |>
         combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
                     :weight => sum => :weight,
-                    :nzero => mean => :nzero,
+                    nz .=> mean .=> nz,
                     :correct => length => :count) |>
         transform(__, :weight => (x -> x ./ mean(x)) => :weight)
 
@@ -296,14 +305,14 @@ classmeans_sum = @_ classmeans |>
     combine(__,
         [:mean, :weight] => GermanTrack.wmean => :mean,
         :weight => sum => :weight,
-        :nzero => mean => :nzero,
+        nz .=> mean .=> nz,
         :count => length => :count)
 nullmeans = @_ classmeans_sum |>
     @where(__, :modeltype .== "null")  |>
     rename(__, :mean => :nullmean) |>
-    deletecols!(__, [:modeltype, :weight, :nzero, :count])
+    deletecols!(__, [:modeltype, :weight, :count, nz...])
 statdata = @_ classmeans_sum |>
-    @where(__, :modeltype .!= "nullmean") |>
+    @where(__, :modeltype .!= "null") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
     @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)))
 
@@ -331,6 +340,21 @@ timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
     groupby(__, :train_fold) |>
     @combine(__, best = :winstart[argmax(:score)])
 labelfn(fold) = "fold $fold"
+
+plcoef = @_ statdata |>
+    filter(_.hittype == "hit", __) |>
+    stack(__, nz, [:winstart, :sid, :modeltype, :condition]) |>
+    filter(_.variable != "nzero", __) |>
+    @vlplot(
+        facet = {column = {field = :condition}}
+    ) +
+    @vlplot(:line,
+        x = :winstart,
+        y = {:value, aggregate = :mean, type = :quantitative},
+        color = {:variable, type = :ordinal,
+            scale = {range = "#".*hex.(ColorSchemes.lajolla[range(0.2,0.9, length = 5)])}}
+    );
+plcoef |> save(joinpath(dir, "supplement", "fig3d_coefes.svg"))
 
 ytitle = ["High/Low Salience", "Classification"]
 target_len_y = 0.8
