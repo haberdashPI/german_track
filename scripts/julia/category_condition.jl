@@ -367,7 +367,7 @@ GermanTrack.@cache_results file coefdf begin
 
     coefdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
-        filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
             :cross_fold => 1:10,
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
@@ -380,7 +380,6 @@ GermanTrack.@cache_results file coefdf begin
                 test, ŷ, model = traintest(sdf, fold,
                     y = df -> df.condition .== first(conds))
 
-                @infiltrate
                 coefs = coef(model, MinAICc())'
                 DataFrame(coefs, vcat("I", names(view(sdf, r"channel"))))
             end)
@@ -399,9 +398,11 @@ pl = @_ longdf |>
     @combine(__, value = sum(!iszero, :value)) |>
     groupby(__, [:freqbin, :comparison]) |>
     @combine(__,
-        value = mean(:value),
-        lower = lowerboot(:value, alpha = 0.05),
-        upper = upperboot(:value, alpha = 0.05),
+        value = median(:value),
+        lower2 = quantile(:value, 0.05),
+        upper2 = quantile(:value, 0.95),
+        lower1 = quantile(:value, 0.25),
+        upper1 = quantile(:value, 0.75)
     ) |>
     @vlplot(
         facet = {column = {field = :comparison, type = :nominal}}
@@ -412,34 +413,12 @@ pl = @_ longdf |>
                 sort = string.(keys(GermanTrack.default_freqbins)),
                 type = :ordinal,
             }) +
-            @vlplot(:point, y = :value) +
-            @vlplot(:rule, y = :lower, y2 = :upper)
-        ) + (
-            @vlplot(data = {values = [{}]}) +
-            @vlplot({:rule, strokeDash = [2 2]}, y = {datum = 1})
+            @vlplot(:rule, y = :lower2, y2 = :upper2) +
+            @vlplot({:rule, size = 4}, y = :lower1, y2 = :upper1) +
+            @vlplot({:point, size = 50, filled = true}, y = :value, color = {value = "black"})
         )
     );
 pl |> save(joinpath(dir, "fig2c.svg"))
-
-pl = @_ longdf |>
-    groupby(__, [:channel, :comparison, :cross_fold]) |>
-    @combine(__, value = sum(!iszero, :value)) |>
-    groupby(__, [:channel, :comparison]) |>
-    @combine(__,
-        value = mean(:value),
-        lower = lowerboot(:value, alpha = 0.05),
-        upper = upperboot(:value, alpha = 0.05),
-    ) |>
-    @vlplot(
-        facet = {row = {field = :comparison, type = :nominal}},
-        resolve = {scale = {x = "independent"}}
-    ) + (
-        @vlplot(x = {:channel, type = :ordinal, sort = {field = :value, op = :mean, order = :descending}}) +
-        @vlplot(:point, y = :value) +
-        @vlplot(:rule, y = :lower, y2 = :upper)
-    );
-pl |> save(joinpath(dir, "fig2d.svg"))
-
 
 # Combine Figures (Full Figure 2)
 # =================================================================
