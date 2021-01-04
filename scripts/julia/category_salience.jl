@@ -253,6 +253,9 @@ GermanTrack.@cache_results file resultdf_timeline begin
 
     # hypothesis: what's going wrong is were selecting too many coefficients
     # if so: we can cheat, and pick a specific lambda, based on old results
+    # that didin't work: and this lambad value is yielding a large set of
+    # nonzero coefficients... something else has changed
+
     resultdf_timeline = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition]) |>
@@ -260,12 +263,13 @@ GermanTrack.@cache_results file resultdf_timeline begin
             :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
-                selector = modeltype == "null" ? m -> NullSelect() : 0.125
+                selector = modeltype == "null" ? m -> NullSelect() : 0.1
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
                 sdf = filter(x -> x.winlen ∈ lens, sdf)
                 test, model = traintest(sdf, fold, y = :salience_label, selector = selector,
                     weight = :weight)
+
                 if selector isa Number
                     test.nzero = sum(!iszero, coef(model))
                 else
