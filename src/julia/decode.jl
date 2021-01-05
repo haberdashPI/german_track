@@ -4,7 +4,7 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays, ColorSchemes
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -69,7 +69,7 @@ nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
 nlags = round(Int,sr*max_lag)
-x = Array{Float64}(undef, nfeatures*nlags, nobs)
+x = Array{Float32}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
 Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
@@ -103,9 +103,9 @@ for (i, trial) in enumerate(eachrow(windows))
             fullrange = starts[i] : (starts[i+1] - 1)
 
             stimulus = if stop >= start
-                stimulus = @view(stim[start:stop, j])
+                stimulus = Float32.(@view(stim[start:stop, j]))
             else
-                Float64[]
+                Float32[]
             end
 
             stimuli = push!!(stimuli, (
@@ -135,34 +135,69 @@ end
 
 zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
+function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
+    model = Dense(size(x, 1), size(y, 1)) |> gpu
+    loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, W)
+
+    loader = Flux.Data.DataLoader((x, y) |> gpu, batchsize = batch, shuffle = true)
+    for _ in 1:steps
+        Flux.Optimise.train!(loss, Flux.params(model), loader, opt)
+        next!(progress)
+    end
+
+    model
+end
+
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 # TODO: use a less memory intensive approach to model fitting (MLJ?)
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    predictions, coefs = @_ DataFrame(stimuli) |>
+    steps = 100
+
+    groups = @_ DataFrame(stimuli) |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float64[])) |>
-        groupby(__, [:encoding, :is_target_source, :windowing]) |>
-        filteringmap(__, folder = foldxt, streams = 2, desc = "Gerating predictions...",
-            :fold => 1:10,
-            function(sdf, fold)
-                train = filter(x -> x.fold != fold, sdf)
-                test  = filter(x -> x.fold == fold, sdf)
+        groupby(__, [:is_target_source, :windowing])
 
-                model = fit(ZScoring(LassoPath, zgroups),
-                    cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-                    copy(@view(x[:, eegindices(train)])'),
-                    reduce(vcat, train.data))
-                test.predict = map(eachrow(test)) do testrow
-                    predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+    nλ = 50
+    nfolds = 10
+    progress = Progress(steps * length(groups) * nfolds * nλ)
+
+    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
+        :fold => 1:nfolds,
+        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
+        function(sdf, fold, λ)
+            train = filter(x -> x.fold != fold, sdf)
+            test  = filter(x -> x.fold == fold, sdf)
+
+            # model = fit(ZScoring(LassoPath, zgroups),
+            #     cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+            #     copy(@view(x[:, eegindices(train)])'),
+            #     reduce(vcat, train.data))
+
+            xᵢ = @view(x[:, eegindices(train)])'
+            nenc = length(levels(train.encoding))
+            yᵢ = Array{Float32}(undef, nenc, sum(length, train.data))
+            for (c, enc) in enumerate(values(groupby(train, :encoding)))
+                offset = 0
+                for (r, d) in enumerate(enc.data)
+                    yᵢ[axes(enc.data, 1) .+ offset, c] = enc.data
+                    offset += size(enc.data, 1)
                 end
-
-                coefs = DataFrame(coef(model, MinAICc())',
-                    map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
-
-                test, coefs
             end
-        )
+            model = myfit(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps, progress = progress)
+            test.predict = map(eachrow(test)) do testrow
+                model(@view(x[:, eegindices(testrow)]))
+            end
+
+            coefs = DataFrame(
+                coef = vec(model.W),
+                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 2)] |> vec,
+                lag = mod.(getindex.(CartesianIndices(model.W), 2), nlags) |> vec,
+                feature = rem.(getindex.(CartesianIndices(model.W), 2), nlags) |> vec)
+
+            test, coefs
+        end)
 end
 
 meta = GermanTrack.load_stimulus_metadata()
