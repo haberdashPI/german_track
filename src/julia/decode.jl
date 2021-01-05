@@ -136,13 +136,14 @@ end
 zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
 function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
-    model = Dense(size(x, 1), size(y, 1)) |> gpu
-    loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, W)
+    model = Dense(size(x, 1), size(y, 1))
+    loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
-    loader = Flux.Data.DataLoader((x, y) |> gpu, batchsize = batch, shuffle = true)
+    # PROBLEM: data loader leads to scalar indexing of GPU array
+    loader = Flux.Data.DataLoader((x, y), batchsize = batch, shuffle = true)
     for _ in 1:steps
-        Flux.Optimise.train!(loss, Flux.params(model), loader, opt)
-        next!(progress)
+        Flux.Optimise.train!(loss, Flux.params(model), loader, opt,
+            cb = () -> next!(progress))
     end
 
     model
@@ -152,7 +153,7 @@ file = processed_datadir("analyses", "decode-predict-freqbin.json")
 # TODO: use a less memory intensive approach to model fitting (MLJ?)
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    steps = 100
+    steps = 2
 
     groups = @_ DataFrame(stimuli) |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
@@ -161,7 +162,11 @@ GermanTrack.@cache_results file predictions coefs begin
 
     nλ = 50
     nfolds = 10
-    progress = Progress(steps * length(groups) * nfolds * nλ)
+    batchsize = 32
+    progress = Progress(steps * length(groups) * nfolds * nλ *
+        cld(floor(Int, div(sum(first(groups).len),2) * (nfolds-1)/nfolds), batchsize))
+
+    # TODO: we're making good progress;
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
@@ -175,21 +180,23 @@ GermanTrack.@cache_results file predictions coefs begin
             #     copy(@view(x[:, eegindices(train)])'),
             #     reduce(vcat, train.data))
 
-            xᵢ = @view(x[:, eegindices(train)])'
-            nenc = length(levels(train.encoding))
-            yᵢ = Array{Float32}(undef, nenc, sum(length, train.data))
-            for (c, enc) in enumerate(values(groupby(train, :encoding)))
-                offset = 0
-                for (r, d) in enumerate(enc.data)
-                    yᵢ[axes(enc.data, 1) .+ offset, c] = enc.data
-                    offset += size(enc.data, 1)
-                end
-            end
-            model = myfit(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps, progress = progress)
-            test.predict = map(eachrow(test)) do testrow
-                model(@view(x[:, eegindices(testrow)]))
+            xᵢ = view(x, :, eegindices(@_ filter(_.encoding == "envelope", train)))
+            yᵢ = @_ [
+                row.data
+                for rows in groupby(train, :encoding)
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, 2, :)
+            @show size(xᵢ)
+            @show size(yᵢ)
+            model = myfit(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
+                progress = progress, batch = batchsize)
+            test.predict = map(eachrow(@_ filter(_.encoding == "envelope", test))) do testrow
+                xⱼ = view(x, :, eegindices(testrow))
+                @show size(xⱼ)
+                model(xⱼ)
             end
 
+            @infiltrate
             coefs = DataFrame(
                 coef = vec(model.W),
                 encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 2)] |> vec,
