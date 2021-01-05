@@ -16,12 +16,12 @@ using GermanTrack: colors
 # TODO: do we need to z-score these values?
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float64[1, 3, 7, 15, 30, 100])
-eeg_encoding = JointEncoding(
-    FilteredPower("delta-theta", 0.1, 5),
-    FilteredPower("alpha-beta", 5, 25),
-    FilteredPower("beta-gamma", 25, 100),
-)
-# eeg_encoding = RawEncoding()
+# eeg_encoding = JointEncoding(
+#     RawEncoding(),
+#     FilteredPower("delta", 1, 3),
+#     FilteredPower("theta", 3, 7),
+# )
+eeg_encoding = RawEncoding()
 
 sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
@@ -29,7 +29,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 2.0
+max_lag = 2
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -68,8 +68,7 @@ windows = @_ events |>
 nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
-lags = [0:5:20; 21:2:47; 48:64];
-nlags = length(lags)
+nlags = round(Int,sr*max_lag)
 x = Array{Float64}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
@@ -79,7 +78,7 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     xstart = trial.offset
     xstop = trial.offset + trial.len - 1
 
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', .-reverse(lags))
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):1:0)
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
@@ -134,14 +133,7 @@ function eegindices(df::DataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-groups = @_ DataFrame(stimuli) |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        insertcols!(__, :predict => Ref(Float64[])) |>
-        groupby(__, [:encoding, :is_target_source, :windowing])
-sdf = first(groups)
-
-
-# TODO: try an MLJ, FISTA version of the lasso regression
+zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 # TODO: use a less memory intensive approach to model fitting (MLJ?)
@@ -157,7 +149,9 @@ GermanTrack.@cache_results file predictions coefs begin
                 train = filter(x -> x.fold != fold, sdf)
                 test  = filter(x -> x.fold == fold, sdf)
 
-                model = fit(LassoPath, copy(@view(x[:, eegindices(train)])'),
+                model = fit(ZScoring(LassoPath, zgroups),
+                    cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+                    copy(@view(x[:, eegindices(train)])'),
                     reduce(vcat, train.data))
                 test.predict = map(eachrow(test)) do testrow
                     predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
@@ -222,43 +216,6 @@ pl = @_ scores |>
         )
     );
 pl |> save(joinpath(dir, "decode.svg"))
-
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
-mean_offset = 6
-pldata = @_ scores |>
-    @transform(__, condition = string.(:condition)) |>
-    groupby(__, [:sid, :condition, :target_window, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
-    groupby(__, [:sid, :condition, :target_window]) |>
-    @combine(__, cor = mean(:cor)) |>
-    unstack(__, [:sid, :condition], :target_window, :cor) |>
-    stack(__, Between(Symbol("Before non-target"), Symbol("Non-target")),
-        [:sid, :condition, :Target], variable_name = :baseline, value_name = :basevalue)
-pl = pldata |>
-    @vlplot(
-        config = {legend = {disable = true}},
-        facet = {
-            row = {field = :condition, type = :nominal},
-            column = {field = :baseline, type = :nominal}
-        },
-    ) + (
-        @vlplot() +
-        @vlplot({:point, filled = true},
-            width = 100, height = 100, autosize = "fit",
-            color = {:condition, scale = {range = "#".*hex.(colors)}},
-            x = {:basevalue, axis = {title = "Baseline Corrleation", labelAngle = -45,
-                labelExpr = "split(datum.label,'\\n')"}, scale = {zero = false}},
-            y = {:Target, title = "Target Correlation",
-                scale = {zero = false}},
-        ) +
-        (
-            @vlplot(data = {values = [
-                {x = minimum(pldata.basevalue)*0.95, y = minimum(pldata.Target)*0.95},
-                {x = maximum(pldata.basevalue)*1.05, y = maximum(pldata.Target)*1.05}]}) +
-            @vlplot({:line, strokeDash = [2, 2], strokeWidth = 1}, x = :x, y = :y)
-        )
-    )
-pl |> save(joinpath(dir, "decode_ind.svg"))
 
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
@@ -357,7 +314,7 @@ pl = @_ pldata |>
             color = {:target_switch_label,
                 sort = ["Low", "High"],
                 type = :ordinal,
-                scale = {range = "#".*hex.(colors)}},
+                scale = {range = "#".*hex.(scolors)}},
             x = {:target_switch_label, type = :nominal,
                 sort = ["Low", "High"],
                 type = :ordinal,
