@@ -69,6 +69,7 @@ nobs = sum(windows.len)
 starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
 nlags = round(Int,sr*max_lag)
+lags = -(nlags-1):1:0
 x = Array{Float32}(undef, nfeatures*nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
@@ -78,7 +79,7 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     xstart = trial.offset
     xstop = trial.offset + trial.len - 1
 
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', -(nlags-1):1:0)
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
@@ -136,17 +137,17 @@ end
 zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
 function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
-    model = Dense(size(x, 1), size(y, 1))
+    model = Dense(size(x, 1), size(y, 1)) |> gpu
     loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
     # PROBLEM: data loader leads to scalar indexing of GPU array
-    loader = Flux.Data.DataLoader((x, y), batchsize = batch, shuffle = true)
+    loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = false)
     for _ in 1:steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, opt,
             cb = () -> next!(progress))
     end
 
-    model
+    model |> cpu
 end
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
@@ -162,7 +163,7 @@ GermanTrack.@cache_results file predictions coefs begin
 
     nλ = 50
     nfolds = 10
-    batchsize = 32
+    batchsize = 512
     progress = Progress(steps * length(groups) * nfolds * nλ *
         cld(floor(Int, div(sum(first(groups).len),2) * (nfolds-1)/nfolds), batchsize))
 
@@ -175,33 +176,27 @@ GermanTrack.@cache_results file predictions coefs begin
             train = filter(x -> x.fold != fold, sdf)
             test  = filter(x -> x.fold == fold, sdf)
 
-            # model = fit(ZScoring(LassoPath, zgroups),
-            #     cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-            #     copy(@view(x[:, eegindices(train)])'),
-            #     reduce(vcat, train.data))
-
-            xᵢ = view(x, :, eegindices(@_ filter(_.encoding == "envelope", train)))
+            xᵢ = x[:, eegindices(@_ filter(_.encoding == "envelope", train))]
+            encodings = groupby(train, :encoding)
+            firstencoding = first(encodings).encoding |> first
             yᵢ = @_ [
                 row.data
-                for rows in groupby(train, :encoding)
+                for rows in encodings
                 for row in eachrow(rows)
             ] |> reduce(vcat, __) |> reshape(__, 2, :)
-            @show size(xᵢ)
-            @show size(yᵢ)
             model = myfit(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
                 progress = progress, batch = batchsize)
-            test.predict = map(eachrow(@_ filter(_.encoding == "envelope", test))) do testrow
+            test.predict = map(eachrow(test)) do testrow
                 xⱼ = view(x, :, eegindices(testrow))
-                @show size(xⱼ)
-                model(xⱼ)
+                yⱼ = model(xⱼ)
+                view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
 
-            @infiltrate
             coefs = DataFrame(
                 coef = vec(model.W),
-                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 2)] |> vec,
-                lag = mod.(getindex.(CartesianIndices(model.W), 2), nlags) |> vec,
-                feature = rem.(getindex.(CartesianIndices(model.W), 2), nlags) |> vec)
+                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
+                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
+                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
 
             test, coefs
         end)
