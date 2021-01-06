@@ -141,7 +141,7 @@ function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
     loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
     # PROBLEM: data loader leads to scalar indexing of GPU array
-    loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = false)
+    loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
     for _ in 1:steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, opt,
             cb = () -> next!(progress))
@@ -150,20 +150,21 @@ function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
     model |> cpu
 end
 
+# OPTIMIZE: maybe if we just keep all of x in the gpu it would go faster?
+
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
-# TODO: use a less memory intensive approach to model fitting (MLJ?)
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    steps = 2
+    steps = 25
 
     groups = @_ DataFrame(stimuli) |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float64[])) |>
         groupby(__, [:is_target_source, :windowing])
 
-    nλ = 50
-    nfolds = 10
-    batchsize = 512
+    nλ = 24
+    nfolds = 7
+    batchsize = 1024
     progress = Progress(steps * length(groups) * nfolds * nλ *
         cld(floor(Int, div(sum(first(groups).len),2) * (nfolds-1)/nfolds), batchsize))
 
@@ -205,7 +206,7 @@ end
 meta = GermanTrack.load_stimulus_metadata()
 score(x,y) = cor(x,y)
 scores = @_ predictions |>
-    groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing]) |>
+    groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
     @combine(__, cor = mean(score.(:data, :predict))) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
@@ -221,9 +222,42 @@ scores = @_ predictions |>
             ) => :target_window
     )
 
+pldata = @_ scores |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :target_window, :source, :λ]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, [:condition, :target_window, :λ]) |>
+    @combine(__, cor = mean(:cor))
+
+# TODO: eventually select the best λ using cross-validation
+best_λs = @_ pldata |> groupby(__, [:target_window, :λ]) |>
+    @combine(__, cor = mean(:cor)) |>
+    groupby(__, :target_window) |>
+    @combine(__, cor = maximum(:cor), λ = :λ[argmax(:cor)])
+
+best_λ = @_ best_λs |> @where(__, :target_window .== "Target") |> __.λ |> first
+
+pl = pldata |>
+    @vlplot(
+        facet = {column = {field = :condition, type = :nominal}}
+    ) +
+    (
+        @vlplot() +
+        @vlplot(:line, x = {:λ, scale = {type = :log}}, y = :cor,
+            color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
+        (
+            @vlplot(data = {values = [{}]}) +
+            @vlplot({:rule, strokeDash = [2 2], size = 1},
+                x = {datum = best_λ}
+            )
+        )
+    )
+pl |> save(joinpath(dir, "decode_lambda.svg"))
+
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 mean_offset = 6
 pl = @_ scores |>
+    @where(__, :λ .== best_λ) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source]) |>
     @combine(__, cor = mean(:cor)) |>
