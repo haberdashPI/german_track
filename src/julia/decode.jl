@@ -83,12 +83,14 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
+x .-= mean(x, dims = 2)
+x ./= std(x, dims = 2)
 
 # Setup stimulus data
 # -----------------------------------------------------------------
 
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
-encodings = ["pitch", "envelope"]
+encodings = [#= "pitch",  =#"envelope"]
 source_names = ["male", "fem1", "fem2"]
 sources = [male_source, fem1_source, fem2_source]
 
@@ -130,61 +132,100 @@ end
 # -----------------------------------------------------------------
 
 eegindices(row::DataFrameRow) = (row.offset):(row.offset + row.len - 1)
-function eegindices(df::DataFrame)
+function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
 zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
+struct ZScoreDense{M,A}
+    m::M
+    μ_x::A
+    μ_y::A
+    σ_x::A
+    σ_y::A
+end
+
+function zscoreval!(x)
+    μ = mean(x, dims = 2)
+    x .-= μ
+    σ = std(x, dims = 2)
+    x ./= σ
+
+    x, μ, σ
+end
+
+function (z::ZScoreDense)(x)
+    yz = z.m(zscore!(x, z.μ_x, z.σ_x))
+    yz.*z.σ_y .+ z.μ_y
+end
+
 function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
+    # x, μ_x, σ_x = zscoreval!(x)
+    # y, μ_y, σ_y = zscoreval!(y)
+
     model = Dense(size(x, 1), size(y, 1)) |> gpu
-    # TODO: could improve the loss function by
-    # requiring a large distinace from the non-target sources
     loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
     # PROBLEM: data loader leads to scalar indexing of GPU array
     loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
     for _ in 1:steps
-        Flux.Optimise.train!(loss, Flux.params(model), loader, opt,
-            cb = () -> next!(progress))
+        Flux.Optimise.train!(loss, Flux.params(model), loader, opt)
 
-        # TODO: check loss (or mse?) and stop if it is low enough
+        next!(progress)
     end
 
     model |> cpu
+    # ZScoreDense(model |> cpu, μ_x, μ_y, σ_x, σ_y)
+end
+
+function zscoremany(xs)
+    μ = mean(reduce(vcat, xs))
+    for x in xs
+        x .-= μ
+    end
+    σ = std(reduce(vcat, xs))
+    for x in xs
+        x ./= σ
+    end
+
+    xs
 end
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    steps = 100
+    steps = 200
 
     groups = @_ DataFrame(stimuli) |>
+        @where(__, :windowing .== "target") |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        insertcols!(__, :predict => Ref(Float64[])) |>
+        insertcols!(__, :predict => Ref(Float32[])) |>
+        groupby(__, [:encoding]) |>
+        transform!(__, :data => zscoremany => :data) |>
         groupby(__, [:is_target_source, :windowing])
 
     nλ = 24
-    nfolds = 7
-    batchsize = 1024
-    progress = Progress(steps * length(groups) * nfolds * nλ *
-        cld(floor(Int, div(sum(first(groups).len),2) * (nfolds-1)/nfolds), batchsize))
+    nfolds = 5
+    batchsize = 256
+    progress = Progress(steps * length(groups) * nfolds * nλ)
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-3),log(0.3),length=nλ)),
+        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
         function(sdf, fold, λ)
             train = filter(x -> x.fold != fold, sdf)
             test  = filter(x -> x.fold == fold, sdf)
 
-            xᵢ = x[:, eegindices(@_ filter(_.encoding == "envelope", train))]
             encodings = groupby(train, :encoding)
             firstencoding = first(encodings).encoding |> first
+            xᵢ = x[:, eegindices(first(encodings))]
             yᵢ = @_ [
                 row.data
                 for rows in encodings
                 for row in eachrow(rows)
-            ] |> reduce(vcat, __) |> reshape(__, 2, :)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
             model = myfit(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
                 progress = progress, batch = batchsize)
             test.predict = map(eachrow(test)) do testrow
@@ -201,6 +242,9 @@ GermanTrack.@cache_results file predictions coefs begin
 
             test, coefs
         end)
+
+    ProgressMeter.finish!(progress)
+    # alert("Completed model training!")
 end
 
 meta = GermanTrack.load_stimulus_metadata()
@@ -230,12 +274,14 @@ pldata = @_ scores |>
     @combine(__, cor = mean(:cor))
 
 # TODO: eventually select the best λ using cross-validation
-best_λs = @_ pldata |> #groupby(__, [:target_window, :λ]) |>
-    # @combine(__, cor = mean(:cor)) |>
-    groupby(__, :target_window) |>
+best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
+    @combine(__, cor = median(:cor)) |>
+    groupby(__, [:condition, :target_window]) |>
     @combine(__, cor = maximum(:cor), λ = :λ[argmax(:cor)])
 
-best_λ = @_ best_λs |> @where(__, :target_window .== "Target") |> __.λ |> first
+best_λ = @_ best_λs |>
+    @where(__, (:target_window .== "Target") .& (:condition .== "global")) |>
+    __.λ |> first
 
 pl = pldata |>
     @vlplot(
@@ -294,17 +340,17 @@ scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Non-target"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "Target" => "target", "Before non-target" => "nontarget"),
+            "Target" => "target", "Non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
     @combine(__, cor = maximum(:cor)) |>
     unstack(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label], :target_window, :cor) |>
-    @transform(__, cordiff = :target .- :nontarget)
+    @transform(__, cordiff = :target .- mean(:nontarget))
 
 pl = @_ pldata |>
     groupby(__, [:sid, :condition]) |>
