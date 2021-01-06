@@ -138,6 +138,8 @@ zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
 
 function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
     model = Dense(size(x, 1), size(y, 1)) |> gpu
+    # TODO: could improve the loss function by
+    # requiring a large distinace from the non-target sources
     loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
     # PROBLEM: data loader leads to scalar indexing of GPU array
@@ -145,17 +147,17 @@ function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
     for _ in 1:steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, opt,
             cb = () -> next!(progress))
+
+        # TODO: check loss (or mse?) and stop if it is low enough
     end
 
     model |> cpu
 end
 
-# OPTIMIZE: maybe if we just keep all of x in the gpu it would go faster?
-
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
     @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
-    steps = 25
+    steps = 100
 
     groups = @_ DataFrame(stimuli) |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
@@ -168,11 +170,9 @@ GermanTrack.@cache_results file predictions coefs begin
     progress = Progress(steps * length(groups) * nfolds * nλ *
         cld(floor(Int, div(sum(first(groups).len),2) * (nfolds-1)/nfolds), batchsize))
 
-    # TODO: we're making good progress;
-
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
+        :λ => exp.(range(log(1e-3),log(0.3),length=nλ)),
         function(sdf, fold, λ)
             train = filter(x -> x.fold != fold, sdf)
             test  = filter(x -> x.fold == fold, sdf)
@@ -230,8 +230,8 @@ pldata = @_ scores |>
     @combine(__, cor = mean(:cor))
 
 # TODO: eventually select the best λ using cross-validation
-best_λs = @_ pldata |> groupby(__, [:target_window, :λ]) |>
-    @combine(__, cor = mean(:cor)) |>
+best_λs = @_ pldata |> #groupby(__, [:target_window, :λ]) |>
+    # @combine(__, cor = mean(:cor)) |>
     groupby(__, :target_window) |>
     @combine(__, cor = maximum(:cor), λ = :λ[argmax(:cor)])
 
@@ -245,13 +245,15 @@ pl = pldata |>
         @vlplot() +
         @vlplot(:line, x = {:λ, scale = {type = :log}}, y = :cor,
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
+        @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :cor,
+            color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
         (
             @vlplot(data = {values = [{}]}) +
             @vlplot({:rule, strokeDash = [2 2], size = 1},
                 x = {datum = best_λ}
             )
         )
-    )
+    );
 pl |> save(joinpath(dir, "decode_lambda.svg"))
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
@@ -291,6 +293,7 @@ pl |> save(joinpath(dir, "decode.svg"))
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
+    @where(__, :λ .== best_λ) |>
     @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
