@@ -6,8 +6,8 @@ remaining tasks:
 2. see if new cross-validation approach helps with fig 4/5
 3. determining if decoding can be improved through some of the obvious steps I'm working on
   a. improving model features (with new Flux implementation)
+    i. related note: with flux, improving loss function (avoid decoding non-target)???
   b. changing criterion (mixutre of sources)
-  c. improving loss function (avoid decoding non-target)???
 
 codecleanup:
 

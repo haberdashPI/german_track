@@ -11,7 +11,7 @@ using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, 
     Unitful, Distributions, CSV, Random, Statistics, JSON3, HDF5, CRC, RandomNumbers,
     Random123, Colors, EzXML, Underscores, DataStructures, StatsBase, Lasso, BangBang,
     Transducers, FFTW, Bootstrap, ColorSchemes, VegaLite, StatsFuns, DSP, Peaks,
-    JSONTables, MacroTools, DataFramesMeta
+    JSONTables, MacroTools, DataFramesMeta, Flux, CUDA
 
 # ## Files
 
@@ -23,6 +23,7 @@ include("classifier.jl")  ## for classification
 include("stimuli.jl")     ## for encoding stimuli
 include("files.jl")       ## for loading files
 include("random.jl")      ## for pseudo-random number generation
+include("decoder.jl")
 
 # ## Caching
 # Let `EEGCoding` know where it can cache an intermediate results it generates
