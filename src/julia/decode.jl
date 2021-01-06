@@ -90,7 +90,7 @@ x ./= std(x, dims = 2)
 # -----------------------------------------------------------------
 
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
-encodings = [#= "pitch",  =#"envelope"]
+encodings = ["pitch", "envelope"]
 source_names = ["male", "fem1", "fem2"]
 sources = [male_source, fem1_source, fem2_source]
 
@@ -136,38 +136,17 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-zgroups = [(1:30) .+ offset for offset in (0:30:(size(x,1)-1))]
+# I'm a little distrustfull of how poorly this is working;
+# it would be good to validate on a smaller problem
+# and compare to the results of Lasso.jl
 
-struct ZScoreDense{M,A}
-    m::M
-    μ_x::A
-    μ_y::A
-    σ_x::A
-    σ_y::A
-end
-
-function zscoreval!(x)
-    μ = mean(x, dims = 2)
-    x .-= μ
-    σ = std(x, dims = 2)
-    x ./= σ
-
-    x, μ, σ
-end
-
-function (z::ZScoreDense)(x)
-    yz = z.m(zscore!(x, z.μ_x, z.σ_x))
-    yz.*z.σ_y .+ z.μ_y
-end
+# note: it could be worth using the projected gradient descent: i.e.
+# shrink each weight according to |wᵢ|
 
 function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
-    # x, μ_x, σ_x = zscoreval!(x)
-    # y, μ_y, σ_y = zscoreval!(y)
-
     model = Dense(size(x, 1), size(y, 1)) |> gpu
     loss(x,y) = Flux.mse(model(x), y) .+ Float32(λ).*sum(abs, model.W)
 
-    # PROBLEM: data loader leads to scalar indexing of GPU array
     loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
     for _ in 1:steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, opt)
@@ -176,7 +155,6 @@ function myfit(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
     end
 
     model |> cpu
-    # ZScoreDense(model |> cpu, μ_x, μ_y, σ_x, σ_y)
 end
 
 function zscoremany(xs)
@@ -194,7 +172,7 @@ end
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
-    @info "Generating cross-validated predictions, this could take a bit... (~15 minutes)"
+    @info "Generating cross-validated predictions, this could take a bit..."
     steps = 200
 
     groups = @_ DataFrame(stimuli) |>
@@ -207,7 +185,7 @@ GermanTrack.@cache_results file predictions coefs begin
 
     nλ = 24
     nfolds = 5
-    batchsize = 256
+    batchsize = 512
     progress = Progress(steps * length(groups) * nfolds * nλ)
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
