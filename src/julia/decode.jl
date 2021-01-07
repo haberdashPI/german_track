@@ -2,7 +2,7 @@
 # =================================================================
 
 # STEPS:
-# reproduce lasso with 32 bit floats
+# veriyf measure that I'm using
 # reproduce with flux model
 # try adding more data to flux model
 
@@ -148,12 +148,6 @@ end
 # note: it could be worth using the projected gradient descent: i.e.
 # shrink each weight according to sgn(wᵢ)⋅max(|wᵢ| - λ, 0)
 
-X = rand(Float32, 4, 20)
-W = Float32[1 0 0 0; 0 0 2 0; 0 1 0 3; 0 -1 0 0]
-b = Float32[1 1 -1 2]
-y = W*X .+ b'
-model = lassoflux(X, y, 1e-3, Flux.Optimise.RADAM(), 10_000)
-
 function zscoremany(xs)
     μ = mean(reduce(vcat, xs))
     for x in xs
@@ -169,98 +163,101 @@ end
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
-    @info "Generating cross-validated predictions, this could take a bit..."
+    # nfolds = 5
 
-    steps = 25
+    # @info "Generating cross-validated predictions, this could take a bit..."
 
-    groups = @_ DataFrame(stimuli) |>
-        @where(__, :windowing .== "target") |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        insertcols!(__, :predict => Ref(Float32[])) |>
-        # groupby(__, [:encoding]) |>
-        # transform!(__, :data => zscoremany => :data) |>
-        groupby(__, [:is_target_source, :windowing])
-
-    nλ = 24
-    nfolds = 5
-    batchsize = 1024
-    progress = Progress(steps * length(groups) * nfolds * nλ)
-
-    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
-        :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
-        function(sdf, fold, λ)
-            train = filter(x -> x.fold != fold, sdf)
-            test  = filter(x -> x.fold == fold, sdf)
-
-            encodings = groupby(train, :encoding)
-            firstencoding = first(encodings).encoding |> first
-            xᵢ = x[:, eegindices(first(encodings))]
-            yᵢ = @_ [
-                row.data
-                for rows in encodings
-                for row in eachrow(rows)
-            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
-
-            model = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
-                progress = progress, batch = batchsize)
-            test.predict = map(eachrow(test)) do testrow
-                xⱼ = view(x, :, eegindices(testrow))
-                yⱼ = model(xⱼ)
-                view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
-            end
-            C = model.W
-
-            coefs = DataFrame(
-                coef = vec(model.W),
-                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
-                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
-                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
-
-            test, coefs
-        end)
-
-    ProgressMeter.finish!(progress)
-    alert("Completed model training!")
+    # steps = 15 # (this is probably too many, do fewer steps on next try)
 
     # groups = @_ DataFrame(stimuli) |>
-    #     # @where(__, :windowing .== "target") |>
+    #     @where(__, :windowing .== "target") |>
     #     addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     #     insertcols!(__, :predict => Ref(Float32[])) |>
     #     # groupby(__, [:encoding]) |>
     #     # transform!(__, :data => zscoremany => :data) |>
-    #     groupby(__, [:encoding, :is_target_source, :windowing])
+    #     groupby(__, [:is_target_source, :windowing])
 
-    # predictions, coefs = filteringmap(groups, folder = foldxt, streams = 2, desc = "lasso fit",
+    # nλ = 24
+    # batchsize = 1024
+    # progress = Progress(steps * length(groups) * nfolds * nλ)
+
+    # predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
     #     :fold => 1:nfolds,
-    #     function(sdf, fold)
+    #     :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
+    #     function(sdf, fold, λ)
     #         train = filter(x -> x.fold != fold, sdf)
     #         test  = filter(x -> x.fold == fold, sdf)
 
-    #         model = fit(LassoPath,
-    #             # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-    #             copy(@view(x[:, eegindices(train)])'),
-    #             reduce(vcat, train.data))
-    #         test.predict = map(eachrow(test)) do testrow
-    #             predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
-    #         end
+    #         encodings = groupby(train, :encoding)
+    #         firstencoding = first(encodings).encoding |> first
+    #         xᵢ = x[:, eegindices(first(encodings))]
+    #         yᵢ = @_ [
+    #             row.data
+    #             for rows in encodings
+    #             for row in eachrow(rows)
+    #         ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
 
-    #         coefs = DataFrame(coef(model, MinAICc())',
-    #             map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+    #         model = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
+    #             progress = progress, batch = batchsize)
+    #         test.predict = map(eachrow(test)) do testrow
+    #             xⱼ = view(x, :, eegindices(testrow))
+    #             yⱼ = model(xⱼ)
+    #             view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
+    #         end
+    #         C = model.W
+
+    #         coefs = DataFrame(
+    #             coef = vec(model.W),
+    #             encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
+    #             lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
+    #             feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
 
     #         test, coefs
-    #     end
-    # )
+    #     end)
+
+    # ProgressMeter.finish!(progress)
+    # alert("Completed model training!")
+
+    groups = @_ DataFrame(stimuli) |>
+        # @where(__, :windowing .== "target") |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        insertcols!(__, :predict => Ref(Float32[])) |>
+        # groupby(__, [:encoding]) |>
+        # transform!(__, :data => zscoremany => :data) |>
+        groupby(__, [:encoding, :is_target_source, :windowing])
+
+    predictions, coefs = filteringmap(groups, folder = foldxt, streams = 2, desc = "lasso fit",
+        :fold => 1:nfolds,
+        function(sdf, fold)
+            train = filter(x -> x.fold != fold, sdf)
+            test  = filter(x -> x.fold == fold, sdf)
+
+            model = fit(LassoPath,
+                # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+                copy(@view(x[:, eegindices(train)])'),
+                reduce(vcat, train.data))
+            test.predict = map(eachrow(test)) do testrow
+                predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+            end
+
+            coefs = DataFrame(coef(model, MinAICc())',
+                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+
+            test, coefs
+        end
+    )
 end
 
-# predictions.λ = 0.1
-# best_λ = 0.1
+predictions.λ = 0.1
+best_λ = 0.1
 
 meta = GermanTrack.load_stimulus_metadata()
-score(x,y) = cor(x,y)
 scores = @_ predictions |>
+    @transform(__, score = .-Flux.mse.(:predict, :data)) |>
+    groupby(__, [:encoding, :λ]) |>
+    @transform(__, score = zscore(:score)) |>
     groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
-    @combine(__, cor = score(reduce(vcat, :data), reduce(vcat, :predict))) |>
+    @combine(__, score = mean(:score)) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
         :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
@@ -280,15 +277,15 @@ tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pldata = @_ scores |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :λ]) |>
-    @combine(__, cor = mean(:cor)) |>
+    @combine(__, score = mean(:score)) |>
     groupby(__, [:condition, :target_window, :λ]) |>
-    @combine(__, cor = mean(:cor))
+    @combine(__, score = mean(:score))
 
 # TODO: eventually select the best λ using cross-validation
 best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
-    @combine(__, cor = median(:cor)) |>
+    @combine(__, score = median(:score)) |>
     groupby(__, [:condition, :target_window]) |>
-    @combine(__, cor = maximum(:cor), λ = :λ[argmax(:cor)])
+    @combine(__, score = maximum(:score), λ = :λ[argmax(:score)])
 
 best_λ = @_ best_λs |>
     @where(__, (:target_window .== "Target") .& (:condition .== "global")) |>
@@ -300,9 +297,9 @@ pl = pldata |>
     ) +
     (
         @vlplot() +
-        @vlplot(:line, x = {:λ, scale = {type = :log}}, y = :cor,
+        @vlplot(:line, x = {:λ, scale = {type = :log}}, y = :score,
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :cor,
+        @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
         (
             @vlplot(data = {values = [{}]}) +
@@ -318,9 +315,9 @@ pl = @_ scores |>
     @where(__, :λ .== best_λ) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source]) |>
-    @combine(__, cor = mean(:cor)) |>
+    @combine(__, score = mean(:score)) |>
     groupby(__, [:sid, :condition, :target_window]) |>
-    @combine(__, cor = mean(:cor)) |>
+    @combine(__, score = mean(:score)) |>
     @vlplot(
         config = {legend = {disable = true}},
         facet = {column = {field = :condition, type = :nominal}},
@@ -330,37 +327,109 @@ pl = @_ scores |>
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}},
             x = {:target_window, axis = {title = "Source", labelAngle = -45,
                 labelExpr = "split(datum.label,'\\n')"}, },
-            y = {:cor, title = ["Decoder Correlation", "(Envelope & Pitch Surprisal)"],
+            y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
-            y = "mean(cor)",
+            y = "mean(score)",
         ) +
         @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +
         @vlplot({:rule, xOffset = -mean_offset/2},
             color = {value = "black"},
-            y = "ci0(cor)",
-            y2 = "ci1(cor)",  # {"cor:q", aggregate = :ci1}
+            y = "ci0(score)",
+            y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
         )
     );
 pl |> save(joinpath(dir, "decode.svg"))
+
+mean_offset = 6
+pl = @_ scores |>
+    @where(__, :λ .== best_λ) |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :target_window, :source, :target_time_label]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:sid, :condition, :target_window, :target_time_label]) |>
+    @combine(__, score = mean(:score)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+            row = {field = :target_time_label, type = :nominal}
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_window, scale = {range = "#".*hex.(tcolors)}},
+            x = {:target_window, axis = {title = "Source", labelAngle = -45,
+                labelExpr = "split(datum.label,'\\n')"}, },
+            y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(score)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(score)",
+            y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_earlylate.svg"))
+
+mean_offset = 6
+pl = @_ scores |>
+    @where(__, :λ .== best_λ) |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :target_window, :source, :target_switch_label]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:sid, :condition, :target_window, :target_switch_label]) |>
+    @combine(__, score = mean(:score)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+            row = {field = :target_switch_label, type = :nominal}
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:target_window, scale = {range = "#".*hex.(tcolors)}},
+            x = {:target_window, axis = {title = "Source", labelAngle = -45,
+                labelExpr = "split(datum.label,'\\n')"}, },
+            y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(score)",
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(score)",
+            y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_switch.svg"))
 
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    # @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "Target" => "target", "Non-target" => "nontarget"),
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
-    @combine(__, cor = maximum(:cor)) |>
-    unstack(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label], :target_window, :cor) |>
-    @transform(__, cordiff = :target .- mean(:nontarget))
+    @combine(__, score = maximum(:score)) |>
+    unstack(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label], :target_window, :score) |>
+    @transform(__, cordiff = :target .- :nontarget)
 
 pl = @_ pldata |>
     groupby(__, [:sid, :condition]) |>
@@ -377,7 +446,7 @@ pl = @_ pldata |>
                 type = :nominal,
                 axis = {title = "", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cordiff, title = ["Target - Non-target Correlation"],
+            y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
@@ -413,7 +482,7 @@ pl = @_ pldata |>
                 type = :ordinal,
                 axis = {title = "Salience", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cordiff, title = ["Target - Non-target Correlation"],
+            y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
@@ -450,7 +519,7 @@ pl = @_ pldata |>
                 type = :ordinal,
                 axis = {title = "Salience", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cordiff, title = ["Target - Non-target Correlation"],
+            y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
@@ -487,7 +556,7 @@ pl = @_ pldata |>
                 type = :ordinal,
                 axis = {title = "Salience", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
-            y = {:cordiff, title = ["Target - Non-target Correlation"],
+            y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
@@ -512,9 +581,9 @@ pl = @_ scores |>
         is_target_source = recode(:is_target_source, true => "Target", false => "Non-target")
     ) |>
     groupby(__, [:sid, :condition, :is_target_source, :source, :target_salience_level]) |>
-    @combine(__, cor = mean(:cor)) |>
+    @combine(__, score = mean(:score)) |>
     groupby(__, [:sid, :condition, :is_target_source, :target_salience_level]) |>
-    @combine(__, cor = mean(:cor)) |>
+    @combine(__, score = mean(:score)) |>
     @vlplot(
         facet = {
             column = {field = :condition, type = :ordinal},
@@ -523,13 +592,10 @@ pl = @_ scores |>
     ) + (
         @vlplot({:line},
             x     = :target_salience_level,
-            y     = {:cor, type = :quantitative, aggregate = :mean},
+            y     = {:score, type = :quantitative, aggregate = :mean},
             color = {:is_target_source, scale = {range = "#".*hex.(colors[[1,3]])}}
         )
     );
 pl |> save(joinpath(dir, "decode_salience_continuous.svg"))
 
 # TODO: plot decoding scores vs. hit-rate
-
-# start with something basic: decoding accuracry (e.g. correlation or L1)
-# for target vs. the two non-target stimuli
