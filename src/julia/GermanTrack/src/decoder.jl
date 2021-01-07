@@ -22,7 +22,7 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
         Δ₀ = get!(() -> similar(Δ), o.state, x)::typeof(Δ)
         Δ₀ .= Δ
         Flux.Optimise.update!(o.opt, x, Δ)
-        η = Δ ./ Δ₀
+        η = abs.(Δ ./ Δ₀)
         x .= sign.(x) .* max.(0.0f0, abs.(x) .- η.*eltype(x)(o.lambda))
     else
         Flux.Optimise.update!(o.opt, x, Δ)
