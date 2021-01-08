@@ -21,12 +21,12 @@ using GermanTrack: colors
 # TODO: do we need to z-score these values?
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-# eeg_encoding = JointEncoding(
-#     RawEncoding(),
-#     FilteredPower("delta", 1, 3),
-#     FilteredPower("theta", 3, 7),
-# )
-eeg_encoding = RawEncoding()
+eeg_encoding = JointEncoding(
+    RawEncoding(),
+    FilteredPower("delta", 1, 3),
+    FilteredPower("theta", 3, 7),
+)
+# eeg_encoding = RawEncoding()
 
 sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
@@ -167,7 +167,7 @@ GermanTrack.@cache_results file predictions coefs begin
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
-    steps = 75
+    steps = 150
 
     groupings = [:is_target_source, :windowing]
     groups = @_ DataFrame(stimuli) |>
@@ -217,7 +217,7 @@ GermanTrack.@cache_results file predictions coefs begin
 
             model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = steps,
-                stop_threshold = 1e-4,
+                patience = 2,
                 validate = (xⱼ, yⱼ))
 
             test.predict = map(eachrow(test)) do testrow
@@ -225,8 +225,7 @@ GermanTrack.@cache_results file predictions coefs begin
                 yⱼ = model(xⱼ)
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
-            test.steps = taken_steps
-            @show steps
+            test.steps = @show taken_steps
             C = model.W
 
             coefs = DataFrame(
@@ -273,6 +272,9 @@ end
 
 # predictions.λ = 0.1
 # best_λ = 0.1
+
+# Plotting
+# -----------------------------------------------------------------
 
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
