@@ -34,6 +34,7 @@ function lassoflux(x, y, λ, opt;
     validate = nothing,
     patience = 0,
     max_steps = 2,
+    min_steps = 1,
     progress = Progress(steps))
     model = Dense(size(x, 1), size(y, 1)) |> gpu
     loss(x,y) = Flux.mse(model(x), y)
@@ -41,6 +42,8 @@ function lassoflux(x, y, λ, opt;
     l1opt = L1Opt(opt, λ, applyto = [model.W])
 
     local best_model
+    local cur_step
+
     best_loss = Float32(Inf32)
     stopped = false
     evalcb = if isnothing(validate)
@@ -60,7 +63,7 @@ function lassoflux(x, y, λ, opt;
             # @show cur_loss
             if cur_loss > best_loss
                 wait += 1
-                if wait > patience
+                if wait > patience && min_steps < cur_step
                     stopped = true
                     # Flux.stop()
                 end
@@ -69,7 +72,6 @@ function lassoflux(x, y, λ, opt;
     end
 
     loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
-    local cur_step
     for outer cur_step in 1:max_steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, l1opt)
         next!(progress)
