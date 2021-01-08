@@ -167,26 +167,37 @@ GermanTrack.@cache_results file predictions coefs begin
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
-    steps = 50
+    steps = 75
 
+    groupings = [:is_target_source, :windowing]
     groups = @_ DataFrame(stimuli) |>
         @where(__, :windowing .== "target") |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
         # groupby(__, [:encoding]) |>
         # transform!(__, :data => zscoremany => :data) |>
-        groupby(__, [:is_target_source, :windowing])
+        groupby(__, groupings)
 
     nλ = 24
     batchsize = 1024
     progress = Progress(steps * length(groups) * nfolds * nλ)
+    validate_fraction = 0.2
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
         :λ => exp.(range(log(1e-6),log(0.01),length=nλ)),
         function(sdf, fold, λ)
-            train = filter(x -> x.fold != fold, sdf)
-            test  = filter(x -> x.fold == fold, sdf)
+            nontest = @_ filter(_.fold != fold, sdf)
+            test  = @_ filter(_.fold == fold, sdf)
+
+            sids = levels(nontest.sid)
+            nval = max(1, round(Int, validate_fraction * length(sids)))
+            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
+                Tuple(sdf[1, groupings]))
+            validate_ids = sample(rng, sids, nval, replace = false)
+
+            train    = @_ filter(_.sid ∉ validate_ids, nontest)
+            validate = @_ filter(_.sid ∈ validate_ids, nontest)
 
             encodings = groupby(train, :encoding)
             firstencoding = first(encodings).encoding |> first
@@ -197,13 +208,25 @@ GermanTrack.@cache_results file predictions coefs begin
                 for row in eachrow(rows)
             ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
 
-            model = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(), steps,
-                progress = progress, batch = batchsize)
+            xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
+            yⱼ = @_ [
+                row.data
+                for rows in groupby(validate, :encoding)
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+                progress = progress, batch = batchsize, max_steps = steps,
+                stop_threshold = 1e-4,
+                validate = (xⱼ, yⱼ))
+
             test.predict = map(eachrow(test)) do testrow
                 xⱼ = view(x, :, eegindices(testrow))
                 yⱼ = model(xⱼ)
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
+            test.steps = taken_steps
+            @show steps
             C = model.W
 
             coefs = DataFrame(
