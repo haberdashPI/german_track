@@ -32,7 +32,7 @@ end
 function lassoflux(x, y, λ, opt;
     batch = 64,
     validate = nothing,
-    stop_threshold = 0.01,
+    patience = 0,
     max_steps = 2,
     progress = Progress(steps))
     model = Dense(size(x, 1), size(y, 1)) |> gpu
@@ -48,19 +48,22 @@ function lassoflux(x, y, λ, opt;
         best_model = model
     else
         xᵥ, yᵥ = gpu.(validate)
+        wait = 1
         function ()
             cur_loss = loss(xᵥ, yᵥ)
             if cur_loss < best_loss
+                wait = 0
                 best_loss = cur_loss
                 best_model = deepcopy(model)
             end
             # @show best_loss
             # @show cur_loss
-            if (cur_loss / best_loss - 1) > stop_threshold
-                stopped = true
-                @show cur_loss
-                @show best_loss
-                Flux.stop()
+            if cur_loss > best_loss
+                wait += 1
+                if wait > patience
+                    stopped = true
+                    # Flux.stop()
+                end
             end
         end
     end
@@ -76,8 +79,6 @@ function lassoflux(x, y, λ, opt;
     for _ in (cur_step+1):max_steps
         next!(progress)
     end
-
-    @show best_loss
 
     best_model |> cpu, cur_step
 end
