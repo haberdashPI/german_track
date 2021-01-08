@@ -23,12 +23,15 @@ using GermanTrack: colors
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
 # eeg_encoding = JointEncoding(
 #     RawEncoding(),
-#     FilteredPower("delta", 1, 3),
-#     FilteredPower("theta", 3, 7),
+#     FilteredPower("delta", 1,  3),
+#     FilteredPower("theta", 3,  7),
+#     FilteredPower("alpha", 7,  15),
+#     FilteredPower("beta",  15, 30),
+#     FilteredPower("gamma", 30, 100),
 # )
 eeg_encoding = RawEncoding()
 
-sr = 64
+sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
     encoding = eeg_encoding, framerate = sr)
 meta = GermanTrack.load_stimulus_metadata()
@@ -88,8 +91,9 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
-# x .-= mean(x, dims = 2)
-# x ./= std(x, dims = 2)
+# should we z-score? (definitely not)
+x .-= mean(x, dims = 2)
+x ./= std(x, dims = 2)
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -141,21 +145,35 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
+function zscoremany(xs)
+    μ = mean(reduce(vcat, xs))
+    for x in xs
+        x .-= μ
+    end
+    σ = std(reduce(vcat, xs))
+    for x in xs
+        x ./= σ
+    end
+
+    xs
+end
+
+
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
-    steps = 150
+    steps = 250
 
     groupings = [:is_target_source, :windowing]
     groups = @_ DataFrame(stimuli) |>
         @where(__, :windowing .== "target") |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        # groupby(__, [:encoding]) |>
-        # transform!(__, :data => zscoremany => :data) |>
+        groupby(__, [:encoding]) |>
+        transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
     nλ = 24
@@ -165,7 +183,7 @@ GermanTrack.@cache_results file predictions coefs begin
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-6),log(0.01),length=nλ)),
+        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
         function(sdf, fold, λ)
             nontest = @_ filter(_.fold != fold, sdf)
             test  = @_ filter(_.fold == fold, sdf)
@@ -197,7 +215,8 @@ GermanTrack.@cache_results file predictions coefs begin
 
             model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = steps,
-                patience = 2,
+                min_steps = 20,
+                patience = 4,
                 validate = (xⱼ, yⱼ))
 
             test.predict = map(eachrow(test)) do testrow
