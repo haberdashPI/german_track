@@ -29,17 +29,55 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
     end
 end
 
-function lassoflux(x, y, λ, opt, steps; batch = 64, progress = Progress(steps))
+function lassoflux(x, y, λ, opt;
+    batch = 64,
+    validate = nothing,
+    stop_threshold = 0.01,
+    max_steps = 2,
+    progress = Progress(steps))
     model = Dense(size(x, 1), size(y, 1)) |> gpu
     loss(x,y) = Flux.mse(model(x), y)
 
     l1opt = L1Opt(opt, λ, applyto = [model.W])
 
+    local best_model
+    best_loss = Float32(Inf32)
+    stopped = false
+    evalcb = if isnothing(validate)
+        () -> nothing
+        best_model = model
+    else
+        xᵥ, yᵥ = gpu.(validate)
+        function ()
+            cur_loss = loss(xᵥ, yᵥ)
+            if cur_loss < best_loss
+                best_loss = cur_loss
+                best_model = deepcopy(model)
+            end
+            # @show best_loss
+            # @show cur_loss
+            if (cur_loss / best_loss - 1) > stop_threshold
+                stopped = true
+                @show cur_loss
+                @show best_loss
+                Flux.stop()
+            end
+        end
+    end
+
     loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
-    for _ in 1:steps
+    local cur_step
+    for outer cur_step in 1:max_steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, l1opt)
+        next!(progress)
+        evalcb()
+        stopped && break
+    end
+    for _ in (cur_step+1):max_steps
         next!(progress)
     end
 
-    model |> cpu
+    @show best_loss
+
+    best_model |> cpu, cur_step
 end
