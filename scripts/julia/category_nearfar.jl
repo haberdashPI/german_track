@@ -34,20 +34,27 @@ file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
     transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition)
 
-function find_switch_distance(time, switches)
+function find_switch_distance(time, switches, dev_dir)
+    sel_switches = dev_dir == "right" ?
+        switches[r"right_switches"] : switches[r"left_switches"]
     if time <= 0
-        missing
+        [missing, missing]
     else
-        distances = @_ filter(_ > 0, skipmissing(time .- Array(switches)))
-        if isempty(distances)
-            missing
+        distances = time .- sort!(collect(skipmissing(Array(sel_switches))))
+        closest = @_ findlast(!ismissing(_1) && _1 > 0, distances)
+        if isnothing(closest)
+            [missing, missing]
         else
-            minimum(distances)
+            [distances[closest], closest]
         end
     end
 end
-rawdata.switch_distance = map(find_switch_distance, rawdata[!,:dev_time],
-    eachrow(rawdata[!,r"switches"]))
+rawdata.switch_index = 0
+rawdata.switch_distance = 0.0
+allowmissing!(rawdata, [:switch_index, :switch_distance])
+rawdata[:,[:switch_distance, :switch_index]] =
+    mapreduce(find_switch_distance, hcat,
+        rawdata[!,:dev_time], eachrow(rawdata[!,r"switches"]), rawdata[!, :dev_direction])'
 
 function extend(xs)
     nonmissing = missing
@@ -72,16 +79,80 @@ bad_sids = @_ meansraw |>
 
 
 nbins = 30
-binwidth = 0.4
-qs = quantile(skipmissing(rawdata.switch_distance), range(0, 1, length = nbins+1))
+binwidth = 1.5
+qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins+1))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
-getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |> combine(first, __) |> zip(__.sid, __.exp_id)
+getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
+    combine(first, __) |> zip(__.sid, __.exp_id)
 allids = getids(rawdata)
 target_timeline = @_ rawdata |>
     @where(__, :sid .∉ bad_sids) |>
-    @transform(__, time_bin = cut(:switch_distance, nbins), target_bin = cut(:dev_time, 2)) |>
+    @transform(__, time_bin = cut(:direction_timing, nbins+1, allowempty = true)) |>
     @transform(__, target_time_label =
-        recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
+        ifelse.(ismissing.(:switch_distance) .| (:switch_index .<= 1), "early", "late")) |>
+    @transform(__,
+        time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
+    @where(__, .!ismissing.(:time_bin_mean)) |>
+    groupby(__, [:condition, :target_time_label, :switch_index]) |>
+    filteringmap(__, folder = foldl, desc = nothing, :time =>
+        map(binmean -> (binmean => (row ->
+            abs(row.time_bin_mean - binmean) < binwidth/2)), bin_means),
+        function(sdf, time)
+            result = @combine(groupby(sdf, [:sid, :exp_id]),
+                mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+                weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+            )
+            allowmissing!(result, :mean)
+            for (sid, exp_id) in setdiff(allids, getids(sdf))
+                result = push!!(result, (
+                    sid = sid, exp_id = exp_id, mean = missing, weight = 0))
+            end
+            result
+        end
+    ) |>
+    sort!(__, :time) |>
+    @transform(__, mean = extend(ifelse.(iszero.(:weight), missing, :mean))) |>
+    groupby(__, [:condition, :time, :target_time_label, :sid, :exp_id, :switch_index]) |>
+    @combine(__,
+        mean = all(ismissing, :mean) ? missing : mean(skipmissing(:mean)),
+        weight = sum(:weight)
+    ) |>
+    groupby(__, [:condition, :time, :target_time_label]) |>
+    combine(function(sdf)
+        filt = filter(x -> !ismissing(x.mean), sdf)
+        μ, lower, upper = if isempty(filt)
+            missing, missing, missing
+        else
+            μ, lower, upper = confint(bootstrap(df -> mean(df.mean), filt,
+                BasicSampling(10_000)), BasicConfInt(0.95)
+            )[1]
+        end
+        DataFrame(mean = μ, lower = lower, upper = upper, weight = sum(filt.weight .> 0))
+    end, __) |>
+    @transform(__, time = Array(:time))
+
+
+file1 = joinpath(processed_datadir("behavioral", "merve_summaries", "export_switch_ind_data_1.csv"))
+file2 = joinpath(processed_datadir("behavioral", "merve_summaries", "export_switch_ind_data_2.csv"))
+switchdata = append!(cols = :union,
+    @_(CSV.read(file1, DataFrame) |>
+        transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+        insertcols!(__, :target_time_label => "early")),
+    @_(CSV.read(file2, DataFrame) |>
+        transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
+        insertcols!(__, :target_time_label => "late"))) |>
+    x -> rename!(x, :sbj_id => :sid)
+
+nbins = 30
+binwidth = 1.5
+qs = quantile(skipmissing(switchdata.direction_timing), range(0, 1, length = nbins+1))
+bin_means = (qs[1:(end-1)] + qs[2:end])/2
+getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
+    combine(first, __) |> zip(__.sid, __.exp_id)
+allids = getids(switchdata)
+target_timeline = @_ switchdata |>
+    # @where(__, :sid .∉ bad_sids) |>
+    @transform(__, time_bin = cut(:direction_timing, nbins+1, allowempty = true)) |>
     @transform(__,
         time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
     @where(__, .!ismissing.(:time_bin_mean)) |>
@@ -123,6 +194,7 @@ target_timeline = @_ rawdata |>
     end, __) |>
     @transform(__, time = Array(:time))
 
+
 pl = @_ target_timeline |>
     @vlplot(
         config = {legend = {disable = true}},
@@ -141,16 +213,16 @@ pl = @_ target_timeline |>
         @vlplot(width = 80, autosize = "fit", height = 130,
             color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot({:trail, clip = true},
-            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
-            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]},
+            # transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
+            x = {:time, type = :quantitative, # scale = {domain = [0, 1.5]},
                 title = ["Time after", "Switch (s)"]},
             y = {:mean, type = :quantitative, scale = {domain = [0.5, 1]}, title = "Hit Rate"},
             size = {:weight, type = :quantitative, scale = {range = [0, 2]}},
         ) +
         # @vlplot({:point, filled = true, size = 15}, x = :time, y = :mean) +
         @vlplot({:errorband, clip = true},
-            transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
-            x = {:time, type = :quantitative, scale = {domain = [0, 1.5]}},
+            # transform = [{filter = "datum.time < 1.25 || datum.target_time == 'early'"}],
+            x = {:time, type = :quantitative}, # scale = {domain = [0, 1.5]}},
             y = {:upper, type = :quantitative, title = "", scale = {domain = [0.5, 1]}}, y2 = :lower,
             # opacity = :weight,
             color = :condition,
@@ -162,7 +234,7 @@ pl = @_ target_timeline |>
             x = {datum = 1.2},
             y = {:mean, aggregate = :mean, type = :quantitative},
             color = :condition,
-            text = {:condition, }
+            text = {:condition}
         ) +
         (
             @vlplot(data = {values = [{}]}) +
