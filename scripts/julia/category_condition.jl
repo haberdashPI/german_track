@@ -1,7 +1,8 @@
 # Setup
 # =================================================================
 
-using DrWatson; @quickactivate("german_track")
+using DrWatson
+@quickactivate("german_track")
 
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
