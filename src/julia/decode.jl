@@ -21,20 +21,20 @@ using GermanTrack: colors
 # TODO: do we need to z-score these values?
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-eeg_encoding = JointEncoding(
-    RawEncoding(),
-    FilteredPower("delta", 1, 3),
-    FilteredPower("theta", 3, 7),
-)
-# eeg_encoding = RawEncoding()
+# eeg_encoding = JointEncoding(
+#     RawEncoding(),
+#     FilteredPower("delta", 1, 3),
+#     FilteredPower("theta", 3, 7),
+# )
+eeg_encoding = RawEncoding()
 
-sr = 32
+sr = 64
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
     encoding = eeg_encoding, framerate = sr)
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 2
+max_lag = 3
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -141,26 +141,6 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-# I'm a little distrustfull of how poorly this is working;
-# it would be good to validate on a smaller problem
-# and compare to the results of Lasso.jl
-
-# note: it could be worth using the projected gradient descent: i.e.
-# shrink each weight according to sgn(wᵢ)⋅max(|wᵢ| - λ, 0)
-
-function zscoremany(xs)
-    μ = mean(reduce(vcat, xs))
-    for x in xs
-        x .-= μ
-    end
-    σ = std(reduce(vcat, xs))
-    for x in xs
-        x ./= σ
-    end
-
-    xs
-end
-
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
 GermanTrack.@cache_results file predictions coefs begin
     nfolds = 5
@@ -225,7 +205,7 @@ GermanTrack.@cache_results file predictions coefs begin
                 yⱼ = model(xⱼ)
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
-            test.steps = @show taken_steps
+            test.steps = taken_steps
             C = model.W
 
             coefs = DataFrame(
