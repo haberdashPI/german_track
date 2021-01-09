@@ -1,14 +1,15 @@
 # Setup
 # =================================================================
 
-n_winlens = 6
+n_winlens = 12
 n_folds = 10
 
-using DrWatson; @quickactivate("german_track")
+using DrWatson
+@quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
-    StatsFuns, Colors, CSV, DataFramesMeta, Lasso
+    StatsFuns, Colors, CSV, DataFramesMeta, Lasso, ColorSchemes, StatsBase
 
 using GermanTrack: colors, gray, patterns, lightdark, darkgray, seqpatterns, neutral
 
@@ -192,9 +193,8 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         filteringmap(__, desc = "Evaluating hyperparameters...", folder = foldxt,
             :cross_fold => 1:10,
             function(sdf, fold)
-                test, model = traintest(sdf, fold, y = :salience_label, weight = :weight)
-                test.nzero = sum(!iszero, coef(model, MinAICc()))
-
+                test, model = traintest(sdf, fold, y = :salience_label, weight = :weight,
+                    selector = m -> AllSeg(), λ = lambdas)
                 test
             end)
 
@@ -202,23 +202,56 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
         Dict(row.sid => row.fold for row in eachrow(__))
 
-    win_means = @_ resultdf |>
-        groupby(__, [:condition, :winlen, :winstart, :sid, :fold]) |>
+    param_means = @_ resultdf |>
+        groupby(__, [:λ, :condition, :sid, :fold, :winlen, :winstart]) |>
         @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-        groupby(__, [:winlen, :condition, :fold, :sid]) |>
+        groupby(__, [:λ, :condition, :fold, :sid]) |>
+        @combine(__, mean = maximum(:mean))
+
+    pl = param_means |> @vlplot(
+        x = {:λ, scale = {type = :log}},
+        color = :condition
+    ) + @vlplot(:line,
+        y = {:mean, aggregate = :mean, type = :quantitative},
+    ) + @vlplot(:errorband,
+        y = {:mean, aggregate = :ci, type = :quantitative},
+    );
+    pl |> save(joinpath(dir, "supplement", "lambdas.svg"))
+
+    best_λs = @_ param_means |>
+        filteringmap(__, desc = nothing, folder = foldl,
+            :fold => cross_folds(1:10),
+            function(sdf, fold)
+                se = combine(groupby(sdf, [:λ, :condition]), :mean => sem).mean_sem |> mean
+                curve = combine(groupby(sdf, :λ), :mean => mean => :mean)
+                max1se = findall(curve.mean .>= (maximum(curve.mean) - se))
+                selected = max1se[argmax(curve.λ[max1se])]
+                curve[selected:selected, :]
+            end
+        ) |>
+        Dict(row.fold => row.λ for row in eachrow(__))
+
+    win_means = @_ resultdf |>
+        groupby(__, [:condition, :winlen, :winstart, :sid, :fold, :λ]) |>
+        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
+        groupby(__, [:winlen, :condition, :fold, :sid, :λ]) |>
         @combine(__, mean = mean(:mean)) |>
-        groupby(__, [:winlen, :condition, :fold]) |>
+        groupby(__, [:winlen, :condition, :fold, :λ]) |>
         @combine(__, mean = maximum(:mean)) |>
         groupby(__, :winlen) |>
         filteringmap(__, desc = nothing,
             :fold => cross_folds(1:10),
-            (sdf, fold) -> DataFrame(mean = mean(sdf.mean)))
+            (sdf, fold) -> DataFrame(
+                λ = best_λs[fold],
+                mean = mean(sdf.mean[sdf.λ .== best_λs[fold]]
+            )))
 
     hyperparams = @_ win_means |>
         groupby(__, :fold) |>
         @combine(__,
             best = maximum(:mean),
             winlen = :winlen[argmax(:mean)],
+            λ = :λ
         ) |>
         Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
 
@@ -251,22 +284,19 @@ GermanTrack.@cache_results file resultdf_timeline begin
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
-    # hypothesis: what's going wrong is were selecting too many coefficients
-    # if so: we can cheat, and pick a specific lambda, based on old results
-    # that worked: we want to find some way of selecting lambda before hand
-    # or our own selector
     resultdf_timeline = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
-            :cross_fold => 1:10, folder = foldxt,
+            :cross_fold => 1:10, folder = foldl,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
-                selector = modeltype == "null" ? m -> NullSelect() : 0.1
+                selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
                 sdf = filter(x -> x.winlen ∈ lens, sdf)
-                test, model = traintest(sdf, fold, y = :salience_label, selector = selector)
+                test, model = traintest(sdf, fold, y = :salience_label,
+                    selector = selector, weight = :weight)
 
                 if selector isa Number
                     C = coef(model)
@@ -375,13 +405,13 @@ pl = @_ corrected_data |>
         color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
     ) +
     # data lines
-    @vlplot({:line, strokeCap = :round},
+    @vlplot({:line, strokeCap = :round, clip = true},
         strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [0.5,1.0]}}) +
+            scale = {domain = [0.4,1.0]}}) +
     # data errorbands
-    @vlplot(:errorband,
+    @vlplot({:errorband, clip = true},
         x = {:winstart, type = :quantitative},
         y = {:corrected_mean, aggregate = :ci, type = :quantitative, title = ytitle}) +
     # condition labels
