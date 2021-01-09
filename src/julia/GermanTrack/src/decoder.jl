@@ -35,11 +35,38 @@ function lassoflux(x, y, λ, opt;
     patience = 0,
     max_steps = 2,
     min_steps = 1,
+    inner = 1024,
     progress = Progress(steps))
-    model = Dense(size(x, 1), size(y, 1)) |> gpu
+
+    model = Chain(
+        Dense(size(x, 1), inner),
+        BatchNorm(inner, swish),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        Dense(inner, size(y, 1)),
+    ) |> gpu
     loss(x,y) = Flux.mse(model(x), y)
 
-    l1opt = L1Opt(opt, λ, applyto = [model.W])
+    # l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
 
     local best_model
     local cur_step
@@ -50,6 +77,7 @@ function lassoflux(x, y, λ, opt;
         () -> nothing
         best_model = model
     else
+        best_model = deepcopy(model)
         xᵥ, yᵥ = gpu.(validate)
         wait = 1
         function ()
@@ -73,7 +101,7 @@ function lassoflux(x, y, λ, opt;
 
     loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
     for outer cur_step in 1:max_steps
-        Flux.Optimise.train!(loss, Flux.params(model), loader, l1opt)
+        Flux.Optimise.train!(loss, Flux.params(model), loader, opt)
         next!(progress)
         evalcb()
         stopped && break
@@ -82,5 +110,5 @@ function lassoflux(x, y, λ, opt;
         next!(progress)
     end
 
-    best_model |> cpu, cur_step
+    best_model |> testmode! |> cpu, cur_step
 end
