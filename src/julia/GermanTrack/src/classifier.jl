@@ -57,7 +57,8 @@ struct NullSelect <: SegSelect
 end
 Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
 
-function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weight = nothing)
+function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = nothing,
+        λ = nothing, kwds...)
     train = filter(x -> x.fold != fold, df)
     test  = filter(x -> x.fold == fold, df)
 
@@ -66,13 +67,14 @@ function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weigh
 
     initmodel(selector) = ZScoring(LassoPath, [(0:29) .+ i for i in 1:30:150])
     initmodel(selector::Number)  = ZScoring(LassoModel, [(0:29) .+ i for i in 1:30:150])
-    initmodelkwds(selector) = (;)
+    initmodelkwds(selector) = isnothing(λ) ? (;) : (;λ = λ)
     initmodelkwds(selector::Number) = (;λ = [selector])
 
     model = fit(initmodel(selector),
         Array(train[:,X]), train[:, y] .== first(vals), Bernoulli(), standardize = false,
         maxncoef = size(view(train,:,X), 2),
         wts = isnothing(weight) ? ones(size(train, 1)) : float(train[:, weight]);
+        kwds...,
         initmodelkwds(selector)...
     )
 
@@ -80,10 +82,22 @@ function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weigh
     predictmodel(model, x, selector::Number) = predict(model, x)
     ŷ = predictmodel(model, Array(test[:,X]), selector)
 
-    test.predict = vals[ifelse.(ŷ .> 0.5, 1, 2)]
-    test.correct = test.predict .== test[:, y]
+    if !(selector isa Number) && selector(model) isa AllSeg
+        finaltest = mapreduce(append!!, enumerate(λ)) do (i, lmb)
+            test.predict = vals[ifelse.(ŷ[:, i] .> 0.5, 1, 2)]
+            test.correct = test.predict .== test[:, y]
+            test.λ = lmb
 
-    test, model
+            copy(test)
+        end
+
+        return finaltest, model
+    else
+        test.predict = vals[ifelse.(ŷ .> 0.5, 1, 2)]
+        test.correct = test.predict .== test[:, y]
+
+        return test, model
+    end
 end
 
 """
