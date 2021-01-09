@@ -92,8 +92,8 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     next!(progress)
 end
 # should we z-score? (definitely not)
-# x .-= mean(x, dims = 2)
-# x ./= std(x, dims = 2)
+x .-= mean(x, dims = 2)
+x ./= std(x, dims = 2)
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -172,20 +172,19 @@ GermanTrack.@cache_results file predictions coefs begin
         @where(__, :windowing .== "target") |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        # groupby(__, [:encoding]) |>
-        # transform!(__, :data => zscoremany => :data) |>
+        groupby(__, [:encoding]) |>
+        transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
     nλ = 24
     batchsize = 1024
-    progress = Progress(steps * length(groups) * nfolds) # * nλ)
+    progress = Progress(steps * length(groups) * nfolds * nλ)
     validate_fraction = 0.2
 
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
-        # :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
-        function(sdf, fold)
-            λ = 0.1 # DUMMY!
+        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
+        function(sdf, fold, λ)
             nontest = @_ filter(_.fold != fold, sdf)
             test  = @_ filter(_.fold == fold, sdf)
 
@@ -226,23 +225,52 @@ GermanTrack.@cache_results file predictions coefs begin
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
             test.steps = taken_steps
-            # C = model.W
+            C = model.W
 
-            # coefs = DataFrame(
-            #     coef = vec(model.W),
-            #     encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
-            #     lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
-            #     feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
+            coefs = DataFrame(
+                coef = vec(model.W),
+                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
+                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
+                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
 
-            test , Empty(DataFrame)
+            test, coefs
         end)
 
     ProgressMeter.finish!(progress)
     alert("Completed model training!")
+
+    # groups = @_ DataFrame(stimuli) |>
+    #     # @where(__, :windowing .== "target") |>
+    #     addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+    #     insertcols!(__, :predict => Ref(Float32[])) |>
+    #     # groupby(__, [:encoding]) |>
+    #     # transform!(__, :data => zscoremany => :data) |>
+    #     groupby(__, [:encoding, :is_target_source, :windowing])
+
+    # predictions, coefs = filteringmap(groups, folder = foldxt, streams = 2, desc = "lasso fit",
+    #     :fold => 1:nfolds,
+    #     function(sdf, fold)
+    #         train = filter(x -> x.fold != fold, sdf)
+    #         test  = filter(x -> x.fold == fold, sdf)
+
+    #         model = fit(LassoPath,
+    #             # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+    #             copy(@view(x[:, eegindices(train)])'),
+    #             reduce(vcat, train.data))
+    #         test.predict = map(eachrow(test)) do testrow
+    #             predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+    #         end
+
+    #         coefs = DataFrame(coef(model, MinAICc())',
+    #             map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+
+    #         test, coefs
+    #     end
+    # )
 end
 
-predictions.λ = 0.1
-best_λ = 0.1
+# predictions.λ = 0.1
+# best_λ = 0.1
 
 # Plotting
 # -----------------------------------------------------------------
