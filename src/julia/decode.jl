@@ -92,8 +92,8 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     next!(progress)
 end
 # should we z-score? (definitely not)
-x .-= mean(x, dims = 2)
-x ./= std(x, dims = 2)
+# x .-= mean(x, dims = 2)
+# x ./= std(x, dims = 2)
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -145,18 +145,18 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-function zscoremany(xs)
-    μ = mean(reduce(vcat, xs))
-    for x in xs
-        x .-= μ
-    end
-    σ = std(reduce(vcat, xs))
-    for x in xs
-        x ./= σ
-    end
+# function zscoremany(xs)
+#     μ = mean(reduce(vcat, xs))
+#     for x in xs
+#         x .-= μ
+#     end
+#     σ = std(reduce(vcat, xs))
+#     for x in xs
+#         x ./= σ
+#     end
 
-    xs
-end
+#     xs
+# end
 
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
@@ -172,8 +172,8 @@ GermanTrack.@cache_results file predictions coefs begin
         @where(__, :windowing .== "target") |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        groupby(__, [:encoding]) |>
-        transform!(__, :data => zscoremany => :data) |>
+        # groupby(__, [:encoding]) |>
+        # transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
     nλ = 24
