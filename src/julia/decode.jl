@@ -9,7 +9,7 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -37,7 +37,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 3
+max_lag = 2
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -254,16 +254,16 @@ GermanTrack.@cache_results file predictions coefs begin
             train = filter(x -> x.fold != fold, sdf)
             test  = filter(x -> x.fold == fold, sdf)
 
-            model = fit(LassoPath,
+            model = lm(
                 # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
                 copy(@view(x[:, eegindices(train)])'),
                 reduce(vcat, train.data))
             test.predict = map(eachrow(test)) do testrow
-                predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+                predict(model, @view(x[:, eegindices(testrow)])'#= , select = MinAICc() =#)
             end
 
-            coefs = DataFrame(coef(model, MinAICc())',
-                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+            coefs = DataFrame(coef(model#= , MinAICc() =#)',
+                map(x -> @sprintf("coef%02d", x), 1:size(x,1)))
 
             test, coefs
         end
@@ -283,7 +283,7 @@ end
 
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    @transform(__, score = cor.(:predict, :data)) |>
+    @transform(__, score = .-Flux.mse.(:predict, :data)) |>
     groupby(__, [:encoding, :λ]) |>
     @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
@@ -475,11 +475,11 @@ scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    # @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
+    @where(__, :target_window .∈ Ref(["Target", "Before non-target"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "Target" => "target", "Non-target" => "nontarget"),
+            "Target" => "target", "Before non-target" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
@@ -573,7 +573,7 @@ pl = @_ pldata |>
             x = {:target_switch_label, type = :nominal,
                 sort = ["Low", "High"],
                 type = :ordinal,
-                axis = {title = "Salience", labelAngle = -45,
+                axis = {title = "Switch Proximity", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
@@ -610,7 +610,7 @@ pl = @_ pldata |>
             x = {:target_time_label, type = :nominal,
                 sort = ["Low", "High"],
                 type = :ordinal,
-                axis = {title = "Salience", labelAngle = -45,
+                axis = {title = "Target Time", labelAngle = -45,
                     labelExpr = "slice(datum.label,'\\n')"}, },
             y = {:cordiff, title = ["Target - Non-target Score"],
                 scale = {zero = false}},
