@@ -284,11 +284,12 @@ GermanTrack.@cache_results file resultdf_timeline begin
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
+    # TODO: maybe we should train and test each window length separately
     resultdf_timeline = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
-            :cross_fold => 1:10, folder = foldl,
+            :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
                 selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
