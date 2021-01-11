@@ -288,7 +288,7 @@ GermanTrack.@cache_results file resultdf_timeline begin
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
-            :cross_fold => 1:10, folder = foldl,
+            :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
                 selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
