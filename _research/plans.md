@@ -4,12 +4,12 @@ remaining tasks:
 
 1. merve's individual data for build-up angles
 2. see if new cross-validation approach helps with fig 4/5
-2.5. fix lambda selection for salience (does doing it the normal way with new per time classifier work?)
-3. determining if decoding can be improved through some of the obvious steps I'm working on
+3. (mostly done) determining if decoding can be improved through some of the obvious steps I'm working on
   a. using the flux model seems to work quite well: now see if we can get anymore
-    - frequency bin channels: delta and theta alone did not help (do more?)
-    - trying out lags up to 3 seconds
-    -
+    - frequency bin channels: delta and theta alone did not help (do more?), all of them did not work
+    - trying out lags up to 3 seconds: helped (marginally)
+    - LOW PRIORITY: treat each source as a different feature channel for decoding
+  b. create some initial plots for the improved results (WIP)
 
 codecleanup:
 
