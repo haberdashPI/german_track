@@ -91,9 +91,10 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
-# should we z-score? (definitely not)
-# x .-= mean(x, dims = 2)
-# x ./= std(x, dims = 2)
+
+# should we z-score? (probably...; gets a more meaningful score)
+x .-= mean(x, dims = 2)
+x ./= std(x, dims = 2)
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -145,18 +146,18 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-# function zscoremany(xs)
-#     μ = mean(reduce(vcat, xs))
-#     for x in xs
-#         x .-= μ
-#     end
-#     σ = std(reduce(vcat, xs))
-#     for x in xs
-#         x ./= σ
-#     end
+function zscoremany(xs)
+    μ = mean(reduce(vcat, xs))
+    for x in xs
+        x .-= μ
+    end
+    σ = std(reduce(vcat, xs))
+    for x in xs
+        x ./= σ
+    end
 
-#     xs
-# end
+    xs
+end
 
 
 file = processed_datadir("analyses", "decode-predict-freqbin.json")
@@ -170,10 +171,10 @@ GermanTrack.@cache_results file predictions coefs begin
     groupings = [:is_target_source, :windowing]
     groups = @_ DataFrame(stimuli) |>
         @where(__, :windowing .== "target") |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        # groupby(__, [:encoding]) |>
-        # transform!(__, :data => zscoremany => :data) |>
+        groupby(__, [:encoding]) |>
+        transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
     nλ = 24
@@ -181,105 +182,110 @@ GermanTrack.@cache_results file predictions coefs begin
     progress = Progress(steps * length(groups) * nfolds * nλ)
     validate_fraction = 0.2
 
-    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
-        :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-5),log(0.3),length=nλ)),
-        function(sdf, fold, λ)
-            nontest = @_ filter(_.fold != fold, sdf)
-            test  = @_ filter(_.fold == fold, sdf)
-
-            sids = levels(nontest.sid)
-            nval = max(1, round(Int, validate_fraction * length(sids)))
-            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
-                Tuple(sdf[1, groupings]))
-            validate_ids = sample(rng, sids, nval, replace = false)
-
-            train    = @_ filter(_.sid ∉ validate_ids, nontest)
-            validate = @_ filter(_.sid ∈ validate_ids, nontest)
-
-            encodings = groupby(train, :encoding)
-            firstencoding = first(encodings).encoding |> first
-            xᵢ = x[:, eegindices(first(encodings))]
-            yᵢ = @_ [
-                row.data
-                for rows in encodings
-                for row in eachrow(rows)
-            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
-
-            xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
-            yⱼ = @_ [
-                row.data
-                for rows in groupby(validate, :encoding)
-                for row in eachrow(rows)
-            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
-
-            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
-                progress = progress, batch = batchsize, max_steps = steps,
-                min_steps = 20,
-                patience = 4,
-                validate = (xⱼ, yⱼ))
-
-            test.predict = map(eachrow(test)) do testrow
-                xⱼ = view(x, :, eegindices(testrow))
-                yⱼ = model(xⱼ)
-                view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
-            end
-            test.steps = taken_steps
-            C = model.W
-
-            coefs = DataFrame(
-                coef = vec(model.W),
-                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
-                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
-                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
-
-            test, coefs
-        end)
-
-    ProgressMeter.finish!(progress)
-    alert("Completed model training!")
-
-    # groups = @_ DataFrame(stimuli) |>
-    #     # @where(__, :windowing .== "target") |>
-    #     addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-    #     insertcols!(__, :predict => Ref(Float32[])) |>
-    #     # groupby(__, [:encoding]) |>
-    #     # transform!(__, :data => zscoremany => :data) |>
-    #     groupby(__, [:encoding, :is_target_source, :windowing])
-
-    # predictions, coefs = filteringmap(groups, folder = foldxt, streams = 2, desc = "lasso fit",
+    # predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
     #     :fold => 1:nfolds,
-    #     function(sdf, fold)
-    #         train = filter(x -> x.fold != fold, sdf)
-    #         test  = filter(x -> x.fold == fold, sdf)
+    #     :λ => exp.(range(log(1e-5),log(0.1),length=nλ)),
+    #     function(sdf, fold, λ)
+    #         nontest = @_ filter(_.fold != fold, sdf)
+    #         test  = @_ filter(_.fold == fold, sdf)
 
-    #         model = fit(LassoPath,
-    #             # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-    #             copy(@view(x[:, eegindices(train)])'),
-    #             reduce(vcat, train.data))
+    #         sids = levels(nontest.sid)
+    #         nval = max(1, round(Int, validate_fraction * length(sids)))
+    #         rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
+    #             Tuple(sdf[1, groupings]))
+    #         validate_ids = sample(rng, sids, nval, replace = false)
+
+    #         train    = @_ filter(_.sid ∉ validate_ids, nontest)
+    #         validate = @_ filter(_.sid ∈ validate_ids, nontest)
+
+    #         encodings = groupby(train, :encoding)
+    #         firstencoding = first(encodings).encoding |> first
+    #         xᵢ = x[:, eegindices(first(encodings))]
+    #         yᵢ = @_ [
+    #             row.data
+    #             for rows in encodings
+    #             for row in eachrow(rows)
+    #         ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+    #         xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
+    #         yⱼ = @_ [
+    #             row.data
+    #             for rows in groupby(validate, :encoding)
+    #             for row in eachrow(rows)
+    #         ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+    #         model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+    #             progress = progress, batch = batchsize, max_steps = steps,
+    #             min_steps = 10,
+    #             patience = 4,
+    #             validate = (xⱼ, yⱼ))
+
     #         test.predict = map(eachrow(test)) do testrow
-    #             predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+    #             xⱼ = view(x, :, eegindices(testrow))
+    #             yⱼ = model(xⱼ)
+    #             view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
     #         end
+    #         test.steps = taken_steps
+    #         C = model.W
 
-    #         coefs = DataFrame(coef(model, MinAICc())',
-    #             map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+    #         coefs = DataFrame(
+    #             coef = vec(model.W),
+    #             encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
+    #             lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
+    #             feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
 
     #         test, coefs
-    #     end
-    # )
+    #     end)
+
+    # ProgressMeter.finish!(progress)
+    # alert("Completed model training!")
+
+    groups = @_ DataFrame(stimuli) |>
+        # @where(__, :windowing .== "target") |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        insertcols!(__, :predict => Ref(Float32[])) |>
+        # groupby(__, [:encoding]) |>
+        # transform!(__, :data => zscoremany => :data) |>
+        groupby(__, [:encoding, :is_target_source, :windowing])
+
+    predictions, coefs = filteringmap(groups, folder = foldxt, streams = 2, desc = "lasso fit",
+        :fold => 1:nfolds,
+        function(sdf, fold)
+            train = filter(x -> x.fold != fold, sdf)
+            test  = filter(x -> x.fold == fold, sdf)
+
+            model = fit(LassoPath,
+                # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+                copy(@view(x[:, eegindices(train)])'),
+                reduce(vcat, train.data))
+            test.predict = map(eachrow(test)) do testrow
+                predict(model, @view(x[:, eegindices(testrow)])', select = MinAICc())
+            end
+
+            coefs = DataFrame(coef(model, MinAICc())',
+                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
+
+            test, coefs
+        end
+    )
 end
 
-# predictions.λ = 0.1
-# best_λ = 0.1
+predictions.λ = 0.1
+best_λ = 0.1
 
 # Plotting
 # -----------------------------------------------------------------
 
+function zscoresafe(x)
+    x = zscore(x)
+    any(isnan, x) ? zero(x) : x
+end
+
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
-    @transform(__, score = .-Flux.mse.(:predict, :data)) |>
+    @transform(__, score = cor.(:predict, :data)) |>
     groupby(__, [:encoding, :λ]) |>
-    @transform(__, score = zscore(:score)) |>
+    @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
     @combine(__, score = mean(:score)) |>
     transform!(__,
@@ -333,6 +339,32 @@ pl = pldata |>
         )
     );
 pl |> save(joinpath(dir, "decode_lambda.svg"))
+
+example = @_ predictions |>
+    @where(__, (:λ .== best_λ) .& (:sid .== 18) .&
+              (:windowing .== "target") .&
+              (:encoding .== "envelope") .&
+              (:condition .== "global")) |>
+    mapreduce(row -> DataFrame(
+        time = axes(row.predict,1) / sr,
+        predict = row.predict,
+        data = row.data;
+        row[Not([:predict, :data])]...
+    ), append!!, eachrow(__))
+
+pl = @_ example |>
+    @where(__, :trialnum .< 10) |>
+    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source]) |>
+    @vlplot(
+        facet = {
+            column = {field = :trialnum, type = :ordinal},
+            row = {field = :source, type = :nominal}
+        }
+    ) +
+    @vlplot() + (
+        @vlplot(:line, x = :time, y = :value, color = :variable)
+    );
+pl |> save(joinpath(dir, "example_predict.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
