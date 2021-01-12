@@ -9,11 +9,14 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
 using GermanTrack: colors
+
+# STEPS: maybe we should consider cross validating across stimulus type
+# rather than subject id?
 
 # Setup EEG Data
 # -----------------------------------------------------------------
@@ -239,37 +242,53 @@ GermanTrack.@cache_results file predictions coefs begin
     # ProgressMeter.finish!(progress)
     # alert("Completed model training!")
 
-    lambdas = 10 .^ range(-5, -1, length = 100)
-    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = "lasso fit",
-        :fold => 1:nfolds,
-        function(sdf, fold)
-            train = filter(x -> x.fold != fold, sdf)
-            test  = filter(x -> x.fold == fold, sdf)
+    function runfold(sdf, fold)
+        train = filter(x -> x.fold != fold, sdf)
+        test  = filter(x -> x.fold == fold, sdf)
 
-            model = fit(LassoPath,
-                λ = lambdas,
-                # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-                copy(@view(x[:, eegindices(train)])'),
-                reduce(vcat, train.data))
-            predicts = map(eachrow(test)) do testrow
-                predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
-            end
-
-            test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
-                mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
-                    merge(row, (
-                        predict = p[:, i],
-                        λ = λ
-                    ))
-                end
-            end
-
-            coefs = DataFrame(Array(coef(model#= , MinAICc() =#)'),
-                map(x -> @sprintf("coef%02d", x), 0:size(x,1)))
-            coefs.λ = lambdas
-
-            test_, coefs
+        model = fit(LassoPath,
+            λ = lambdas,
+            # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+            copy(@view(x[:, eegindices(train)])'),
+            reduce(vcat, train.data))
+        predicts = map(eachrow(test)) do testrow
+            predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
         end
+
+        test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
+            mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
+                merge(row, (
+                    predict = p[:, i],
+                    λ = λ
+                ))
+            end
+        end
+
+        ii, jj, c = findnz(coef(model))
+        feature_ixs = get.(Ref(vec(CartesianIndices((nfeatures,nlags)))), ii.-1,
+            Ref((missing, missing)))
+        componenti = getindex.(feature_ixs, 1)
+        lagi = getindex.(feature_ixs, 2)
+
+        getindexm(x, i::Missing) = missing
+        getindexm(x, i) = getindex(x, i)
+        coefsdf = DataFrame(
+            value     = c,
+            λ         = lambdas[jj],
+            component = componenti,
+            lag       = getindexm.(Ref(lags), lagi)
+        )
+
+        test_, coefsdf
+    end
+
+    lambdas = 10 .^ range(-5, -1, length = 100)
+    predictions, coefs = filteringmap(groups,
+        folder  =  foldxt,
+        streams =  2,
+        desc    =  "Lasso fitting...",
+        :fold   => 1:nfolds,
+        runfold
     )
 end
 
@@ -282,6 +301,7 @@ function zscoresafe(x)
 end
 
 score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
+# score(x,y) = cor
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
@@ -358,7 +378,7 @@ example = @_ predictions |>
 
 pl = @_ example |>
     @where(__, :trialnum .< 10) |>
-    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source]) |>
+    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source, :is_target_source]) |>
     @vlplot(
         facet = {
             column = {field = :trialnum, type = :ordinal},
@@ -366,7 +386,8 @@ pl = @_ example |>
         }
     ) +
     @vlplot() + (
-        @vlplot(:line, x = :time, y = :value, color = :variable)
+        @vlplot(:line, x = :time, y = :value, color = :variable,
+            strokeDash = :is_target_source)
     );
 pl |> save(joinpath(dir, "example_predict.svg"))
 
