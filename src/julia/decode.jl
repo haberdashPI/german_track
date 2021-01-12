@@ -172,7 +172,7 @@ GermanTrack.@cache_results file predictions coefs begin
     groupings = [:is_target_source, :windowing]
     groups = @_ DataFrame(stimuli) |>
         # @where(__, :windowing .== "target") |>
-        addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+        addfold!(__, nfolds, :sound_index, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
         groupby(__, [:encoding]) |>
         transform!(__, :data => zscoremany => :data) |>
@@ -301,7 +301,7 @@ function zscoresafe(x)
 end
 
 score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
-# score(x,y) = cor
+# score(x,y) = cor(x,y)
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
