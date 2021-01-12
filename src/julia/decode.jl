@@ -251,8 +251,8 @@ meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
     # @where(__, :encoding .== "envelope") |>
-    groupby(__, [:encoding, :λ]) |>
-    @transform(__, score = zscoresafe(:score)) |>
+    # groupby(__, [:encoding, :λ]) |>
+    # @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :target_training, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
     @combine(__, score = mean(:score)) |>
     transform!(__,
@@ -288,7 +288,7 @@ best_λ = @_ best_λs |>
     @where(__, (:target_window .== "Attn/Atten Decoder") .& (:condition .== "global")) |>
     __.λ |> first
 
-# best_λ = lambdas[argmin(abs.(lambdas .- 0.001))]
+best_λ = lambdas[argmin(abs.(lambdas .- 0.005))]
 
 pl = pldata |>
     @vlplot(
