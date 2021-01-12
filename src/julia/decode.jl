@@ -292,6 +292,11 @@ GermanTrack.@cache_results file predictions coefs begin
     )
 end
 
+# NOTE: we're scoring models that are trained
+# for target or non-target
+# it would also be good to know how well the target decoer
+# corelates with the non-target sources
+
 # Plotting
 # -----------------------------------------------------------------
 
