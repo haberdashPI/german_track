@@ -191,9 +191,6 @@ GermanTrack.@cache_results file resultdf begin
 
     windims = @_ getindex.(values(hyperparams), [:winstart :winlen]) |>
         mapslices(Tuple, __, dims = 2) |>
-        unique |>
-        map(tuple.(_[1], GermanTrack.spread(_[2], 0.5, n_winlens)), __) |>
-        reduce(vcat, __) |>
         unique
 
     classdf = @_ events |> filter(ishit(_) == "hit", __) |>
@@ -216,7 +213,7 @@ GermanTrack.@cache_results file resultdf begin
             :modeltype => ["full", "null"],
             function(sdf, fold, modeltype)
                 selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
-                lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+                lens = hyperparams[fold][:winlen] #|> GermanTrack.spread(0.5, n_winlens)
                 start = hyperparams[fold][:winstart]
 
                 sdf = filter(x -> x.winlen ∈ lens && x.winstart == start, sdf)

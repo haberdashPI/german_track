@@ -27,10 +27,10 @@
 </pattern>
 </defs>
   <defs>
-    <clipPath id="clip1">
+    <clipPath id="clip1_neural">
       <rect x="0" y="0" width="160" height="150"/>
     </clipPath>
-    <clipPath id="clip2">
+    <clipPath id="clip2_neural">
       <rect x="0" y="0" width="160" height="150"/>
     </clipPath>
   </defs>
@@ -110,25 +110,25 @@
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1)" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label="condition_time: global_early; : global; Switch Proximity (Near/Far), Classification: 0.745640894457" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,76.3077316628961h14v223.69226833710388h-14Z" fill="url(#stripe1a)"/>
-            <path aria-label="condition_time: object_early; : object; Switch Proximity (Near/Far), Classification: 0.803750834725" role="graphics-symbol" aria-roledescription="bar" d="M66,58.874749582551h14v241.125250417449h-14Z" fill="url(#stripe2a)"/>
-            <path aria-label="condition_time: spatial_early; : spatial; Switch Proximity (Near/Far), Classification: 0.756072019193" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,73.1783942422476h14v226.8216057577524h-14Z" fill="url(#stripe3a)"/>
+          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1_neural)" role="graphics-object" aria-roledescription="rect mark container">
+            <path aria-label="condition_time: global_early; : global; Switch Proximity (Near/Far), Classification: 0.651496473004" role="graphics-symbol" aria-roledescription="bar" d="M12.666666666666671,104.55105809869801h14v195.448941901302h-14Z" fill="url(#stripe1a)"/>
+            <path aria-label="condition_time: object_early; : object; Switch Proximity (Near/Far), Classification: 0.778188919287" role="graphics-symbol" aria-roledescription="bar" d="M66,66.54332421380728h14v233.4566757861927h-14Z" fill="url(#stripe2a)"/>
+            <path aria-label="condition_time: spatial_early; : spatial; Switch Proximity (Near/Far), Classification: 0.571763847164" role="graphics-symbol" aria-roledescription="bar" d="M119.33333333333334,128.4708458508912h14v171.5291541491088h-14Z" fill="url(#stripe3a)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="condition: global; : 0.661888373047; upper: 0.812395085225" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.66666666666667,101.4334880858517)" x2="0" y2="-45.152013653277606" stroke="black"/>
-            <line aria-label="condition: object; : 0.733483782062; upper: 0.859268661502" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,79.95486538136099)" x2="0" y2="-37.735463831955286" stroke="black"/>
-            <line aria-label="condition: spatial; : 0.675862304042; upper: 0.82019932226" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,97.24130878727041)" x2="0" y2="-43.30110546521973" stroke="black"/>
+            <line aria-label="condition: global; : 0.556266489073; upper: 0.73799674799" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(19.66666666666667,133.12005327812042)" x2="0" y2="-54.51907767497971" stroke="black"/>
+            <line aria-label="condition: object; : 0.700876388222; upper: 0.840941378994" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(73,89.73708353327399)" x2="0" y2="-42.01949723140019" stroke="black"/>
+            <line aria-label="condition: spatial; : 0.470235372689; upper: 0.666701864741" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(126.33333333333334,158.929388193399)" x2="0" y2="-58.9399476156717" stroke="black"/>
           </g>
-          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2)" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label="condition_time: global_late; condition: global; Switch Proximity (Near/Far), Classification: 0.916781327521" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,24.965601743683795h14v275.0343982563162h-14Z" fill="url(#stripe1b)"/>
-            <path aria-label="condition_time: object_late; condition: object; Switch Proximity (Near/Far), Classification: 0.913988420864" role="graphics-symbol" aria-roledescription="bar" d="M80,25.803473740864813h14v274.19652625913517h-14Z" fill="url(#stripe2b)"/>
-            <path aria-label="condition_time: spatial_late; condition: spatial; Switch Proximity (Near/Far), Classification: 0.651192462306" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,104.64226130813611h14v195.3577386918639h-14Z" fill="url(#stripe3b)"/>
+          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2_neural)" role="graphics-object" aria-roledescription="rect mark container">
+            <path aria-label="condition_time: global_late; condition: global; Switch Proximity (Near/Far), Classification: 0.90299988578" role="graphics-symbol" aria-roledescription="bar" d="M26.66666666666667,29.10003426613229h14v270.8999657338677h-14Z" fill="url(#stripe1b)"/>
+            <path aria-label="condition_time: object_late; condition: object; Switch Proximity (Near/Far), Classification: 0.900347945827" role="graphics-symbol" aria-roledescription="bar" d="M80,29.895616251775813h14v270.10438374822417h-14Z" fill="url(#stripe2b)"/>
+            <path aria-label="condition_time: spatial_late; condition: spatial; Switch Proximity (Near/Far), Classification: 0.645013679486" role="graphics-symbol" aria-roledescription="bar" d="M133.33333333333334,106.4958961543059h14v193.5041038456941h-14Z" fill="url(#stripe3b)"/>
           </g>
           <g class="mark-rule role-mark layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label="condition: global; : 0.88279397215; upper: 0.943029952232" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(33.66666666666667,35.1618083551197)" x2="0" y2="-18.070794024773406" stroke="black"/>
-            <line aria-label="condition: object; : 0.879059898801; upper: 0.941558889777" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(87,36.28203035959802)" x2="0" y2="-18.74969729280842" stroke="black"/>
-            <line aria-label="condition: spatial; : 0.552474117064; upper: 0.741296409591" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(140.33333333333334,134.25776488079762)" x2="0" y2="-56.646687758244326" stroke="black"/>
+            <line aria-label="condition: global; : 0.862690157917; upper: 0.934408401115" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(33.66666666666667,41.19295262480851)" x2="0" y2="-21.515472959196604" stroke="black"/>
+            <line aria-label="condition: object; : 0.859029541406; upper: 0.931526396869" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(87,42.2911375783395)" x2="0" y2="-21.7490566390263" stroke="black"/>
+            <line aria-label="condition: spatial; : 0.540358099541; upper: 0.738130860904" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(140.33333333333334,137.89257013783438)" x2="0" y2="-59.33182840895249" stroke="black"/>
           </g>
           <g class="mark-text role-mark layer_4_marks" role="graphics-object" aria-roledescription="text mark container">
             <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,150) rotate(-90) translate(0,-18)" font-family="sans-serif" font-size="9px" fill="black">Early</text>
@@ -137,10 +137,10 @@
             <text aria-label=": global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(26.66666666666667,150) rotate(-90) translate(0,23)" font-family="sans-serif" font-size="9px" fill="black">Late</text>
           </g>
           <g class="mark-rule role-mark layer_6_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-            <line transform="translate(160,105.81454592656708)" x2="-160" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+            <line transform="translate(160,107.36514566969464)" x2="-160" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
           </g>
           <g class="mark-text role-mark layer_6_layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
-            <text text-anchor="start" transform="translate(145.33333333333334,102.81454592656708)" font-family="sans-serif" font-size="9px" fill="black">
+            <text text-anchor="start" transform="translate(145.33333333333334,104.36514566969464)" font-family="sans-serif" font-size="9px" fill="black">
               <tspan>Null Model</tspan>
               <tspan x="0" dy="11">Accuracy</tspan>
             </text>
