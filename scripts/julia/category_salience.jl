@@ -195,7 +195,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
             function(sdf, fold)
                 test, model = traintest(sdf, fold, y = :salience_label, weight = :weight,
                     selector = m -> AllSeg(), λ = lambdas)
-                test
+                test[:, Not(r"channel")]
             end)
 
     fold_map = @_ resultdf |>
@@ -296,26 +296,11 @@ GermanTrack.@cache_results file resultdf_timeline begin
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
                 sdf = filter(x -> x.winlen ∈ lens, sdf)
-                test, model = traintest(sdf, fold, y = :salience_label,
-                    selector = selector, weight = :weight)
-
-                if selector isa Number
-                    C = coef(model)
-                    test.nzero = sum(!iszero, C)
-                    nzbins = mean(abs, reshape(C[2:end, :], :, 5), dims = 1)
-                    for (i, nzb) in enumerate(nzbins)
-                        test[:,Symbol("nz", i)] = nzb
-                    end
-                else
-                    C = coef(model, selector(model))
-                    test.nzero = sum(!iszero, C)
-                    nzbins = mean(abs, reshape(C[2:end, :], :, 5), dims = 1)
-                    for (i, nzb) in enumerate(nzbins)
-                        test[:,Symbol("nz", i)] = nzb
-                    end
+                combine(groupby(sdf, :winlen)) do sdf_len
+                    test, model = traintest(sdf_len, fold, y = :salience_label,
+                        selector = selector, weight = :weight)
+                    test[:, Not(r"channel")]
                 end
-
-                test
             end)
 end
 
@@ -509,8 +494,8 @@ pl = @_ corrected_data |>
     groupby(__, [:condition]) |>
     @combine(__,
         corrected_mean = mean(:corrected_mean),
-        lower = lowerboot(:corrected_mean, alpha = 0.318),
-        upper = upperboot(:corrected_mean, alpha = 0.318),
+        lower = lowerboot(:corrected_mean, alpha = 0.05),
+        upper = upperboot(:corrected_mean, alpha = 0.05),
     ) |>
     @vlplot(
         width = 111, height = 140, autosize = "fit",
