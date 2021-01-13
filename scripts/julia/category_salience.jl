@@ -284,7 +284,6 @@ GermanTrack.@cache_results file resultdf_timeline begin
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
-    # TODO: maybe we should train and test each window length separately
     resultdf_timeline = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition, :winstart]) |>
@@ -357,25 +356,31 @@ timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
     @combine(__, best = :winstart[argmax(:score)])
 labelfn(fold) = "fold $fold"
 
-plcoef = @_ statdata |>
-    filter(_.hittype == "hit", __) |>
-    stack(__, nz, [:winstart, :sid, :modeltype, :condition]) |>
-    filter(_.variable != "nzero", __) |>
-    @vlplot(
-        facet = {column = {field = :condition}}
-    ) +
-    @vlplot(:line,
-        x = :winstart,
-        y = {:value, aggregate = :mean, type = :quantitative},
-        color = {:variable, type = :ordinal,
-            scale = {range = "#".*hex.(ColorSchemes.lajolla[range(0.2,0.9, length = 5)])}}
-    );
-plcoef |> save(joinpath(dir, "supplement", "fig3d_coefes.svg"))
+# plcoef = @_ statdata |>
+#     filter(_.hittype == "hit", __) |>
+#     stack(__, nz, [:winstart, :sid, :modeltype, :condition]) |>
+#     filter(_.variable != "nzero", __) |>
+#     @vlplot(
+#         facet = {column = {field = :condition}}
+#     ) +
+#     @vlplot(:line,
+#         x = :winstart,
+#         y = {:value, aggregate = :mean, type = :quantitative},
+#         color = {:variable, type = :ordinal,
+#             scale = {range = "#".*hex.(ColorSchemes.lajolla[range(0.2,0.9, length = 5)])}}
+#     );
+# plcoef |> save(joinpath(dir, "supplement", "fig3d_coefes.svg"))
 
 ytitle = ["High/Low Salience", "Classification"]
 target_len_y = 0.8
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
+    groupby(__, [:condition, :condition_label, :winstart]) |>
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
+    ) |>
     @vlplot(
         width = 242, height = 170, autosize = "fit",
         config = {
@@ -399,7 +404,9 @@ pl = @_ corrected_data |>
     # data errorbands
     @vlplot({:errorband, clip = true},
         x = {:winstart, type = :quantitative},
-        y = {:corrected_mean, aggregate = :ci, type = :quantitative, title = ytitle}) +
+        y = {:lower, type = :quantitative, title = ytitle},
+        y2 = :upper
+    ) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
         transform =
