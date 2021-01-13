@@ -128,6 +128,8 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                     start in [0; 2.0 .^ range(-2, 2, length = 10)]],
             compute_powerbin_withbreak)
 
+    # using foldl because foldxt leads to a trap (???)
+    # PROBLEM: it's too much memory
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
         groupby(__, [:winstart, :winlen, :condition, :switch_break]) |>
@@ -136,7 +138,9 @@ GermanTrack.@cache_results file fold_map hyperparams begin
             function(sdf, fold)
                 test, model = traintest(sdf, fold, y = :target_switch_label, weight = :weight,
                     selector = m -> AllSeg(), λ = lambdas)
-                test
+
+                # remove the channels: they are redundant, and bloat memory
+                test[:, Not(r"channel")]
             end) |>
         deletecols!(__, :windows)
 
@@ -145,7 +149,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         Dict(row.sid => row.fold for row in eachrow(__))
 
     hyperparamsdf =
-        filteringmap(resultdf, desc = nothing, folder = foldl,
+        filteringmap(resultdf, desc = nothing, folder = foldxt,
             :fold => cross_folds(1:10),
             function (sdf, fold)
                 λ = @_ sdf.λ |> unique |> __[argmin(abs.(__ .- 0.13))]
@@ -185,6 +189,13 @@ file = joinpath(cache_dir("features"), "nearfar-target.json")
 GermanTrack.@cache_results file resultdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
+    windims = @_ getindex.(values(hyperparams), [:winstart :winlen]) |>
+        mapslices(Tuple, __, dims = 2) |>
+        unique |>
+        map(tuple.(_[1], GermanTrack.spread(_[2], 0.5, n_winlens)), __) |>
+        reduce(vcat, __) |>
+        unique
+
     classdf = @_ events |> filter(ishit(_) == "hit", __) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         transform!(__, [:fold, :switch_distance] =>
@@ -192,30 +203,27 @@ GermanTrack.@cache_results file resultdf begin
                 (d >= switchbreaks[hyperparams[f].switch_break] ? "near" : "far")) => :target_switch_label) |>
         groupby(__, [:sid, :fold, :condition, :target_time_label, :target_switch_label]) |>
         filteringmap(__, desc = "Computing features...",
-            :window => [windowtarget(windowfn = event -> (
-                start = start,
-                len = hyperparams[event.fold[1]].winlen |>
-                    GermanTrack.spread(0.5,n_winlens,indices=k)
-            )) for start in [0; 2.0 .^ range(-2, 2, length = 10)] for k in 1:n_winlens],
+            :window => [windowtarget(start = start, len = len) for (start,len) in windims],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-        groupby(__, [:winstart, :winlen, :fold, :condition]) |>
-        filteringmap(__, folder = foldxt, desc = "Classifying target proximity...",
+        groupby(__, [:condition, :target_time_label]) |>
+        filteringmap(__, folder = foldl, desc = "Classifying target proximity...",
             :cross_fold => 1:10,
-            :modelytype => ["full", "null"],
+            :modeltype => ["full", "null"],
             function(sdf, fold, modeltype)
                 selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
                 lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+                start = hyperparams[fold][:winstart]
 
-                sdf = filter(x -> x.winlen ∈ lens, sdf)
+                sdf = filter(x -> x.winlen ∈ lens && x.winstart == start, sdf)
                 test, model = traintest(sdf, fold, y = :target_switch_label,
                     selector = selector, weight = :weight)
 
-                test
+                test[:, Not(r"channel")]
             end)
 
     # GermanTrack.@store_cache file resultdf
@@ -228,28 +236,27 @@ end
 #     filter(_.switch_break == 3, __) |>
 #     filter(_.λ ∈ [1.0, λ_map[_.fold]], __) |>
 classmeans = @_ resultdf |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :target_time_label]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
 
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :target_time_label]) |>
     @combine(__, mean = maximum(:mean)) |>
-    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
-    @combine(__, mean = mean(:mean)) |>
-    transform!(__, :λ => ByRow(log) => :logλ)
+    groupby(__, [:sid, :modeltype, :fold, :condition, :target_time_label]) |>
+    @combine(__, mean = mean(:mean))
 
 statdata = @_ classmeans_sum |>
     groupby(__, [:condition, :sid, :target_time_label]) |>
     @transform(__,
-        logitnullmean = logit(shrink(only(:mean[:λ .== 1.0]))),
+        logitnullmean = logit(shrink(only(:mean[:modeltype .== "null"]))),
         logitmean     = logit.(shrink.(:mean)),
     ) |>
     @transform(__,
         nullodds = exp.(:logitnullmean),
         odds     = exp.(:logitmean)
     ) |>
-    @where(__, :λ .!= 1.0)
+    @where(__, :modeltype .== "full")
 
 pl = statdata |> @vlplot(:point,
     column = :condition,
