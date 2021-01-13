@@ -280,10 +280,10 @@ plotdata = @_ CSV.read(processed_datadir("analyses", "eeg_nearfar_coefs.csv"), D
 nullmean = logistic(mean(statdata.logitnullmean))
 ytitle = ["Switch Proximity (Near/Far)", "Classification"]
 barwidth = 14
-yrange = [0.9, 1]
+yrange = [0.5, 1]
 pl = plotdata |>
     @vlplot(
-        height = 175, width = 242, autosize = "fit",
+        height = 150, width = 160,
         config = {
             legend = {disable = true},
             bar = {discreteBandSize = barwidth},
