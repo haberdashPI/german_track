@@ -4,7 +4,8 @@
 n_winlens = 12
 n_folds = 10
 
-using DrWatson; @quickactivate("german_track")
+using DrWatson
+@quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, Statistics, DataStructures, Dates, Underscores,
     Printf, ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers,
     Infiltrator, Peaks, Distributions, DSP, Random, CategoricalArrays, StatsModels,
@@ -107,42 +108,45 @@ pl |> save(joinpath(dir, "fig5a.svg"))
 # -----------------------------------------------------------------
 
 file = joinpath(processed_datadir("analyses"), "salience-hyperparams.json")
-GermanTrack.@load_cache file fold_map λ_map winlen_map
+GermanTrack.@load_cache file fold_map hyperparams
 
 file = joinpath(processed_datadir("analyses"), "salience-earlylate.json")
 GermanTrack.@cache_results file resultdf_earlylate begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    classdf = compute_freqbins(
-        subjects = subjects,
-        groupdf  = @_( events |>
-            filter(ishit(_) == "hit", __) |>
-            transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-            groupby(__, [:sid, :fold, :condition, :salience_label, :target_time_label])
-        ),
-        windows = [
-            windowtarget(windowfn = event -> (
-                start = start,
-                len = winlen_map[event.fold[1]] |>
-                    GermanTrack.spread(0.5,n_winlens,indices=k)))
-            for start in range(0, 2.5, length = 12) for k in 1:n_winlens
-        ]
-    )
+    lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
+        GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
+    # TODO: use fold selected starting window
+    classdf = @_ events |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+        filter(_.hittype ∈ ["hit"], __) |>
+        groupby(__, [:sid, :fold, :condition, :salience_label, :hittype, :target_time_label]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [ windowtarget(start = 2.8, len = len) for len in lens ],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
 
     resultdf_earlylate = @_ classdf |>
-        mapgroups(__, [:winlen, :fold, :condition, :target_time_label],
+        groupby(__, [:condition, :target_time_label]) |>
+        filteringmap(__,
+            folder = foldl,
             desc = "Classifying early/late salience...",
-            function (sdf)
-                result = testclassifier(LassoPathClassifiers([1.0, λ_map[sdf.fold[1]]]),
-                    data         = sdf,
-                    y            = :salience_label,
-                    X            = r"channel",
-                    crossval     = :sid,
-                    n_folds      = n_folds,
-                    seed         = stablehash(:salience_classification, 2019_11_18),
-                    maxncoef     = size(sdf[:, r"channel"], 2),
-                    irls_maxiter = 600,
-                    weight       = :weight)
+            :cross_fold => 1:10,
+            :modeltype => ["full", "null"],
+            function (sdf, fold, modeltype)
+                selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
+                lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+                # TODO: will need to also filter out proper winstarts where
+
+                sdflens = filter(x -> x.winlen ∈ lens, sdf)
+                result = combine(groupby(sdflens, :winlen)) do sdf_len
+                    test, model = traintest(sdf_len, fold, y = :salience_label,
+                        selector = selector, weight = :weight)
+                    test[:, Not(r"channel")]
+                end
+
+                result
             end)
 end
 
@@ -150,7 +154,7 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf_earlylate |>
-    groupby(__, [:winstart, :winlen, :sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :target_time_label]) |>
     @combine(__,
         mean   = GermanTrack.wmean(:correct, :weight),
         weight = sum(:weight),
@@ -158,7 +162,7 @@ classmeans = @_ resultdf_earlylate |>
     )
 
 classmeans_sum = @_ classmeans |>
-    groupby(__, [:sid, :λ, :fold, :condition, :target_time_label]) |>
+    groupby(__, [:sid, :modeltype, :fold, :condition, :target_time_label]) |>
     @combine(__,
         mean = mean(:mean),
         weight = sum(:weight),
@@ -166,12 +170,12 @@ classmeans_sum = @_ classmeans |>
     )
 
 nullmeans = @_ classmeans_sum |>
-    filter(_.λ == 1.0, __) |>
+    filter(_.modeltype == "null", __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, [:λ, :weight, :count])
+    deletecols!(__, [:modeltype, :weight, :count])
 
 statdata = @_ classmeans_sum |>
-    filter(_.λ != 1.0, __) |>
+    filter(_.modeltype == "full", __) |>
     innerjoin(__, nullmeans, on = [:condition, :sid, :fold, :target_time_label]) |>
     @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01))) |>
     @transform(__, logitmean = logit.(shrinktowards.(:mean, 0.5, by = 0.01)))

@@ -572,6 +572,10 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
                     result[!, k] .= v
                 end
             end
+
+            return result
+        else
+            return Empty(DataFrame)
         end
     end
 
@@ -585,9 +589,9 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
         if !isempty(filtered)
             result = fn(filtered, getindex.(filterings, 2)...)
             if streams > 1
-                @_ map(addcolumns!(_, key, filterings), result)
+                result = @_ map(addcolumns!(_, key, filterings), result)
             else
-                addcolumns!(result, key, filterings)
+                result = addcolumns!(result, key, filterings)
             end
         else
             if streams > 1
