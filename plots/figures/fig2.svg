@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='ASCII' standalone='yes'?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="174.0mm" viewBox="0 0 174.0mm 125.0mm" height="125.0mm">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="174.0mm" viewBox="0 0 174.0mm 67.0mm" height="67.0mm">
   <g transform="translate(0, 0) scale(1.333) ">
     <g><rect width="100%" height="100%" fill="white"/>
     </g>
@@ -228,14 +228,14 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.709078134831" role="graphics-symbol" aria-roledescription="bar" d="M17.5,75.63968494392466h25v54.360315056075336h-25Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.835440898694" role="graphics-symbol" aria-roledescription="bar" d="M77.5,42.785366339604984h25v87.21463366039501h-25Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.68451654548" role="graphics-symbol" aria-roledescription="bar" d="M137.5,82.02569817519401h25v47.97430182480599h-25Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Condition Classification: 0.824318295086" role="graphics-symbol" aria-roledescription="bar" d="M17.5,45.67724327772528h25v84.32275672227472h-25Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Condition Classification: 0.880749001111" role="graphics-symbol" aria-roledescription="bar" d="M77.5,31.005259711023506h25v98.99474028897649h-25Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Condition Classification: 0.754680688063" role="graphics-symbol" aria-roledescription="bar" d="M137.5,63.78302110350014h25v66.21697889649985h-25Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.788671725421; Condition Classification: 0.617245230881" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(30,99.51623997092102)" x2="0" y2="-44.57088858034801" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.888833598458; Condition Classification: 0.768381569101" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(90,60.22079203362847)" x2="0" y2="-31.317527632745918" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.768687234702; Condition Classification: 0.591480609562" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(150,106.21504151394397)" x2="0" y2="-46.073722536354765" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.88001141519; Condition Classification: 0.757574266382" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(30,63.03069074056535)" x2="0" y2="-31.833658689890218" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.919538375525; Condition Classification: 0.826982485189" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(90,44.98455385088235)" x2="0" y2="-24.06453148740159" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.824840255604; Condition Classification: 0.674958221987" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(150,84.51086228350142)" x2="0" y2="-38.96932874052194" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_1_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
             <line transform="translate(180,130.53529926317748)" x2="-180" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
