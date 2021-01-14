@@ -1,6 +1,12 @@
 # Setup
 # =================================================================
 
+# WAIT: hold on, does decoding Br make sense? it has to learn two different sources... it
+# seems like the best chance it has is to decode each source type as a separate model... I'm
+# not sure how to think about it yet
+# is this true with the model before? yes, we're teaching it
+# a different output for the same input
+
 # STEPS:
 # veriyf measure that I'm using
 # reproduce with flux model
