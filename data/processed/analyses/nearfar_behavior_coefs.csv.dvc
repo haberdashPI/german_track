@@ -1,0 +1,4 @@
+outs:
+- md5: 5b790ecd49836dab334daf1463fa89c4
+  size: 529
+  path: nearfar_behavior_coefs.csv

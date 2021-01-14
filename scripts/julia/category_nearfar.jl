@@ -34,7 +34,7 @@ ascondition = Dict(
 file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
     transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
-    @where(__, 0.0 .< :direction_timing .< 1.1)
+    @where(__, 0.0 .< :direction_timing .< 1.0)
 
 function find_switch_distance(time, switches)
     if time <= 0
@@ -88,18 +88,84 @@ hit_by_switch = @_ rawdata |>
         time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
     @where(__, .!ismissing.(:time_bin_mean))
 
+CSV.write(joinpath(processed_datadir("analyses", "hit_by_switch.csv")), hit_by_switch)
+
+run(`Rscript $(joinpath(scriptsdir("R"), "nearfar_behavior.R"))`)
+
+file = joinpath(processed_datadir("analyses"), "nearfar_behavior_coefs.csv")
+pldata = CSV.read(file, DataFrame)
+barwidth = 14
+ytitle = ["Slope of Hit Rate by Time"]
+pl = @_ pldata |>
+    rename(__, :r_med => :mean, :r_05 => :lower, :r_95 => :upper) |>
+    @transform(__,
+        condition_time = :comparison,
+        condition = string.(getindex.(split.(:comparison, "_"),1)),
+        target_time_label = string.(getindex.(split.(:comparison, "_"),2)),
+    ) |>
+    @vlplot(
+        height = 175, width = 242, autosize = "fit",
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth},
+            axis = {titlePadding = 13}
+        },
+    ) +
+    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {:condition_time, title = nothing,
+            scale = {range = urlcol.(keys(inpatterns))}},
+        x = {:condition, axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
+        y = {:mean, title = ytitle}
+    ) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {value = "black"},
+        x = {:condition, title = nothing},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        color = {:condition_time, title = nothing},
+        x = {:condition, title = nothing},
+        y = {:mean, title = ytitle}
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        x = {:condition, title = nothing},
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.target_time_label == 'early' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = {:condition, axis = {title = ""}},
+        y = {datum = 0},
+        text = {value = "Early"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.target_time_label == 'late' && datum.condition == 'global'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = {:condition, axis = {title = ""}},
+        y = {datum = 0},
+        text = {value = "Late"},
+    );
+plotfile = joinpath(dir, "fig4b.svg")
+pl |> save(plotfile)
+addpatterns(plotfile, inpatterns, size = 10)
+
 function fitangle(x,y)
     if length(x) > 1
-        model = glm(@formula(y ~ x), DataFrame(x = x, y = y),
-            Bernoulli(), LogitLink())
-        atan(coef(model)[2])
+        model = glm(@formula(y ~ x), DataFrame(x = x, y = y), Bernoulli(), LogitLink())
+        coef(model)[2]
     else
         missing
     end
 end
 target_angles = @_ hit_by_switch |>
     @where(__, :perf .∈ Ref(Set(["hit", "miss"]))) |>
-    groupby(__, [:sid, :exp_id, :condition, :target_time_label]) |>
+    groupby(__, [:condition, :target_time_label]) |>
     @combine(__, angle = fitangle(:direction_timing, :sbj_answer))
 
 pl = @_ target_angles |>
@@ -252,8 +318,6 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                     start in [0; 2.0 .^ range(-2, 2, length = 10)]],
             compute_powerbin_withbreak)
 
-    # using foldl because foldxt leads to a trap (???)
-    # PROBLEM: it's too much memory
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
         groupby(__, [:winstart, :winlen, :condition, :switch_break]) |>
@@ -272,6 +336,9 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
         Dict(row.sid => row.fold for row in eachrow(__))
 
+    # ISSUE: were selecting using the test data, but we should select
+    # using the train data (given how close folds are to one another,
+    # I don't think this is going to change much, but we should *DO* it)
     hyperparamsdf =
         filteringmap(resultdf, desc = nothing, folder = foldxt,
             :fold => cross_folds(1:10),
@@ -483,26 +550,33 @@ background = pyimport("svgutils").transform.fromstring("""
 
 for (suffix, file) in [
     ("behavior_timeline", "fig4a.svg"),
+    ("behavior_slopes", "fig4b.svg"),
     ("neural", "fig4c.svg")]
     filereplace(joinpath(dir, file), r"\bclip([0-9]+)\b" =>
         SubstitutionString("clip\\1_$suffix"))
 end
 
-fig = svg.Figure("89mm", "160mm", # "240mm",
+fig = svg.Figure("89mm", "240mm", # "240mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig4a.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(115,50),
+            scale(0.1).move(115,30),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,50)
+            scale(0.1).move(220,30)
     ).move(0, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "fig4b.svg")).move(0,15),
+        svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
+        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
+            scale(0.1).move(220,10)
+    ).move(0, 250),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig4c.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(220,30)
-    ).move(0, 250),
+            scale(0.1).move(220,25)
+    ).move(0, 450),
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig4.svg"))
 

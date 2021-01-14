@@ -24,3 +24,5 @@
 /baseline-switch-by-hit_classifier=svm_radial.csv
 /decode-predict.json
 /decode-predict-freqbin.json
+/nearfar_behavior_coefs.csv
+/hit_by_switch.csv
