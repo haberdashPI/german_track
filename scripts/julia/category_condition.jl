@@ -426,7 +426,7 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("174mm", "125mm",
+fig = svg.Figure("174mm", "67mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2a.svg")).move(0,15),
