@@ -34,7 +34,7 @@ ascondition = Dict(
 file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
     transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
-    @where(__, 0.0 .< :direction_timing .< 0.9)
+    @where(__, 0.0 .< :direction_timing .< 1.1)
 
 function find_switch_distance(time, switches)
     if time <= 0
@@ -91,7 +91,7 @@ hit_by_switch = @_ rawdata |>
 function fitangle(x,y)
     if length(x) > 1
         model = glm(@formula(y ~ x), DataFrame(x = x, y = y),
-            Bernoulli(), ProbitLink())
+            Bernoulli(), LogitLink())
         atan(coef(model)[2])
     else
         missing
