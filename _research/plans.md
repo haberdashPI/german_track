@@ -3,6 +3,8 @@
 remaining tasks:
 
 1. merve's individual data for build-up angles
+- still questions: data not quite the same
+- intercept for logistic regression has a confusing value (why is it negative??)
 
 codecleanup:
 
