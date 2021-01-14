@@ -27,10 +27,10 @@
 </pattern>
 </defs>
   <defs>
-    <clipPath id="clip1">
+    <clipPath id="clip1_behavior_slopes">
       <rect x="0" y="0" width="192" height="158"/>
     </clipPath>
-    <clipPath id="clip2">
+    <clipPath id="clip2_behavior_slopes">
       <rect x="0" y="0" width="192" height="158"/>
     </clipPath>
   </defs>
@@ -104,7 +104,7 @@
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
-          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1)" role="graphics-object" aria-roledescription="rect mark container">
+          <g class="mark-rect role-mark layer_0_marks" clip-path="url(#clip1_behavior_slopes)" role="graphics-object" aria-roledescription="rect mark container">
             <path aria-label="condition_time: global_early; : global; Slope of Hit Rate by Time: 0.781986620352" role="graphics-symbol" aria-roledescription="bar" d="M18,25.402351532440623h14v47.52072539063629h-14Z" fill="url(#stripe1a)"/>
             <path aria-label="condition_time: object_early; : object; Slope of Hit Rate by Time: 0.500848946414" role="graphics-symbol" aria-roledescription="bar" d="M82,42.48687171789796h14v30.436205205178943h-14Z" fill="url(#stripe2a)"/>
             <path aria-label="condition_time: spatial_early; : spatial; Slope of Hit Rate by Time: 0.931194966857" role="graphics-symbol" aria-roledescription="bar" d="M146,16.335075091022787h14v56.58800183205412h-14Z" fill="url(#stripe3a)"/>
@@ -114,7 +114,7 @@
             <line aria-label="condition: object; : -0.151146607299; upper: 0.902321661221" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(89,82.10813998199774)" x2="0" y2="-64.01845631772287" stroke="black"/>
             <line aria-label="condition: spatial; : 0.610794450952; upper: 1.10633217942" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(153,35.80556798061024)" x2="0" y2="-30.113446576006943" stroke="black"/>
           </g>
-          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2)" role="graphics-object" aria-roledescription="rect mark container">
+          <g class="mark-rect role-mark layer_2_marks" clip-path="url(#clip2_behavior_slopes)" role="graphics-object" aria-roledescription="rect mark container">
             <path aria-label="condition_time: global_late; condition: global; Slope of Hit Rate by Time: -0.298141732172" role="graphics-symbol" aria-roledescription="bar" d="M32,72.9230769230769h14v18.117843724279453h-14Z" fill="url(#stripe1b)"/>
             <path aria-label="condition_time: object_late; condition: object; Slope of Hit Rate by Time: -0.497841882015" role="graphics-symbol" aria-roledescription="bar" d="M96,72.9230769230769h14v30.253468214779346h-14Z" fill="url(#stripe2b)"/>
             <path aria-label="condition_time: spatial_late; condition: spatial; Slope of Hit Rate by Time: -1.07473877378" role="graphics-symbol" aria-roledescription="bar" d="M160,72.9230769230769h14v65.31104856066713h-14Z" fill="url(#stripe3b)"/>

@@ -81,57 +81,21 @@ bad_sids = @_ meansraw |>
 
 
 nbins = 30
-binwidth = 0.7
+binwidth = 1.5
 qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins+1))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
 getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
     combine(first, __) |> zip(__.sid, __.exp_id)
 allids = getids(rawdata)
+
 hit_by_switch = @_ rawdata |>
     @where(__, :sid .∉ bad_sids) |>
     @transform(__, time_bin = cut(:direction_timing, nbins, allowempty = true), target_bin = cut(:dev_time, 2)) |>
     @transform(__, target_time_label =
-        ifelse.(ismissing.(:switch_distance) .| (:switch_index .<= 1), "early", "late")) |>
+        recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
     @transform(__,
         time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
-    @where(__, .!ismissing.(:time_bin_mean)) |>
-    groupby(__, [:condition, :target_time_label, :switch_index]) |>
-    filteringmap(__, folder = foldl, desc = nothing, :time =>
-        map(binmean -> (binmean => (row ->
-            abs(row.time_bin_mean - binmean) < binwidth/2)), bin_means),
-        function(sdf, time)
-            result = @combine(groupby(sdf, [:sid, :exp_id]),
-                mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
-                weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
-            )
-            allowmissing!(result, :mean)
-            for (sid, exp_id) in setdiff(allids, getids(sdf))
-                result = push!!(result, (
-                    sid = sid, exp_id = exp_id, mean = missing, weight = 0))
-            end
-            result
-        end
-    ) |>
-    sort!(__, :time) |>
-    @transform(__, mean = extend(ifelse.(iszero.(:weight), missing, :mean))) |>
-    groupby(__, [:condition, :time, :target_time_label, :sid, :exp_id, :switch_index]) |>
-    @combine(__,
-        mean = all(ismissing, :mean) ? missing : mean(skipmissing(:mean)),
-        weight = sum(:weight)
-    ) |>
-    groupby(__, [:condition, :time, :target_time_label]) |>
-    combine(function(sdf)
-        filt = filter(x -> !ismissing(x.mean), sdf)
-        μ, lower, upper = if isempty(filt)
-            missing, missing, missing
-        else
-            μ, lower, upper = confint(bootstrap(df -> mean(df.mean), filt,
-                BasicSampling(10_000)), BasicConfInt(0.95)
-            )[1]
-        end
-        DataFrame(mean = μ, lower = lower, upper = upper, weight = sum(filt.weight .> 0))
-    end, __) |>
-    @transform(__, time = Array(:time))
+    @where(__, .!ismissing.(:time_bin_mean))
 
 CSV.write(joinpath(processed_datadir("analyses", "hit_by_switch.csv")), hit_by_switch)
 
@@ -239,21 +203,67 @@ switchdata = append!(cols = :union,
         insertcols!(__, :target_time_label => "late"))) |>
     x -> rename!(x, :sbj_id => :sid)
 
+switchdata.switch_index = 0
+switchdata.switch_distance = 0.0
+allowmissing!(switchdata, [:switch_index, :switch_distance])
+switchdata[:,[:switch_distance, :switch_index]] =
+    mapreduce(find_switch_distance, hcat,
+        switchdata[!,:dev_time], eachrow(switchdata[!,r"switches"]), switchdata[!, :dev_direction])'
+
 nbins = 30
-binwidth = 1.5
+binwidth = 0.8
 qs = quantile(skipmissing(switchdata.direction_timing), range(0, 1, length = nbins+1))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
 getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
     combine(first, __) |> zip(__.sid, __.exp_id)
 allids = getids(switchdata)
 target_timeline = @_ switchdata |>
-    # @where(__, :sid .∉ bad_sids) |>
+    @where(__, :sid .∉ bad_sids) |>
     @transform(__, time_bin = cut(:direction_timing, nbins+1, allowempty = true)) |>
     @transform(__,
         time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
-    @where(__, .!ismissing.(:time_bin_mean))
+    @where(__, .!ismissing.(:time_bin_mean)) |>
+    @transform(__, target_time_label =
+        ifelse.(ismissing.(:switch_distance) .| (:switch_index .<= 1), "early", "late")) |>
+    groupby(__, [:condition, :target_time_label, :switch_index]) |>
+    filteringmap(__, folder = foldl, desc = nothing, :time =>
+        map(binmean -> (binmean => (row ->
+            abs(row.time_bin_mean - binmean) < binwidth/2)), bin_means),
+        function(sdf, time)
+            result = @combine(groupby(sdf, [:sid, :exp_id]),
+                mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+                weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
+            )
+            allowmissing!(result, :mean)
+            for (sid, exp_id) in setdiff(allids, getids(sdf))
+                result = push!!(result, (
+                    sid = sid, exp_id = exp_id, mean = missing, weight = 0))
+            end
+            result
+        end
+    ) |>
+    sort!(__, :time) |>
+    @transform(__, mean = extend(ifelse.(iszero.(:weight), missing, :mean))) |>
+    groupby(__, [:condition, :time, :target_time_label, :sid, :exp_id, :switch_index]) |>
+    @combine(__,
+        mean = all(ismissing, :mean) ? missing : mean(skipmissing(:mean)),
+        weight = sum(:weight)
+    ) |>
+    groupby(__, [:condition, :time, :target_time_label]) |>
+    combine(function(sdf)
+        filt = filter(x -> !ismissing(x.mean), sdf)
+        μ, lower, upper = if isempty(filt)
+            missing, missing, missing
+        else
+            μ, lower, upper = confint(bootstrap(df -> mean(df.mean), filt,
+                BasicSampling(10_000)), BasicConfInt(0.95)
+            )[1]
+        end
+        DataFrame(mean = μ, lower = lower, upper = upper, weight = sum(filt.weight .> 0))
+    end, __) |>
+    @transform(__, time = Array(:time))
 
-
+binwidth = 1.1
 # NOTE: using my analysis from raw data
 target_timeline = @_ hit_by_switch |>
     groupby(__, [:condition, :target_time_label]) |>
@@ -294,7 +304,7 @@ target_timeline = @_ hit_by_switch |>
     end, __) |>
     @transform(__, time = Array(:time))
 
-last_time = maximum(rawdata.direction_timing)
+last_time = maximum(target_timeline.time)
 
 pl = @_ target_timeline |>
     @vlplot(
@@ -328,15 +338,15 @@ pl = @_ target_timeline |>
             # opacity = :weight,
             color = :condition,
         ) +
-        # @vlplot({:text, align = :left, dx = 5},
-        #     transform = [
-        #         {filter = "datum.time > 1 && datum.time < 1.1 && datum.target_time == 'late'"},
-        #     ],
-        #     x = {datum = 1.2},
-        #     y = {:mean, aggregate = :mean, type = :quantitative},
-        #     color = :condition,
-        #     text = {:condition, }
-        # ) +
+        @vlplot({:text, align = :left, dx = 5},
+            transform = [
+                {filter = "datum.time > $(last_time-0.5) && datum.time < $(last_time) && datum.target_time_label == 'early'"},
+            ],
+            x = {datum = last_time},
+            y = {:mean, aggregate = :mean, type = :quantitative},
+            color = :condition,
+            text = :condition
+        ) +
         (
             @vlplot(data = {values = [{}]}) +
             # @vlplot({:rule, strokeDash = [4 4], size = 1},
@@ -630,7 +640,7 @@ for (suffix, file) in [
         SubstitutionString("clip\\1_$suffix"))
 end
 
-fig = svg.Figure("89mm", "240mm", # "240mm",
+fig = svg.Figure("89mm", "225mm", # "240mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig4a.svg")).move(0,15),
@@ -645,12 +655,12 @@ fig = svg.Figure("89mm", "240mm", # "240mm",
         svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
             scale(0.1).move(220,10)
-    ).move(0, 250),
+    ).move(0, 220),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig4c.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(220,25)
-    ).move(0, 450),
+    ).move(0, 430),
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig4.svg"))
 
