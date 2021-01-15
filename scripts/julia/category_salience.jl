@@ -223,7 +223,8 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, [:fold]) |>
         combine(
             function(sdf)
-                se = 2mean(sdf.mean_sem)
+                se = 2maximum(sdf.mean_sem)
+                @show se
                 curve = combine(groupby(sdf, :λ), :mean => mean => :mean)
                 max1se = findall(curve.mean .>= (maximum(curve.mean) - se))
                 selected = max1se[argmax(curve.λ[max1se])]
