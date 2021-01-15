@@ -278,7 +278,7 @@ GermanTrack.@cache_results file resultdf_timeline begin
             :window => [
                 windowtarget(start = start, len = len)
                 for len in lens
-                for start in range(0, 3, length = 32)
+                for start in range(0, 4, length = 48)
             ],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
@@ -403,35 +403,25 @@ pl = @_ corrected_data |>
     ) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform =
-            [{filter = "(datum.condition != 'object' && "*
-                "datum.winstart > 2.95 && datum.winstart <= 3.0) ||"*
-                "(datum.condition == 'object' && "*
-                "datum.winstart > 2.85 && datum.winstart <= 2.95)"}],
-        x = {datum = 3.0},
+        transform = [{filter = "(datum.winstart > 3.95 && datum.winstart <= 4.0)"}],
+        x = {datum = 4.0},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
     # "Time Slice" annotation
     (
-        @transform(timeslice, fold_label = labelfn.(:train_fold)) |>
+        @transform(timeslice, fold_label = labelfn.(:fold)) |>
         @vlplot() +
         @vlplot({:rule, strokeDash = [2 2]},
-            x = :best,
+            x = {:best, aggregate = :mean},
             color = {value = "black"}
-        ) +
-        @vlplot({:text, align = "center", baseline = "bottom", angle = 90},
-            x = :best,
-            y = {datum = 0.95},
-            text = :fold_label,
-            color = {value = "#"*hex(neutral)}
         )
     ) +
     (
         @vlplot(data = {values = [{}]}) +
         @vlplot({:text, align = "right", dx = -2},
-            x = {datum = minimum(timeslice.best)},
-            y = {datum = 0.95},
+            x = {datum = mean(timeslice.best)},
+            y = {datum = 1.0},
             text = {value = "Panel C slice →"},
             color = {value = "black"}
         )
@@ -442,7 +432,7 @@ pl = @_ corrected_data |>
         # white rectangle to give text a background
         @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 5,
             align = "left"},
-            x = {datum = 3}, y = {datum = nullmean},
+            x = {datum = 4}, y = {datum = nullmean},
             text = {value = ["Null Model", "Accuracy"]},
             color = {value = "black"}
         )

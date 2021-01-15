@@ -82,14 +82,14 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": global; condition: global; High/Low Salience, Classification: 0.925426634112" role="graphics-symbol" aria-roledescription="bar" d="M1.8333333333333321,15.212966641204366h16v86.78703335879564h-16Z" fill="url(#stripe1)"/>
-            <path aria-label=": object; condition: object; High/Low Salience, Classification: 0.650543311967" role="graphics-symbol" aria-roledescription="bar" d="M21.5,71.28916435873373h16v30.71083564126627h-16Z" fill="url(#stripe2)"/>
-            <path aria-label=": spatial; condition: spatial; High/Low Salience, Classification: 0.680432187969" role="graphics-symbol" aria-roledescription="bar" d="M41.166666666666664,65.1918336543259h16v36.808166345674096h-16Z" fill="url(#stipre3)"/>
+            <path aria-label=": global; condition: global; High/Low Salience, Classification: 0.941031009586" role="graphics-symbol" aria-roledescription="bar" d="M1.8333333333333321,12.029674044540581h16v89.97032595545942h-16Z" fill="url(#stripe1)"/>
+            <path aria-label=": object; condition: object; High/Low Salience, Classification: 0.709144502117" role="graphics-symbol" aria-roledescription="bar" d="M21.5,59.3345215681135h16v42.6654784318865h-16Z" fill="url(#stripe2)"/>
+            <path aria-label=": spatial; condition: spatial; High/Low Salience, Classification: 0.685960435172" role="graphics-symbol" aria-roledescription="bar" d="M41.166666666666664,64.06407122499009h16v37.93592877500991h-16Z" fill="url(#stipre3)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": global; upper_lower: 0.98509692659; upper: 0.98509692659; lower: 0.88021673349" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(9.833333333333332,24.435786367939492)" x2="0" y2="-21.395559392234112" stroke="black"/>
-            <line aria-label=": object; upper_lower: 0.728343740309; upper: 0.728343740309; lower: 0.575655361476" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(29.5,86.56630625888123)" x2="0" y2="-31.148429281920684" stroke="black"/>
-            <line aria-label=": spatial; upper_lower: 0.760976327432; upper: 0.760976327432; lower: 0.603949109959" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(49.166666666666664,80.79438156831765)" x2="0" y2="-32.03355236450434" stroke="black"/>
+            <line aria-label=": global; upper_lower: 0.998989386865; upper: 0.998989386865; lower: 0.901430570769" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(9.833333333333332,20.108163563033152)" x2="0" y2="-19.90199848358944" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.792546340385; upper: 0.792546340385; lower: 0.628655914338" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(29.5,75.75419347510821)" x2="0" y2="-33.4336469135596" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.772206221746; upper: 0.772206221746; lower: 0.604668623618" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(49.166666666666664,80.64760078191958)" x2="0" y2="-34.177670018085294" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_2_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
             <line transform="translate(59,84.10034599644963)" x2="-59" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
