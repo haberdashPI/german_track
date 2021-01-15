@@ -203,39 +203,38 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         Dict(row.sid => row.fold for row in eachrow(__))
 
     param_means = @_ resultdf |>
-        groupby(__, [:λ, :condition, :sid, :fold, :winlen, :winstart]) |>
-        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-        groupby(__, [:λ, :condition, :fold, :sid]) |>
-        @combine(__, mean = maximum(:mean))
+        groupby(__, [:λ, :condition, :fold, :winlen, :winstart]) |>
+        @combine(__, mean = mean(:train_accuracy), mean_sem = mean(:train_se)) |>
+        groupby(__, [:λ, :condition, :fold]) |>
+        @combine(__, mean = maximum(:mean), mean_sem = mean(:mean_sem))
 
-    pl = param_means |> @vlplot(
+    pl = @_ param_means |>
+        @transform(__, lower = :mean .- :mean_sem, upper = :mean .+ :mean_sem) |>
+        groupby(__, [:λ, :condition]) |>
+        @combine(__, mean = maximum(:mean), mean_sem = mean(:mean_sem)) |>
+    @vlplot(
         x = {:λ, scale = {type = :log}},
         color = :condition
-    ) + @vlplot(:line,
-        y = {:mean, aggregate = :mean, type = :quantitative},
-    ) + @vlplot(:errorband,
-        y = {:mean, aggregate = :ci, type = :quantitative},
-    );
+    ) + @vlplot(:line, y = :mean) +
+    @vlplot(:errorband, y = {:upper, type = :quantitative}, y2 = :lower);
     pl |> save(joinpath(dir, "supplement", "lambdas.svg"))
 
     best_λs = @_ param_means |>
-        filteringmap(__, desc = nothing, folder = foldl,
-            :fold => cross_folds(1:10),
-            function(sdf, fold)
-                se = combine(groupby(sdf, [:λ, :condition]), :mean => sem).mean_sem |> mean
+        groupby(__, [:fold]) |>
+        combine(
+            function(sdf)
+                se = 2mean(sdf.mean_sem)
                 curve = combine(groupby(sdf, :λ), :mean => mean => :mean)
                 max1se = findall(curve.mean .>= (maximum(curve.mean) - se))
                 selected = max1se[argmax(curve.λ[max1se])]
                 curve[selected:selected, :]
-            end
-        ) |>
+            end,
+        __) |>
         Dict(row.fold => row.λ for row in eachrow(__))
 
     win_means = @_ resultdf |>
-        groupby(__, [:condition, :winlen, :winstart, :sid, :fold, :λ]) |>
-        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-        groupby(__, [:winlen, :condition, :fold, :sid, :λ]) |>
-        @combine(__, mean = mean(:mean)) |>
+        groupby(__, [:winlen, :winstart, :condition, :fold, :λ]) |>
+        @combine(__, mean = mean(:train_accuracy)) |>
         groupby(__, [:winlen, :condition, :fold, :λ]) |>
         @combine(__, mean = maximum(:mean)) |>
         groupby(__, :winlen) |>
@@ -343,17 +342,12 @@ corrected_data = @_ statdata |>
         condition_label = uppercasefirst.(:condition))
 
 maxdiff(xs) = maximum(abs(xs[i] - xs[j]) for i in 1:(length(xs)-1) for j in (i+1):length(xs))
-timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
-    @combine(__, mean = mean(:corrected_mean)) |>
-    groupby(__, [:winstart, :condition]) |>
-    filteringmap(__,
-        :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold),
-            unique(corrected_data.fold)),
-        (sdf, fold) -> DataFrame(foldmean = mean(sdf.mean))) |>
-    groupby(__, [:winstart, :train_fold]) |>
-    @combine(__, score = maximum(:foldmean)) |>
-    groupby(__, :train_fold) |>
-    @combine(__, best = :winstart[argmax(:score)])
+timeslice = @_ resultdf_timeline |>
+    @where(__, (:hittype .== "hit") .& (:modeltype .== "full")) |>
+    groupby(__, [:winstart, :fold]) |>
+    @combine(__, mean = mean(:train_accuracy)) |>
+    groupby(__, :fold) |>
+    @combine(__, best = :winstart[argmax(:mean)])
 labelfn(fold) = "fold $fold"
 
 # plcoef = @_ statdata |>
@@ -489,7 +483,7 @@ pl |> save(joinpath(dir, "fig3d.svg"))
 # Salience class accuracy at fixed time point (fig 3c)
 # =================================================================
 
-timeslice_map = Dict(row.train_fold => row.best for row in eachrow(timeslice))
+timeslice_map = Dict(row.fold => row.best for row in eachrow(timeslice))
 
 barwidth = 16
 

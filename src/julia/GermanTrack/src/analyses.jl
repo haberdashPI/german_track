@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot, pick_λ_winlen,
     addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features, cross_folds,
-    pick_λ, shrink, pick_winlen
+    pick_λ, shrink, pick_winlen, wsem
 
 """
     lowerboot(x; alpha = 0.05, n = 10_000)
@@ -33,6 +33,15 @@ Compute a weighted mean, treating missing values as `default`.
 """
 wmean(x, w, default = one(eltype(x))/2) =
     iszero(sum(w)) ? default : mean(coalesce.(x, default), weights(w))
+
+# CHEAP ESTIMATE: not perfect; there are better formulas, but this simple approach fine for
+# my purposes
+function wsem(x, w, default = one(eltype(x))/2)
+    keep = .!(ismissing.(x) .| iszero.(w))
+    x = x[keep]; w = w[keep]
+
+    sum(w.*(x .- GermanTrack.wmean(x, w, default)).^2) / (sum(w) - 1) / sqrt(length(x))
+end
 
 """
     shrinktowards([x],mu;by=0.01)
