@@ -395,7 +395,7 @@ pl = @_ corrected_data |>
         strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [0.4,1.0]}}) +
+            scale = {domain = [0.5,1.0]}}) +
     # data errorbands
     @vlplot({:errorband, clip = true},
         x = {:winstart, type = :quantitative},
