@@ -53,7 +53,7 @@ ytitle = "Hit Rate"
 yrange = [0, 1]
 pl = means |>
     @vlplot(
-        height = 140, width = 242, autosize = "fit",
+        height = 160, width = 242, autosize = "fit",
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {titlePadding = 13, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -138,7 +138,7 @@ diffmeans = @_ indmeans |>
 barwidth = 18
 pl = @_ diffmeans |>
     @vlplot(
-        width = 111, height = 140, autosize = "fit",
+        width = 60, height = 140,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -203,39 +203,39 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         Dict(row.sid => row.fold for row in eachrow(__))
 
     param_means = @_ resultdf |>
-        groupby(__, [:λ, :condition, :sid, :fold, :winlen, :winstart]) |>
-        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-        groupby(__, [:λ, :condition, :fold, :sid]) |>
-        @combine(__, mean = maximum(:mean))
+        groupby(__, [:λ, :condition, :fold, :winlen, :winstart]) |>
+        @combine(__, mean = mean(:train_accuracy), mean_sem = mean(:train_se)) |>
+        groupby(__, [:λ, :condition, :fold]) |>
+        @combine(__, mean = maximum(:mean), mean_sem = mean(:mean_sem))
 
-    pl = param_means |> @vlplot(
+    pl = @_ param_means |>
+        @transform(__, lower = :mean .- :mean_sem, upper = :mean .+ :mean_sem) |>
+        groupby(__, [:λ, :condition]) |>
+        @combine(__, mean = maximum(:mean), mean_sem = mean(:mean_sem)) |>
+    @vlplot(
         x = {:λ, scale = {type = :log}},
         color = :condition
-    ) + @vlplot(:line,
-        y = {:mean, aggregate = :mean, type = :quantitative},
-    ) + @vlplot(:errorband,
-        y = {:mean, aggregate = :ci, type = :quantitative},
-    );
+    ) + @vlplot(:line, y = :mean) +
+    @vlplot(:errorband, y = {:upper, type = :quantitative}, y2 = :lower);
     pl |> save(joinpath(dir, "supplement", "lambdas.svg"))
 
     best_λs = @_ param_means |>
-        filteringmap(__, desc = nothing, folder = foldl,
-            :fold => cross_folds(1:10),
-            function(sdf, fold)
-                se = combine(groupby(sdf, [:λ, :condition]), :mean => sem).mean_sem |> mean
+        groupby(__, [:fold]) |>
+        combine(
+            function(sdf)
+                se = 2maximum(sdf.mean_sem)
+                @show se
                 curve = combine(groupby(sdf, :λ), :mean => mean => :mean)
                 max1se = findall(curve.mean .>= (maximum(curve.mean) - se))
                 selected = max1se[argmax(curve.λ[max1se])]
                 curve[selected:selected, :]
-            end
-        ) |>
+            end,
+        __) |>
         Dict(row.fold => row.λ for row in eachrow(__))
 
     win_means = @_ resultdf |>
-        groupby(__, [:condition, :winlen, :winstart, :sid, :fold, :λ]) |>
-        @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-        groupby(__, [:winlen, :condition, :fold, :sid, :λ]) |>
-        @combine(__, mean = mean(:mean)) |>
+        groupby(__, [:winlen, :winstart, :condition, :fold, :λ]) |>
+        @combine(__, mean = mean(:train_accuracy)) |>
         groupby(__, [:winlen, :condition, :fold, :λ]) |>
         @combine(__, mean = maximum(:mean)) |>
         groupby(__, :winlen) |>
@@ -279,7 +279,7 @@ GermanTrack.@cache_results file resultdf_timeline begin
             :window => [
                 windowtarget(start = start, len = len)
                 for len in lens
-                for start in range(0, 3, length = 32)
+                for start in range(0, 4, length = 48)
             ],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
@@ -343,17 +343,12 @@ corrected_data = @_ statdata |>
         condition_label = uppercasefirst.(:condition))
 
 maxdiff(xs) = maximum(abs(xs[i] - xs[j]) for i in 1:(length(xs)-1) for j in (i+1):length(xs))
-timeslice = @_ corrected_data |> groupby(__, [:winstart, :condition, :fold]) |>
-    @combine(__, mean = mean(:corrected_mean)) |>
-    groupby(__, [:winstart, :condition]) |>
-    filteringmap(__,
-        :train_fold => map(fold -> fold => (sdf -> sdf.fold != fold),
-            unique(corrected_data.fold)),
-        (sdf, fold) -> DataFrame(foldmean = mean(sdf.mean))) |>
-    groupby(__, [:winstart, :train_fold]) |>
-    @combine(__, score = maximum(:foldmean)) |>
-    groupby(__, :train_fold) |>
-    @combine(__, best = :winstart[argmax(:score)])
+timeslice = @_ resultdf_timeline |>
+    @where(__, (:hittype .== "hit") .& (:modeltype .== "full")) |>
+    groupby(__, [:winstart, :fold]) |>
+    @combine(__, mean = mean(:train_accuracy)) |>
+    groupby(__, :fold) |>
+    @combine(__, best = :winstart[argmax(:mean)])
 labelfn(fold) = "fold $fold"
 
 # plcoef = @_ statdata |>
@@ -382,7 +377,7 @@ pl = @_ corrected_data |>
         upper = upperboot(:corrected_mean, alpha = 0.318),
     ) |>
     @vlplot(
-        width = 242, height = 170, autosize = "fit",
+        width = 130, height = 140,
         config = {
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -400,7 +395,7 @@ pl = @_ corrected_data |>
         strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
-            scale = {domain = [0.4,1.0]}}) +
+            scale = {domain = [0.5,1.0]}}) +
     # data errorbands
     @vlplot({:errorband, clip = true},
         x = {:winstart, type = :quantitative},
@@ -409,36 +404,26 @@ pl = @_ corrected_data |>
     ) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform =
-            [{filter = "(datum.condition != 'object' && "*
-                "datum.winstart > 2.95 && datum.winstart <= 3.0) ||"*
-                "(datum.condition == 'object' && "*
-                "datum.winstart > 2.85 && datum.winstart <= 2.95)"}],
-        x = {datum = 3.0},
+        transform = [{filter = "(datum.winstart > 3.95 && datum.winstart <= 4.0)"}],
+        x = {datum = 4.0},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
     # "Time Slice" annotation
     (
-        @transform(timeslice, fold_label = labelfn.(:train_fold)) |>
+        @transform(timeslice, fold_label = labelfn.(:fold)) |>
         @vlplot() +
         @vlplot({:rule, strokeDash = [2 2]},
-            x = :best,
+            x = {:best, aggregate = :mean},
             color = {value = "black"}
-        ) +
-        @vlplot({:text, align = "center", baseline = "bottom", angle = 90},
-            x = :best,
-            y = {datum = 0.95},
-            text = :fold_label,
-            color = {value = "#"*hex(neutral)}
         )
     ) +
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot({:text, align = "right", dx = -2},
-            x = {datum = minimum(timeslice.best)},
-            y = {datum = 0.95},
-            text = {value = "Panel C slice →"},
+        @vlplot({:text, align = "right", dx = -1},
+            x = {datum = mean(timeslice.best)},
+            y = {datum = 0.98},
+            text = {value = "Panel B slice →"},
             color = {value = "black"}
         )
     ) +
@@ -448,7 +433,7 @@ pl = @_ corrected_data |>
         # white rectangle to give text a background
         @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 5,
             align = "left"},
-            x = {datum = 3}, y = {datum = nullmean},
+            x = {datum = 4}, y = {datum = nullmean},
             text = {value = ["Null Model", "Accuracy"]},
             color = {value = "black"}
         )
@@ -489,7 +474,7 @@ pl |> save(joinpath(dir, "fig3d.svg"))
 # Salience class accuracy at fixed time point (fig 3c)
 # =================================================================
 
-timeslice_map = Dict(row.train_fold => row.best for row in eachrow(timeslice))
+timeslice_map = Dict(row.fold => row.best for row in eachrow(timeslice))
 
 barwidth = 16
 
@@ -505,7 +490,7 @@ pl = @_ corrected_data |>
         upper = upperboot(:corrected_mean, alpha = 0.05),
     ) |>
     @vlplot(
-        width = 111, height = 140, autosize = "fit",
+        width = 60, height = 140,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -557,30 +542,24 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "190mm",
+fig = svg.Figure("178mm", "75mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "fig3a.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,15)
+            scale(0.1).move(90,15)
     ).move(0, 0),
     svg.Panel(
-        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
-        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(90,15)
-    ).move(0, 175),
-    svg.Panel(
         svg.SVG(joinpath(dir, "fig3c.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(90,15)
-    ).move(125, 175),
+    ).move(130, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3d.svg")).move(0,15),
-        svg.Text("D", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(215,15)
-    ).move(0, 340)
+            scale(0.1).move(190,0)
+    ).move(260, 0)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig3.svg"))

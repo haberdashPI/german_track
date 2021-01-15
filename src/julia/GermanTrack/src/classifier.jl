@@ -80,21 +80,34 @@ function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = n
 
     predictmodel(model, x, selector) = predict(model, x, select = selector(model))
     predictmodel(model, x, selector::Number) = predict(model, x)
-    ŷ = predictmodel(model, Array(test[:,X]), selector)
+    ŷ_train = predictmodel(model, Array(train[:, X]), selector)
+    ŷ_test = predictmodel(model, Array(test[:, X]), selector)
 
     if !(selector isa Number) && selector(model) isa AllSeg
         finaltest = mapreduce(append!!, enumerate(λ)) do (i, lmb)
-            test.predict = vals[ifelse.(ŷ[:, i] .> 0.5, 1, 2)]
+            test.predict = vals[ifelse.(ŷ_test[:, i] .> 0.5, 1, 2)]
             test.correct = test.predict .== test[:, y]
             test.λ = lmb
+
+            train_predict = vals[ifelse.(ŷ_train[:, i] .> 0.5, 1, 2)]
+            train_correct = train_predict .== train[:, y]
+
+            test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
+            test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
 
             copy(test)
         end
 
         return finaltest, model
     else
-        test.predict = vals[ifelse.(ŷ .> 0.5, 1, 2)]
+        test.predict = vals[ifelse.(ŷ_test .> 0.5, 1, 2)]
         test.correct = test.predict .== test[:, y]
+
+        train_predict = vals[ifelse.(ŷ_train .> 0.5, 1, 2)]
+        train_correct = train_predict .== train[:, y]
+
+        test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
+        test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
 
         return test, model
     end
