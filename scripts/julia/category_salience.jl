@@ -53,7 +53,7 @@ ytitle = "Hit Rate"
 yrange = [0, 1]
 pl = means |>
     @vlplot(
-        height = 140, width = 242, autosize = "fit",
+        height = 160, width = 242, autosize = "fit",
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {titlePadding = 13, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -138,7 +138,7 @@ diffmeans = @_ indmeans |>
 barwidth = 18
 pl = @_ diffmeans |>
     @vlplot(
-        width = 111, height = 140, autosize = "fit",
+        width = 60, height = 140,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -376,7 +376,7 @@ pl = @_ corrected_data |>
         upper = upperboot(:corrected_mean, alpha = 0.318),
     ) |>
     @vlplot(
-        width = 242, height = 170, autosize = "fit",
+        width = 130, height = 140,
         config = {
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -419,10 +419,10 @@ pl = @_ corrected_data |>
     ) +
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot({:text, align = "right", dx = -2},
+        @vlplot({:text, align = "right", dx = -1},
             x = {datum = mean(timeslice.best)},
-            y = {datum = 1.0},
-            text = {value = "Panel C slice →"},
+            y = {datum = 0.98},
+            text = {value = "Panel B slice →"},
             color = {value = "black"}
         )
     ) +
@@ -489,7 +489,7 @@ pl = @_ corrected_data |>
         upper = upperboot(:corrected_mean, alpha = 0.05),
     ) |>
     @vlplot(
-        width = 111, height = 140, autosize = "fit",
+        width = 60, height = 140,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -541,30 +541,24 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("89mm", "190mm",
+fig = svg.Figure("178mm", "75mm",
     svg.SVG(background_file),
     svg.Panel(
-        svg.SVG(joinpath(dir, "fig3a.svg")).move(0,15),
+        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,15)
+            scale(0.1).move(90,15)
     ).move(0, 0),
     svg.Panel(
-        svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
-        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(90,15)
-    ).move(0, 175),
-    svg.Panel(
         svg.SVG(joinpath(dir, "fig3c.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(90,15)
-    ).move(125, 175),
+    ).move(130, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3d.svg")).move(0,15),
-        svg.Text("D", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(215,15)
-    ).move(0, 340)
+            scale(0.1).move(190,0)
+    ).move(260, 0)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig3.svg"))
