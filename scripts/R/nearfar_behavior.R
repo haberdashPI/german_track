@@ -60,16 +60,25 @@ effects = as.data.frame(fitmm) %>%
         global_diff = global_early - global_late,
         object_diff = object_early - object_late,
         spatial_diff = spatial_early - spatial_late,
+        early = (global_early + object_early + spatial_early)/3,
+        late = (global_late + object_late + spatial_late)/3,
+        all_diff = early - late,
     )
 
 table = effects %>%
     select(global_early:spatial_late) %>%
     gather(global_early:spatial_late, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
-    effect_summary(r = atan(value))
+    effect_summary(r = value)
 
 table %>% write.csv(file.path(processed_datadir, 'analyses', 'nearfar_behavior_coefs.csv'))
 table %>% effect_table()
+
+table2 = effects %>%
+    select(early:late) %>%
+    gather(early:late, key = 'comparison', value = 'value') %>%
+    group_by(comparison) %>%
+    effect_summary(r = value)
 
 diff_table = effects %>%
     select(matches('_diff')) %>%

@@ -114,16 +114,21 @@ file = joinpath(processed_datadir("analyses"), "salience-earlylate.json")
 GermanTrack.@cache_results file resultdf_earlylate begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
+    # TODO: load fold-selected starting window
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
-    # TODO: use fold selected starting window
+    winstart = 3.4
+
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit"], __) |>
-        groupby(__, [:sid, :fold, :condition, :salience_label, :hittype, :target_time_label]) |>
+        groupby(__, [:sid, :fold, :condition, :salience_label, :target_time_label, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
-            :window => [ windowtarget(start = 2.8, len = len) for len in lens ],
+            :window => [
+                windowtarget(start = winstart, len = len)
+                for len in lens
+            ],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window)
 
@@ -194,20 +199,20 @@ pl = statdata |>
     );
 pl |> save(joinpath(dir_supplement, "earlylate_ind.svg"))
 
-# TODO: run salience early/late script here
+run(`Rscript $(joinpath(scriptsdir("R"), "salience_earlylate.R"))`)
 
 file = processed_datadir("analyses", "eeg_salience_earlylate_coefs.csv")
 classdiffs = @_ CSV.read(file, DataFrame) |>
-    rename(__, :value_med => :mean, :value_05 => :lower, :value_95 => :upper) |>
+    rename(__, :r_med => :mean, :r_05 => :lower, :r_95 => :upper) |>
     @transform(__,
-        condition_time = :condition,
-        condition = getindex.(split.(:condition, "_"),1),
-        target_time_label = getindex.(split.(:condition, "_"),2)
+        condition_time = :comparison,
+        condition = getindex.(split.(:comparison, "_"),1),
+        target_time_label = getindex.(split.(:comparison, "_"),2)
     )
 
-ytitle = ["High/Low Salience Classification"]
+ytitle = ["High/Low Salience", "Classification"]
 barwidth = 14
-yrange = [0.5, 1]
+yrange = [0.1, 1]
 pl = classdiffs |>
     @vlplot(
         height = 175, width = 242, autosize = "fit",

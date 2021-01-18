@@ -46,97 +46,38 @@ options(mc.cores = parallel::detectCores())
 # knitr::kable(coefs, digits = 3)
 # print(coefs)
 
-df = read.csv(file.path(processed_datadir,'analyses','eeg_salience_earlylate.csv'))
-bad_sids = df %>% group_by(sid) %>% summarize(bad = any(abs(logitnullmean) > 2.9))
+df = read.csv(file.path(processed_datadir,'analyses','eeg_salience_earlylate.csv')) %>%
+    mutate(meancor = invlogit(logitmean - logitnullmean))
 
-fit_lin1 = stan_glm(mean ~ condition*target_time_label,
-    family = binomial(link = "logit"),
-    weight = count,
+fitmm = stan_glmer(meancor ~ condition * target_time_label + (1 | sid),
     data = df,
-    iter = 2000)
-posterior_interval(matrix(c(predictive_error(fit_lin1))))
-p = pp_check(fit_lin1)
-ggsave(file.path(plot_dir, 'figure3_parts', 'supplement', 'eeg_salience_modelcheck_fit_lin1.svg'), p)
+    family = mgcv::betar,
+)
 
-# prior_mean = rep(0, 6)
-# prior_mean[4] = 1
-# prior_scale = rep(2.5, 6)
-# prior_scale[4] = 0.1
-fit_lin2 = stan_glm(mean ~ condition*target_time_label + logitnullmean,
-    family = binomial(link = "logit"),
-    weight = count,
-    # prior = normal(location = prior_mean, scale = prior_scale),
-    data = df %>% filter(abs(logitnullmean) < 2.5),
-    iter = 2000)
-
-nullslope = as.data.frame(fit_lin2)$logitnullmean %>% mean
-intercept = as.data.frame(fit_lin2) %>%
-    mutate(intercept = (3*`(Intercept)`+conditionobject+conditionspatial)/3) %>%
-    {mean(.$intercept)}
-
-shrink = function(x) { 0.99*(x-0.5) + 0.5 }
-pl = df %>% filter(abs(logitnullmean) < 2.5) %>%
-    ggplot(aes(x = logitnullmean, y = logit(shrink(mean)), color = target_time_label)) +
-    facet_wrap(~condition) +
-    geom_point() +
-    geom_abline(intercept = 0, slope = 1) +
-    geom_abline(intercept = intercept, slope = nullslope, linetype = 2)
-ggsave(file.path(plot_dir, 'figure5_parts', 'supplement', 'inddata.svg'), width = 8, height = 3)
-
-posterior_interval(matrix(c(predictive_error(fit_lin2))))
-p = pp_check(fit_lin2)
-ggsave(file.path(plot_dir, 'figure5_parts', 'supplement', 'eeg_salience_modelcheck_fit_lin2.svg'), p)
-
-fit_mm = stan_glmer(mean ~ condition*target_time_label + logitnullmean + (1 | sid),
-    family = binomial(link = "logit"),
-    weight = count,
-    data = df %>% filter(abs(logitnullmean) < 2.5),
-    iter = 4000)
-posterior_interval(matrix(c(predictive_error(fit_mm))))
-p = pp_check(fit_mm)
-ggsave(file.path(plot_dir, 'figure5_parts', 'supplement', 'salience_early_late_check_fit_mm.svg'), p)
-
-coefs = as.data.frame(fit_mm) %>%
-    mutate(
-        timeglobal = target_time_labellate,
-        timeobject = target_time_labellate + `conditionobject:target_time_labellate`,
-        timespatial = target_time_labellate + `conditionspatial:target_time_labellate`,
-    ) %>%
-    gather(timeglobal:timespatial, key = 'condition', value = 'value') %>%
-    group_by(condition) %>%
-    effect_summary(value)
-
-coefs = as.data.frame(fit_mm) %>%
-    mutate(
-        timeglobal = target_time_labellate,
-        timeobject = target_time_labellate + `conditionobject:target_time_labellate`,
-        timespatial = target_time_labellate + `conditionspatial:target_time_labellate`,
-    ) %>%
-    gather(timeglobal:timespatial, key = 'condition', value = 'value') %>%
-    mutate(percent = 100*(exp(value) - 1)) %>%
-    group_by(condition) %>%
-    effect_summary(percent)
-
-print(coefs)
-
-nullmean = mean(df$logitnullmean)
-coefs = as.data.frame(fit_mm) %>%
-    mutate(
-        timeglobal = target_time_labellate,
-        timeobject = target_time_labellate + `conditionobject:target_time_labellate`,
-        timespatial = target_time_labellate + `conditionspatial:target_time_labellate`,
-    ) %>%
+effects = as.data.frame(fitmm) %>%
     mutate(
         global_early = `(Intercept)`,
-        object_early = `(Intercept)` + conditionobject,
-        spatial_early = `(Intercept)` + conditionspatial,
-        global_late = `(Intercept)` + timeglobal,
-        object_late = `(Intercept)` + conditionobject + timeobject,
-        spatial_late = `(Intercept)` + conditionspatial + timespatial,
+        object_early = global_early + conditionobject,
+        spatial_early = global_early + conditionspatial,
     ) %>%
-    gather(global_early:spatial_late, key = 'condition', value = 'value') %>%
-    group_by(condition) %>%
-    effect_summary(value) %>%
-    mutate(across(matches('(med|[0-9]+)'), ~invlogit(.x + nullmean))) %>%
-    write.csv(file.path(processed_datadir, 'analyses', 'eeg_salience_earlylate_coefs.csv'))
+    mutate(
+        global_late = global_early + target_time_labellate,
+        object_late = global_early + `conditionobject:target_time_labellate`,
+        spatial_late = global_early + `conditionspatial:target_time_labellate`,
+    ) %>%
+    mutate(
+        global_diff = global_early - global_late,
+        object_diff = object_early - object_late,
+        spatial_diff = spatial_early - spatial_late,
+    )
+
+logitnullmean = df$logitnullmean %>% mean
+table = effects %>%
+    select(global_early:spatial_late) %>%
+    gather(global_early:spatial_late, key = 'comparison', value = 'value') %>%
+    group_by(comparison) %>%
+    effect_summary(r = invlogit(value + logitnullmean))
+
+table %>% write.csv(file.path(processed_datadir, 'analyses', 'eeg_salience_earlylate_coefs.csv'))
+table %>% effect_table()
 
