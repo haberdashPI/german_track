@@ -13,7 +13,31 @@ df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
     mutate(id = paste0(sid, exp_id))
 
 
-df = df %>% mutate(dtz = (direction_timing - mean(direction_timing) / sd(direction_timing)))
+df = df %>% mutate(dtz = (switch_distance - mean(switch_distance, na.rm = T) /
+    sd(switch_distance, na.rm =T)))
+
+dft = filter(df, !is.na(switch_distance))
+df$time_condition = interaction(df$target_time_label, df$condition)
+fit_add = stan_gamm4(sbj_answer ~ s(dtz),
+    family = binomial(),
+    adapt_delta = 0.99,
+    data = dft, iter = 2000) #, random = ~(1 | id))
+
+fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = target_time_label),
+    family = binomial(),
+    adapt_delta = 0.99,
+    data = dft, iter = 2000) #, random = ~(1 | id))
+
+fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = time_condition),
+    family = binomial(),
+    adapt_delta = 0.99,
+    data = dft, iter = 2000) #, random = ~(1 | id))
+
+p = plot_nonlinear(fit_add)
+ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'behavior_nonlinear.svg'), p)
+
+# conclusion: non of the conditions are particularly non-linear: I think it's safe to
+# use a linear model
 
 fitmm = stan_glmer(sbj_answer ~ dtz * condition * target_time_label
     + (dtz * condition * target_time_label | id), df, family = binomial(link = "logit"))

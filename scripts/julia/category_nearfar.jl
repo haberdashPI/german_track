@@ -33,8 +33,8 @@ ascondition = Dict(
 
 file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
-    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
-    @where(__, 0.0 .< :direction_timing .< 1.0)
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) #|>
+    # @where(__, -0.2 .< :direction_timing .< 2.6)
 
 function find_switch_distance(time, switches, dev_dir)
     sel_switches = dev_dir == "right" ?
@@ -77,7 +77,7 @@ meansraw = @_ rawdata |>
 
 bad_sids = @_ meansraw |>
     @where(__, :condition .== "global") |>
-    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
+    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> tuple.(__.sid, __.exp_id) |> Ref |> Set
 
 
 nbins = 30
@@ -89,13 +89,14 @@ getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
 allids = getids(rawdata)
 
 hit_by_switch = @_ rawdata |>
-    @where(__, :sid .∉ bad_sids) |>
-    @transform(__, time_bin = cut(:direction_timing, nbins, allowempty = true), target_bin = cut(:dev_time, 2)) |>
+    @where(__, tuple.(:sid, :exp_id) .∉ bad_sids) |>
+    @transform(__, #= time_bin = cut(:direction_timing, nbins, allowempty = true) ,=#
+        target_bin = cut(:dev_time, 2)) |>
     @transform(__, target_time_label =
-        recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
-    @transform(__,
-        time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
-    @where(__, .!ismissing.(:time_bin_mean))
+        recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) #|>
+    # @transform(__,
+    #     time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
+    # @where(__, .!ismissing.(:time_bin_mean))
 
 CSV.write(joinpath(processed_datadir("analyses", "hit_by_switch.csv")), hit_by_switch)
 
