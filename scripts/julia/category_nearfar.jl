@@ -33,8 +33,8 @@ ascondition = Dict(
 
 file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
-    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) |>
-    @where(__, 0.0 .< :direction_timing .< 1.0)
+    transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) #|>
+    @where(__, -0.2 .< :direction_timing .< 1.2)
 
 function find_switch_distance(time, switches, dev_dir)
     sel_switches = dev_dir == "right" ?
@@ -77,20 +77,21 @@ meansraw = @_ rawdata |>
 
 bad_sids = @_ meansraw |>
     @where(__, :condition .== "global") |>
-    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
+    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> tuple.(__.sid, __.exp_id) |> Ref |> Set
 
 
 nbins = 30
 binwidth = 1.5
-qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins+1))
+qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
 getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
     combine(first, __) |> zip(__.sid, __.exp_id)
 allids = getids(rawdata)
 
 hit_by_switch = @_ rawdata |>
-    @where(__, :sid .∉ bad_sids) |>
-    @transform(__, time_bin = cut(:direction_timing, nbins, allowempty = true), target_bin = cut(:dev_time, 2)) |>
+    @where(__, tuple.(:sid, :exp_id) .∉ bad_sids) |>
+    @transform(__, time_bin = cut(:direction_timing, nbins, allowempty = true) ,
+        target_bin = cut(:dev_time, 2)) |>
     @transform(__, target_time_label =
         recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
     @transform(__,
@@ -304,7 +305,17 @@ target_timeline = @_ hit_by_switch |>
     end, __) |>
     @transform(__, time = Array(:time))
 
-last_time = maximum(target_timeline.time)
+
+target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
+    "hitrate_timeline_bytarget.csv"), DataFrame) |>
+    groupby(__, :condition) |>
+    transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
+                   [:pmean, :err] => (+) => :upper,
+                   [:pmean, :err] => (-) => :lower,
+                   :target_time => ByRow(x -> target_labels[x]) => :target_time_label) |>
+    rename(__, :pmean => :mean)
+
+last_time = 1.25 #maximum(target_timeline.time)
 
 pl = @_ target_timeline |>
     @vlplot(
@@ -340,7 +351,9 @@ pl = @_ target_timeline |>
         ) +
         @vlplot({:text, align = :left, dx = 5},
             transform = [
-                {filter = "datum.time > $(last_time-0.5) && datum.time < $(last_time) && datum.target_time_label == 'early'"},
+                {filter = "((datum.condition != 'spatial' && datum.time > $(last_time-0.5) && datum.time < $(last_time-0.4)) ||"*
+                          " (datum.condition == 'spatial' && datum.time > $(last_time-0.24) && datum.time < $(last_time-0.26))) &&"*
+                          "datum.target_time == 'late'"},
             ],
             x = {datum = last_time},
             y = {:mean, aggregate = :mean, type = :quantitative},

@@ -1,3 +1,10 @@
+presentation (for lab meeting tuesday)
+
+what do we show:
+abstract references early late
+- maybe salience early/late?
+- or merve's original figure for hit rate
+
 ## plans
 
 - build-up angles: careful look at merve's data
