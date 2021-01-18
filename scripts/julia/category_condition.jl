@@ -338,6 +338,165 @@ plotfile = joinpath(dir, "fig2b.svg")
 plhit |> save(plotfile)
 addpatterns(plotfile, patterns, size = 10)
 
+# Early/late condition classifiers
+# =================================================================
+
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+start_len = unique((x[:winstart], x[:winlen]) for x in values(hyperparams))
+
+classdf = @_ events |>
+    transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+    @where(__, :hittype .== "hit") |>
+    transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+    groupby(__, [:sid, :condition, :hittype, :target_time_label]) |>
+    filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(start = start, len = len)
+            for (start, len) in start_len],
+        compute_powerbin_features(_1, subjects, _2)) |>
+    deletecols!(__, :window)
+
+cond_earlylate_df = @_ classdf |>
+    transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
+    groupby(__, :target_time_label) |>
+    filteringmap(__, desc = "Classifying conditions...", folder = foldl,
+        :cross_fold => 1:10,
+        :comparison => (
+            "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+            "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+            "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+        ),
+        :modeltype => ["full", "null"],
+        function (sdf, fold, comparison, modeltype)
+            selector = modeltype == "null" ? x -> NullSelect() : x -> MinAICc()
+
+            win = hyperparams[fold]
+            sdf = filter(x -> x.winstart == win[:winstart] && x.winlen == win[:winlen], sdf)
+            conds = split(comparison, "-v-")
+
+            @infiltrate
+            test, model = traintest(sdf, fold, y = :condition, selector = selector, weight = :weight)
+            test.nzero = sum(!iszero, coef(model, selector(model)))
+
+            test
+        end)
+
+
+predictmeans = @_ cond_earlylate_df |>
+    filter(_.modeltype ∈ ["null", "full"] && _.hittype == "hit", __) |>
+    groupby(__, [:sid, :comparison, :modeltype, :winlen, :winstart, :target_time_label]) |>
+    combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
+    groupby(__, [:sid, :comparison, :modeltype, :target_time_label]) |>
+    combine(__,
+        :correct => mean => :mean,
+        :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
+
+nullmeans = @_ predictmeans |>
+    filter(_.modeltype == "null", __) |>
+    deletecols!(__, [:logitcorrect, :modeltype]) |>
+    rename!(__, :mean => :nullmean)
+
+statdata = @_ predictmeans |>
+    filter(_.modeltype == "full", __) |>
+    innerjoin(__, nullmeans, on = [:sid, :comparison, :target_time_label]) |>
+    transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
+    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean) |>
+    transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
+
+
+compnames = OrderedDict(
+    "global-v-object"  => "Global vs.\n Object",
+    "global-v-spatial" => "Global vs.\n Spatial",
+    "object-v-spatial" => "Object vs.\n Spatial")
+
+plotdata = @_ statdata |>
+    @transform(__, compname = map(x -> compnames[x], :comparison)) |>
+    groupby(__, [:target_time_label, :compname, :comparison]) |>
+    @combine(__,
+        mean = mean(:mean),
+        lower = lowerboot(:mean),
+        upper = upperboot(:mean),
+    ) |>
+    @transform(__, comptime = string.(:compname, :target_time_label))
+
+nullmean = statdata.logitnullmean |> mean |> logistic
+ytitle = "Condition Classification"
+barwidth = 16
+
+time_comp = OrderedDict(
+    "mix1_2_early" => GermanTrack.colorat([1,7]),
+    "mix1_2_late" => GermanTrack.colorat([3,9]),
+    "mix1_3_early" => GermanTrack.colorat([1,12]),
+    "mix1_3_late" => GermanTrack.colorat([3,14]),
+    "mix2_3_early" => GermanTrack.colorat([7,12]),
+    "mix2_3_late" => GermanTrack.colorat([9,14]),
+)
+
+plhit = @_ plotdata |>
+    @vlplot(
+        # facet = { column = { field = :target_time_label, type = :nominal} },
+        width = 230, height = 130,
+        config = {
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        }
+    ) + (
+    @vlplot(x = {:compname, axis = {
+            labelAngle = 0,
+            title = "",
+            labelExpr = "split(datum.label, '\\n')"}},
+        color = {
+            :comptime, title = nothing,
+            scale = {range = urlcol.(keys(time_comp))}}) +
+    @vlplot({:bar, xOffset = -barwidth/2 - 1, clip = true},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        y = {:mean,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:rule, xOffset = -barwidth/2 - 1},
+        transform = [{filter = "datum.target_time_label == 'early'"}],
+        color = {value = "black"},
+        y2 = :upper,
+        y = {:lower,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:bar, xOffset = barwidth/2 + 1, clip = true},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        y = {:mean,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:rule, xOffset = barwidth/2 + 1},
+        transform = [{filter = "datum.target_time_label == 'late'"}],
+        color = {value = "black"},
+        y2 = :upper,
+        y = {:lower,
+            scale = {domain = [0.5, 1]},
+            title = ytitle})
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.target_time_label == 'early' && datum.comparison == 'global-v-object'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        x = :compname,
+        y = {datum = 0.5},
+        text = {value = "Early"},
+        ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.target_time_label == 'late' && datum.comparison == 'global-v-object'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        x = :compname,
+        y = {datum = 0.5},
+        text = {value = "Late"},
+    );
+plotfile = joinpath(dir, "supplement", "condition_earlylate.svg")
+plhit |> save(plotfile)
+addpatterns(plotfile, time_comp, size = 10)
+
+
 # EEG Cross-validated Features
 # =================================================================
 

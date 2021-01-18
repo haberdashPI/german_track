@@ -367,11 +367,29 @@ pl = plotdata |>
             )
         )
     );
-pl |> save(joinpath(dir, "category_baselines.svg"))
+pl |> save(joinpath(dir, "supplement", "category_baselines.svg"))
 
 # TODO: below stuff is old code that may need to be adjusted to work in
 # new enviornment
 
+pl = @_ plotdata |>
+    @transform(__, logitdiff = :logitfullmean .- :logitmean) |>
+    @where(__, :modeltype .!= "random-trialtype") |>
+    groupby(__, [:modeltype, :sid]) |>
+    @combine(__, logitdiff = mean(:logitdiff)) |>
+    @vlplot() +
+    (
+        @vlplot() +
+        @vlplot(:bar,
+            x = :modeltype,
+            y = {:logitdiff, aggregate = :mean, type = :quantitative},
+        ) +
+        @vlplot(:errorbar,
+            x = :modeltype,
+            y = {:logitdiff, aggregate = :ci, type = :quantitative},
+        )
+    );
+    pl |> save(joinpath(dir, "supplement", "category_baseline_bar.svg"))
 
 # Main median power results
 # -----------------------------------------------------------------
