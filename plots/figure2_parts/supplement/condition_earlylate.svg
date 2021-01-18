@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="278" height="174" viewBox="0 0 278 174" version="1.1">
+  <defs><pattern id="mix1_2_early" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
+</pattern>
+<pattern id="mix1_2_late" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#1A5862;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#9D892B;"/>
+</pattern>
+<pattern id="mix1_3_early" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
+</pattern>
+<pattern id="mix1_3_late" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#1A5862;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
+</pattern>
+<pattern id="mix2_3_early" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
+</pattern>
+<pattern id="mix2_3_late" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#9D892B;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
+</pattern>
+</defs>
+  <defs>
+    <clipPath id="clip1">
+      <rect x="0" y="0" width="230" height="130"/>
+    </clipPath>
+    <clipPath id="clip2">
+      <rect x="0" y="0" width="230" height="130"/>
+    </clipPath>
+  </defs>
+  <rect width="278" height="174" fill="white"/>
+  <g fill="none" stroke-miterlimit="10" transform="translate(43,10)">
+    <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+      <g transform="translate(0,0)">
+        <path class="background" aria-hidden="true" d="M0.5,0.5h230v130h-230Z" stroke="#ddd"/>
+        <g>
+          <g class="mark-group role-axis" aria-hidden="true">
+            <g transform="translate(0.5,0.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-grid" pointer-events="none">
+                  <line transform="translate(0,130)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,104)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,78)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,52)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,26)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="230" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: Global vs.  Object, Global vs.  Spatial, Object vs.  Spatial">
+            <g transform="translate(0.5,130.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-tick" pointer-events="none">
+                  <line transform="translate(38,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(115,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(191,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-label" pointer-events="none">
+                  <text text-anchor="middle" transform="translate(37.83333333333333,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Global vs.</tspan>
+                    <tspan x="0" dy="12">Object</tspan>
+                  </text>
+                  <text text-anchor="middle" transform="translate(114.5,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Global vs.</tspan>
+                    <tspan x="0" dy="12">Spatial</tspan>
+                  </text>
+                  <text text-anchor="middle" transform="translate(191.16666666666669,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                    <tspan>Object vs.</tspan>
+                    <tspan x="0" dy="12">Spatial</tspan>
+                  </text>
+                </g>
+                <g class="mark-rule role-axis-domain" pointer-events="none">
+                  <line transform="translate(0,0)" x2="230" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Condition Classification' for a linear scale with values from 0.5 to 1.0">
+            <g transform="translate(0.5,0.5)">
+              <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+              <g>
+                <g class="mark-rule role-axis-tick" pointer-events="none">
+                  <line transform="translate(0,130)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,104)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,78)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,52)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,26)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-label" pointer-events="none">
+                  <text text-anchor="end" transform="translate(-7,133)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.5</text>
+                  <text text-anchor="end" transform="translate(-7,107)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.6</text>
+                  <text text-anchor="end" transform="translate(-7,81.00000000000001)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.7</text>
+                  <text text-anchor="end" transform="translate(-7,54.999999999999986)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.8</text>
+                  <text text-anchor="end" transform="translate(-7,28.999999999999993)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.9</text>
+                  <text text-anchor="end" transform="translate(-7,3)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">1.0</text>
+                </g>
+                <g class="mark-rule role-axis-domain" pointer-events="none">
+                  <line transform="translate(0,130)" x2="0" y2="-130" stroke="#888" stroke-width="1" opacity="1"/>
+                </g>
+                <g class="mark-text role-axis-title" pointer-events="none">
+                  <text text-anchor="middle" transform="translate(-26,65) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">Condition Classification</text>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+            </g>
+          </g>
+          <g class="mark-rect role-mark layer_0_layer_0_marks" clip-path="url(#clip1)" role="graphics-object" aria-roledescription="rect mark container">
+            <path aria-label=": Global vs.  Object; comptime: Global vs.  Objectearly; Condition Classification: 0.72219449637" role="graphics-symbol" aria-roledescription="bar" d="M21.33333333333333,72.22943094377788h16v187.77056905622212h-16Z" fill="url(#mix1_2_early)"/>
+            <path aria-label=": Global vs.  Spatial; comptime: Global vs.  Spatialearly; Condition Classification: 0.922421481567" role="graphics-symbol" aria-roledescription="bar" d="M98,20.1704147926037h16v239.8295852073963h-16Z" fill="url(#mix1_3_early)"/>
+            <path aria-label=": Object vs.  Spatial; comptime: Object vs.  Spatialearly; Condition Classification: 0.727218102784" role="graphics-symbol" aria-roledescription="bar" d="M174.66666666666669,70.92329327610123h16v189.07670672389878h-16Z" fill="url(#mix2_3_early)"/>
+          </g>
+          <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
+            <line aria-label=": Global vs.  Object; upper: 0.836494265793; Condition Classification: 0.613787124931" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(29.33333333333333,100.41534751791663)" x2="0" y2="-57.903856624035" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 1.00331564987; Condition Classification: 0.859210779226" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(106,36.60519740129936)" x2="0" y2="-37.467266366816624" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.866391688462; Condition Classification: 0.599091392706" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(182.66666666666669,104.23623789656395)" x2="0" y2="-69.49807689668424" stroke="black"/>
+          </g>
+          <g class="mark-rect role-mark layer_0_layer_2_marks" clip-path="url(#clip2)" role="graphics-object" aria-roledescription="rect mark container">
+            <path aria-label=": Global vs.  Object; comptime: Global vs.  Objectlate; Condition Classification: 0.925989145658" role="graphics-symbol" aria-roledescription="bar" d="M39.33333333333333,19.242822128851543h16v240.75717787114846h-16Z" fill="url(#mix1_2_late)"/>
+            <path aria-label=": Global vs.  Spatial; comptime: Global vs.  Spatiallate; Condition Classification: 0.962580061264" role="graphics-symbol" aria-roledescription="bar" d="M116,9.729184071289342h16v250.27081592871065h-16Z" fill="url(#mix1_3_late)"/>
+            <path aria-label=": Object vs.  Spatial; comptime: Object vs.  Spatiallate; Condition Classification: 0.679754389129" role="graphics-symbol" aria-roledescription="bar" d="M192.66666666666669,83.26385882635883h16v176.73614117364116h-16Z" fill="url(#mix2_3_late)"/>
+          </g>
+          <g class="mark-rule role-mark layer_0_layer_3_marks" role="graphics-object" aria-roledescription="rule mark container">
+            <line aria-label=": Global vs.  Object; upper: 0.98923684057; Condition Classification: 0.869339402428" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(47.33333333333333,33.971755368814186)" x2="0" y2="-31.173333916900063" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 1.00722291841; Condition Classification: 0.925160122529" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(124,19.458368142578685)" x2="0" y2="-21.336326928432243" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.785278491763; Condition Classification: 0.577668124699" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(200.66666666666669,109.80628757816255)" x2="0" y2="-53.97869543650792" stroke="black"/>
+          </g>
+          <g class="mark-text role-mark layer_1_marks" role="graphics-object" aria-roledescription="text mark container">
+            <text aria-label="compname: Global vs.  Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(38.33333333333333,130) rotate(-90) translate(0,-20)" font-family="Helvetica" font-size="9px" fill="black">Early</text>
+          </g>
+          <g class="mark-text role-mark layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
+            <text aria-label="compname: Global vs.  Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(38.33333333333333,130) rotate(-90) translate(0,25)" font-family="Helvetica" font-size="9px" fill="black">Late</text>
+          </g>
+        </g>
+        <path class="foreground" aria-hidden="true" d="" display="none"/>
+      </g>
+    </g>
+  </g>
+</svg>
