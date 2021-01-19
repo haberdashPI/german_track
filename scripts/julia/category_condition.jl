@@ -116,6 +116,71 @@ pl = means |> @vlplot(
     );
 pl |> save(joinpath(dir, "fig2a.svg"))
 
+# Presentation
+# -----------------------------------------------------------------
+
+barwidth = 13
+pl = means |> @vlplot(
+        width = 145, height = 75,
+        # width = {step = 50},
+        x = {:condition,
+            type = :nominal,
+            sort = ["global", "spatial", "object"],
+            axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        config = {
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        }) +
+    @vlplot({:bar, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.type == 'hr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+    @vlplot({:line, xOffset = -(barwidth/2), size = 1},
+        transform = [{filter = "datum.type == 'hr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {value = "black"}) +
+    @vlplot({:bar, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.type == 'fr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean},
+        color = {value = "#"*hex(neutral)}) +
+    @vlplot({:line, xOffset = (barwidth/2), size = 1},
+        transform = [{filter = "datum.type == 'fr'"}],
+        y = {:prop, type = :quantitative, aggregate = :mean,
+                scale = {domain = [0, 1]}, title = "Response Rate"},
+        color = {value = "black"}) +
+    @vlplot({:rule, xOffset = -(barwidth/2)},
+        transform = [{filter = "datum.type == 'hr'"}],
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:rule, xOffset = (barwidth/2)},
+        transform = [{filter = "datum.type == 'fr'"}],
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-1},
+        transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
+        # x = {datum = "spatial"}, y = {datum = 0.},
+        y = {:prop, aggregate = :mean, type = :quantitative},
+        text = {value = "Hits"},
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+1},
+        transform = [{filter = "datum.condition == 'global' && datum.type == 'fr'"}],
+        # x = {datum = "spatial"}, y = {datum = },
+        y = {datum = 0},
+        text = {value = "False Positives"},
+    );
+pl |> save(joinpath(dir, "present", "fig2a.svg"))
+
+
 # Find best λs
 # =================================================================
 
