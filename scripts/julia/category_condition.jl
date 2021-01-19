@@ -403,6 +403,47 @@ plotfile = joinpath(dir, "fig2b.svg")
 plhit |> save(plotfile)
 addpatterns(plotfile, patterns, size = 10)
 
+# Presentation version
+# -----------------------------------------------------------------
+
+ytitle = "Accuracy"
+barwidth = 25
+plhit = @_ plotdata |>
+    @vlplot(
+        # facet = { column = { field = :hittype, type = :nominal} },
+        width = 145, height = 75,
+        config = {
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        }
+    ) + (
+    @vlplot(x = {:compname, axis = {
+            labelAngle = 0,
+            title = "",
+            labelExpr = "split(datum.label, '\\n')"}},
+        color = {
+            :compname, title = nothing,
+            scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
+    @vlplot({:bar},
+        y = {:mean,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:rule},
+        color = {value = "black"},
+        y2 = :upper,
+        y = {:lower,
+            scale = {domain = [0.5, 1]},
+            title = ytitle})
+    );
+plotfile = joinpath(dir, "present", "fig2b.svg")
+plhit |> save(plotfile)
+addpatterns(plotfile, patterns, size = 10)
+
 # Early/late condition classifiers
 # =================================================================
 
