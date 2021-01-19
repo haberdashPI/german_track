@@ -176,7 +176,7 @@ GermanTrack.@cache_results file predictions coefs begin
         @where(__, (:hittype .== "hit") .== (:windowing .== "target")) |>
         # @where(__, :windowing .== "target") |>
         # train on quarter of subjects
-        @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
+        # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
         addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
         groupby(__, [:encoding]) |>
@@ -261,8 +261,8 @@ meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
     # @where(__, :encoding .== "envelope") |>
-    # groupby(__, [:encoding, :λ]) |>
-    # @transform(__, score = zscoresafe(:score)) |>
+    groupby(__, [:encoding, :λ]) |>
+    @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
         :trialnum, :stim_id, :windowing, :λ, :hittype]) |>
     @combine(__, score = mean(:score)) |>
@@ -297,7 +297,7 @@ best_λ = @_ best_λs |>
     @where(__, (:target_window .== "athit-hit") .& (:condition .== "global")) |>
     __.λ |> first
 
-best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
+# best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 pl = pldata |>
     @vlplot(
@@ -344,6 +344,11 @@ pl = @_ example |>
             strokeDash = :is_target_source)
     );
 pl |> save(joinpath(dir, "example_predict.svg"))
+
+
+@_ scores |>
+    @where(__, :λ .== best_λ) |>
+    CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
 mean_offset = 6
 pl = @_ scores |>
@@ -490,11 +495,11 @@ scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    @where(__, :target_window .∈ Ref(["Attn/Atten Decoder", "Br/Atten Decoder"])) |>
+    @where(__, :target_window .∈ Ref(["athit-hit", "pre-miss-hit"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "Attn/Atten Decoder" => "target", "Br/Atten Decoder" => "nontarget"),
+            "athit-hit" => "target", "pre-miss-hit" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
