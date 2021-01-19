@@ -471,6 +471,332 @@ pl = @_ corrected_data |>
     ));
 pl |> save(joinpath(dir, "fig3d.svg"))
 
+# Compute classificaiton accuracy across early/late
+# =================================================================
+
+file = joinpath(processed_datadir("analyses"), "salience-freqmeans-earlylate-timeline.json")
+GermanTrack.@cache_results file resultdf_earlylate_timeline begin
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
+        GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
+    classdf = @_ events |>
+        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |>
+        groupby(__, [:sid, :fold, :condition, :salience_label, :hittype, :target_time_label]) |>
+        filteringmap(__, desc = "Computing features...",
+            :window => [
+                windowtarget(start = start, len = len)
+                for len in lens
+                for start in range(0, 4, length = 24)
+            ],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
+
+    resultdf_earlylate_timeline = @_ classdf |>
+        groupby(__, [:hittype, :condition, :winstart, :target_time_label]) |>
+        filteringmap(__, desc = "Classifying salience...",
+            :cross_fold => 1:10, folder = foldl,
+            :modeltype => ["full", "null"],
+            function (sdf, fold, modeltype)
+                selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
+                lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+
+                sdf = filter(x -> x.winlen ∈ lens, sdf)
+                combine(groupby(sdf, :winlen)) do sdf_len
+                    test, model = traintest(sdf_len, fold, y = :salience_label,
+                        selector = selector, weight = :weight)
+                    test[:, Not(r"channel")]
+                end
+            end)
+end
+
+# plotting (trained on early late separate)
+# -----------------------------------------------------------------
+
+nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
+classmeans_earlylate = @_ resultdf_earlylate_timeline |>
+    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype, :target_time_label]) |>
+        combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
+                    :weight => sum => :weight,
+                    :correct => length => :count) |>
+        transform(__, :weight => (x -> x ./ mean(x)) => :weight)
+
+classmeans_earlylate_sum = @_ classmeans_earlylate |>
+    groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :hittype, :target_time_label]) |>
+    combine(__,
+        [:mean, :weight] => GermanTrack.wmean => :mean,
+        :weight => sum => :weight,
+        :count => length => :count)
+
+nullmeans = @_ classmeans_earlylate_sum |>
+    @where(__, :modeltype .== "null")  |>
+    rename(__, :mean => :nullmean) |>
+    deletecols!(__, [:modeltype, :weight, :count])
+statdata = @_ classmeans_earlylate_sum |>
+    @where(__, :modeltype .!= "null") |>
+    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype, :target_time_label]) |>
+    @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)))
+
+logitnullmean = mean(statdata.logitnullmean)
+nullmean = logistic.(logitnullmean)
+corrected_data = @_ statdata |>
+    @transform(__,
+        corrected_mean =
+            logistic.(logit.(shrinktowards.(:mean, 0.5, by = 0.01)) .-
+                :logitnullmean .+ logitnullmean),
+        condition_label = uppercasefirst.(:condition))
+
+ytitle = ["High/Low Salience", "Classification"]
+target_len_y = 0.8
+pl = @_ corrected_data |>
+    filter(_.hittype == "hit", __) |>
+    groupby(__, [:condition, :condition_label, :winstart, :target_time_label]) |>
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
+    ) |>
+    @vlplot(
+        facet = {field = :target_time_label, type = :nominal},
+        width = 130, height = 140,
+        config = {
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        },
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
+    ) +
+    # data lines
+    @vlplot({:line, strokeCap = :round, clip = true},
+        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
+        x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [0.4,1.0]}}) +
+    # data errorbands
+    @vlplot({:errorband, clip = true},
+        x = {:winstart, type = :quantitative},
+        y = {:lower, type = :quantitative, title = ytitle},
+        y2 = :upper
+    ) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter = "(datum.winstart > 3.95 && datum.winstart <= 4.0)"}],
+        x = {datum = 4.0},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
+        text = :condition_label
+    ) +
+    # # "Time Slice" annotation
+    # (
+    #     @transform(timeslice, fold_label = labelfn.(:fold)) |>
+    #     @vlplot() +
+    #     @vlplot({:rule, strokeDash = [2 2]},
+    #         x = {:best, aggregate = :mean},
+    #         color = {value = "black"}
+    #     )
+    # ) +
+    # (
+    #     @vlplot(data = {values = [{}]}) +
+    #     @vlplot({:text, align = "right", dx = -1},
+    #         x = {datum = mean(timeslice.best)},
+    #         y = {datum = 0.98},
+    #         text = {value = "Panel B slice →"},
+    #         color = {value = "black"}
+    #     )
+    # ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 5,
+            align = "left"},
+            x = {datum = 4}, y = {datum = nullmean},
+            text = {value = ["Null Model", "Accuracy"]},
+            color = {value = "black"}
+        )
+    ) +
+    # Dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "supplement", "fig3d_earlylate.svg"))
+
+
+# plotting (trained on early late together)
+# -----------------------------------------------------------------
+
+nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
+classmeans_earlylate = @_ resultdf_timeline |>
+    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype, :target_time_label]) |>
+        combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
+                    :weight => sum => :weight,
+                    :correct => length => :count) |>
+        transform(__, :weight => (x -> x ./ mean(x)) => :weight)
+
+classmeans_earlylate_sum = @_ classmeans_earlylate |>
+    groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :hittype, :target_time_label]) |>
+    combine(__,
+        [:mean, :weight] => GermanTrack.wmean => :mean,
+        :weight => sum => :weight,
+        :count => length => :count)
+
+nullmeans = @_ classmeans_earlylate_sum |>
+    @where(__, :modeltype .== "null")  |>
+    rename(__, :mean => :nullmean) |>
+    deletecols!(__, [:modeltype, :weight, :count])
+statdata = @_ classmeans_earlylate_sum |>
+    @where(__, :modeltype .!= "null") |>
+    innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype, :target_time_label]) |>
+    @transform(__, logitnullmean = logit.(shrinktowards.(:nullmean, 0.5, by = 0.01)))
+
+logitnullmean = mean(statdata.logitnullmean)
+nullmean = logistic.(logitnullmean)
+corrected_data = @_ statdata |>
+    @transform(__,
+        corrected_mean =
+            logistic.(logit.(shrinktowards.(:mean, 0.5, by = 0.01)) .-
+                :logitnullmean .+ logitnullmean),
+        condition_label = uppercasefirst.(:condition))
+
+ytitle = ["High/Low Salience", "Classification"]
+target_len_y = 0.8
+pl = @_ corrected_data |>
+    filter(_.hittype == "hit", __) |>
+    groupby(__, [:condition, :condition_label, :winstart, :target_time_label]) |>
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
+    ) |>
+    @vlplot(
+        facet = {field = :target_time_label, type = :nominal},
+        width = 130, height = 140,
+        config = {
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        },
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal, scale = {range = "#".*hex.(colors)}},
+    ) +
+    # data lines
+    @vlplot({:line, strokeCap = :round, clip = true},
+        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
+        x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [0.4,1.0]}}) +
+    # data errorbands
+    @vlplot({:errorband, clip = true},
+        x = {:winstart, type = :quantitative},
+        y = {:lower, type = :quantitative, title = ytitle},
+        y2 = :upper
+    ) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter = "(datum.winstart > 3.95 && datum.winstart <= 4.0)"}],
+        x = {datum = 4.0},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
+        text = :condition_label
+    ) +
+    # # "Time Slice" annotation
+    # (
+    #     @transform(timeslice, fold_label = labelfn.(:fold)) |>
+    #     @vlplot() +
+    #     @vlplot({:rule, strokeDash = [2 2]},
+    #         x = {:best, aggregate = :mean},
+    #         color = {value = "black"}
+    #     )
+    # ) +
+    # (
+    #     @vlplot(data = {values = [{}]}) +
+    #     @vlplot({:text, align = "right", dx = -1},
+    #         x = {datum = mean(timeslice.best)},
+    #         y = {datum = 0.98},
+    #         text = {value = "Panel B slice →"},
+    #         color = {value = "black"}
+    #     )
+    # ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 5,
+            align = "left"},
+            x = {datum = 4}, y = {datum = nullmean},
+            text = {value = ["Null Model", "Accuracy"]},
+            color = {value = "black"}
+        )
+    ) +
+    # Dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "supplement", "fig3d_earlylate.svg"))
+
 # Salience class accuracy at fixed time point (fig 3c)
 # =================================================================
 
