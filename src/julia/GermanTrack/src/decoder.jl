@@ -37,9 +37,11 @@ function lassoflux(x, y, λ, opt;
     min_steps = 1,
     progress = Progress(steps))
     model = Dense(size(x, 1), size(y, 1)) |> gpu
-    loss(x,y) = Flux.mse(model(x), y)
+    λf = Float32(λf)
+    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, x.W)
 
-    l1opt = L1Opt(opt, λ, applyto = [model.W])
+    # l1opt = L1Opt(opt, λ, applyto = [model.W])
+    l1opt = opt
 
     local best_model
     local cur_step

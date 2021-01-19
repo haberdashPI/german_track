@@ -65,12 +65,13 @@ function event2window(event, windowing)
         start     = start,
         len       = len,
         trialnum  = event.trial,
-        event[[:condition, :sid, :target_source, :sound_index]]...
+        event[[:condition, :sid, :target_source, :sound_index, :hittype]]...
     )
 end
 
 windows = @_ events |>
-    filter(ishit(_) == "hit", __) |> eachrow |>
+    transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+    filter(_.hittype ∈ ["hit", "miss"], __) |> eachrow |>
     Iterators.product(__, ["target", "pre-target"]) |>
     map(event2window(_...), __) |> vec |>
     DataFrame |>
@@ -169,19 +170,31 @@ GermanTrack.@cache_results file predictions coefs begin
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
+    groupings = [:encoding]
     groups = @_ DataFrame(stimuli) |>
-        @where(__, :windowing .== "target") |>
-        # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
+        @where(__, :is_target_source) |>
+        @where(__, (:hittype .== "hit") .== (:windowing .== "target")) |>
+        # @where(__, :windowing .== "target") |>
+        # train on quarter of subjects
+        @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
         addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
         groupby(__, [:encoding]) |>
-        transform!(__, :data => zscoremany => :data) #|>
-        # groupby(__, groupings)
+        transform!(__, :data => zscoremany => :data) |>
+        groupby(__, groupings)
 
-    function runfold(sdf, fold, is_target)
-        train = @_ filter((_1.fold != fold) && (_1.is_target_source == is_target), sdf)
+    function runfold(sdf, fold, train_type)
+        hittype, windowing =
+            train_type == "athit" ? ("hit", "target") :
+            train_type == "pre-miss" ? ("miss", "pre-target") :
+            error("Unexpected `traintest` value of $traintest.")
+
+        train = @_ filter((_1.fold != fold) &&
+                          (_1.hittype == hittype) &&
+                          (_1.windowing == windowing), sdf)
         test  = @_ filter((_1.fold == fold), sdf)
-        test.target_training = is_target
+
+        # @infiltrate isempty(train) || isempty(test)
 
         model = fit(LassoPath,
             λ = lambdas,
@@ -221,21 +234,18 @@ GermanTrack.@cache_results file predictions coefs begin
 
     lambdas = 10 .^ range(-3, -1, length = 100)
     predictions, coefs = filteringmap(groups,
-        folder           =  foldxt,
-        streams          =  2,
-        desc             =  "Lasso fitting...",
-        :fold            => 1:nfolds,
-        :target_training => [true, false],
+        folder   =  foldxt,
+        streams  =  2,
+        desc     =  "Lasso fitting...",
+        :fold    => 1:nfolds,
+        :train_type => ["athit", "pre-miss"],
         runfold
     )
 
     alert("Decoding complete!")
 end
 
-# NOTE: we're scoring models that are trained
-# for target or non-target
-# it would also be good to know how well the target decoer
-# corelates with the non-target sources
+# NOTE: we'd like to know about the decoding of miss trials
 
 # Plotting
 # -----------------------------------------------------------------
@@ -253,42 +263,41 @@ scores = @_ predictions |>
     # @where(__, :encoding .== "envelope") |>
     # groupby(__, [:encoding, :λ]) |>
     # @transform(__, score = zscoresafe(:score)) |>
-    groupby(__, [:sid, :condition, :source, :target_training, :is_target_source, :trialnum, :stim_id, :windowing, :λ]) |>
+    groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
+        :trialnum, :stim_id, :windowing, :λ, :hittype]) |>
     @combine(__, score = mean(:score)) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
         :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
         :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
         :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
-        [:target_training, :is_target_source] =>
-            ByRow((tr, ts) ->
-                (tr && ts) ? "Attn/Atten Decoder" :
-                (!tr && ts) ? "Br/Atten Decoder" :
-                (tr && !ts) ? "Attn/Br Decoder" :
-              #=(!tr && !ts)=# "Br/Br Decoder"
-            ) => :target_window
+        [:train_type, :hittype] => ByRow((x, y) -> string(x, "-", y)) => :target_window
     )
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 
+function nanmean(xs)
+    xs_ = (x for x in xs if !isnan(x))
+    isempty(xs_) ? 0.0 : mean(xs_)
+end
 pldata = @_ scores |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :λ]) |>
-    @combine(__, score = mean(:score)) |>
+    @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :target_window, :λ]) |>
     @combine(__, score = mean(:score))
 
 # TODO: eventually select the best λ using cross-validation
 best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
-    @combine(__, score = median(:score)) |>
+    @combine(__, score = mean(:score)) |>
     groupby(__, [:condition, :target_window]) |>
     @combine(__, score = maximum(:score), λ = :λ[argmax(:score)])
 
 best_λ = @_ best_λs |>
-    @where(__, (:target_window .== "Attn/Atten Decoder") .& (:condition .== "global")) |>
+    @where(__, (:target_window .== "athit-hit") .& (:condition .== "global")) |>
     __.λ |> first
 
-best_λ = lambdas[argmin(abs.(lambdas .- 0.005))]
+best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 pl = pldata |>
     @vlplot(
