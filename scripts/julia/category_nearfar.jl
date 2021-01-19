@@ -34,7 +34,7 @@ ascondition = Dict(
 file = joinpath(raw_datadir("behavioral", "export_ind_data.csv"))
 rawdata = @_ CSV.read(file, DataFrame) |>
     transform!(__, :block_type => ByRow(x -> ascondition[x]) => :condition) #|>
-    @where(__, -0.2 .< :direction_timing .< 1.2)
+    # @where(__, -0.2 .< :direction_timing .< 1.2)
 
 function find_switch_distance(time, switches, dev_dir)
     sel_switches = dev_dir == "right" ?

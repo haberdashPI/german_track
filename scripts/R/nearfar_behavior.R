@@ -12,10 +12,6 @@ df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
     filter(perf %in% c('hit', 'miss')) %>%
     mutate(id = paste0(sid, exp_id))
 
-
-df = df %>% mutate(dtz = (switch_distance - mean(switch_distance, na.rm = T) /
-    sd(switch_distance, na.rm =T)))
-
 dft = filter(df, !is.na(switch_distance))
 df$time_condition = interaction(df$target_time_label, df$condition)
 fit_add = stan_gamm4(sbj_answer ~ s(dtz),
@@ -39,8 +35,11 @@ ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'behavior_nonlinear.sv
 # conclusion: non of the conditions are particularly non-linear: I think it's safe to
 # use a linear model
 
-fitmm = stan_glmer(sbj_answer ~ dtz * condition * target_time_label
-    + (dtz * condition * target_time_label | id), df, family = binomial(link = "logit"))
+fitmm = stan_glmer(sbj_answer ~ switch_distance * condition * target_time_label
+    + (switch_distance * condition * target_time_label | id),
+    # switches last for 0.6 seconds, skip overlapping targets
+    filter(df, switch_distance > 0.6, switch_distance < 1.6),
+    family = binomial(link = "logit"))
 
 p = pp_check(fitmm)
 ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'behavior_mm_pp_check.svg'), p)
