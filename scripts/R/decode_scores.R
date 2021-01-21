@@ -15,7 +15,7 @@ fit3 = stan_glmer(score ~ target_window * condition +
     adapt_delta = 0.99, # prevents divergent transitions after warm-up
     data = filter(df, target_window %in% c('athit-hit', 'athit-miss')))
 
-# we can use dummy coding to simplify interpretability: the model prior avoids co-linearity
+# we can use sum to zero coding to simplify interpretability of main effects
 ct = function(x) { C(x, contr.sum) }
 dfc = filter(df, target_window %in% c('athit-hit', 'athit-miss')) %>%
         mutate(
@@ -31,7 +31,28 @@ fit4 = stan_glmer(score ~ target_window * condition + target_time_label +
     adapt_delta = 0.99, # prevents divergent transitions after warm-up
     data = dfc)
 
+# does target timing matter?
 fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
+    (target_window * condition | sid) +
+    (target_window * condition | stim_id),
+    adapt_delta = 0.99, # prevents divergent transitions after warm-up
+    data = dfc)
+
+# how many data points per condition for each subject is this final model?
+dfc %>% group_by(target_window,condition,target_time_label,stim_id) %>%
+    summarize(c = length(score)) %>%
+    ungroup() %>%
+    summarize(min = min(c), max = max(c), mean = mean(c))
+
+# does target_salience matter?
+fit6 = stan_glmer(score ~ target_window * condition * target_salience +
+    (target_window * condition | sid) +
+    (target_window * condition | stim_id),
+    adapt_delta = 0.99, # prevents divergent transitions after warm-up
+    data = dfc)
+
+# does switch proximity matter?
+fit7 = stan_glmer(score ~ target_window * condition * target_switch_label +
     (target_window * condition | sid) +
     (target_window * condition | stim_id),
     adapt_delta = 0.99, # prevents divergent transitions after warm-up
