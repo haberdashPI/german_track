@@ -24,15 +24,15 @@ using GermanTrack: colors
 # TODO: do we need to z-score these values?
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-# eeg_encoding = JointEncoding(
-#     RawEncoding(),
-#     FilteredPower("delta", 1,  3),
-#     FilteredPower("theta", 3,  7),
-#     FilteredPower("alpha", 7,  15),
-#     FilteredPower("beta",  15, 30),
-#     FilteredPower("gamma", 30, 100),
-# )
-eeg_encoding = RawEncoding()
+eeg_encoding = JointEncoding(
+    RawEncoding(),
+    FilteredPower("delta", 1,  3),
+    FilteredPower("theta", 3,  7),
+    FilteredPower("alpha", 7,  15),
+    FilteredPower("beta",  15, 30),
+    FilteredPower("gamma", 30, 100),
+)
+# eeg_encoding = RawEncoding()
 
 sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
@@ -40,7 +40,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 2
+max_lag = 3
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -333,9 +333,9 @@ score(x,y) = cor(x,y)
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
-    # @where(__, :encoding .== "envelope") |>
-    groupby(__, [:encoding, :λ]) |>
-    @transform(__, score = zscoresafe(:score)) |>
+    @where(__, :encoding .== "envelope") |>
+    # groupby(__, [:encoding, :λ]) |>
+    # @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
         :trialnum, :stim_id, :windowing, :λ, :hittype]) |>
     @combine(__, score = mean(:score)) |>
@@ -363,11 +363,13 @@ pldata = @_ scores |>
 # TODO: eventually select the best λ using cross-validation
 best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
     @combine(__, score = mean(:score)) |>
-    groupby(__, [:condition, :target_window]) |>
+    groupby(__, [:target_window, :λ]) |>
+    @combine(__, score = minimum(:score)) |>
+    groupby(__, [:target_window]) |>
     @combine(__, score = maximum(:score), λ = :λ[argmax(:score)])
 
 best_λ = @_ best_λs |>
-    @where(__, (:target_window .== "athit-hit") .& (:condition .== "global")) |>
+    @where(__, (:target_window .== "athit-hit") ) |>
     __.λ |> first
 
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
@@ -445,6 +447,12 @@ pl = @_ scores |>
         ) +
         @vlplot({:point, xOffset = -mean_offset/2},
             y = "mean(score)",
+        ) +
+        @vlplot({:line, size = 1}, color = {value = "gray"},
+            opacity = {value = 0.3},
+            x = :target_window,
+            y = :score,
+            detail = :sid,
         ) +
         @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +

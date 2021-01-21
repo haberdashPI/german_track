@@ -35,7 +35,7 @@ fit4 = stan_glmer(score ~ target_window * condition + target_time_label +
 fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
     (target_window * condition | sid) +
     (target_window * condition | stim_id),
-    adapt_delta = 0.99, # prevents divergent transitions after warm-up
+    adapt_delta = 0.998, # prevents divergent transitions after warm-up
     data = dfc)
 
 # how many data points per cell for each subject is this final model?
