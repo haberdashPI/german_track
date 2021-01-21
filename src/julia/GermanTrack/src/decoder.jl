@@ -29,17 +29,47 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
     end
 end
 
+decode_weights(x) = x.layers[1].W
+
 function lassoflux(x, y, λ, opt;
     batch = 64,
     validate = nothing,
     patience = 0,
     max_steps = 2,
     min_steps = 1,
+    inner = 1024,
     progress = Progress(steps))
 
-    model = Dense(size(x, 1), size(y, 1)) |> gpu
+
+    model = Chain(
+        Dense(size(x, 1), inner),
+        BatchNorm(inner, swish),
+        # SkipConnection(
+        #     Chain(
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish),
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish)
+        #     ), +),
+        # SkipConnection(
+        #     Chain(
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish),
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish)
+        #     ), +),
+        # SkipConnection(
+        #     Chain(
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish),
+        #         Dense(inner, inner),
+        #         BatchNorm(inner, swish)
+        #     ), +),
+        Dense(inner, size(y, 1)),
+    ) |> gpu
+
     λf = Float32(λ)
-    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, model.W)
+    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, decode_weights(model))
 
     # l1opt = L1Opt(opt, λ, applyto = [model.W])
     l1opt = opt

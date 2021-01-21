@@ -185,12 +185,12 @@ GermanTrack.@cache_results file predictions coefs begin
 
     max_steps = 500
     nλ = 24
-    batchsize = 1024
+    batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
-    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
+    predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
         :λ => exp.(range(log(1e-5),log(1e-1),length=nλ)),
         :train_type => train_types,
@@ -234,6 +234,7 @@ GermanTrack.@cache_results file predictions coefs begin
                 progress = progress, batch = batchsize, max_steps = max_steps,
                 min_steps = 10,
                 patience = 4,
+                inner = 64,
                 validate = (xⱼ, yⱼ))
 
             test.predict = map(eachrow(test)) do testrow
@@ -242,15 +243,16 @@ GermanTrack.@cache_results file predictions coefs begin
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
             test.steps = taken_steps
-            C = model.W
+            C = GermanTrack.decode_weights(model)
 
-            coefs = DataFrame(
-                coef = vec(model.W),
-                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
-                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
-                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
+            # @infiltrate
+            # coefs = DataFrame(
+            #     coef = vec(C),
+            #     encoding = levels(train.encoding)[getindex.(CartesianIndices(C), 1)] |> vec,
+            #     lag = lags[mod.(getindex.(CartesianIndices(C), 2) .- 1, nlags) .+ 1 |> vec],
+            #     feature = fld.(getindex.(CartesianIndices(C), 2) .- 1, nlags) .+1 |> vec)
 
-            test, coefs
+            test#= , coefs =#
         end)
 
     ProgressMeter.finish!(progress)
