@@ -36,9 +36,10 @@ function lassoflux(x, y, λ, opt;
     max_steps = 2,
     min_steps = 1,
     progress = Progress(steps))
+
     model = Dense(size(x, 1), size(y, 1)) |> gpu
-    λf = Float32(λf)
-    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, x.W)
+    λf = Float32(λ)
+    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, model.W)
 
     # l1opt = L1Opt(opt, λ, applyto = [model.W])
     l1opt = opt

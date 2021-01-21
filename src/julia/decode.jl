@@ -183,66 +183,139 @@ GermanTrack.@cache_results file predictions coefs begin
         transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
-    function runfold(sdf, fold, train_type)
-        hittype, windowing =
-            train_type == "athit" ? ("hit", "target") :
-            train_type == "pre-miss" ? ("miss", "pre-target") :
-            error("Unexpected `traintest` value of $traintest.")
+    max_steps = 500
+    nλ = 24
+    batchsize = 1024
+    train_types = ["athit"] #, "pre-miss"]
+    progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
+    validate_fraction = 0.2
 
-        train = @_ filter((_1.fold != fold) &&
-                          (_1.hittype == hittype) &&
-                          (_1.windowing == windowing), sdf)
-        test  = @_ filter((_1.fold == fold), sdf)
+    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
+        :fold => 1:nfolds,
+        :λ => exp.(range(log(1e-5),log(1e-1),length=nλ)),
+        :train_type => train_types,
+        function(sdf, fold, λ, train_type)
+            hittype, windowing =
+                train_type == "athit" ? ("hit", "target") :
+                train_type == "pre-miss" ? ("miss", "pre-target") :
+                error("Unexpected `traintest` value of $traintest.")
 
-        # @infiltrate isempty(train) || isempty(test)
+            nontest = @_ filter((_1.fold != fold) &&
+                            (_1.hittype == hittype) &&
+                            (_1.windowing == windowing), sdf)
+            test  = @_ filter((_1.fold == fold), sdf)
 
-        model = fit(LassoPath,
-            λ = lambdas,
-            # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-            copy(@view(x[:, eegindices(train)])'),
-            reduce(vcat, train.data))
-        predicts = map(eachrow(test)) do testrow
-            predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
-        end
+            sids = levels(nontest.sid)
+            nval = max(1, round(Int, validate_fraction * length(sids)))
+            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
+                Tuple(sdf[1, groupings]))
+            validate_ids = sample(rng, sids, nval, replace = false)
 
-        test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
-            mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
-                merge(row, (
-                    predict = p[:, i],
-                    λ = λ
-                ))
+            train    = @_ filter(_.sid ∉ validate_ids, nontest)
+            validate = @_ filter(_.sid ∈ validate_ids, nontest)
+
+            encodings = groupby(train, :encoding)
+            firstencoding = first(encodings).encoding |> first
+            xᵢ = x[:, eegindices(first(encodings))]
+            yᵢ = @_ [
+                row.data
+                for rows in encodings
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+            xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
+            yⱼ = @_ [
+                row.data
+                for rows in groupby(validate, :encoding)
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+                progress = progress, batch = batchsize, max_steps = max_steps,
+                min_steps = 10,
+                patience = 4,
+                validate = (xⱼ, yⱼ))
+
+            test.predict = map(eachrow(test)) do testrow
+                xⱼ = view(x, :, eegindices(testrow))
+                yⱼ = model(xⱼ)
+                view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
-        end
+            test.steps = taken_steps
+            C = model.W
 
-        ii, jj, c = findnz(coef(model))
-        feature_ixs = get.(Ref(vec(CartesianIndices((nfeatures,nlags)))), ii.-1,
-            Ref((missing, missing)))
-        componenti = getindex.(feature_ixs, 1)
-        lagi = getindex.(feature_ixs, 2)
+            coefs = DataFrame(
+                coef = vec(model.W),
+                encoding = levels(train.encoding)[getindex.(CartesianIndices(model.W), 1)] |> vec,
+                lag = lags[mod.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+ 1 |> vec],
+                feature = fld.(getindex.(CartesianIndices(model.W), 2) .- 1, nlags) .+1 |> vec)
 
-        getindexm(x, i::Missing) = missing
-        getindexm(x, i) = getindex(x, i)
-        coefsdf = DataFrame(
-            value           = c,
-            λ               = lambdas[jj],
-            component       = componenti,
-            lag             = getindexm.(Ref(lags), lagi)
-        )
+            test, coefs
+        end)
 
-        test_, coefsdf
-    end
+    ProgressMeter.finish!(progress)
+    alert("Completed model training!")
 
-    lambdas = 10 .^ range(-3, -1, length = 100)
-    predictions, coefs = filteringmap(groups,
-        folder   =  foldxt,
-        streams  =  2,
-        desc     =  "Lasso fitting...",
-        :fold    => 1:nfolds,
-        :train_type => ["athit", "pre-miss"],
-        runfold
-    )
+    # function runfold(sdf, fold, train_type)
+    #     hittype, windowing =
+    #         train_type == "athit" ? ("hit", "target") :
+    #         train_type == "pre-miss" ? ("miss", "pre-target") :
+    #         error("Unexpected `traintest` value of $traintest.")
 
-    alert("Decoding complete!")
+    #     train = @_ filter((_1.fold != fold) &&
+    #                       (_1.hittype == hittype) &&
+    #                       (_1.windowing == windowing), sdf)
+    #     test  = @_ filter((_1.fold == fold), sdf)
+
+    #     # @infiltrate isempty(train) || isempty(test)
+
+    #     model = fit(LassoPath,
+    #         λ = lambdas,
+    #         # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
+    #         copy(@view(x[:, eegindices(train)])'),
+    #         reduce(vcat, train.data))
+    #     predicts = map(eachrow(test)) do testrow
+    #         predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
+    #     end
+
+    #     test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
+    #         mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
+    #             merge(row, (
+    #                 predict = p[:, i],
+    #                 λ = λ
+    #             ))
+    #         end
+    #     end
+
+    #     ii, jj, c = findnz(coef(model))
+    #     feature_ixs = get.(Ref(vec(CartesianIndices((nfeatures,nlags)))), ii.-1,
+    #         Ref((missing, missing)))
+    #     componenti = getindex.(feature_ixs, 1)
+    #     lagi = getindex.(feature_ixs, 2)
+
+    #     getindexm(x, i::Missing) = missing
+    #     getindexm(x, i) = getindex(x, i)
+    #     coefsdf = DataFrame(
+    #         value           = c,
+    #         λ               = lambdas[jj],
+    #         component       = componenti,
+    #         lag             = getindexm.(Ref(lags), lagi)
+    #     )
+
+    #     test_, coefsdf
+    # end
+
+    # lambdas = 10 .^ range(-3, -1, length = 100)
+    # predictions, coefs = filteringmap(groups,
+    #     folder   =  foldxt,
+    #     streams  =  2,
+    #     desc     =  "Lasso fitting...",
+    #     :fold    => 1:nfolds,
+    #     :train_type => ["athit", "pre-miss"],
+    #     runfold
+    # )
+
+    # alert("Decoding complete!")
 end
 
 # NOTE: we'd like to know about the decoding of miss trials
@@ -495,11 +568,11 @@ scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    @where(__, :target_window .∈ Ref(["athit-hit", "pre-miss-hit"])) |>
+    @where(__, :target_window .∈ Ref(["athit-hit", "athit-miss"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "athit-hit" => "target", "pre-miss-hit" => "nontarget"),
+            "athit-hit" => "target", "athit-miss" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>

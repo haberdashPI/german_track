@@ -1,5 +1,9 @@
 ## plans
 
+- build-up angles: careful look at merve's data
+- early/late salience (but classifier trained across both cases)
+- decoding: try ann again (without L1 optimizer)
+
 remaining tasks:
 
 1. merve's individual data for build-up angles
@@ -11,7 +15,7 @@ figure nitpicks:
 - change y axis labels for neuarl data near/far
 - use more horizontal space
 - focus on angle for the buildup curve (don't need hit rate)
-- include angle in fig 4 (fig 3 data)
+- include engle in fig 4 (fig 3 data)
 - maybe a difference between neuarl
 
 - feature plots for fig2 & 3?

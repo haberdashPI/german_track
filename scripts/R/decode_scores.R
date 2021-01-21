@@ -38,7 +38,8 @@ fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
     adapt_delta = 0.99, # prevents divergent transitions after warm-up
     data = dfc)
 
-# how many data points per condition for each subject is this final model?
+# how many data points per cell for each subject is this final model?
+# somewhere around 6 points per subject, we wouldn't want to go much lower - so no more interactions
 dfc %>% group_by(target_window,condition,target_time_label,stim_id) %>%
     summarize(c = length(score)) %>%
     ungroup() %>%
