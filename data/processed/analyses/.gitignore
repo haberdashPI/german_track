@@ -24,3 +24,4 @@
 /baseline-switch-by-hit_classifier=svm_radial.csv
 /decode-predict.json
 /decode-predict-freqbin.json
+/decode-predict-freqbin.jld

@@ -9,7 +9,8 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
+    JLD
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -24,15 +25,15 @@ using GermanTrack: colors
 # TODO: do we need to z-score these values?
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-# eeg_encoding = JointEncoding(
-#     RawEncoding(),
-#     FilteredPower("delta", 1,  3),
-#     FilteredPower("theta", 3,  7),
-#     FilteredPower("alpha", 7,  15),
-#     FilteredPower("beta",  15, 30),
-#     FilteredPower("gamma", 30, 100),
-# )
-eeg_encoding = RawEncoding()
+eeg_encoding = JointEncoding(
+    RawEncoding(),
+    FilteredPower("delta", 1,  3),
+    FilteredPower("theta", 3,  7),
+    FilteredPower("alpha", 7,  15),
+    FilteredPower("beta",  15, 30),
+    FilteredPower("gamma", 30, 100),
+)
+# eeg_encoding = RawEncoding()
 
 sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
@@ -40,7 +41,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 2
+max_lag = 3
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -164,8 +165,8 @@ function zscoremany(xs)
 end
 
 
-file = processed_datadir("analyses", "decode-predict-freqbin.json")
-GermanTrack.@cache_results file predictions coefs begin
+filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
+if !isfile(filename)
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
@@ -183,66 +184,92 @@ GermanTrack.@cache_results file predictions coefs begin
         transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
-    function runfold(sdf, fold, train_type)
-        hittype, windowing =
-            train_type == "athit" ? ("hit", "target") :
-            train_type == "pre-miss" ? ("miss", "pre-target") :
-            error("Unexpected `traintest` value of $traintest.")
+    max_steps = 50
+    nλ = 12
+    batchsize = 2048
+    train_types = ["athit", "pre-miss"]
+    progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
+    validate_fraction = 0.2
 
-        train = @_ filter((_1.fold != fold) &&
-                          (_1.hittype == hittype) &&
-                          (_1.windowing == windowing), sdf)
-        test  = @_ filter((_1.fold == fold), sdf)
+    # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
+    # and poor overall performance (might be worth revisiting the projection operator)
+    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
+        :fold => 1:nfolds,
+        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
+        :train_type => train_types,
+        function(sdf, fold, λ, train_type)
+            hittype, windowing =
+                train_type == "athit" ? ("hit", "target") :
+                train_type == "pre-miss" ? ("miss", "pre-target") :
+                error("Unexpected `traintest` value of $traintest.")
 
-        # @infiltrate isempty(train) || isempty(test)
+            nontest = @_ filter((_1.fold != fold) &&
+                            (_1.hittype == hittype) &&
+                            (_1.windowing == windowing), sdf)
+            test  = @_ filter((_1.fold == fold), sdf)
 
-        model = fit(LassoPath,
-            λ = lambdas,
-            # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-            copy(@view(x[:, eegindices(train)])'),
-            reduce(vcat, train.data))
-        predicts = map(eachrow(test)) do testrow
-            predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
-        end
+            sids = levels(nontest.sid)
+            nval = max(1, round(Int, validate_fraction * length(sids)))
+            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
+                Tuple(sdf[1, groupings]))
+            validate_ids = sample(rng, sids, nval, replace = false)
 
-        test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
-            mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
-                merge(row, (
-                    predict = p[:, i],
-                    λ = λ
-                ))
+            train    = @_ filter(_.sid ∉ validate_ids, nontest)
+            validate = @_ filter(_.sid ∈ validate_ids, nontest)
+
+            encodings = groupby(train, :encoding)
+            firstencoding = first(encodings).encoding |> first
+            xᵢ = x[:, eegindices(first(encodings))]
+            yᵢ = @_ [
+                row.data
+                for rows in encodings
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+            xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
+            yⱼ = @_ [
+                row.data
+                for rows in groupby(validate, :encoding)
+                for row in eachrow(rows)
+            ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+
+            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+                progress = progress, batch = batchsize, max_steps = max_steps,
+                min_steps = 20,
+                patience = 6,
+                inner = 64,
+                validate = (xⱼ, yⱼ))
+
+            test.predict = map(eachrow(test)) do testrow
+                xⱼ = view(x, :, eegindices(testrow))
+                yⱼ = model(xⱼ)
+                view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
-        end
+            test.steps = taken_steps
+            C = GermanTrack.decode_weights(model) |> vec
 
-        ii, jj, c = findnz(coef(model))
-        feature_ixs = get.(Ref(vec(CartesianIndices((nfeatures,nlags)))), ii.-1,
-            Ref((missing, missing)))
-        componenti = getindex.(feature_ixs, 1)
-        lagi = getindex.(feature_ixs, 2)
+            bins = ["raw", "delta", "theta", "alpha", "beta", "gamma"]
+            mccai(i) = CartesianIndices((nlags, 30, 6))[i][2]
+            lagi(i) = lags[CartesianIndices((nlags, 30, 6))[i][1]]
+            bini(i) = bins[CartesianIndices((nlags, 30, 6))[i][3]]
 
-        getindexm(x, i::Missing) = missing
-        getindexm(x, i) = getindex(x, i)
-        coefsdf = DataFrame(
-            value           = c,
-            λ               = lambdas[jj],
-            component       = componenti,
-            lag             = getindexm.(Ref(lags), lagi)
-        )
+            coefs = DataFrame(
+                coef = C,
+                lag = lagi.(eachindex(C)),
+                bin = bini.(eachindex(C)),
+                mcca = mccai.(eachindex(C)))
 
-        test_, coefsdf
-    end
+            test, coefs
+        end)
 
-    lambdas = 10 .^ range(-3, -1, length = 100)
-    predictions, coefs = filteringmap(groups,
-        folder   =  foldxt,
-        streams  =  2,
-        desc     =  "Lasso fitting...",
-        :fold    => 1:nfolds,
-        :train_type => ["athit", "pre-miss"],
-        runfold
-    )
+    ProgressMeter.finish!(progress)
+    alert("Completed model training!")
 
-    alert("Decoding complete!")
+    save(filename, "predictions", predictions, "coefs", coefs)
+else
+    data = load(filename)
+    predictions = data["predictions"]
+    coefs = data["coefs"]
 end
 
 # NOTE: we'd like to know about the decoding of miss trials
@@ -261,10 +288,10 @@ meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
     # @where(__, :encoding .== "envelope") |>
-    groupby(__, [:encoding, :λ]) |>
-    @transform(__, score = zscoresafe(:score)) |>
+    # groupby(__, [:encoding, :λ]) |>
+    # @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
-        :trialnum, :stim_id, :windowing, :λ, :hittype]) |>
+        :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
     @combine(__, score = mean(:score)) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
@@ -287,18 +314,26 @@ pldata = @_ scores |>
     groupby(__, [:condition, :target_window, :λ]) |>
     @combine(__, score = mean(:score))
 
-# TODO: eventually select the best λ using cross-validation
-best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
+# TODO: make use of these cross-validated best λs
+best_λs = @_ scores |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :target_window, :source, :λ, :fold]) |>
+    @combine(__, score = nanmean(:score)) |>
+    groupby(__, [:condition, :target_window, :λ, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    groupby(__, [:condition, :target_window]) |>
-    @combine(__, score = maximum(:score), λ = :λ[argmax(:score)])
+    @where(__, :target_window .== "athit-hit") |>
+    groupby(__, [:fold, :condition, :λ]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:λ, :fold]) |>
+    @combine(__, score = minimum(:score)) |>
+    filteringmap(__, desc = nothing, :fold => cross_folds(1:nfolds),
+        (sdf, fold) -> DataFrame(score = maximum(sdf.score), λ = sdf.λ[argmax(sdf.score)])
+    )
 
-best_λ = @_ best_λs |>
-    @where(__, (:target_window .== "athit-hit") .& (:condition .== "global")) |>
-    __.λ |> first
-
+best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
+# TODO: plot all fold's λs
 pl = pldata |>
     @vlplot(
         facet = {column = {field = :condition, type = :nominal}}
@@ -310,18 +345,23 @@ pl = pldata |>
         @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
         (
-            @vlplot(data = {values = [{}]}) +
+            best_λs |> @vlplot() +
             @vlplot({:rule, strokeDash = [2 2], size = 1},
-                x = {datum = best_λ}
+                x = :λ
             )
         )
     );
 pl |> save(joinpath(dir, "decode_lambda.svg"))
 
+pl = @_ predictions |> select(__, :λ, :steps) |>
+    @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
+pl |> save(joinpath(dir, "steps_lambda.svg"))
+
 example = @_ predictions |>
-    @where(__, (:λ .== best_λ) .& (:sid .== 33) .&
+    @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
-              (:encoding .== "envelope") .&
+              (:train_type .== "athit") .&
+            #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
         time = axes(row.predict,1) / sr,
@@ -332,11 +372,11 @@ example = @_ predictions |>
 
 pl = @_ example |>
     @where(__, :trialnum .< 10) |>
-    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source, :is_target_source]) |>
+    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source, :is_target_source, :encoding]) |>
     @vlplot(
         facet = {
             column = {field = :trialnum, type = :ordinal},
-            row = {field = :source, type = :nominal}
+            row = {field = :encoding, type = :nominal}
         }
     ) +
     @vlplot() + (
@@ -347,12 +387,12 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 
 @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source]) |>
     @combine(__, score = mean(:score)) |>
@@ -373,6 +413,12 @@ pl = @_ scores |>
         @vlplot({:point, xOffset = -mean_offset/2},
             y = "mean(score)",
         ) +
+        @vlplot({:line, size = 1}, color = {value = "gray"},
+            opacity = {value = 0.3},
+            x = :target_window,
+            y = :score,
+            detail = :sid,
+        ) +
         @vlplot({:point, filled = true, xOffset = mean_offset/2},
         ) +
         @vlplot({:rule, xOffset = -mean_offset/2},
@@ -385,7 +431,7 @@ pl |> save(joinpath(dir, "decode.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_time_label]) |>
     @combine(__, score = mean(:score)) |>
@@ -421,7 +467,7 @@ pl |> save(joinpath(dir, "decode_earlylate.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_switch_label]) |>
     @combine(__, score = mean(:score)) |>
@@ -457,7 +503,7 @@ pl |> save(joinpath(dir, "decode_switch.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_salience]) |>
     @combine(__, score = mean(:score)) |>
@@ -494,7 +540,7 @@ pl |> save(joinpath(dir, "decode_salience.svg"))
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @where(__, :target_window .∈ Ref(["athit-hit", "pre-miss-hit"])) |>
     @transform(__,
         condition = string.(:condition),
@@ -666,7 +712,7 @@ pl = @_ scores |>
             # row = {field = :is_target_source, type = :ordinal}
         }
     ) + (
-        @vlplot({:line},
+        @vlplot({:point},
             x     = :target_salience_level,
             y     = {:score, type = :quantitative, aggregate = :mean},
             color = {:is_target_source, scale = {range = "#".*hex.(colors[[1,3]])}}

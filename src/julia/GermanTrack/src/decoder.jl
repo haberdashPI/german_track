@@ -29,24 +29,35 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
     end
 end
 
+decode_weights(x) = maximum(x.layers[1].W, dims = 1)
+
 function lassoflux(x, y, λ, opt;
     batch = 64,
     validate = nothing,
     patience = 0,
     max_steps = 2,
     min_steps = 1,
+    inner = 1024,
     progress = Progress(steps))
-    model = Dense(size(x, 1), size(y, 1)) |> gpu
-    λf = Float32(λf)
-    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, x.W)
 
-    # l1opt = L1Opt(opt, λ, applyto = [model.W])
-    l1opt = opt
 
-    local best_model
-    local cur_step
+    model = Chain(
+        Dense(size(x, 1), inner),
+        BatchNorm(inner, swish),
+        Dense(inner, size(y, 1)),
+    ) |> gpu
+
+    λf = Float32(λ)
+    loss(x,y) = Flux.mse(model(x), y) #.- λf.*sum(abs, decode_weights(model))
+
+    l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
+    # l1opt = opt
+
+    local best_model = deepcopy(model)
+    cur_step = 0
 
     best_loss = Float32(Inf32)
+    best_steps = 0
     stopped = false
     evalcb = if isnothing(validate)
         () -> nothing
@@ -59,6 +70,7 @@ function lassoflux(x, y, λ, opt;
             if cur_loss < best_loss
                 wait = 0
                 best_loss = cur_loss
+                best_steps = cur_step
                 best_model = deepcopy(model)
             end
             # @show best_loss
@@ -84,5 +96,5 @@ function lassoflux(x, y, λ, opt;
         next!(progress)
     end
 
-    best_model |> cpu, cur_step
+    best_model |> cpu, best_steps
 end
