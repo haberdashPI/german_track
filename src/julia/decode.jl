@@ -9,7 +9,8 @@
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
-    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays
+    Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
+    JLD
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -164,8 +165,9 @@ function zscoremany(xs)
 end
 
 
-file = processed_datadir("analyses", "decode-predict-freqbin.json")
-GermanTrack.@cache_results file predictions coefs begin
+file = processed_datadir("analyses", "decode-predict-freqbin.jld")
+if !isfile(file)
+# GermanTrack.@cache_results file predictions coefs begin
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
@@ -318,6 +320,9 @@ GermanTrack.@cache_results file predictions coefs begin
     # )
 
     # alert("Decoding complete!")
+    save(file, "predictions", predictions)
+else
+    predictions = load(file, "predictions")
 end
 
 # NOTE: we'd like to know about the decoding of miss trials
@@ -335,7 +340,7 @@ score(x,y) = cor(x,y)
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:predict, :data)) |>
-    @where(__, :encoding .== "envelope") |>
+    # @where(__, :encoding .== "envelope") |>
     # groupby(__, [:encoding, :λ]) |>
     # @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
@@ -398,7 +403,7 @@ pl |> save(joinpath(dir, "decode_lambda.svg"))
 example = @_ predictions |>
     @where(__, (:λ .== best_λ) .& (:sid .== 33) .&
               (:windowing .== "target") .&
-              (:encoding .== "envelope") .&
+            #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
         time = axes(row.predict,1) / sr,
@@ -409,11 +414,11 @@ example = @_ predictions |>
 
 pl = @_ example |>
     @where(__, :trialnum .< 10) |>
-    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source, :is_target_source]) |>
+    stack(__, [:data, :predict], [:time, :windowing, :trialnum, :condition, :sid, :source, :is_target_source, :encoding]) |>
     @vlplot(
         facet = {
             column = {field = :trialnum, type = :ordinal},
-            row = {field = :source, type = :nominal}
+            row = {field = :encoding, type = :nominal}
         }
     ) +
     @vlplot() + (

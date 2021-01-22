@@ -38,6 +38,25 @@ fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
     adapt_delta = 0.998, # prevents divergent transitions after warm-up
     data = dfc)
 
+
+newdf = dfc %>% group_by(target_window,condition,target_time_label,sid,stim_id) %>%
+    summarize(mean_score = mean(score))
+pr = posterior_predict(fit5, newdf, re.form = ~0)
+mean(pr)
+newdf$pred_score = apply(pr , 2 , median)
+int = posterior_interval(pr)
+newdf$pred_lower = int[,1]
+newdf$pred_upper = int[,2]
+
+effects = as.data.frame(fit5) %>%
+    mutate(
+    )
+    select(global_early:spatialdiff, `(phi)`) %>%
+    gather(-`(phi)`, key = 'condition', value = 'value') %>%
+    group_by(condition) %>%
+    effect_summary(r = value, d = value / `(phi)`)
+
+
 # how many data points per cell for each subject is this final model?
 # somewhere around 6 points per subject, we wouldn't want to go much lower - so no more interactions
 dfc %>% group_by(target_window,condition,target_time_label,stim_id) %>%
