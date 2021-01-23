@@ -165,8 +165,8 @@ function zscoremany(xs)
 end
 
 
-file = processed_datadir("analyses", "decode-predict-freqbin.jld")
-if !isfile(file)
+filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
+if !isfile(filename)
 # GermanTrack.@cache_results file predictions coefs begin
     nfolds = 5
 
@@ -186,15 +186,17 @@ if !isfile(file)
         groupby(__, groupings)
 
     max_steps = 500
-    nλ = 24
+    nλ = 12 #24
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
+    # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
+    # and poor overall performance (might be worth revisiting the projection operator)
     predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-5),log(1e-1),length=nλ)),
+        :λ => exp.(range(log(1e-6),log(1e-4),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
             hittype, windowing =
@@ -234,8 +236,8 @@ if !isfile(file)
 
             model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = max_steps,
-                min_steps = 10,
-                patience = 4,
+                min_steps = 20,
+                patience = 6,
                 inner = 64,
                 validate = (xⱼ, yⱼ))
 
@@ -320,9 +322,9 @@ if !isfile(file)
     # )
 
     # alert("Decoding complete!")
-    save(file, "predictions", predictions)
+    save(filename, "predictions", predictions)
 else
-    predictions = load(file, "predictions")
+    predictions = load(filename, "predictions")
 end
 
 # NOTE: we'd like to know about the decoding of miss trials

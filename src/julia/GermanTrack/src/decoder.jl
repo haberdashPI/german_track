@@ -44,27 +44,27 @@ function lassoflux(x, y, λ, opt;
     model = Chain(
         Dense(size(x, 1), inner),
         BatchNorm(inner, swish),
-        # SkipConnection(
-        #     Chain(
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish),
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish)
-        #     ), +),
-        # SkipConnection(
-        #     Chain(
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish),
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish)
-        #     ), +),
-        # SkipConnection(
-        #     Chain(
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish),
-        #         Dense(inner, inner),
-        #         BatchNorm(inner, swish)
-        #     ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
         Dense(inner, size(y, 1)),
     ) |> gpu
 

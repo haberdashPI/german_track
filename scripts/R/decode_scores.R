@@ -39,7 +39,7 @@ fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
     data = dfc)
 
 
-newdf = dfc %>% group_by(target_window,condition,target_time_label,sid,stim_id) %>%
+newdf = dfc %>% group_by(target_window,condition,target_time_label) %>%
     summarize(mean_score = mean(score))
 pr = posterior_predict(fit5, newdf, re.form = ~0)
 mean(pr)
@@ -50,6 +50,7 @@ newdf$pred_upper = int[,2]
 
 effects = as.data.frame(fit5) %>%
     mutate(
+
     )
     select(global_early:spatialdiff, `(phi)`) %>%
     gather(-`(phi)`, key = 'condition', value = 'value') %>%
