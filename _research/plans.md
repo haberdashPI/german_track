@@ -15,6 +15,23 @@ abstract references early late
     listenin condition, but a focused time window for the hit detection
     ... gah, I'm struggling to think about this right now
 
+    - concerns:
+        - i'm worried the beta regression doesn't capture this data
+          I may need to use a logistic regression
+        - what does this actually proove, why did I think this was a good idea?
+            - OH!! if there is a unfirom "window of attention" that moves about
+              rather than one that can distribute across different expanses of
+              the target, then the only thing that can differentiate
+              the three listening conditions is an overall "command" signal
+              a classifier of the conditions would pick up on this command signal,
+              but the command signal should be essentialy the same regardless of
+              whether the target is detected or not, therefore, if we can
+              train a classifier that can differentiate the conditions
+              *when* there is a hit, that eliminates this explanation
+
+              furthermore, the features used by the latter classifier should
+              differ from those used by the former
+
 - build-up angles: careful look at merve's data
 - early/late salience (but classifier trained across both cases)
 - decoding: dnn decoding working, now get some plots going, show mounya both with and

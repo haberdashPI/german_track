@@ -13,7 +13,7 @@ model = stan_glmer(meancor ~ comparison * compare_hit +(1 | sid),
     data = df,
     iter = 2000)
 
-pl = ggplot(df, aes(x = logitnullmean, y = logit(shrinkmean))) + geom_point() +
+pl = ggplot(df, aes(x = logitnullmean, y = logit(shrinkmean))) + geom_point(alpha=0.2) +
     facet_wrap(compare_hit~comparison) +
     geom_abline(intercept = 0, slope = 1)
 ggsave(file.path(plot_dir, 'figure2_parts', 'supplement', 'eeg_data.svg'), pl)
