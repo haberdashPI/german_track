@@ -186,7 +186,7 @@ if !isfile(filename)
         groupby(__, groupings)
 
     max_steps = 50
-    nλ = 12 #24
+    # nλ = 12 #24
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
@@ -196,9 +196,9 @@ if !isfile(filename)
     # and poor overall performance (might be worth revisiting the projection operator)
     predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
+        # :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
         :train_type => train_types,
-        function(sdf, fold, λ, train_type)
+        function(sdf, fold, #= λ,  =#train_type)
             hittype, windowing =
                 train_type == "athit" ? ("hit", "target") :
                 train_type == "pre-miss" ? ("miss", "pre-target") :
@@ -234,7 +234,7 @@ if !isfile(filename)
                 for row in eachrow(rows)
             ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
 
-            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+            model, taken_steps = lassoflux(xᵢ, yᵢ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = max_steps,
                 min_steps = 20,
                 patience = 6,

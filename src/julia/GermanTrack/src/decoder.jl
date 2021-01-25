@@ -31,7 +31,7 @@ end
 
 decode_weights(x) = x.layers[1].W
 
-function lassoflux(x, y, λ, opt;
+function lassoflux(x, y, #= λ,  =#opt;
     batch = 64,
     validate = nothing,
     patience = 0,
@@ -50,7 +50,7 @@ function lassoflux(x, y, λ, opt;
     λf = Float32(λ)
     loss(x,y) = Flux.mse(model(x), y) #.- λf.*sum(abs, decode_weights(model))
 
-    l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
+    # l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
     l1opt = opt
 
     local best_model
