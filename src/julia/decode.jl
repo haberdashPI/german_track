@@ -196,7 +196,7 @@ if !isfile(filename)
     # and poor overall performance (might be worth revisiting the projection operator)
     predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-6),log(1e-4),length=nλ)),
+        :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
             hittype, windowing =
