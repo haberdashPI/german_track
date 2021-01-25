@@ -29,7 +29,7 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
     end
 end
 
-decode_weights(x) = x.layers[1].W
+decode_weights(x) = maximum(x.layers[1].W, dims = 1)
 
 function lassoflux(x, y, λ, opt;
     batch = 64,

@@ -165,9 +165,8 @@ function zscoremany(xs)
 end
 
 
-# filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
-# if !isfile(filename)
-# GermanTrack.@cache_results file predictions coefs begin
+filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
+if !isfile(filename)
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
@@ -189,12 +188,12 @@ end
     nλ = 12
     batchsize = 2048
     train_types = ["athit", "pre-miss"]
-    progress = Progress(max_steps * length(groups) * nfolds * #= nλ *  =#length(train_types))
+    progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
     # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
     # and poor overall performance (might be worth revisiting the projection operator)
-    predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
+    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
@@ -247,85 +246,31 @@ end
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
             test.steps = taken_steps
-            C = GermanTrack.decode_weights(model)
+            C = GermanTrack.decode_weights(model) |> vec
 
-            # @infiltrate
-            # coefs = DataFrame(
-            #     coef = vec(C),
-            #     encoding = levels(train.encoding)[getindex.(CartesianIndices(C), 1)] |> vec,
-            #     lag = lags[mod.(getindex.(CartesianIndices(C), 2) .- 1, nlags) .+ 1 |> vec],
-            #     feature = fld.(getindex.(CartesianIndices(C), 2) .- 1, nlags) .+1 |> vec)
+            bins = ["raw", "delta", "theta", "alpha", "beta", "gamma"]
+            mccai(i) = CartesianIndices((nlags, 30, 6))[i][2]
+            lagi(i) = lags[CartesianIndices((nlags, 30, 6))[i][1]]
+            bini(i) = bins[CartesianIndices((nlags, 30, 6))[i][3]]
 
-            test#= , coefs =#
+            coefs = DataFrame(
+                coef = C,
+                lag = lagi.(eachindex(C)),
+                bin = bini.(eachindex(C)),
+                mcca = mccai.(eachindex(C)))
+
+            test, coefs
         end)
 
     ProgressMeter.finish!(progress)
     alert("Completed model training!")
 
-    # function runfold(sdf, fold, train_type)
-    #     hittype, windowing =
-    #         train_type == "athit" ? ("hit", "target") :
-    #         train_type == "pre-miss" ? ("miss", "pre-target") :
-    #         error("Unexpected `traintest` value of $traintest.")
-
-    #     train = @_ filter((_1.fold != fold) &&
-    #                       (_1.hittype == hittype) &&
-    #                       (_1.windowing == windowing), sdf)
-    #     test  = @_ filter((_1.fold == fold), sdf)
-
-    #     # @infiltrate isempty(train) || isempty(test)
-
-    #     model = fit(LassoPath,
-    #         λ = lambdas,
-    #         # cd_tol = 1e-5, # just reduce the tolerance for now, since it doesn't converge otherwise; worry about it later (I will probably just use flux)
-    #         copy(@view(x[:, eegindices(train)])'),
-    #         reduce(vcat, train.data))
-    #     predicts = map(eachrow(test)) do testrow
-    #         predict(model, @view(x[:, eegindices(testrow)])', select = AllSeg())
-    #     end
-
-    #     test_ = mapreduce(append!!, enumerate(lambdas)) do (i,λ)
-    #         mapreduce(push!!, init = Empty(DataFrame), predicts, eachrow(test)) do p, row
-    #             merge(row, (
-    #                 predict = p[:, i],
-    #                 λ = λ
-    #             ))
-    #         end
-    #     end
-
-    #     ii, jj, c = findnz(coef(model))
-    #     feature_ixs = get.(Ref(vec(CartesianIndices((nfeatures,nlags)))), ii.-1,
-    #         Ref((missing, missing)))
-    #     componenti = getindex.(feature_ixs, 1)
-    #     lagi = getindex.(feature_ixs, 2)
-
-    #     getindexm(x, i::Missing) = missing
-    #     getindexm(x, i) = getindex(x, i)
-    #     coefsdf = DataFrame(
-    #         value           = c,
-    #         λ               = lambdas[jj],
-    #         component       = componenti,
-    #         lag             = getindexm.(Ref(lags), lagi)
-    #     )
-
-    #     test_, coefsdf
-    # end
-
-    # lambdas = 10 .^ range(-3, -1, length = 100)
-    # predictions, coefs = filteringmap(groups,
-    #     folder   =  foldxt,
-    #     streams  =  2,
-    #     desc     =  "Lasso fitting...",
-    #     :fold    => 1:nfolds,
-    #     :train_type => ["athit", "pre-miss"],
-    #     runfold
-    # )
-
-    # alert("Decoding complete!")
-    # save(filename, "predictions", predictions)
-# else
-    # predictions = load(filename, "predictions")
-# end
+    save(filename, "predictions", predictions, "coefs", coefs)
+else
+    data = load(filename)
+    predictions = data["predictions"]
+    coefs = data["coefs"]
+end
 
 # NOTE: we'd like to know about the decoding of miss trials
 
@@ -346,7 +291,7 @@ scores = @_ predictions |>
     # groupby(__, [:encoding, :λ]) |>
     # @transform(__, score = zscoresafe(:score)) |>
     groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
-        :trialnum, :stim_id, :windowing, :λ, :hittype]) |>
+        :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
     @combine(__, score = mean(:score)) |>
     transform!(__,
         :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
@@ -369,20 +314,26 @@ pldata = @_ scores |>
     groupby(__, [:condition, :target_window, :λ]) |>
     @combine(__, score = mean(:score))
 
-# TODO: eventually select the best λ using cross-validation
-best_λs = @_ pldata |> groupby(__, [:condition, :target_window, :λ]) |>
+# TODO: make use of these cross-validated best λs
+best_λs = @_ scores |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :target_window, :source, :λ, :fold]) |>
+    @combine(__, score = nanmean(:score)) |>
+    groupby(__, [:condition, :target_window, :λ, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    groupby(__, [:target_window, :λ]) |>
+    @where(__, :target_window .== "athit-hit") |>
+    groupby(__, [:fold, :condition, :λ]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:λ, :fold]) |>
     @combine(__, score = minimum(:score)) |>
-    groupby(__, [:target_window]) |>
-    @combine(__, score = maximum(:score), λ = :λ[argmax(:score)])
+    filteringmap(__, desc = nothing, :fold => cross_folds(1:nfolds),
+        (sdf, fold) -> DataFrame(score = maximum(sdf.score), λ = sdf.λ[argmax(sdf.score)])
+    )
 
-best_λ = @_ best_λs |>
-    @where(__, (:target_window .== "athit-hit") ) |>
-    __.λ |> first
-
+best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
+# TODO: plot all fold's λs
 pl = pldata |>
     @vlplot(
         facet = {column = {field = :condition, type = :nominal}}
@@ -394,9 +345,9 @@ pl = pldata |>
         @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
             color = {:target_window, scale = {range = "#".*hex.(tcolors)}}) +
         (
-            @vlplot(data = {values = [{}]}) +
+            best_λs |> @vlplot() +
             @vlplot({:rule, strokeDash = [2 2], size = 1},
-                x = {datum = best_λ}
+                x = :λ
             )
         )
     );
@@ -407,8 +358,9 @@ pl = @_ predictions |> select(__, :λ, :steps) |>
 pl |> save(joinpath(dir, "steps_lambda.svg"))
 
 example = @_ predictions |>
-    @where(__, (:λ .== best_λ) .& (:sid .== 33) .&
+    @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
+              (:train_type .== "athit") .&
             #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
@@ -435,12 +387,12 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 
 @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source]) |>
     @combine(__, score = mean(:score)) |>
@@ -479,7 +431,7 @@ pl |> save(joinpath(dir, "decode.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_time_label]) |>
     @combine(__, score = mean(:score)) |>
@@ -515,7 +467,7 @@ pl |> save(joinpath(dir, "decode_earlylate.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_switch_label]) |>
     @combine(__, score = mean(:score)) |>
@@ -551,7 +503,7 @@ pl |> save(joinpath(dir, "decode_switch.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :target_window, :source, :target_salience]) |>
     @combine(__, score = mean(:score)) |>
@@ -588,7 +540,7 @@ pl |> save(joinpath(dir, "decode_salience.svg"))
 scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
-    @where(__, :λ .== best_λ) |>
+    filter(_.λ == best_λ[_.fold], __) |>
     @where(__, :target_window .∈ Ref(["athit-hit", "pre-miss-hit"])) |>
     @transform(__,
         condition = string.(:condition),
