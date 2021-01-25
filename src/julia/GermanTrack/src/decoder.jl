@@ -31,7 +31,7 @@ end
 
 decode_weights(x) = x.layers[1].W
 
-function lassoflux(x, y, #= λ,  =#opt;
+function lassoflux(x, y, λ, opt;
     batch = 64,
     validate = nothing,
     patience = 0,
@@ -47,13 +47,13 @@ function lassoflux(x, y, #= λ,  =#opt;
         Dense(inner, size(y, 1)),
     ) |> gpu
 
-    # λf = Float32(λ)
+    λf = Float32(λ)
     loss(x,y) = Flux.mse(model(x), y) #.- λf.*sum(abs, decode_weights(model))
 
-    # l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
-    l1opt = opt
+    l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
+    # l1opt = opt
 
-    local best_model
+    local best_model = deepcopy(model)
     cur_step = 0
 
     best_loss = Float32(Inf32)

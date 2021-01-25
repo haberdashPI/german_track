@@ -186,7 +186,7 @@ if !isfile(filename)
         groupby(__, groupings)
 
     max_steps = 50
-    # nλ = 12 #24
+    nλ = 6
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * #= nλ *  =#length(train_types))
@@ -196,9 +196,9 @@ if !isfile(filename)
     # and poor overall performance (might be worth revisiting the projection operator)
     predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
-        # :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
+        :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
         :train_type => train_types,
-        function(sdf, fold, #= λ,  =#train_type)
+        function(sdf, fold, λ, train_type)
             hittype, windowing =
                 train_type == "athit" ? ("hit", "target") :
                 train_type == "pre-miss" ? ("miss", "pre-target") :
@@ -211,7 +211,7 @@ if !isfile(filename)
 
             sids = levels(nontest.sid)
             nval = max(1, round(Int, validate_fraction * length(sids)))
-            rng = stableRNG(2019_11_18, :validate_flux, fold, #λ,
+            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
                 Tuple(sdf[1, groupings]))
             validate_ids = sample(rng, sids, nval, replace = false)
 
@@ -234,7 +234,7 @@ if !isfile(filename)
                 for row in eachrow(rows)
             ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
 
-            model, taken_steps = lassoflux(xᵢ, yᵢ, Flux.Optimise.RADAM(),
+            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = max_steps,
                 min_steps = 20,
                 patience = 6,
@@ -331,9 +331,6 @@ end
 
 # Plotting
 # -----------------------------------------------------------------
-
-predictions.λ = 0.1
-best_λ = 0.1
 
 function zscoresafe(x)
     x = zscore(x)
