@@ -185,7 +185,7 @@ if !isfile(filename)
         transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
-    max_steps = 500
+    max_steps = 50
     nλ = 12 #24
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]

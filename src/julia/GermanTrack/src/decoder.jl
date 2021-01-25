@@ -44,42 +44,6 @@ function lassoflux(x, y, λ, opt;
     model = Chain(
         Dense(size(x, 1), inner),
         BatchNorm(inner, swish),
-        SkipConnection(
-            Chain(
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish)
-            ), +),
-        SkipConnection(
-            Chain(
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish)
-            ), +),
-        SkipConnection(
-            Chain(
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish)
-            ), +),
-        SkipConnection(
-            Chain(
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish),
-                Dense(inner, inner),
-                BatchNorm(inner, swish)
-            ), +),
         Dense(inner, size(y, 1)),
     ) |> gpu
 
@@ -90,9 +54,10 @@ function lassoflux(x, y, λ, opt;
     l1opt = opt
 
     local best_model
-    local cur_step
+    cur_step = 0
 
     best_loss = Float32(Inf32)
+    best_steps = 0
     stopped = false
     evalcb = if isnothing(validate)
         () -> nothing
@@ -105,6 +70,7 @@ function lassoflux(x, y, λ, opt;
             if cur_loss < best_loss
                 wait = 0
                 best_loss = cur_loss
+                best_steps = cur_step
                 best_model = deepcopy(model)
             end
             # @show best_loss
@@ -130,5 +96,5 @@ function lassoflux(x, y, λ, opt;
         next!(progress)
     end
 
-    best_model |> cpu, cur_step
+    best_model |> cpu, best_steps
 end
