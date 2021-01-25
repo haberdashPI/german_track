@@ -48,9 +48,9 @@ function lassoflux(x, y, λ, opt;
     ) |> gpu
 
     λf = Float32(λ)
-    loss(x,y) = Flux.mse(model(x), y) .- λf.*sum(abs, decode_weights(model))
+    loss(x,y) = Flux.mse(model(x), y) #.- λf.*sum(abs, decode_weights(model))
 
-    # l1opt = L1Opt(opt, λ, applyto = [model.W])
+    l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
     l1opt = opt
 
     local best_model
