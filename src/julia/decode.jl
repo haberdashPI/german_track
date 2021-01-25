@@ -186,7 +186,7 @@ if !isfile(filename)
         groupby(__, groupings)
 
     max_steps = 50
-    nλ = 6
+    nλ = 12
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * #= nλ *  =#length(train_types))
@@ -196,7 +196,7 @@ if !isfile(filename)
     # and poor overall performance (might be worth revisiting the projection operator)
     predictions = filteringmap(groups, folder = foldl, streams = 1, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-6),log(1e-1),length=nλ)),
+        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
             hittype, windowing =
@@ -401,6 +401,10 @@ pl = pldata |>
         )
     );
 pl |> save(joinpath(dir, "decode_lambda.svg"))
+
+pl = @_ predictions |> select(__, :λ, :steps) |>
+    @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
+pl |> save(joinpath(dir, "steps_lambda.svg"))
 
 example = @_ predictions |>
     @where(__, (:λ .== best_λ) .& (:sid .== 33) .&
