@@ -189,7 +189,7 @@ if !isfile(filename)
     # nλ = 12 #24
     batchsize = 2048
     train_types = ["athit"] #, "pre-miss"]
-    progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
+    progress = Progress(max_steps * length(groups) * nfolds * #= nλ *  =#length(train_types))
     validate_fraction = 0.2
 
     # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
@@ -211,7 +211,7 @@ if !isfile(filename)
 
             sids = levels(nontest.sid)
             nval = max(1, round(Int, validate_fraction * length(sids)))
-            rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
+            rng = stableRNG(2019_11_18, :validate_flux, fold, #λ,
                 Tuple(sdf[1, groupings]))
             validate_ids = sample(rng, sids, nval, replace = false)
 
@@ -331,6 +331,9 @@ end
 
 # Plotting
 # -----------------------------------------------------------------
+
+predictions.λ = 0.1
+best_λ = 0.1
 
 function zscoresafe(x)
     x = zscore(x)

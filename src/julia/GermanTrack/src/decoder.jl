@@ -47,7 +47,7 @@ function lassoflux(x, y, #= λ,  =#opt;
         Dense(inner, size(y, 1)),
     ) |> gpu
 
-    λf = Float32(λ)
+    # λf = Float32(λ)
     loss(x,y) = Flux.mse(model(x), y) #.- λf.*sum(abs, decode_weights(model))
 
     # l1opt = L1Opt(opt, λ, applyto = [model.layers[1].W])
