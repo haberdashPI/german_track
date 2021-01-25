@@ -49,6 +49,8 @@ function lassoflux(x, y, λ, opt;
                 Dense(inner, inner),
                 BatchNorm(inner, swish),
                 Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
                 BatchNorm(inner, swish)
             ), +),
         SkipConnection(
@@ -56,10 +58,23 @@ function lassoflux(x, y, λ, opt;
                 Dense(inner, inner),
                 BatchNorm(inner, swish),
                 Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
                 BatchNorm(inner, swish)
             ), +),
         SkipConnection(
             Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
+                Dense(inner, inner),
+                BatchNorm(inner, swish)
+            ), +),
+        SkipConnection(
+            Chain(
+                Dense(inner, inner),
+                BatchNorm(inner, swish),
                 Dense(inner, inner),
                 BatchNorm(inner, swish),
                 Dense(inner, inner),
