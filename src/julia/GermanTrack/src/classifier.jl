@@ -57,7 +57,7 @@ struct NullSelect <: SegSelect
 end
 Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
 
-function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = nothing,
+function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weight = nothing,
         λ = nothing, kwds...)
     train = filter(x -> x.fold != fold, df)
     test  = filter(x -> x.fold == fold, df)
@@ -106,8 +106,13 @@ function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = n
         train_predict = vals[ifelse.(ŷ_train .> 0.5, 1, 2)]
         train_correct = train_predict .== train[:, y]
 
-        test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
-        test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
+        if !isnothing(weight)
+            test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
+            test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
+        else
+            test.train_accuracy = mean(train_correct)
+            test.train_se = sem(train_correct)
+        end
 
         return test, model
     end

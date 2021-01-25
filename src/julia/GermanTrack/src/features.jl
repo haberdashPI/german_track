@@ -212,8 +212,12 @@ function slice(wn::WindowingBounds{:target}, trial, event, fs)
     from, to = wn.start, wn.start + wn.len
     time = !ismissing(event.target_time) ? event.target_time : begin
         maxlen = floor(Int, size(trial, 2) / fs)
-        rand(trialrng((:windowtarget_missing, target_seed), event),
-            Distributions.Uniform(0, maxlen - to))
+        if maxlen <= to
+            0
+        else
+            rand(trialrng((:windowtarget_missing, target_seed), event),
+                Distributions.Uniform(0, maxlen - to))
+        end
     end
     windowtrial(trial, fs, time .+ (wn.start, wn.start + wn.len))
 end

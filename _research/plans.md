@@ -7,9 +7,18 @@ abstract references early late
 
 ## plans
 
+- condition: show classifying cond-hit vs. all other, vs. cond vs. all other
+    seems to work in both cases (though the stats are *bit* tricky)
+    this suggests that there truly is a different configuration at the
+    instant of target detection:
+    we would expect to see a broadly distritubed ability to detect
+    listenin condition, but a focused time window for the hit detection
+    ... gah, I'm struggling to think about this right now
+
 - build-up angles: careful look at merve's data
 - early/late salience (but classifier trained across both cases)
-- decoding: try ann again (without L1 optimizer)
+- decoding: dnn decoding working, now get some plots going, show mounya both with and
+without additional model layer
 
 remaining tasks:
 

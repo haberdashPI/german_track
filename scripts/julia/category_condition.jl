@@ -189,8 +189,9 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
-        groupby(__, [:sid, :condition]) |>
+        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        @where(__, :hittype .∈ Ref(["hit", "miss"])) |>
+        groupby(__, [:sid, :condition, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
             :window => [windowtarget(len = len, start = start)
                 for len in 2.0 .^ range(-1, 1, length = 10),
@@ -203,15 +204,17 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, [:winstart, :winlen]) |>
         filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
             :cross_fold => 1:10,
+            :compare_hit => [true, false],
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
-            function(sdf, fold, comparison)
-                test, model = traintest(sdf, fold, y = :condition)
+            function(sdf, fold, usehit, comparison)
+                sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
+                    (.!usehit .| (sdf.hittype .== "hit"))
+                test, model = traintest(sdf, fold, y = :complabel, weight = :weight)
                 test.nzero = sum(!iszero, coef(model, MinAICc()))
-
                 test
             end)
 
@@ -220,7 +223,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         Dict(row.sid => row.fold for row in eachrow(__))
 
     win_means = @_ resultdf |>
-        groupby(__, [:comparison, :winlen, :winstart, :sid, :fold]) |>
+        groupby(__, [:comparison, :winlen, :winstart, :sid, :fold, :compare_hit]) |>
         @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
         groupby(__, [:winlen, :winstart]) |>
         filteringmap(__, desc = nothing,
@@ -263,6 +266,7 @@ GermanTrack.@cache_results file predictbasedf begin
 
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        @where(__, :hittype .∈ Ref(["hit", "miss"])) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
@@ -291,25 +295,32 @@ GermanTrack.@cache_results file predictbasedf begin
 
     predictbasedf = @_ classdf |>
         transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
-        groupby(__, :hittype) |>
-        filteringmap(__, desc = "Classifying conditions...",
+        filteringmap(__, desc = "Classifying conditions...", folder = foldxt,
             :cross_fold => 1:10,
             :comparison => (
                 "global-v-object"  => x -> x.condition ∈ ["global", "object"],
                 "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
                 "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
             ),
+            :compare_hit => [true, false],
             :modeltype => modeltypes,
-            function (sdf, fold, comparison, modeltype)
-                selector = modeltype == "null" ? NullSelect() : MinAICc()
+            function (sdf, fold, comparison, usehit, modeltype)
+                selector = modeltype == "null" ? m -> NullSelect() : m -> MinAICc()
                 sdf = get(modelshufflers, modeltype, identity)(sdf)
 
                 win = hyperparams[fold]
                 sdf = filter(x -> x.winstart == win.winstart && x.winlen == win.winlen, sdf)
-                conds = split(comparison, "-v-")
 
-                test, model = traintest(sdf, fold, y = :condition, selector = selector)
-                test.nzero = sum(!iszero, coef(model, selector))
+                sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
+                    (.!usehit .| (sdf.hittype .== "hit"))
+                test, model = traintest(sdf, fold, y = :complabel,
+                    selector = selector)
+
+                if modeltype == "null"
+                    test.nzero = sum(!iszero, coef(model, NullSelect()))
+                else
+                    test.nzero = sum(!iszero, coef(model, MinAICc()))
+                end
 
                 test
             end)
@@ -319,10 +330,10 @@ end
 # =================================================================
 
 predictmeans = @_ predictbasedf |>
-    filter(_.modeltype ∈ ["null", "full"] && _.hittype == "hit", __) |>
-    groupby(__, [:sid, :comparison, :modeltype, :winlen, :hittype]) |>
+    filter(_.modeltype ∈ ["null", "full"], __) |>
+    groupby(__, [:sid, :comparison, :compare_hit, :modeltype, :winlen]) |>
     combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
-    groupby(__, [:sid, :comparison, :modeltype, :hittype]) |>
+    groupby(__, [:sid, :comparison, :compare_hit, :modeltype]) |>
     combine(__,
         :correct => mean => :mean,
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
@@ -334,7 +345,7 @@ nullmeans = @_ predictmeans |>
 
 statdata = @_ predictmeans |>
     filter(_.modeltype == "full", __) |>
-    innerjoin(__, nullmeans, on = [:sid, :comparison, :hittype]) |>
+    innerjoin(__, nullmeans, on = [:sid, :comparison, :compare_hit]) |>
     transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
     transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean) |>
     transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
