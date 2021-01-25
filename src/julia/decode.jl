@@ -165,8 +165,8 @@ function zscoremany(xs)
 end
 
 
-filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
-if !isfile(filename)
+# filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
+# if !isfile(filename)
 # GermanTrack.@cache_results file predictions coefs begin
     nfolds = 5
 
@@ -188,7 +188,7 @@ if !isfile(filename)
     max_steps = 50
     nλ = 12
     batchsize = 2048
-    train_types = ["athit"] #, "pre-miss"]
+    train_types = ["athit", "pre-miss"]
     progress = Progress(max_steps * length(groups) * nfolds * #= nλ *  =#length(train_types))
     validate_fraction = 0.2
 
@@ -322,10 +322,10 @@ if !isfile(filename)
     # )
 
     # alert("Decoding complete!")
-    save(filename, "predictions", predictions)
-else
-    predictions = load(filename, "predictions")
-end
+    # save(filename, "predictions", predictions)
+# else
+    # predictions = load(filename, "predictions")
+# end
 
 # NOTE: we'd like to know about the decoding of miss trials
 
@@ -589,11 +589,11 @@ scolors = ColorSchemes.bamako[[0.2,0.8]]
 mean_offset = 6
 pldata = @_ scores |>
     @where(__, :λ .== best_λ) |>
-    @where(__, :target_window .∈ Ref(["athit-hit", "athit-miss"])) |>
+    @where(__, :target_window .∈ Ref(["athit-hit", "pre-miss-hit"])) |>
     @transform(__,
         condition = string.(:condition),
         target_window = recode(:target_window,
-            "athit-hit" => "target", "athit-miss" => "nontarget"),
+            "athit-hit" => "target", "pre-miss-hit" => "nontarget"),
         target_salience = string.(recode(:target_salience, (levels(:target_salience) .=> ["Low", "High"])...)),
     ) |>
     groupby(__, [:sid, :condition, :trialnum, :target_salience, :target_time_label, :target_switch_label, :target_window]) |>
@@ -760,7 +760,7 @@ pl = @_ scores |>
             # row = {field = :is_target_source, type = :ordinal}
         }
     ) + (
-        @vlplot({:line},
+        @vlplot({:point},
             x     = :target_salience_level,
             y     = {:score, type = :quantitative, aggregate = :mean},
             color = {:is_target_source, scale = {range = "#".*hex.(colors[[1,3]])}}
