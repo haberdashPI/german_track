@@ -48,14 +48,10 @@ newdf$pred_lower = int[,1]
 newdf$pred_upper = int[,2]
 
 effects = as.data.frame(fit5) %>%
-    mutate(
-
-    )
-    select(global_early:spatialdiff, `(phi)`) %>%
-    gather(-`(phi)`, key = 'condition', value = 'value') %>%
+    select(`target_windowathit-miss`:`target_windowathit-miss:condition2:target_time_label1`) %>%
+    gather(`target_windowathit-miss`:`target_windowathit-miss:condition2:target_time_label1`, key = 'condition', value = 'value') %>%
     group_by(condition) %>%
-    effect_summary(r = value, d = value / `(phi)`)
-
+    effect_summary(r = value)
 
 # how many data points per cell for each subject is this final model?
 # somewhere around 6 points per subject, we wouldn't want to go much lower - so no more interactions
