@@ -1,3 +1,7 @@
+- decoding: look atmiss-miss
+- look at target classification vs. pre-target window region, compare cacross codnitions,
+use a baseline with two random windows before the target
+
 presentation (for lab meeting tuesday)
 
 what do we show:
