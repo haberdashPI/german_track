@@ -331,27 +331,14 @@ end
 
 predictmeans = @_ predictbasedf |>
     filter(_.modeltype ∈ ["null", "full"], __) |>
-    groupby(__, [:sid, :comparison, :compare_hit, :modeltype, :winlen]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :correct) |>
     groupby(__, [:sid, :comparison, :compare_hit, :modeltype]) |>
-    combine(__,
-        :correct => mean => :mean,
-        :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitcorrect)
-
-nullmeans = @_ predictmeans |>
-    filter(_.modeltype == "null", __) |>
-    deletecols!(__, [:logitcorrect, :modeltype]) |>
-    rename!(__, :mean => :nullmean)
-
-statdata = @_ predictmeans |>
-    filter(_.modeltype == "full", __) |>
-    innerjoin(__, nullmeans, on = [:sid, :comparison, :compare_hit]) |>
-    transform!(__, :mean => ByRow(shrinktowards(0.5, by = 0.01)) => :shrinkmean) |>
-    transform!(__, :mean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitmean) |>
-    transform!(__, :nullmean => ByRow(logit ∘ shrinktowards(0.5, by = 0.01)) => :logitnullmean)
+    @combine(__,
+        correct = mean(:correct),
+        n = length(:correct),
+    )
 
 file = joinpath(processed_datadir("analyses"), "eeg_condition.csv")
-CSV.write(file, statdata)
+CSV.write(file, predictmeans)
 run(`Rscript $(joinpath(scriptsdir("R"), "condition_eeg.R"))`)
 
 compnames = OrderedDict(

@@ -16,7 +16,8 @@ abstract references early late
     ... gah, I'm struggling to think about this right now
 
     - concerns:
-        - i'm worried the beta regression doesn't capture this data
+        - i'm worried the beta regression doesn't capture this data:
+            using a logistic regression allay's my concerns
           I may need to use a logistic regression
         - what does this actually proove, why did I think this was a good idea?
             - OH!! if there is a unfirom "window of attention" that moves about

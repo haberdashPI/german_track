@@ -1,19 +1,25 @@
 source("src/R/setup.R")
 
-df = read.csv(file.path(processed_datadir,'analyses','eeg_condition.csv')) %>%
-    mutate(meancor = invlogit(logit(shrinkmean) - logitnullmean))
+df = read.csv(file.path(processed_datadir,'analyses','eeg_condition.csv'))
 
-model = stan_glmer(meancor ~ comparison * compare_hit +(1 | sid),
-    family = mgcv::betar,
-    weight = df$count,
-    prior = normal(0,2.5),
-    prior_intercept = normal(0,2.5),
-    prior_aux = exponential(autoscale = TRUE),
-    prior_covariance = decov(),
+model = stan_glmer(correct ~ comparison * compare_hit * modeltype +
+    (1 + modeltype * compare_hit * modeltype | sid),
+    family = binomial,
+    weight = df$n,
+    # prior = normal(0,2.5),
+    # prior_intercept = normal(0,2.5),
+    # prior_aux = exponential(autoscale = TRUE),
+    # prior_covariance = decov(),
     data = df,
     iter = 2000)
 
-pl = ggplot(df, aes(x = logitnullmean, y = logit(shrinkmean))) + geom_point(alpha=0.2) +
+pldata = df %>%
+    group_by(comparison,compare_hit,modeltype,sid) %>%
+    summarize(correct = (0.99*(mean(correct)-0.5))+0.5) %>%
+    spread(modeltype, correct)
+
+
+pl = ggplot(pldata, aes(x = logit(null), y = logit(full))) + geom_point(alpha=0.2) +
     facet_wrap(compare_hit~comparison) +
     geom_abline(intercept = 0, slope = 1)
 ggsave(file.path(plot_dir, 'figure2_parts', 'supplement', 'eeg_data.svg'), pl)
@@ -34,16 +40,16 @@ effects = as.data.frame(model) %>%
         global_v_spatial_hit = global_v_spatial_all + `comparisonglobal-v-spatial:compare_hittrue`,
         object_v_spatial_hit = object_v_spatial_all + `comparisonobject-v-spatial:compare_hittrue`
     ) %>%
-    select(global_v_object_all:object_v_spatial_hit, `(phi)`) %>%
+    select(global_v_object_all:object_v_spatial_hit) %>%
     gather(global_v_object_all:object_v_spatial_hit, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
-    effect_summary(r = value, d = value / `(phi)`)
+    effect_summary(r = value)
 
 coeftable = effects %>%
     mutate(across(matches('r_[med0-9]+'), list(odds = exp), .names = '{.fn}{.col}'))
 coeftable %>% effect_table()
 
-logitnullmean = df$logitnullmean %>% mean
+logitnullmean = df %>% filter(modeltype == 'null') %>% .$correct %>% mean %>% logit
 effects %>% mutate(across(matches('r_[med0-9]+'),
     list(prop = ~ invlogit(.x + logitnullmean)), .names = '{.fn}{.col}')) %>%
     select(comparison, contains('prop')) %>%
@@ -51,12 +57,5 @@ effects %>% mutate(across(matches('r_[med0-9]+'),
 
 coeftable %>%
     select(comparison,
-        value = oddsr_med, pi05 = oddsr_05, pi95 = oddsr_95, pd = d_pd, D = d_med) %>%
+        value = oddsr_med, pi05 = oddsr_05, pi95 = oddsr_95) %>%
     effect_json('condition_eeg', comparison)
-
-# as an extra double check
-df %>% filter(comparison == 'object-v-spatial', compare_hit == 'true') %>%
-    {t.test(.$shrinkmean, .$meancor, paired = T)}
-
-df %>% filter(comparison == 'object-v-spatial', compare_hit == 'true') %>%
-    {wilcox.test(.$shrinkmean, .$meancor, paired = T)}
