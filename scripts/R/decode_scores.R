@@ -3,11 +3,11 @@ source("src/R/setup.R")
 df = read.csv(file.path(processed_datadir, 'analyses', 'decode', 'decode_scores.csv'))
 
 fit1 = stan_glmer(score ~ target_window + (1 | sid),
-    data = filter(df, target_window %in% c('athit-hit', 'athit-miss')))
+    data = df)
 
 fit2 = stan_glmer(score ~ target_window * condition +
     (target_window * condition | sid),
-    data = filter(df, target_window %in% c('athit-hit', 'athit-miss')))
+    data = df)
 
 fit3 = stan_glmer(score ~ target_window * condition +
     (target_window * condition | sid) +
@@ -37,7 +37,6 @@ fit5 = stan_glmer(score ~ target_window * condition * target_time_label +
     (target_window * condition | stim_id),
     adapt_delta = 0.998, # prevents divergent transitions after warm-up
     data = dfc)
-
 
 newdf = dfc %>% group_by(target_window,condition,target_time_label) %>%
     summarize(mean_score = mean(score))
