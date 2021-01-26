@@ -349,14 +349,28 @@ compnames = OrderedDict(
 statfile = joinpath(processed_datadir("analyses"), "eeg_condition_coefs.csv")
 plotdata = @_ CSV.read(statfile, DataFrame) |>
     rename(__, :propr_med => :mean, :propr_05 => :lower, :propr_95 => :upper) |>
-    @transform(__, compname = map(x -> compnames[x], :comparison))
-nullmean = logistic(mean(statdata.logitnullmean))
+    @transform(__,
+        label = :comparison,
+        comparison = string.(getindex.(match.(r"(.*)_(all|hit)", :comparison), 1)),
+        case = string.(getindex.(match.(r"(.*)_(all|hit)", :comparison), 2)),
+    ) |>
+    transform!(__, :comparison => ByRow(x -> compnames[x]) => :compname)
+nullmean = @_ predictmeans |> filter(_.modeltype == "null", __) |> __.correct |> mean
+
+plcolors = OrderedDict(
+    "mix1_2_early" => GermanTrack.colorat([1,7]),
+    "mix1_2_late" => GermanTrack.colorat([3,9]),
+    "mix1_3_early" => GermanTrack.colorat([1,12]),
+    "mix1_3_late" => GermanTrack.colorat([3,14]),
+    "mix2_3_early" => GermanTrack.colorat([7,12]),
+    "mix2_3_late" => GermanTrack.colorat([9,14]),
+)
 
 ytitle = "Condition Classification"
-barwidth = 25
+barwidth = 14
 plhit = @_ plotdata |>
     @vlplot(
-        # facet = { column = { field = :hittype, type = :nominal} },
+        # facet = { column = { field = :case, type = :nominal} },
         width = 180, height = 130,
         config = {
             bar = {discreteBandSize = barwidth},
@@ -373,13 +387,27 @@ plhit = @_ plotdata |>
             title = "",
             labelExpr = "split(datum.label, '\\n')"}},
         color = {
-            :compname, title = nothing,
-            scale = {range = ["url(#mix1_2)", "url(#mix1_3)", "url(#mix2_3)"]}}) +
-    @vlplot({:bar},
+            :label, title = nothing,
+            scale = {range = urlcol.(keys(plcolors))}}) +
+    @vlplot({:bar, xOffset = -barwidth/2, clip = true},
+        transform = [{filter = "datum.case == 'all'"}],
         y = {:mean,
             scale = {domain = [0.5, 1]},
             title = ytitle}) +
-    @vlplot({:rule},
+    @vlplot({:rule, xOffset = -barwidth/2},
+        transform = [{filter = "datum.case == 'all'"}],
+        color = {value = "black"},
+        y2 = :upper,
+        y = {:lower,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:bar, xOffset = barwidth/2, clip = true},
+        transform = [{filter = "datum.case == 'hit'"}],
+        y = {:mean,
+            scale = {domain = [0.5, 1]},
+            title = ytitle}) +
+    @vlplot({:rule, xOffset = barwidth/2},
+        transform = [{filter = "datum.case == 'hit'"}],
         color = {value = "black"},
         y2 = :upper,
         y = {:lower,
@@ -388,7 +416,7 @@ plhit = @_ plotdata |>
     ) +
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 1},
             y = {datum = nullmean},
             color = {value = "black"}) +
         @vlplot({:text, align = "left", dx = 15, dy = 0, baseline = "line-bottom", fontSize = 9},
@@ -396,10 +424,21 @@ plhit = @_ plotdata |>
             x = {datum = "Object vs.\n Spatial"},
             text = {value = ["Null Model", "Accuracy"]}
         )
-    );
+    ) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+        transform = [{filter = "datum.case == 'all' && datum.comparison == 'global_v_object'"}],
+        x = :compname,
+        y = {datum = 0.5},
+        text = {value = "Hits & Misses"}) +
+    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+        transform = [{filter = "datum.case == 'hit' && datum.comparison == 'global_v_object'"}],
+        x = :compname,
+        y = {datum = 0.5},
+        text = {value = "Hits"});
+plhit |> save(joinpath(dir, "fig2b.vegalite"))
 plotfile = joinpath(dir, "fig2b.svg")
 plhit |> save(plotfile)
-addpatterns(plotfile, patterns, size = 10)
+addpatterns(plotfile, plcolors, size = 10)
 
 # Presentation version
 # -----------------------------------------------------------------
