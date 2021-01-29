@@ -602,6 +602,284 @@ plotfile = joinpath(dir, "supplement", "condition_earlylate.svg")
 plhit |> save(plotfile)
 addpatterns(plotfile, time_comp, size = 10)
 
+# Categorize the target for each condition
+# =================================================================
+
+# Find best λs
+# -----------------------------------------------------------------
+
+file = joinpath(processed_datadir("analyses"), "target_lambdas.json")
+GermanTrack.@cache_results file fold_map hyperparams begin
+    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+    windowtypes = [
+        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
+        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
+            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
+    ]
+
+    classdf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+        :window => [winfn(start = start, len = len)
+            for (name, winfn) in windowtypes,
+                len in 2.0 .^ range(-4, 1, length = 10),
+                start in range(0, 1.0, length = 10)],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
+
+    lambdas = 10.0 .^ range(-2, 0, length = 100)
+    resultdf = @_ classdf |>
+        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :target_lambda_folds)) |>
+        groupby(__, [:winstart, :winlen, :condition]) |>
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+            :cross_fold => 1:10,
+            function(sdf, fold)
+                rng = stableRNG(2019_11_18, :validate_lambda, fold, sdf.condition)
+                test, model = traintest(sdf, fold, y = :windowtype, λ = lambdas,
+                    selector = m -> AllSeg(), validate_rng = rng)
+                test[:, Not(r"channel")]
+            end)
+
+    fold_map = @_ resultdf |>
+        groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
+        Dict(row.sid => row.fold for row in eachrow(__))
+
+    win_means = @_ resultdf |>
+        groupby(__, [:winlen, :winstart, :λ, :fold]) |>
+        @combine(__, mean = mean(:val_accuracy), mean_sem = mean(:val_se))
+
+    hyperparams = @_ win_means |>
+        groupby(__, :fold) |>
+        @combine(__,
+            best = maximum(:mean),
+            λ = :λ[argmax(:mean)],
+            winlen = :winlen[argmax(:mean)],
+            winstart = :winstart[argmax(:mean)]
+        ) |>
+        Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
+
+    @info "Saving plots to $(joinpath(dir, "supplement"))"
+end
+
+# Target classification timeline
+# -----------------------------------------------------------------
+
+file = joinpath(processed_datadir("analyses"), "target_results.json")
+GermanTrack.@cache_results file resultdf begin
+
+    windowtypes = [
+        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
+        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
+            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
+    ]
+
+    lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
+        GermanTrack.spread.(__, 0.5.*__, n_winlens) |> reduce(vcat, __) |> unique
+
+    offsets = range(-4.0, 4.0, length = 32)
+    classdf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(start = start, len = len)
+            for len in lens,
+                start in offsets],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        deletecols!(__, :window)
+
+    zero_tolerance = 1e-3
+
+    function train_sets(target_offset)
+        function(train)
+            sids = unique(train.sid)
+            pretarget = train.winstart[train.winstart .< 0.0]
+            rand_1 = @_ sample(pretarget, length(sids), replace = false)
+            rand_2 = @_ sample(pretarget, length(sids), replace = false)
+
+            start_map = Dict(sids .=> rand_1)
+            real_train = @_ filter(_1.winstart ∈ (start_map[_1.sid], target_offset), train)
+            real_train.istarget = real_train.winstart .== target_offset
+
+            baseline_map = Dict(sids .=> rand_2)
+            baseline_train = @_ filter(_1.winstart ∈ (start_map[_1.sid], baseline_map[_1.sid]),
+                train)
+            baseline_train.istarget = @_ map(baseline_map[_1.sid] == _1.winstart,
+                eachrow(baseline_train))
+
+            real_train, baseline_train
+        end
+    end
+
+    resultdf = @_ classdf |>
+        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+        groupby(__, [:condition]) |>
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+            :cross_fold => 1:10,
+            :modeltype => ["full", "null"],
+            function(sdf, fold, modeltype)
+                target_offset = hyperparams[fold][:winstart]
+                target_offset = offsets[argmin(abs.(target_offset .- offsets))]
+                sdf.istarget = sdf.winstart .== target_offset
+
+                len = hyperparams[fold][:winlen]
+                lens = GermanTrack.spread(len, 0.5 * len, n_winlens)
+                sdf_ = filter(x -> x.winlen ∈ lens, sdf)
+
+                # train on random windows before
+                combine(groupby(sdf_, :winlen)) do sdf_len
+                    train, baseline = filter(x -> x.fold != fold, sdf_len) |>
+                        train_sets(target_offset)
+                    test = filter(x -> x.fold == fold, sdf_len)
+                    # we pretend all test offsets are targets, so we get a measure of how often
+                    # each offset is calculated as a target
+                    test.istarget = true
+
+                    test, model = traintest(sdf_len, fold,
+                        y = :istarget,
+                        selector = modeltype == "full" ? hyperparams[fold][:λ] :
+                                m -> NullSelect(),
+                        train_test = (train,test)
+                    )
+                    test.train_type = "target"
+
+                    btest, bmodel = traintest(sdf_len, fold,
+                        y = :istarget,
+                        selector = modeltype == "full" ? hyperparams[fold][:λ] :
+                                m -> NullSelect(),
+                        train_test = (baseline,copy(test))
+                    )
+                    btest.train_type = "baseline"
+
+                    if maximum(abs.(Array(view(test,:, r"channel")) .- 0.0)) < zero_tolerance
+                        Empty(DataFrame)
+                    else
+                        vcat(
+                            view(test,:, Not(r"channel")),
+                            view(btest, :, Not(r"channel"))
+                        )
+                    end
+                end
+            end)
+end
+
+# Plotting
+# -----------------------------------------------------------------
+
+classmeans = @_ resultdf |>
+    @where(__, :modeltype .== "full") |>
+    groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :train_type]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => length => :count) |>
+    groupby(__, [:winstart, :sid, :fold, :condition, :train_type]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => mean => :count) |>
+    unstack(__, [:winstart, :sid, :fold, :condition], :train_type, :correct)
+
+logitbasemean = mean(logit.(shrink.(classmeans.baseline)))
+basemean = logistic.(logitbasemean)
+
+plotdata = @_ classmeans |>
+    @transform(__,
+        corrected_mean =
+            logistic.(logit.(shrink.(:target)) .-
+                logit.(shrink.(:baseline)) .+
+                logitbasemean),
+        condition_label = uppercasefirst.(:condition)
+    )
+
+ytitle = "Target Classification"
+target_len_y = 0.8
+label_x = plotdata.winstart |> maximum
+pl = @_ plotdata |>
+    groupby(__, [:condition, :condition_label, :winstart]) |>
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
+    ) |>
+    @vlplot(
+        width = 130, height = 140,
+        config = {
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        },
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal,
+            scale = {range = "#".*hex.(colors)}},
+    ) +
+    # data lines
+    @vlplot({:line, strokeCap = :round, clip = true},
+        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
+        x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [0,1.0]}}) +
+    # data errorbands
+    @vlplot({:errorband, clip = true},
+        x = {:winstart, type = :quantitative},
+        y = {:lower, type = :quantitative, title = ytitle},
+        y2 = :upper
+    ) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter =
+            "(datum.winstart > 3.6 && datum.winstart <= 3.95 && "*
+                "datum.condition != 'object') ||"*
+            "(datum.winstart > 3.2 && datum.winstart <= 3.4 && "*
+                "datum.condition == 'object')"}],
+        x = {datum = label_x},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
+        text = :condition_label
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(mark = {:text, size = 11, baseline = "top", dy = 2, dx = 0,
+            align = "center"},
+            x = {datum = mean(offsets)}, y = {datum = nullmean},
+            text = {value = ["Baseline", "Accuracy"]},
+            color = {value = "black"}
+        )
+    ) +
+    # Dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "fig2d.svg"))
 
 # EEG Cross-validated Features
 # =================================================================

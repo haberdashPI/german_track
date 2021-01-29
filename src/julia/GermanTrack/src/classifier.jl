@@ -57,10 +57,21 @@ struct NullSelect <: SegSelect
 end
 Lasso.segselect(path::Lasso.RegularizationPath, select::NullSelect) = 1
 
-function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = nothing,
-        λ = nothing, kwds...)
-    train = filter(x -> x.fold != fold, df)
-    test  = filter(x -> x.fold == fold, df)
+function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weight = nothing,
+        train_test = nothing,
+        λ = nothing, validate_rng = nothing, validate_prop = 0.2, kwds...)
+
+    not_test = isnothing(train_test) ? filter(x -> x.fold != fold, df) : train_test[1]
+    test  = isnothing(train_test) ? filter(x -> x.fold == fold, df) : train_test[2]
+
+    train, validate = if validate_rng !== nothing
+        sids = unique(not_test.sid)
+        vsids = sample(validate_rng, sids, round(Int, validate_prop*length(sids)),
+            replace = false)
+        filter(x -> x.sid ∉ vsids, not_test), filter(x -> x.sid ∈ vsids, not_test)
+    else
+        not_test, nothing
+    end
 
     vals = unique(df[:, y])
     @assert vals |> length == 2
@@ -80,7 +91,7 @@ function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = n
 
     predictmodel(model, x, selector) = predict(model, x, select = selector(model))
     predictmodel(model, x, selector::Number) = predict(model, x)
-    ŷ_train = predictmodel(model, Array(train[:, X]), selector)
+    ŷ_val = isnothing(validate) ? nothing : predictmodel(model, Array(validate[:, X]), selector)
     ŷ_test = predictmodel(model, Array(test[:, X]), selector)
 
     if !(selector isa Number) && selector(model) isa AllSeg
@@ -89,11 +100,18 @@ function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = n
             test.correct = test.predict .== test[:, y]
             test.λ = lmb
 
-            train_predict = vals[ifelse.(ŷ_train[:, i] .> 0.5, 1, 2)]
-            train_correct = train_predict .== train[:, y]
+            if !isnothing(validate)
+                val_predict = vals[ifelse.(ŷ_val[:, i] .> 0.5, 1, 2)]
+                val_correct = val_predict .== validate[:, y]
 
-            test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
-            test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
+                if !isnothing(weight)
+                    test.val_accuracy = GermanTrack.wmean(val_correct, validate[:, weight])
+                    test.val_se = GermanTrack.wsem(val_correct, validate[:, weight])
+                else
+                    test.val_accuracy = mean(val_correct)
+                    test.val_se = sem(val_correct)
+                end
+            end
 
             copy(test)
         end
@@ -103,11 +121,18 @@ function traintest(df, fold; y, X = r"channel", selector = MinAICc(), weight = n
         test.predict = vals[ifelse.(ŷ_test .> 0.5, 1, 2)]
         test.correct = test.predict .== test[:, y]
 
-        train_predict = vals[ifelse.(ŷ_train .> 0.5, 1, 2)]
-        train_correct = train_predict .== train[:, y]
+        if !isnothing(validate)
+            val_predict = vals[ifelse.(ŷ_val .> 0.5, 1, 2)]
+            val_correct = val_predict .== validate[:, y]
 
-        test.train_accuracy = GermanTrack.wmean(train_correct, train[:, weight])
-        test.train_se = GermanTrack.wsem(train_correct, train[:, weight])
+            if !isnothing(weight)
+                test.val_accuracy = GermanTrack.wmean(val_correct, validate[:, weight])
+                test.val_se = GermanTrack.wsem(val_correct, validate[:, weight])
+            else
+                test.val_accuracy = mean(val_correct)
+                test.val_se = sem(val_correct)
+            end
+        end
 
         return test, model
     end

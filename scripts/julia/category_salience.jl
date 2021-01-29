@@ -285,7 +285,6 @@ GermanTrack.@cache_results file resultdf_timeline begin
         deletecols!(__, :window)
 
     resultdf_timeline = @_ classdf |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
         groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
             :cross_fold => 1:10, folder = foldxt,
