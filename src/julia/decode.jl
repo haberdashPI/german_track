@@ -203,18 +203,23 @@ if !isfile(filename)
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
-            hittype, windowing, source =
-                train_type == "athit-target" ? ("hit", "target", sdf.target_source) :
-                train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source) :
+            hittype, windowing, source, is_target =
+                train_type == "athit-target" ? ("hit", "target", sdf.target_source, true) :
+                train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source, true) :
                 startswith(train_type, "athit-other-") ?
-                    ("hit", "target", split(train_type, "-")[end]) :
+                    ("hit", "target", split(train_type, "-")[end], false) :
                 error("Unexpected `train_type` value of $train_type.")
 
-            sdf = view(sdf, sdf.source .== source, :)
+            sdf = view(sdf, (sdf.source .== source) .&
+                (sdf.is_target_source .== is_target), :)
+            isempty(sdf) && return Empty(DataFrame)
+
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
                             (_1.windowing == windowing), sdf)
-            test  = @_ filter((_1.fold == fold), sdf)
+            test  = @_ filter((_1.fold == fold) &&
+                              (_1.hittype == "hit") &&
+                              (_1.windowing == "target"), sdf)
 
             sids = levels(nontest.sid)
             nval = max(1, round(Int, validate_fraction * length(sids)))
@@ -280,8 +285,6 @@ else
     coefs = data["coefs"]
 end
 
-# NOTE: we'd like to know about the decoding of miss trials
-
 # Plotting
 # -----------------------------------------------------------------
 
@@ -328,7 +331,7 @@ best_λs = @_ scores |>
     @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    @where(__, (:train_type .== "athit") .& (:test_type .== "hit-target")) |>
+    @where(__, (:train_type .== "athit-target") .& (:test_type .== "hit-target")) |>
     groupby(__, [:fold, :condition, :λ]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:λ, :fold]) |>
@@ -341,17 +344,18 @@ best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 # TODO: plot all fold's λs
-pl = pldata |>
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 5)]
+pl = @_ pldata |>
+    @where(__, :test_type .== "hit-target") |>
     @vlplot(
         facet = {column = {field = :condition, type = :nominal}}
     ) +
     (
         @vlplot() +
         @vlplot({:line, strokeCap = :round}, x = {:λ, scale = {type = :log}}, y = :score,
-            strokeDash = {:train_type, type = :nominal, scale = {range = [[1, 0], [6, 4], [1, 3]]}},
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         (
             best_λs |> @vlplot() +
             @vlplot({:rule, strokeDash = [2 2], size = 1},
@@ -369,7 +373,7 @@ example = @_ predictions |>
     @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
               (:hittype.== "hit") .&
-              (:train_type .== "athit") .&
+              (:train_type .== "athit-target") .&
             #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
@@ -401,7 +405,8 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
-    filter(_.λ == best_λ[_.fold], __) |>
+filter(_.λ == best_λ[_.fold], __) |>
+    @where(__, :test_type .== "hit-target") |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :train_type, :test_type, :source]) |>
     @combine(__, score = mean(:score)) |>
@@ -411,13 +416,13 @@ pl = @_ scores |>
         config = {legend = {disable = true}},
         facet = {
             column = {field = :condition, type = :nominal},
-            row = {field = :train_type, type = :nominal}
+            # row = {field = :train_type, type = :nominal}
         },
     ) + (
         @vlplot(
             width = 75, autosize = "fit",
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}},
-            x = {:test_type, axis = {title = "Source", labelAngle = -45,
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}},
+            x = {:train_type, axis = {title = "Source", labelAngle = -45,
                 labelExpr = "split(datum.label,'\\n')"}, },
             y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
@@ -427,7 +432,7 @@ pl = @_ scores |>
         ) +
         @vlplot({:line, size = 1}, color = {value = "gray"},
             opacity = {value = 0.3},
-            x = :test_type,
+            x = :train_type,
             y = :score,
             detail = :sid,
         ) +

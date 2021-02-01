@@ -5,9 +5,9 @@
 
 - build-up angles: careful look at merve's data
 - decoding: mixed and separate other targets
-+ decoding: timeline for target
-- conditions: condition-hit timeline
-- decoding: joint mixture
+- decoding: timeline for target
++ conditions: condition-hit timeline
+- decoding: joint mixture??
 - early/late salience (but classifier trained across both cases)
 
 remaining tasks:
