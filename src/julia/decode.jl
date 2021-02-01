@@ -95,7 +95,6 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     next!(progress)
 end
 
-# should we z-score? (probably...; gets a more meaningful score)
 x .-= mean(x, dims = 2)
 x ./= std(x, dims = 2)
 
