@@ -494,9 +494,9 @@ GermanTrack.@cache_results file resultdf_earlylate_timeline begin
         deletecols!(__, :window)
 
     resultdf_earlylate_timeline = @_ classdf |>
-        groupby(__, [:hittype, :condition, :winstart, :target_time_label]) |>
+        groupby(__, [:hittype, :condition, :winstart]) |>
         filteringmap(__, desc = "Classifying salience...",
-            :cross_fold => 1:10, folder = foldl,
+            :cross_fold => 1:10, folder = foldxt,
             :modeltype => ["full", "null"],
             function (sdf, fold, modeltype)
                 selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
@@ -514,7 +514,6 @@ end
 # plotting (trained on early late separate)
 # -----------------------------------------------------------------
 
-nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
 classmeans_earlylate = @_ resultdf_earlylate_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype, :target_time_label]) |>
         combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
