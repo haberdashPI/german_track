@@ -481,6 +481,54 @@ plotfile = joinpath(dir, "present", "fig2b.svg")
 plhit |> save(plotfile)
 addpatterns(plotfile, patterns, size = 10)
 
+# Condition timeline
+# =================================================================
+
+subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
+
+lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
+GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
+
+classdf = @_ events |>
+    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    @where(__, :hittype .∈ Ref(["hit", "miss"])) |>
+    groupby(__, [:sid, :condition, :hittype]) |>
+    filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(len = len, start = start)
+            for len in 2.0 .^ range(-1, 1, length = 10),
+                start in range(0, 4, length = 32)],
+        compute_powerbin_features(_1, subjects, _2)) |>
+    transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+    deletecols!(__, :window)
+
+resultdf = @_ classdf |>
+    groupby(__, [:winstart]) |>
+    filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+        :cross_fold => 1:10,
+        :compare_hit => [true, false],
+        :comparison => (
+            "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+            "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+            "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+        ),
+        function(sdf, fold, usehit, comparison)
+            sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
+                (.!usehit .| (sdf.hittype .== "hit"))
+            lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+
+            sdf = filter(x -> x.winlen ∈ lens, sdf)
+            combine(groupby(sdf, :winlen)) do sdf_len
+                test, model = traintest(sdf_len, fold, y = :complabel)
+                test.nzero = sum(!iszero, coef(model, MinAICc()))
+                test[:, Not(r"channel")]
+            end
+        end)
+
+# plotting
+# -----------------------------------------------------------------
+
+
+
 # Early/late condition classifiers
 # =================================================================
 
