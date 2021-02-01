@@ -503,22 +503,25 @@ classdf = @_ events |>
 
 resultdf = @_ classdf |>
     groupby(__, [:winstart]) |>
-    filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+    filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
         :cross_fold => 1:10,
         :compare_hit => [true, false],
+        :modeltype => modeltypes,
         :comparison => (
             "global-v-object"  => x -> x.condition ∈ ["global", "object"],
             "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
             "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
         ),
         function(sdf, fold, usehit, comparison)
+            selector = modeltype == "null" ? m -> NullSelect() : m -> MinAICc()
             sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
                 (.!usehit .| (sdf.hittype .== "hit"))
             lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
             sdf = filter(x -> x.winlen ∈ lens, sdf)
             combine(groupby(sdf, :winlen)) do sdf_len
-                test, model = traintest(sdf_len, fold, y = :complabel)
+                test, model = traintest(sdf_len, fold, y = :complabel,
+                    selector = selector)
                 test.nzero = sum(!iszero, coef(model, MinAICc()))
                 test[:, Not(r"channel")]
             end
@@ -527,6 +530,119 @@ resultdf = @_ classdf |>
 # plotting
 # -----------------------------------------------------------------
 
+classmeans = @_ resultdf |>
+    # @where(__, :modeltype .== "full") |>
+    groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :modeltype]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => length => :count) |>
+    groupby(__, [:winstart, :sid, :fold, :condition, :modeltype]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => mean => :count) |>
+    unstack(__, [:winstart, :sid, :fold, :condition], :modeltype, :correct)
+
+logitbasemean = mean(logit.(shrink.(classmeans.baseline)))
+basemean = logistic.(logitbasemean)
+
+plotdata = @_ classmeans |>
+    @transform(__,
+        corrected_mean =
+            logistic.(logit.(shrink.(:target)) .-
+                logit.(shrink.(:baseline)) .+
+                logitbasemean),
+        condition_label = uppercasefirst.(:condition)
+    )
+
+ytitle = "Target Classification"
+target_len_y = 0.8
+label_x = plotdata.winstart |> maximum
+pl = @_ plotdata |>
+    groupby(__, [:condition, :condition_label, :winstart]) |>
+    @combine(__,
+        corrected_mean = mean(:corrected_mean),
+        lower = lowerboot(:corrected_mean, alpha = 0.318),
+        upper = upperboot(:corrected_mean, alpha = 0.318),
+    ) |>
+    @vlplot(
+        width = 130, height = 140,
+        config = {
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        },
+    ) +
+    (@vlplot(
+        color = {field = :condition, type = :nominal,
+            scale = {range = "#".*hex.(colors)}},
+    ) +
+    # data lines
+    @vlplot({:line, strokeCap = :round, clip = true},
+        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
+        x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
+            scale = {domain = [0,1.0]}}) +
+    # data errorbands
+    @vlplot({:errorband, clip = true},
+        x = {:winstart, type = :quantitative},
+        y = {:lower, type = :quantitative, title = ytitle},
+        y2 = :upper
+    ) +
+    # condition labels
+    @vlplot({:text, align = :left, dx = 5},
+        transform = [{filter =
+            "(datum.winstart > 3.6 && datum.winstart <= 3.95 && "*
+                "datum.condition != 'object') ||"*
+            "(datum.winstart > 3.2 && datum.winstart <= 3.4 && "*
+                "datum.condition == 'object')"}],
+        x = {datum = label_x},
+        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
+        text = :condition_label
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(mark = {:text, size = 11, baseline = "top", dy = 2, dx = 0,
+            align = "center"},
+            x = {datum = mean(offsets)}, y = {datum = nullmean},
+            text = {value = ["Baseline", "Accuracy"]},
+            color = {value = "black"}
+        )
+    ) +
+    # Dotted line
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+            y = {datum = nullmean},
+            color = {value = "black"})
+    ) +
+    # "Target Length" arrow annotation
+    (
+        @vlplot(data = {values = [
+            {x = 0.05, y = target_len_y, dir = 270},
+            {x = 0.95, y = target_len_y, dir = 90}]}) +
+        @vlplot(mark = {:line, size = 1.5},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            color = {value = "black"},
+        ) +
+        @vlplot(mark = {:point, shape = "triangle", opacity = 1.0, size = 10},
+            x = {:x, type = :quantitative}, y = {:y, type = :quantitative},
+            angle = {:dir, type = :quantitative, scale = {domain = [0, 360], range = [0, 360]}},
+            color = {value = "black"}
+        )
+    ) +
+    # "Target Length" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left, yOffset = -3},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = "Target Length"},
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "fig2d.svg"))
 
 
 # Early/late condition classifiers
