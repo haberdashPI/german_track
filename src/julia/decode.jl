@@ -189,10 +189,12 @@ if !isfile(filename)
     max_steps = 50
     nλ = 12
     batchsize = 2048
-    train_types = ["athit-target", "pre-miss-target",
+    train_types = vcat(
         string.("athit-other-",["male","fem1","fem2"]),
+        "athit-target",
+        "pre-miss-target",
         # string.("athit-mix-",["male+fem1","male+fem2","fem1+fem2"]),
-    ]
+    )
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
