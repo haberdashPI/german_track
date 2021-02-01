@@ -526,7 +526,7 @@ resultdf = @_ classdf |>
             end
         end)
 
-# plotting
+# timeline plotting
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf |>
@@ -634,6 +634,57 @@ pl = @_ plotdata |>
     ));
 pl |> save(joinpath(dir, "fig2d_A.svg"))
 
+
+# Target timing plotting
+# -----------------------------------------------------------------
+
+classdf = @_ events |>
+    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    @where(__, :hittype .∈ Ref(["hit", "miss"])) |>
+    groupby(__, [:sid, :condition, :hittype, :time]) |>
+    filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(len = len, start = start)
+            for len in lens, start in range(-4, 4, length = 32)],
+        compute_powerbin_features(_1, subjects, _2)) |>
+    transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
+    deletecols!(__, :window)
+
+resultdf = @_ classdf |>
+    groupby(__, [:winstart]) |>
+    filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+        :cross_fold => 1:10,
+        :compare_hit => [true, false],
+        :modeltype => ["full", "null"],
+        :comparison => (
+            "global-v-object"  => x -> x.condition ∈ ["global", "object"],
+            "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
+            "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
+        ),
+        function(sdf, fold, usehit, modeltype, comparison)
+            selector = modeltype == "null" ? m -> NullSelect() : m -> MinAICc()
+            sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
+                (.!usehit .| (sdf.hittype .== "hit"))
+            lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+
+            sdf = filter(x -> x.winlen ∈ lens, sdf)
+            combine(groupby(sdf, :winlen)) do sdf_len
+                test, model = traintest(sdf_len, fold, y = :complabel,
+                    selector = selector)
+                test.nzero = sum(!iszero, coef(model, MinAICc()))
+                test[:, Not(r"channel")]
+            end
+        end)
+
+
+classmeans = @_ resultdf |>
+    # @where(__, :modeltype .== "full") |>
+    groupby(__, [:winstart, :winlen, :sid, :fold, :comparison, :compare_hit, :modeltype]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => length => :count) |>
+    groupby(__, [:winstart, :sid, :fold, :comparison, :compare_hit, :modeltype]) |>
+    combine(__, :correct => mean => :correct,
+                :correct => mean => :count) |>
+    unstack(__, [:winstart, :sid, :fold, :comparison, :compare_hit], :modeltype, :correct)
 
 # Early/late condition classifiers
 # =================================================================
