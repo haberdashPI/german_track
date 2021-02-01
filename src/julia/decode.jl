@@ -22,8 +22,6 @@ using GermanTrack: colors
 # Setup EEG Data
 # -----------------------------------------------------------------
 
-# TODO: do we need to z-score these values?
-
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
 eeg_encoding = JointEncoding(
     RawEncoding(),
@@ -97,7 +95,6 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     next!(progress)
 end
 
-# should we z-score? (probably...; gets a more meaningful score)
 x .-= mean(x, dims = 2)
 x ./= std(x, dims = 2)
 
@@ -106,15 +103,21 @@ x ./= std(x, dims = 2)
 
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 encodings = ["pitch", "envelope"]
-source_names = ["male", "fem1", "fem2"]
-sources = [male_source, fem1_source, fem2_source]
+sources = [
+    male_source,
+    fem1_source,
+    fem2_source,
+    # male_fem1_sources,
+    # male_fem2_sources,
+    # fem1_fem2_sources
+]
 
 stimuli = Empty(Vector)
 
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
     for (j, encoding) in enumerate(encodings)
-        for (source_name, source) in zip(source_names, sources)
+        for source in sources
             stim, stim_id = load_stimulus(source, trial, stim_encoding, sr, meta)
             start = trial.start
             stop = min(size(stim,1), trial.start + trial.len - 1)
@@ -128,15 +131,14 @@ for (i, trial) in enumerate(eachrow(windows))
 
             stimuli = push!!(stimuli, (
                 trial...,
-                source           = source_name,
+                source           = string(source),
                 encoding         = encoding,
                 start            = start,
                 stop             = stop,
                 len              = stop - start + 1,
                 data             = stimulus,
-                is_target_source = trial.target_source == source_name,
+                is_target_source = trial.target_source == string(source),
                 stim_id          = stim_id,
-
             ))
         end
     end
@@ -173,7 +175,8 @@ if !isfile(filename)
 
     groupings = [:encoding]
     groups = @_ DataFrame(stimuli) |>
-        @where(__, :is_target_source) |>
+        @where(__, :condition .== "global") |>
+        # @where(__, :is_target_source) |>
         # @where(__, :windowing .== "target") |>
         # train on quarter of subjects
         # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
@@ -186,27 +189,38 @@ if !isfile(filename)
     max_steps = 50
     nλ = 12
     batchsize = 2048
-    train_types = ["athit", "pre-miss", "atmiss"]
+    train_types = vcat(
+        string.("athit-other-",["male","fem1","fem2"]),
+        string.("athit-target-",["male","fem1","fem2"]),
+        "pre-miss-target",
+        # string.("athit-mix-",["male+fem1","male+fem2","fem1+fem2"]),
+    )
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
-    # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
-    # and poor overall performance (might be worth revisiting the projection operator)
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
-            hittype, windowing =
-                train_type == "athit" ? ("hit", "target") :
-                train_type == "pre-miss" ? ("miss", "pre-target") :
-                train_type == "atmiss" ? ("miss", "target") :
-                error("Unexpected `traintest` value of $traintest.")
+            hittype, windowing, source, is_target =
+                train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source, true) :
+                startswith(train_type, "athit-target-") ?
+                    ("hit", "target", split(train_type, "-")[end], true) :
+                startswith(train_type, "athit-other-") ?
+                    ("hit", "target", split(train_type, "-")[end], false) :
+                error("Unexpected `train_type` value of $train_type.")
+
+            sdf = view(sdf, (sdf.source .== source) .&
+                (sdf.is_target_source .== is_target), :)
+            isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame))
 
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
                             (_1.windowing == windowing), sdf)
-            test  = @_ filter((_1.fold == fold), sdf)
+            test  = @_ filter((_1.fold == fold) &&
+                              (_1.hittype == "hit") &&
+                              (_1.windowing == "target"), sdf)
 
             sids = levels(nontest.sid)
             nval = max(1, round(Int, validate_fraction * length(sids)))
@@ -272,8 +286,6 @@ else
     coefs = data["coefs"]
 end
 
-# NOTE: we'd like to know about the decoding of miss trials
-
 # Plotting
 # -----------------------------------------------------------------
 
@@ -320,7 +332,7 @@ best_λs = @_ scores |>
     @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    @where(__, (:train_type .== "athit") .& (:test_type .== "hit-target")) |>
+    @where(__, (startswith.(:train_type, "athit-target")) .& (:test_type .== "hit-target")) |>
     groupby(__, [:fold, :condition, :λ]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:λ, :fold]) |>
@@ -333,17 +345,18 @@ best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 # TODO: plot all fold's λs
-pl = pldata |>
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
+pl = @_ pldata |>
+    @where(__, :test_type .== "hit-target") |>
     @vlplot(
         facet = {column = {field = :condition, type = :nominal}}
     ) +
     (
         @vlplot() +
         @vlplot({:line, strokeCap = :round}, x = {:λ, scale = {type = :log}}, y = :score,
-            strokeDash = {:train_type, type = :nominal, scale = {range = [[1, 0], [6, 4], [1, 3]]}},
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         (
             best_λs |> @vlplot() +
             @vlplot({:rule, strokeDash = [2 2], size = 1},
@@ -361,7 +374,7 @@ example = @_ predictions |>
     @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
               (:hittype.== "hit") .&
-              (:train_type .== "athit") .&
+              (:train_type .== "athit-target") .&
             #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
@@ -389,11 +402,13 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 @_ scores |>
     filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
     CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
 mean_offset = 6
 pl = @_ scores |>
-    filter(_.λ == best_λ[_.fold], __) |>
+filter(_.λ == best_λ[_.fold], __) |>
+    @where(__, :test_type .== "hit-target") |>
     @transform(__, condition = string.(:condition)) |>
     groupby(__, [:sid, :condition, :train_type, :test_type, :source]) |>
     @combine(__, score = mean(:score)) |>
@@ -403,13 +418,13 @@ pl = @_ scores |>
         config = {legend = {disable = true}},
         facet = {
             column = {field = :condition, type = :nominal},
-            row = {field = :train_type, type = :nominal}
+            # row = {field = :train_type, type = :nominal}
         },
     ) + (
         @vlplot(
             width = 75, autosize = "fit",
-            color = {:test_type, scale = {range = "#".*hex.(tcolors)}},
-            x = {:test_type, axis = {title = "Source", labelAngle = -45,
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)}},
+            x = {:train_type, axis = {title = "Train Type", labelAngle = -45,
                 labelExpr = "split(datum.label,'\\n')"}, },
             y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
@@ -419,7 +434,7 @@ pl = @_ scores |>
         ) +
         @vlplot({:line, size = 1}, color = {value = "gray"},
             opacity = {value = 0.3},
-            x = :test_type,
+            x = :train_type,
             y = :score,
             detail = :sid,
         ) +
@@ -431,7 +446,51 @@ pl = @_ scores |>
             y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode.svg"))
+pl |> save(joinpath(dir, "decode.svg")
+
+mean_offset = 6
+pl = @_ scores |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
+    @where(__, :test_type .== "hit-target") |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :train_type, :test_type, :train_kind, :source]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:sid, :condition, :train_kind, :test_type]) |>
+    @combine(__, score = mean(:score)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+            # row = {field = :train_type, type = :nominal}
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:train_kind, scale = {range = "#".*hex.(tcolors)}},
+            x = {:train_kind, axis = {title = "Train Type", labelAngle = -45,
+                labelExpr = "split(datum.label,'\\n')"}, },
+            y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(score)",
+        ) +
+        @vlplot({:line, size = 1}, color = {value = "gray"},
+            opacity = {value = 0.3},
+            x = :train_kind,
+            y = :score,
+            detail = :sid,
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(score)",
+            y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_combine_sources.svg"))
 
 # global only
 

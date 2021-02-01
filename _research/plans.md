@@ -1,19 +1,14 @@
-- decoding: look atmiss-miss
-- look at target classification vs. pre-target window region, compare cacross codnitions,
-use a baseline with two random windows before the target
-
-presentation (for lab meeting tuesday)
-
-what do we show:
-abstract references early late
 - maybe salience early/late?
 - or merve's original figure for hit rate
 
 ## plans
 
 - build-up angles: careful look at merve's data
+- decoding: mixed and separate other targets
+- decoding: timeline for target
++ conditions: condition-hit timeline
+- decoding: joint mixture??
 - early/late salience (but classifier trained across both cases)
-- decoding: try ann again (without L1 optimizer)
 
 remaining tasks:
 

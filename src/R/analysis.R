@@ -58,7 +58,7 @@ effect_table = function(df, digits = 3){
         knitr::kable(digits = digits)
 }
 
-pairwise = function(df, bothdir = F, ...){
+pairwise = function(df, ..., bothdir = F){
     cols = names(select(df, ...))
     n = length(cols)
     if(bothdir){

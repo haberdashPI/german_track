@@ -75,9 +75,25 @@ fit7 = stan_glmer(score ~ target_window * condition * target_switch_label +
     data = dfc)
 
 means = df %>%
-    filter(target_window %in% c('athit-hit', 'athit-miss')) %>%
-    group_by(condition, sid, target_window) %>%
+    filter(test_type == 'hit-target') %>%
+    group_by(condition, sid, train_type, train_kind, test_type) %>%
+    summarize(score = mean(score)) %>%
+    group_by(condition, sid, train_kind, test_type) %>%
     summarize(score = mean(score))
+
+fitmeans = stan_glmer(score ~ train_kind + (1 | sid), means)
+
+effects = as.data.frame(fitmeans) %>%
+    mutate(
+        hitother = `(Intercept)`,
+        hittarget = `(Intercept)` + train_kindathittarget,
+        premiss = `(Intercept)` + train_kindpremiss
+    ) %>%
+    select(hitother:premiss) %>%
+    pairwise(hitother:premiss) %>%
+    gather(, key = 'train_kind', value = 'value') %>%
+    group_by(train_kind) %>%
+    effect_summary(r = value)
 
 fitmean = lm(score ~ target_window * condition,
     data = mutate(means, condition = ct(condition)))
@@ -91,3 +107,4 @@ condmeans = means %>%
     summarize(score = mean(score))
 
 t.test(score ~ target_window, condmeans, paired = T)
+
