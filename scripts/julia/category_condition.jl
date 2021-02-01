@@ -495,24 +495,23 @@ classdf = @_ events |>
     groupby(__, [:sid, :condition, :hittype]) |>
     filteringmap(__, desc = "Computing features...",
         :window => [windowtarget(len = len, start = start)
-            for len in 2.0 .^ range(-1, 1, length = 10),
-                start in range(0, 4, length = 32)],
+            for len in lens, start in range(-4, 4, length = 32)],
         compute_powerbin_features(_1, subjects, _2)) |>
     transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
     deletecols!(__, :window)
 
 resultdf = @_ classdf |>
     groupby(__, [:winstart]) |>
-    filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
+    filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
         :cross_fold => 1:10,
         :compare_hit => [true, false],
-        :modeltype => modeltypes,
+        :modeltype => ["full", "null"],
         :comparison => (
             "global-v-object"  => x -> x.condition ∈ ["global", "object"],
             "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
             "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
         ),
-        function(sdf, fold, usehit, comparison)
+        function(sdf, fold, usehit, modeltype, comparison)
             selector = modeltype == "null" ? m -> NullSelect() : m -> MinAICc()
             sdf.complabel = (sdf.condition .== first(sdf.condition)) .&
                 (.!usehit .| (sdf.hittype .== "hit"))
@@ -532,38 +531,39 @@ resultdf = @_ classdf |>
 
 classmeans = @_ resultdf |>
     # @where(__, :modeltype .== "full") |>
-    groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :modeltype]) |>
+    groupby(__, [:winstart, :winlen, :sid, :fold, :comparison, :compare_hit, :modeltype]) |>
     combine(__, :correct => mean => :correct,
                 :correct => length => :count) |>
-    groupby(__, [:winstart, :sid, :fold, :condition, :modeltype]) |>
+    groupby(__, [:winstart, :sid, :fold, :comparison, :compare_hit, :modeltype]) |>
     combine(__, :correct => mean => :correct,
                 :correct => mean => :count) |>
-    unstack(__, [:winstart, :sid, :fold, :condition], :modeltype, :correct)
-
-logitbasemean = mean(logit.(shrink.(classmeans.baseline)))
-basemean = logistic.(logitbasemean)
+    unstack(__, [:winstart, :sid, :fold, :comparison, :compare_hit], :modeltype, :correct)
 
 plotdata = @_ classmeans |>
+    groupby(__, [:compare_hit]) |>
+    @transform(__, logitnullmean = mean(logit.(shrink.(:null)))) |>
+    groupby(__, [:compare_hit]) |>
     @transform(__,
+        nullmean = logistic.(:logitnullmean),
         corrected_mean =
-            logistic.(logit.(shrink.(:target)) .-
-                logit.(shrink.(:baseline)) .+
-                logitbasemean),
-        condition_label = uppercasefirst.(:condition)
-    )
+            logistic.(logit.(shrink.(:full)) .-
+                logit.(shrink.(:null)) .+
+                :logitnullmean))
 
 ytitle = "Target Classification"
 target_len_y = 0.8
 label_x = plotdata.winstart |> maximum
 pl = @_ plotdata |>
-    groupby(__, [:condition, :condition_label, :winstart]) |>
+    groupby(__, [:comparison, :winstart, :compare_hit]) |>
     @combine(__,
         corrected_mean = mean(:corrected_mean),
+        nullmean = mean(:nullmean),
         lower = lowerboot(:corrected_mean, alpha = 0.318),
         upper = upperboot(:corrected_mean, alpha = 0.318),
     ) |>
     @vlplot(
         width = 130, height = 140,
+        facet = {column = {field = :compare_hit}},
         config = {
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -574,12 +574,12 @@ pl = @_ plotdata |>
         },
     ) +
     (@vlplot(
-        color = {field = :condition, type = :nominal,
+        color = {field = :comparison, type = :nominal,
             scale = {range = "#".*hex.(colors)}},
     ) +
     # data lines
     @vlplot({:line, strokeCap = :round, clip = true},
-        strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
+        strokeDash = {:comparison, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
             scale = {domain = [0,1.0]}}) +
@@ -591,33 +591,23 @@ pl = @_ plotdata |>
     ) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter =
-            "(datum.winstart > 3.6 && datum.winstart <= 3.95 && "*
-                "datum.condition != 'object') ||"*
-            "(datum.winstart > 3.2 && datum.winstart <= 3.4 && "*
-                "datum.condition == 'object')"}],
+        transform = [{filter = "(datum.winstart > 3.6 && datum.winstart <= 3.95)"}],
         x = {datum = label_x},
         y = {:corrected_mean, aggregate = :mean, type = :quantitative},
-        text = :condition_label
+        text = :comparison
     ) +
     # "Null Model" text annotation
-    (
-        @vlplot(data = {values = [{}]}) +
-        # white rectangle to give text a background
-        @vlplot(mark = {:text, size = 11, baseline = "top", dy = 2, dx = 0,
-            align = "center"},
-            x = {datum = mean(offsets)}, y = {datum = nullmean},
-            text = {value = ["Baseline", "Accuracy"]},
-            color = {value = "black"}
-        )
+    # white rectangle to give text a background
+    @vlplot(mark = {:text, size = 11, baseline = "top", dy = 2, dx = 0,
+        align = "center"},
+        x = "mean(winstart)", y = "mean(nullmean)",
+        text = {value = ["Baseline", "Accuracy"]},
+        color = {value = "black"}
     ) +
     # Dotted line
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-            y = {datum = nullmean},
-            color = {value = "black"})
-    ) +
+    @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
+        y = "mean(nullmean)",
+        color = {value = "black"}) +
     # "Target Length" arrow annotation
     (
         @vlplot(data = {values = [
@@ -642,7 +632,7 @@ pl = @_ plotdata |>
             color = {value = "black"}
         )
     ));
-pl |> save(joinpath(dir, "fig2d.svg"))
+pl |> save(joinpath(dir, "fig2d_A.svg"))
 
 
 # Early/late condition classifiers
