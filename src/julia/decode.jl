@@ -22,8 +22,6 @@ using GermanTrack: colors
 # Setup EEG Data
 # -----------------------------------------------------------------
 
-# TODO: do we need to z-score these values?
-
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
 eeg_encoding = JointEncoding(
     RawEncoding(),
@@ -106,15 +104,21 @@ x ./= std(x, dims = 2)
 
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
 encodings = ["pitch", "envelope"]
-source_names = ["male", "fem1", "fem2"]
-sources = [male_source, fem1_source, fem2_source]
+sources = [
+    male_source,
+    fem1_source,
+    fem2_source,
+    # male_fem1_sources,
+    # male_fem2_sources,
+    # fem1_fem2_sources
+]
 
 stimuli = Empty(Vector)
 
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
     for (j, encoding) in enumerate(encodings)
-        for (source_name, source) in zip(source_names, sources)
+        for source in sources
             stim, stim_id = load_stimulus(source, trial, stim_encoding, sr, meta)
             start = trial.start
             stop = min(size(stim,1), trial.start + trial.len - 1)
@@ -128,15 +132,14 @@ for (i, trial) in enumerate(eachrow(windows))
 
             stimuli = push!!(stimuli, (
                 trial...,
-                source           = source_name,
+                source           = string(source),
                 encoding         = encoding,
                 start            = start,
                 stop             = stop,
                 len              = stop - start + 1,
                 data             = stimulus,
-                is_target_source = trial.target_source == source_name,
+                is_target_source = trial.target_source == string(source),
                 stim_id          = stim_id,
-
             ))
         end
     end
@@ -173,7 +176,7 @@ if !isfile(filename)
 
     groupings = [:encoding]
     groups = @_ DataFrame(stimuli) |>
-        @where(__, :is_target_source) |>
+        # @where(__, :is_target_source) |>
         # @where(__, :windowing .== "target") |>
         # train on quarter of subjects
         # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
@@ -186,23 +189,26 @@ if !isfile(filename)
     max_steps = 50
     nλ = 12
     batchsize = 2048
-    train_types = ["athit", "pre-miss", "atmiss"]
+    train_types = ["athit-target", "pre-miss-target",
+        string.("athit-other-",["male","fem1","fem2"]),
+        # string.("athit-mix-",["male+fem1","male+fem2","fem1+fem2"]),
+    ]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
-    # NOTE: emperically, I find that λ > 1e-4 leads to very long training times
-    # and poor overall performance (might be worth revisiting the projection operator)
     predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
         :fold => 1:nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
-            hittype, windowing =
-                train_type == "athit" ? ("hit", "target") :
-                train_type == "pre-miss" ? ("miss", "pre-target") :
-                train_type == "atmiss" ? ("miss", "target") :
-                error("Unexpected `traintest` value of $traintest.")
+            hittype, windowing, source =
+                train_type == "athit-target" ? ("hit", "target", sdf.target_source) :
+                train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source) :
+                startswith(train_type, "athit-other-") ?
+                    ("hit", "target", split(train_type, "-")[end]) :
+                error("Unexpected `train_type` value of $train_type.")
 
+            sdf = view(sdf, sdf.source .== source, :)
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
                             (_1.windowing == windowing), sdf)

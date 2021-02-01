@@ -3,8 +3,8 @@ using SignalOperators
 using DataFrames
 const encodings = Dict{Any, Array{Float64}}()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
-    other, mixed_sources, fem_mix_sources, JointSource, load_stimulus
-
+    other, mixed_sources, fem_mix_sources, JointSource, load_stimulus,
+    male_fem1_sources, male_fem2_sources, fem1_fem2_sources
 
 function load_behavioral_stimulus_metadata()
     bdir = joinpath(raw_datadir(), "behavioral")
@@ -263,7 +263,9 @@ struct MixedSources <: AbstractSource
 end
 Base.string(x::MixedSources) = x.name
 mixed_sources = MixedSources(1:3, "all")
-fem_mix_sources = MixedSources(2:3, "fem1+fem2")
+male_fem1_sources = MixedSources(1:2, "male+fem1")
+male_fem2_sources = MixedSources([1,3], "male+fem2")
+fem1_fem2_sources = MixedSources(2:3, "fem1+fem2")
 
 function load_stimulus(mixed::MixedSources, event::RowType, encoding,
     tofs, info)
