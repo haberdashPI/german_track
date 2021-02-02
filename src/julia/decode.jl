@@ -175,6 +175,7 @@ if !isfile(filename)
 
     groupings = [:encoding]
     groups = @_ DataFrame(stimuli) |>
+        @where(__, :condition .== "global") |>
         # @where(__, :is_target_source) |>
         # @where(__, :windowing .== "target") |>
         # train on quarter of subjects
@@ -190,7 +191,7 @@ if !isfile(filename)
     batchsize = 2048
     train_types = vcat(
         string.("athit-other-",["male","fem1","fem2"]),
-        "athit-target",
+        string.("athit-target-",["male","fem1","fem2"]),
         "pre-miss-target",
         # string.("athit-mix-",["male+fem1","male+fem2","fem1+fem2"]),
     )
@@ -203,8 +204,9 @@ if !isfile(filename)
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
             hittype, windowing, source, is_target =
-                train_type == "athit-target" ? ("hit", "target", sdf.target_source, true) :
                 train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source, true) :
+                startswith(train_type, "athit-target-") ?
+                    ("hit", "target", split(train_type, "-")[end], true) :
                 startswith(train_type, "athit-other-") ?
                     ("hit", "target", split(train_type, "-")[end], false) :
                 error("Unexpected `train_type` value of $train_type.")
@@ -343,7 +345,7 @@ best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 # TODO: plot all fold's λs
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 5)]
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
 pl = @_ pldata |>
     @where(__, :test_type .== "hit-target") |>
     @vlplot(
