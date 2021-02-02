@@ -784,7 +784,7 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf |>
-    @where(__, :modeltype .== "full") |>
+    @where(__, (:modeltype .== "full") .& (:winstart .> -0.5)) |>
     @transform(__, train_split = ifelse.(:train_condition .== "all", "combine", "divide")) |>
     groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :train_split, :train_type]) |>
     combine(__, :correct => mean => :correct,
@@ -792,17 +792,23 @@ classmeans = @_ resultdf |>
     groupby(__, [:winstart, :sid, :fold, :condition, :train_type, :train_split]) |>
     combine(__, :correct => mean => :correct,
                 :correct => mean => :count) |>
-    unstack(__, [:winstart, :sid, :fold, :condition, :train_split], :train_type, :correct)
-
-logitbasemean = mean(logit.(shrink.(classmeans.baseline)))
-basemean = logistic.(logitbasemean)
+    unstack(__, [:winstart, :sid, :fold, :condition, :train_split], :train_type, :correct) |>
+    groupby(__, [:train_split]) |>
+    @transform(__,
+        logitbasemean = mean(logit.(shrink.(:baseline)))) |>
+    groupby(__, :train_split) |>
+    @transform(__,
+        basemean = logistic.(:logitbasemean),
+        corrected_mean = logistic.(logit.(shrink.(:target)) .-
+            logit.(shrink.(:baseline)) .+
+            :logitbasemean))
 
 plotdata = @_ classmeans |>
     @transform(__,
-        corrected_mean =
-            logistic.(logit.(shrink.(:target)) .-
-                logit.(shrink.(:baseline)) .+
-                logitbasemean),
+        # corrected_mean =
+        #     logistic.(logit.(shrink.(:target)) .-
+        #         logit.(shrink.(:baseline)) .+
+        #         logitbasemean),
         condition_label = uppercasefirst.(:condition)
     )
 
@@ -856,23 +862,14 @@ pl = @_ plotdata |>
         text = :condition_label
     ) +
     # "Null Model" text annotation
-    (
-        @vlplot(data = {values = [{}]}) +
-        # white rectangle to give text a background
-        @vlplot(mark = {:text, size = 11, baseline = "top", dy = 2, dx = 0,
-            align = "center"},
-            x = {datum = mean(offsets)}, y = {datum = nullmean},
-            text = {value = ["Baseline", "Accuracy"]},
-            color = {value = "black"}
-        )
+    @vlplot({:text, size = 11, baseline = "top", dy = 2, dx = 0, align = "center"},
+        x = "mean(winstart)", y = "mean(basemean)",
+        text = {value = ["Baseline", "Accuracy"]},
+        color = {value = "black"}
     ) +
     # Dotted line
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-            y = {datum = nullmean},
-            color = {value = "black"})
-    ) +
+    @vlplot({:rule, strokeDash = [4 4], size = 2}, y = "mean(basemean)",
+        color = {value = "black"}) +
     # "Target Length" arrow annotation
     (
         @vlplot(data = {values = [
