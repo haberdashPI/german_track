@@ -680,7 +680,7 @@ GermanTrack.@cache_results file resultdf begin
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5.*__, n_winlens) |> reduce(vcat, __) |> unique
 
-    offsets = range(-1.0, 4.0, length = 32)
+    offsets = range(-4.0, 4.0, length = 32)
     classdf = @_ events |>
         filter(ishit(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
@@ -784,7 +784,7 @@ end
 # -----------------------------------------------------------------
 
 classmeans = @_ resultdf |>
-    @where(__, (:modeltype .== "full") .& (:winstart .> -0.5)) |>
+    @where(__, (:modeltype .== "full") .& (:winstart .> -0.25)) |>
     @transform(__, train_split = ifelse.(:train_condition .== "all", "combine", "divide")) |>
     groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :train_split, :train_type]) |>
     combine(__, :correct => mean => :correct,
@@ -818,6 +818,7 @@ label_x = plotdata.winstart |> maximum
 pl = @_ plotdata |>
     groupby(__, [:condition, :condition_label, :winstart, :train_split]) |>
     @combine(__,
+        basemean = mean(:basemean),
         corrected_mean = mean(:corrected_mean),
         lower = lowerboot(:corrected_mean, alpha = 0.318),
         upper = upperboot(:corrected_mean, alpha = 0.318),
@@ -863,7 +864,7 @@ pl = @_ plotdata |>
     ) +
     # "Null Model" text annotation
     @vlplot({:text, size = 11, baseline = "top", dy = 2, dx = 0, align = "center"},
-        x = "mean(winstart)", y = "mean(basemean)",
+        x = "mean(winstart)", y = :basemean,
         text = {value = ["Baseline", "Accuracy"]},
         color = {value = "black"}
     ) +
