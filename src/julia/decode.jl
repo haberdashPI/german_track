@@ -10,7 +10,7 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD
+    JLD, CSV
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -25,11 +25,11 @@ using GermanTrack: colors
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
 eeg_encoding = JointEncoding(
     RawEncoding(),
-    FilteredPower("delta", 1,  3),
-    FilteredPower("theta", 3,  7),
-    FilteredPower("alpha", 7,  15),
-    FilteredPower("beta",  15, 30),
-    FilteredPower("gamma", 30, 100),
+    FilteredHilbert("delta", 1,  3),
+    FilteredHilbert("theta", 3,  7),
+    FilteredHilbert("alpha", 7,  15),
+    FilteredHilbert("beta",  15, 30),
+    FilteredHilbert("gamma", 30, 100),
 )
 # eeg_encoding = RawEncoding()
 
@@ -39,7 +39,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 3
+max_lag = 2
 
 seed = 2019_11_18
 target_samples = round(Int, sr*target_length)
@@ -262,7 +262,19 @@ if !isfile(filename)
             test.steps = taken_steps
             C = GermanTrack.decode_weights(model) |> vec
 
-            bins = ["raw", "delta", "theta", "alpha", "beta", "gamma"]
+            bins = [
+                "raw",
+                "delta",
+                "delta-phase",
+                "theta",
+                "theta-phase",
+                "alpha",
+                "alpha-phase",
+                "beta",
+                "beta-phase",
+                "gamma",
+                "gamma-phase"
+            ]
             mccai(i) = CartesianIndices((nlags, 30, 6))[i][2]
             lagi(i) = lags[CartesianIndices((nlags, 30, 6))[i][1]]
             bini(i) = bins[CartesianIndices((nlags, 30, 6))[i][3]]

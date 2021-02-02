@@ -1,5 +1,5 @@
 export EEGData, select_bounds, all_indices, no_indices, resample!,
-    RawEncoding, FilteredPower, FFTFiltered
+    RawEncoding, FilteredPower, FFTFiltered, FilteredHilbert, FilteredPhase
 using DSP
 using DataStructures
 using ProgressMeter
@@ -217,28 +217,51 @@ function encode(x::EEGData, tofs, filter::FFTFilteredPower)
     EEGData(x.label, tofs, binpower)
 end
 
-struct FilteredPower{D} <: EEGEncoding
+struct FilteredHilbert{D,P} <: EEGEncoding
     name::String
     from::Float64
     to::Float64
     design::D
+    parts::Val{P}
 end
-FilteredPower(name,from,to;order=5,filter=Butterworth(order)) =
-    FilteredPower(string(name),Float64(from),Float64(to),filter)
-Base.string(x::FilteredPower) = x.name + "_power"
-function encode(x::EEGData,tofs,filter::FilteredPower)
+FilteredHilbert(name,from,to;parts=:both,order=5,filter=Butterworth(order)) =
+    FilteredHilbert(string(name),Float64(from),Float64(to),filter,Val(parts))
+FilteredPower(name,from,to;parts=:power,kwds...) =
+    FilteredHilbert(string(name),from,to;parts=parts,kwds...)
+FilteredPhase(name,from,to;parts=:phase,kwds...) =
+    FilteredHilbert(string(name),from,to;parts=parts,kwds...)
+Base.string(x::FilteredHilbert{<:Any, :both}) = x.name + "_power_phase"
+Base.string(x::FilteredHilbert{<:Any, :power}) = x.name + "_power"
+Base.string(x::FilteredHilbert{<:Any, :phase}) = x.name + "_phase"
+
+encode(x::EEGData, tofs, filter::FilteredHilbert{<:Any, :both}) =
+    encode_part(x, tofs, filter, (abs, angle))
+encode(x::EEGData, tofs, filter::FilteredHilbert{<:Any, :power}) =
+    encode_part(x, tofs, filter, (abs,))
+encode(x::EEGData, tofs, filter::FilteredHilbert{<:Any, :phase}) =
+    encode_part(x, tofs, filter, (angle, ))
+
+function encode_part(x::EEGData,tofs,filter::FilteredHilbert,fns)
     bp = Bandpass(filter.from,filter.to,fs=framerate(x))
     bandpass = digitalfilter(bp,filter.design)
-    power = similar(x.data)
+    result = similar(x.data)
+    encode_part_helper(x, bandpass, result, fns)
+    @info "Resample $(filter.name) result to $tofs Hz."
+    resample!(EEGData(string.(x.label,"_",filter.name),x.fs,result),tofs)
+end
+
+function encode_part_helper(x, bandpass, result, fns)
     for trial in 1:length(x.data)
-        power[trial] = similar(x.data[trial])
+        data = similar(x[trial],
+            (length(fns), size(x.data[trial],1), size(x.data[trial],2)))
         for i in 1:size(x.data[trial],1)
-            power[trial][i,:] .=
-                abs.(DSP.Util.hilbert(filt(bandpass,view(x.data[trial],i,:))))
+            h = DSP.Util.hilbert(filt(bandpass,view(x.data[trial],i,:)))
+            for (j, fn) in enumerate(fns)
+                data[j,i,:] .= fn.(h)
+            end
         end
+        result[trial] = reshape(data, :, size(data, 3))
     end
-    @info "Resample $(filter.name) power to $tofs Hz."
-    resample!(EEGData(string.(x.label,"_",filter.name),x.fs,power),tofs)
 end
 
 function encode(x::EEGData,tofs,joint::JointEncoding)
