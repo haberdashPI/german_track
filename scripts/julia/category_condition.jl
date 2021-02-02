@@ -713,7 +713,7 @@ GermanTrack.@cache_results file resultdf begin
             rand_2 = @_ sample(pretarget, length(sids), replace = false)
 
             real_train = @_ filter(_1.winstart == target_offset || _1.windowtype == "baseline", train)
-            real_train.istarget = real_train.windowtype == "target"
+            real_train.istarget = real_train.windowtype .== "target"
 
             start_map = Dict(sids .=> rand_1)
             baseline_map = Dict(sids .=> rand_2)
@@ -722,8 +722,6 @@ GermanTrack.@cache_results file resultdf begin
                 _1.windowtype == "target", train)
             baseline_train.istarget = @_ map(baseline_map[_1.sid] == _1.winstart,
                 eachrow(baseline_train))
-
-            @infiltrate
 
             real_train, baseline_train
         end
