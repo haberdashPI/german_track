@@ -402,6 +402,7 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 @_ scores |>
     filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
     CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
 mean_offset = 6
@@ -446,6 +447,50 @@ filter(_.λ == best_λ[_.fold], __) |>
         )
     );
 pl |> save(joinpath(dir, "decode.svg")
+
+mean_offset = 6
+pl = @_ scores |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
+    @where(__, :test_type .== "hit-target") |>
+    @transform(__, condition = string.(:condition)) |>
+    groupby(__, [:sid, :condition, :train_type, :test_type, :train_kind, :source]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:sid, :condition, :train_kind, :test_type]) |>
+    @combine(__, score = mean(:score)) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        facet = {
+            column = {field = :condition, type = :nominal},
+            # row = {field = :train_type, type = :nominal}
+        },
+    ) + (
+        @vlplot(
+            width = 75, autosize = "fit",
+            color = {:train_kind, scale = {range = "#".*hex.(tcolors)}},
+            x = {:train_kind, axis = {title = "Train Type", labelAngle = -45,
+                labelExpr = "split(datum.label,'\\n')"}, },
+            y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
+                scale = {zero = false}},
+        ) +
+        @vlplot({:point, xOffset = -mean_offset/2},
+            y = "mean(score)",
+        ) +
+        @vlplot({:line, size = 1}, color = {value = "gray"},
+            opacity = {value = 0.3},
+            x = :train_kind,
+            y = :score,
+            detail = :sid,
+        ) +
+        @vlplot({:point, filled = true, xOffset = mean_offset/2},
+        ) +
+        @vlplot({:rule, xOffset = -mean_offset/2},
+            color = {value = "black"},
+            y = "ci0(score)",
+            y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
+        )
+    );
+pl |> save(joinpath(dir, "decode_combine_sources.svg"))
 
 # global only
 
