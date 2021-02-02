@@ -616,7 +616,13 @@ function filteringmap(df, filterings_fn...; folder = foldxt,
 
     if streams > 1
         init_result = Tuple(Empty(DataFrame) for _ in 1:streams)
-        append_streams!!(results, streams) = append!!.(results, streams)
+        function append_streams!!(results, streams)
+            if length(streams) != length(results)
+                error("Cannot append $(length(streams)) streams to "*
+                    "$(length(results)) streams.")
+            end
+            append!!.(results, streams)
+        end
 
         folder(append_streams!!, Map(filtermap), collect(groupings),
             init = init_result)
