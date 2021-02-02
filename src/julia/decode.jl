@@ -213,7 +213,7 @@ if !isfile(filename)
 
             sdf = view(sdf, (sdf.source .== source) .&
                 (sdf.is_target_source .== is_target), :)
-            isempty(sdf) && return Empty(DataFrame)
+            isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame))
 
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
