@@ -612,33 +612,42 @@ file = joinpath(processed_datadir("analyses"), "target_lambdas.json")
 GermanTrack.@cache_results file fold_map hyperparams begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    windowtypes = [
-        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
-        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
-            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
-    ]
-
+    offsets = range(0, 1.0, length = 10)
     classdf = @_ events |>
         filter(ishit(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
-        :window => [winfn(start = start, len = len)
-            for (name, winfn) in windowtypes,
-                len in 2.0 .^ range(-4, 1, length = 10),
-                start in range(0, 1.0, length = 10)],
+        :window => [windowtarget(start = start, len = len)
+            for len in 2.0 .^ range(-4, 1, length = 10),
+                start in offsets],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        deletecols!(__, :window) |>
+        transform!(__, :windowtype => (x -> "target") => :windowtype)
+
+    classbasedf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(start = -len, len = len)
+            for len in 2.0 .^ range(-4, 1, length = 10)],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        transform!(__, :windowtype => (x -> "baseline") => :windowtype) |>
+        deletecols!(__, :window) |>
+        append!!(classdf, __)
 
     lambdas = 10.0 .^ range(-2, 0, length = 100)
-    resultdf = @_ classdf |>
+    resultdf = @_ classbasedf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :target_lambda_folds)) |>
-        groupby(__, [:winstart, :winlen, :condition]) |>
+        groupby(__, [:winlen, :condition]) |>
         filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
             :cross_fold => 1:10,
-            function(sdf, fold)
+            :winstart => offsets,
+            function(sdf, fold, offset)
+                target = @where(sdf, (:winstart .== offset) .& (:windowtype .== "target"))
+                baseline = @where(sdf, :windowtype .== "baseline")
                 rng = stableRNG(2019_11_18, :validate_lambda, fold, sdf.condition)
-                test, model = traintest(sdf, fold, y = :windowtype, λ = lambdas,
-                    selector = m -> AllSeg(), validate_rng = rng)
+                test, model = traintest(vcat(target, baseline), fold, y = :windowtype,
+                    λ = lambdas, selector = m -> AllSeg(), validate_rng = rng)
                 test[:, Not(r"channel")]
             end)
 
