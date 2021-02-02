@@ -332,7 +332,7 @@ best_λs = @_ scores |>
     @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    @where(__, (:train_type .== "athit-target") .& (:test_type .== "hit-target")) |>
+    @where(__, (startswith.(:train_type, "athit-target")) .& (:test_type .== "hit-target")) |>
     groupby(__, [:fold, :condition, :λ]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:λ, :fold]) |>
@@ -423,7 +423,7 @@ filter(_.λ == best_λ[_.fold], __) |>
         @vlplot(
             width = 75, autosize = "fit",
             color = {:train_type, scale = {range = "#".*hex.(tcolors)}},
-            x = {:train_type, axis = {title = "Source", labelAngle = -45,
+            x = {:train_type, axis = {title = "Train Type", labelAngle = -45,
                 labelExpr = "split(datum.label,'\\n')"}, },
             y = {:score, title = ["Decoder score", "(For envelope & Pitch Surprisal)"],
                 scale = {zero = false}},
@@ -445,7 +445,7 @@ filter(_.λ == best_λ[_.fold], __) |>
             y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode.svg"))
+pl |> save(joinpath(dir, "decode.svg")
 
 # global only
 
