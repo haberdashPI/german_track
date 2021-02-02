@@ -1,3 +1,28 @@
+### priorities
+
+we want to see if there are any differences in the conditions' timeline
+- look at coefficients averages by lag
+    - definitely examine by hit and miss (maybe hits are faster for object because that's the only case where it works)
+    - compare across conditions
+- look at timeline of decoding accuracy
+- are there more fluctuations for the global decoding (would suggest more movement)
+    - do we see this in individual trials
+    - do we see an increase in the power of particular frequencies of the correlation
+      over time
+- can we see differences when using a joint vs. split classifier across conditions?
+- consider adding phase features: this could help classification and decoding
+    - try it in one "easy" case, and see if it helps
+
+###
+
+- decoding: look atmiss-miss
+- look at target classification vs. pre-target window region, compare cacross codnitions,
+use a baseline with two random windows before the target
+
+presentation (for lab meeting tuesday)
+
+what do we show:
+abstract references early late
 - maybe salience early/late?
 - or merve's original figure for hit rate
 
