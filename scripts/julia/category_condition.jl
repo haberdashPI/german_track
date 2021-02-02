@@ -618,7 +618,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
         :window => [windowtarget(start = start, len = len)
-            for len in 2.0 .^ range(-4, 1, length = 10),
+            for len in 2.0 .^ range(-1, 1, length = 10),
                 start in offsets],
             compute_powerbin_features(_1, subjects, _2)) |>
         deletecols!(__, :window) |>
@@ -629,7 +629,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
         :window => [windowtarget(start = -len, len = len)
-            for len in 2.0 .^ range(-4, 1, length = 10)],
+            for len in 2.0 .^ range(-1, 1, length = 10)],
             compute_powerbin_features(_1, subjects, _2)) |>
         transform!(__, :windowtype => (x -> "baseline") => :windowtype) |>
         deletecols!(__, :window) |>
@@ -639,7 +639,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     resultdf = @_ classbasedf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :target_lambda_folds)) |>
         groupby(__, [:winlen, :condition]) |>
-        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
             :cross_fold => 1:10,
             :winstart => offsets,
             function(sdf, fold, offset)
@@ -729,11 +729,12 @@ GermanTrack.@cache_results file resultdf begin
 
     resultdf = @_ classdf |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-        groupby(__, [:condition]) |>
         filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
             :cross_fold => 1:10,
             :modeltype => ["full", "null"],
-            function(sdf, fold, modeltype)
+            :train_condition => ["global", "spatial", "object", "all"],
+            function(sdf, fold, modeltype, condition)
+                sdf = condition == "all" ? sdf : filter(x -> x.condition == condition, sdf)
                 target_offset = hyperparams[fold][:winstart]
                 target_offset = offsets[argmin(abs.(target_offset .- offsets))]
                 sdf.istarget = sdf.winstart .== target_offset
@@ -784,13 +785,14 @@ end
 
 classmeans = @_ resultdf |>
     @where(__, :modeltype .== "full") |>
-    groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :train_type]) |>
+    @transform(__, train_split = ifelse.(:train_condition .== "all", "combine", "divide")) |>
+    groupby(__, [:winstart, :winlen, :sid, :fold, :condition, :train_split, :train_type]) |>
     combine(__, :correct => mean => :correct,
                 :correct => length => :count) |>
-    groupby(__, [:winstart, :sid, :fold, :condition, :train_type]) |>
+    groupby(__, [:winstart, :sid, :fold, :condition, :train_type, :train_split]) |>
     combine(__, :correct => mean => :correct,
                 :correct => mean => :count) |>
-    unstack(__, [:winstart, :sid, :fold, :condition], :train_type, :correct)
+    unstack(__, [:winstart, :sid, :fold, :condition, :train_split], :train_type, :correct)
 
 logitbasemean = mean(logit.(shrink.(classmeans.baseline)))
 basemean = logistic.(logitbasemean)
@@ -808,7 +810,7 @@ ytitle = "Target Classification"
 target_len_y = 0.8
 label_x = plotdata.winstart |> maximum
 pl = @_ plotdata |>
-    groupby(__, [:condition, :condition_label, :winstart]) |>
+    groupby(__, [:condition, :condition_label, :winstart, :train_split]) |>
     @combine(__,
         corrected_mean = mean(:corrected_mean),
         lower = lowerboot(:corrected_mean, alpha = 0.318),
@@ -816,6 +818,7 @@ pl = @_ plotdata |>
     ) |>
     @vlplot(
         width = 130, height = 140,
+        facet = {column = {field = :train_split}},
         config = {
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
