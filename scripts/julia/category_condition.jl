@@ -677,17 +677,10 @@ end
 
 file = joinpath(processed_datadir("analyses"), "target_results.json")
 GermanTrack.@cache_results file resultdf begin
-
-    windowtypes = [
-        "target"    => (;kwds...) -> windowtarget(name = "target"; kwds...)
-        "rndbefore" => (;kwds...) -> windowbase_bytarget(>; name = "rndbefore",
-            mindist = 0.5, minlength = 0.5, onempty = missing, kwds...)
-    ]
-
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5.*__, n_winlens) |> reduce(vcat, __) |> unique
 
-    offsets = range(-4.0, 4.0, length = 32)
+    offsets = range(-1.0, 4.0, length = 32)
     classdf = @_ events |>
         filter(ishit(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
@@ -696,7 +689,19 @@ GermanTrack.@cache_results file resultdf begin
             for len in lens,
                 start in offsets],
             compute_powerbin_features(_1, subjects, _2)) |>
+        transform!(__, :windowtype => (x -> "target") => :windowtype) |>
         deletecols!(__, :window)
+
+    classbasedf = @_ events |>
+        filter(ishit(_) == "hit", __) |>
+        groupby(__, [:sid, :condition]) |>
+        filteringmap(__, desc = "Computing features...",
+        :window => [windowtarget(start = -len, len = len)
+            for len in lens],
+            compute_powerbin_features(_1, subjects, _2)) |>
+        transform!(__, :windowtype => (x -> "baseline") => :windowtype) |>
+        deletecols!(__, :window) |>
+        append!!(classdf, __)
 
     zero_tolerance = 1e-3
 
@@ -707,15 +712,18 @@ GermanTrack.@cache_results file resultdf begin
             rand_1 = @_ sample(pretarget, length(sids), replace = false)
             rand_2 = @_ sample(pretarget, length(sids), replace = false)
 
-            start_map = Dict(sids .=> rand_1)
-            real_train = @_ filter(_1.winstart ∈ (start_map[_1.sid], target_offset), train)
-            real_train.istarget = real_train.winstart .== target_offset
+            real_train = @_ filter(_1.winstart == target_offset || _1.windowtype == "baseline", train)
+            real_train.istarget = real_train.windowtype == "target"
 
+            start_map = Dict(sids .=> rand_1)
             baseline_map = Dict(sids .=> rand_2)
-            baseline_train = @_ filter(_1.winstart ∈ (start_map[_1.sid], baseline_map[_1.sid]),
-                train)
+            baseline_train = @_ filter(
+                _1.winstart ∈ (start_map[_1.sid], baseline_map[_1.sid]) &&
+                _1.windowtype == "target", train)
             baseline_train.istarget = @_ map(baseline_map[_1.sid] == _1.winstart,
                 eachrow(baseline_train))
+
+            @infiltrate
 
             real_train, baseline_train
         end
@@ -724,7 +732,7 @@ GermanTrack.@cache_results file resultdf begin
     resultdf = @_ classdf |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:condition]) |>
-        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+        filteringmap(__, desc = "Evaluating lambdas...", folder = foldl,
             :cross_fold => 1:10,
             :modeltype => ["full", "null"],
             function(sdf, fold, modeltype)
