@@ -499,13 +499,13 @@ trfs = @_ coefs |>
     filter(_.λ == best_λ[_.fold], __) |>
     transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
     transform!(__, :lag => ByRow(x -> -x / sr) => :time) |>
-    groupby(__, [:time, :train_kind, :encoding, :fold]) |>
+    groupby(__, [:time, :train_type, :encoding, :fold]) |>
     @combine(__, value = mean(abs, :coef)) |>
-    groupby(__, [:time, :train_kind, :encoding]) |>
+    groupby(__, [:time, :train_type, :encoding]) |>
     @combine(__,
         value = median(:value),
-        lower = quantile(:value, 0.05),
-        upper = quantile(:value, 0.95)
+        lower = quantile(:value, 0.25),
+        upper = quantile(:value, 0.75)
     )
 
 density = @_ coefs |>
@@ -519,7 +519,7 @@ density = @_ coefs |>
 
 pl = trfs |>
     @vlplot(
-        facet = {column = {field = :train_kind}, row = {field = :encoding}}
+        facet = {column = {field = :train_type}, row = {field = :encoding}}
     ) +
     (
         @vlplot() +
@@ -531,18 +531,18 @@ pl |> save(joinpath(dir, "decode_combined_trf.svg"))
 trfs = @_ coefs |>
     filter(_.λ == best_λ[_.fold], __) |>
     transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
-    groupby(__, [:mcca, :train_kind, :fold]) |>
+    groupby(__, [:mcca, :train_type, :fold]) |>
     @combine(__, value = mean(abs, :coef)) |>
-    groupby(__, [:mcca, :train_kind]) |>
+    groupby(__, [:mcca, :train_type]) |>
     @combine(__,
         value = median(:value),
-        lower = quantile(:value, 0.05),
-        upper = quantile(:value, 0.95)
+        lower = quantile(:value, 0.25),
+        upper = quantile(:value, 0.75)
     )
 
 pl = trfs |>
     @vlplot(
-        facet = {column = {field = :train_kind}}
+        facet = {column = {field = :train_type}}
     ) +
     (
         @vlplot() +
@@ -560,8 +560,8 @@ trfs = @_ coefs |>
     groupby(__, [:mcca, :train_kind, :time]) |>
     @combine(__,
         value = median(:value),
-        lower = quantile(:value, 0.05),
-        upper = quantile(:value, 0.95)
+        lower = quantile(:value, 0.25),
+        upper = quantile(:value, 0.75)
     )
 
 pl = trfs |>
@@ -584,8 +584,8 @@ trfs = @_ coefs |>
     groupby(__, [:bin, :train_type]) |>
     @combine(__,
         value = median(:value),
-        lower = quantile(:value, 0.05),
-        upper = quantile(:value, 0.95)
+        lower = quantile(:value, 0.25),
+        upper = quantile(:value, 0.75)
     )
 
 pl = trfs |>
@@ -593,9 +593,9 @@ pl = trfs |>
         facet = {column = {field = :train_type}}
     ) +
     (
-        @vlplot() +
-        @vlplot(:point, x = :bin, y = :value) +
-        @vlplot(:errorbar, x = :bin, y = :lower, y2 = :upper)
+        @vlplot(x = {:bin, type = :ordinal, sort = ["raw", "delta", "theta", "alpha", "beta", "gamma"]}) +
+        @vlplot(:point, y = :value) +
+        @vlplot(:errorbar, y = :lower, y2 = :upper)
     );
 pl |> save(joinpath(dir, "decode_combined_bin.svg"))
 
@@ -609,8 +609,8 @@ trfs = @_ coefs |>
     groupby(__, [:bin, :train_kind, :time]) |>
     @combine(__,
         value = median(:value),
-        lower = quantile(:value, 0.05),
-        upper = quantile(:value, 0.95)
+        lower = quantile(:value, 0.25),
+        upper = quantile(:value, 0.75)
     )
 
 pl = trfs |>
