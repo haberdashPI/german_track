@@ -493,6 +493,86 @@ pl = @_ scores |>
     );
 pl |> save(joinpath(dir, "decode_combine_sources.svg"))
 
+# coefficient display
+
+trfs = @_ coefs |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
+    transform!(__, :lag => ByRow(x -> -x / sr) => :time) |>
+    groupby(__, [:time, :train_kind, :fold]) |>
+    @combine(__, value = mean(abs, :coef)) |>
+    groupby(__, [:time, :train_kind]) |>
+    @combine(__,
+        value = median(:value),
+        lower = quantile(:value, 0.05),
+        upper = quantile(:value, 0.95)
+    )
+
+density = @_ coefs |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    groupby(__, [:lag, :train_type, :encoding, :fold]) |>
+    @combine(__,
+        density = mean(x -> abs(x) > 1e-4, :coef),
+        count = sum(x -> abs(x) > 1e-4, :coef)
+    )
+
+pl = trfs |>
+    @vlplot(
+        facet = {column = {field = :train_kind}}
+    ) +
+    (
+        @vlplot() +
+        @vlplot(:line, x = :time, y = :value) +
+        @vlplot(:errorband, x = :time, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "decode_combined_trf.svg"))
+
+trfs = @_ coefs |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
+    groupby(__, [:mcca, :train_kind, :fold]) |>
+    @combine(__, value = mean(abs, :coef)) |>
+    groupby(__, [:mcca, :train_kind]) |>
+    @combine(__,
+        value = median(:value),
+        lower = quantile(:value, 0.05),
+        upper = quantile(:value, 0.95)
+    )
+
+pl = trfs |>
+    @vlplot(
+        facet = {column = {field = :train_kind}}
+    ) +
+    (
+        @vlplot() +
+        @vlplot(:line, x = :mcca, y = :value) +
+        @vlplot(:errorband, x = :mcca, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "decode_combined_mcca.svg"))
+
+trfs = @_ coefs |>
+    filter(_.λ == best_λ[_.fold], __) |>
+    transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
+    groupby(__, [:bin, :train_kind, :fold]) |>
+    @combine(__, value = mean(abs, :coef)) |>
+    groupby(__, [:bin, :train_kind]) |>
+    @combine(__,
+        value = median(:value),
+        lower = quantile(:value, 0.05),
+        upper = quantile(:value, 0.95)
+    )
+
+pl = trfs |>
+    @vlplot(
+        facet = {column = {field = :train_kind}}
+    ) +
+    (
+        @vlplot() +
+        @vlplot(:point, x = :bin, y = :value) +
+        @vlplot(:errorbar, x = :bin, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "decode_combined_bin.svg"))
+
 # global only
 
 mean_offset = 6
