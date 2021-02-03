@@ -5,13 +5,15 @@ we want to see if there are any differences in the conditions' timeline
     - definitely examine by hit and miss (maybe hits are faster for object because that's the only case where it works)
     - compare across conditions
 - look at timeline of decoding accuracy
-- are there more fluctuations for the global decoding (would suggest more movement)
-    - do we see this in individual trials
-    - do we see an increase in the power of particular frequencies of the correlation
-      over time
-- can we see differences when using a joint vs. split classifier across conditions?
+    - are there more fluctuations for the global decoding (would suggest more movement)
+        - do we see this in individual trials
+        - do we see an increase in the power of particular frequencies of the correlation
+        over time
+- can we see differences when using a joint vs. split decoder across conditions?
 - consider adding phase features: this could help classification and decoding
     - try it in one "easy" case, and see if it helps
+        - doesn't help with decoding
+        - does it help with condition or salience classification?
 
 ###
 
