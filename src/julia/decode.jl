@@ -167,8 +167,8 @@ function zscoremany(xs)
 end
 
 
-filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
-if !isfile(filename)
+datafile = processed_datadir("analyses", "decode-predict-freqbin.jld")
+if !isfile(datafile)
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
@@ -275,9 +275,10 @@ if !isfile(filename)
                 "gamma",
                 "gamma-phase"
             ]
-            mccai(i) = CartesianIndices((nlags, 30, 6))[i][2]
-            lagi(i) = lags[CartesianIndices((nlags, 30, 6))[i][1]]
-            bini(i) = bins[CartesianIndices((nlags, 30, 6))[i][3]]
+            nbins = length(bins)
+            mccai(i) = CartesianIndices((nlags, 30, nbins))[i][2]
+            lagi(i) = lags[CartesianIndices((nlags, 30, nbins))[i][1]]
+            bini(i) = bins[CartesianIndices((nlags, 30, nbins))[i][3]]
 
             coefs = DataFrame(
                 coef = C,
@@ -291,9 +292,9 @@ if !isfile(filename)
     ProgressMeter.finish!(progress)
     alert("Completed model training!")
 
-    save(filename, "predictions", predictions, "coefs", coefs)
+    save(datafile, "predictions", predictions, "coefs", coefs)
 else
-    data = load(filename)
+    data = load(datafile)
     predictions = data["predictions"]
     coefs = data["coefs"]
 end
@@ -386,7 +387,7 @@ example = @_ predictions |>
     @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
               (:hittype.== "hit") .&
-              (:train_type .== "athit-target") .&
+              (:train_type .== "athit-target-male") .&
             #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
