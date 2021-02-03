@@ -22,8 +22,7 @@
 /salience-target-time_classifier=svm_radial.csv
 /salience-target-time_classifier=gradient_boosting.csv
 /baseline-switch-by-hit_classifier=svm_radial.csv
-/decode-predict.json
-/decode-predict-freqbin.json
-/decode-predict-freqbin.jld
 /nearfar_behavior_coefs.csv
 /hit_by_switch.csv
+/decode-predict-freqbin-coef.feather
+/decode-predict-freqbin-predict.feather

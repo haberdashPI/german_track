@@ -3,6 +3,7 @@ authors = ["David Little"]
 
 [deps]
 Alert = "28312eec-4d86-447d-83ad-bc2b262de792"
+Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 BangBang = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"

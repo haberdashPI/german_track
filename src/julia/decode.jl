@@ -167,7 +167,7 @@ function zscoremany(xs)
 end
 
 
-filename = processed_datadir("analyses", "decode-predict-freqbin.jld")
+filename = processed_datadir("analyses", "decode-predict-freqbin")
 if !isfile(filename)
     nfolds = 5
 
@@ -279,11 +279,12 @@ if !isfile(filename)
     ProgressMeter.finish!(progress)
     alert("Completed model training!")
 
-    save(filename, "predictions", predictions, "coefs", coefs)
+    Arrow.write(string(filename, "-coef.feather"), coefs, compress = :lz4)
+    Arrow.write(string(filename, "-predict.feather"), predictions, compress = :lz4)
 else
-    data = load(filename)
-    predictions = data["predictions"]
-    coefs = data["coefs"]
+    @info "Loading models predictions from data file"
+    coefs = DataFrame(Arrow.Table(string(filename, "-coef.feather")))
+    predictions = DataFrame(Arrow.Table(string(filename, "-predict.feather")))
 end
 
 # Plotting
@@ -374,7 +375,7 @@ example = @_ predictions |>
     @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
               (:windowing .== "target") .&
               (:hittype.== "hit") .&
-              (:train_type .== "athit-target") .&
+              (:train_type .== "athit-target-male") .&
             #   (:encoding .== "envelope") .&
               (:condition .== "global")) |>
     mapreduce(row -> DataFrame(
@@ -446,7 +447,7 @@ filter(_.λ == best_λ[_.fold], __) |>
             y2 = "ci1(score)",  # {"score:q", aggregate = :ci1}
         )
     );
-pl |> save(joinpath(dir, "decode.svg")
+pl |> save(joinpath(dir, "decode.svg"))
 
 mean_offset = 6
 pl = @_ scores |>
