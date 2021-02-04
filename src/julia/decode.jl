@@ -146,6 +146,23 @@ for (i, trial) in enumerate(eachrow(windows))
     next!(progress)
 end
 
+stimulidf = @_ DataFrame(stimuli) |>
+    # @where(__, :condition .== "global") |>
+    # @where(__, :is_target_source) |>
+    # @where(__, :windowing .== "target") |>
+    # train on quarter of subjects
+    # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
+    addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+    # insertcols!(__, :predict => Ref(Float32[])) |>
+    groupby(__, [:encoding]) |>
+    transform!(__, :data => (x -> mean(reduce(vcat, x))) => :datamean) |>
+    groupby(__, [:encoding]) |>
+    transform!(__, [:data, :datamean] => ByRow((x, μ) -> x .-= μ) => :data) |>
+    groupby(__, [:encoding]) |>
+    transform!(__, :data => (x -> std(reduce(vcat, x))) => :datastd) |>
+    groupby(__, [:encoding]) |>
+    transform!(__, [:data, :datastd] => ByRow((x, σ) -> x .-= σ) => :data)
+
 # Train Model
 # =================================================================
 
@@ -195,17 +212,7 @@ if !isfile(datafile)
     @info "Generating cross-validated predictions, this could take a bit..."
 
     groupings = [:source, :encoding]
-    groups = @_ DataFrame(stimuli) |>
-        # @where(__, :condition .== "global") |>
-        # @where(__, :is_target_source) |>
-        # @where(__, :windowing .== "target") |>
-        # train on quarter of subjects
-        # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
-        addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-        insertcols!(__, :predict => Ref(Float32[])) |>
-        groupby(__, [:encoding]) |>
-        transform!(__, :data => zscoremany => :data) |>
-        groupby(__, groupings)
+    stimuli = groupby(stimulidf, groupings)
 
     max_steps = 50
     nλ = 24
@@ -375,6 +382,9 @@ timeline = Empty(DataFrame)
 sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
 progress = Progress(length(sid_trial), desc = "Evaluating decoder over timeline...")
 
+stimuli_stats = @_ stimulidf |> groupby(__, [:datamean, :datastd]) |>
+    @combine(__, encoding = first(:encoding))
+
 function decode_timeline(sid, trial)
     event = subjects[sid].events[trial, :]
     event.hittype != "hit" && return Empty(DataFrame)
@@ -387,6 +397,9 @@ function decode_timeline(sid, trial)
         train_type = source == event.target_source ? "athit-target" : "athit-other"
         modelrow = only(eachrow(filter(x -> x.train_type == train_type, models_)))
         stim, stim_id = load_stimulus(source, trial, modelrow.encoding, sr, meta)
+
+        y_μ, y_σ = only(eachrow(filter(x -> x.encoding == models_.encoding[1],
+            stimuli_stats)))
 
         function scoreat(offset)
             x = (view(trialdata, 1:winlen .+ offset, :) .- x_μ) ./ x_σ
