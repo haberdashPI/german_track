@@ -94,9 +94,10 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
     next!(progress)
 end
-
-x .-= mean(x, dims = 2)
-x ./= std(x, dims = 2)
+x_μ = mean(x, dims = 2)
+x .-= x_μ
+x_σ = std(x, dims = 2)
+x ./= x_σ
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -365,6 +366,47 @@ else
     models = DataFrame(load(string(datafile, "-model.bson"))["models"])
     scores = decode_scores(predictions)
 end
+
+# Model timeline
+# =================================================================
+
+timeline = Empty(DataFrame)
+
+sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
+progress = Progress(length(sid_trial), desc = "Evaluating decoder over timeline...")
+
+function decode_timeline(sid, trial)
+    event = subjects[sid].events[trial, :]
+    event.hittype != "hit" && return Empty(DataFrame)
+
+    trialdata = withlags(subjects[sid].eeg[trial]', lags)
+    winstep = round(Int, 0.3*sr)
+    winlen = round(Int, 1.0*sr)
+
+    result = combine(groupby(models, [:encoding, :source])) do models_
+        train_type = source == event.target_source ? "athit-target" : "athit-other"
+        modelrow = only(eachrow(filter(x -> x.train_type == train_type, models_)))
+        stim, stim_id = load_stimulus(source, trial, modelrow.encoding, sr, meta)
+
+        function scoreat(offset)
+            x = (view(trialdata, 1:winlen .+ offset, :) .- x_μ) ./ x_σ
+            y = (view(stim, 1:winlen .+ offset, :)) .- y_μ) ./ y_σ
+            ŷ = modelrow.model(x)
+
+            DataFrame(score = cor(y, ŷ), time = offset/sr)
+        end
+
+        foldxt(append!!, Map(scoreat), 0:winstep:(trialdata-winlen-1))
+    end
+    next!(progress)
+
+    result
+end
+
+foldl(append!!, Map(decode_timeline), sid_trial)
+
+# Plotting
+# =================================================================
 
 # Plotting
 # -----------------------------------------------------------------
