@@ -10,7 +10,7 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD
+    JLD, Arrow
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -167,8 +167,8 @@ function zscoremany(xs)
 end
 
 
-filename = processed_datadir("analyses", "decode-predict-freqbin")
-if !isfile(filename)
+datafile = processed_datadir("analyses", "decode-predict-freqbin")
+if !isfile(datafile)
     nfolds = 5
 
     @info "Generating cross-validated predictions, this could take a bit..."
@@ -182,42 +182,34 @@ if !isfile(filename)
         # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
         addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        groupby(__, [:encoding]) |>
+        groupby(__, [:source]) |>
         transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
     max_steps = 50
-    nλ = 12
+    nλ = 8 #12
     batchsize = 2048
-    train_types = vcat(
-        string.("athit-other-",["male","fem1","fem2"]),
-        string.("athit-target-",["male","fem1","fem2"]),
-        "pre-miss-target",
-        # string.("athit-mix-",["male+fem1","male+fem2","fem1+fem2"]),
-    )
+    train_types = ["athit-other", "athit-target"] #, "atmiss-target"]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
     validate_fraction = 0.2
 
-    predictions, coefs = filteringmap(groups, folder = foldl, streams = 2, desc = nothing,
+    predictions, coefs, models = filteringmap(groups, folder = foldl, streams = 3, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
+        :λ => exp.(range(log(1e-3),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
-            hittype, windowing, source, is_target =
-                train_type == "pre-miss-target" ? ("miss", "pre-target", sdf.target_source, true) :
-                startswith(train_type, "athit-target-") ?
-                    ("hit", "target", split(train_type, "-")[end], true) :
-                startswith(train_type, "athit-other-") ?
-                    ("hit", "target", split(train_type, "-")[end], false) :
+            hittype, is_target =
+                train_type == "athit-target" ? ("hit", true) :
+                train_type == "athit-other" ? ("hit", false) :
+                train_type == "atmiss-target" ? ("miss", false) :
                 error("Unexpected `train_type` value of $train_type.")
 
-            sdf = view(sdf, (sdf.source .== source) .&
-                (sdf.is_target_source .== is_target), :)
+            sdf = view(sdf, sdf.is_target_source .== is_target, :)
             isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame))
 
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
-                            (_1.windowing == windowing), sdf)
+                            (_1.windowing == "target"), sdf)
             test  = @_ filter((_1.fold == fold) &&
                               (_1.hittype == "hit") &&
                               (_1.windowing == "target"), sdf)
@@ -247,7 +239,7 @@ if !isfile(filename)
                 for row in eachrow(rows)
             ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
 
-            model, taken_steps = lassoflux(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
+            model = GermanTrack.decoder(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
                 progress = progress, batch = batchsize, max_steps = max_steps,
                 min_steps = 20,
                 patience = 6,
@@ -259,7 +251,7 @@ if !isfile(filename)
                 yⱼ = model(xⱼ)
                 view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
             end
-            test.steps = taken_steps
+            test.steps = GermanTrack.nsteps(model)
             C = GermanTrack.decode_weights(model) |> vec
 
             bins = ["raw", "delta", "theta", "alpha", "beta", "gamma"]
@@ -273,18 +265,100 @@ if !isfile(filename)
                 bin = bini.(eachindex(C)),
                 mcca = mccai.(eachindex(C)))
 
-            test, coefs
+            test, coefs, DataFrame(model = model)
         end)
 
     ProgressMeter.finish!(progress)
     alert("Completed model training!")
 
-    Arrow.write(string(filename, "-coef.feather"), coefs, compress = :lz4)
-    Arrow.write(string(filename, "-predict.feather"), predictions, compress = :lz4)
+
+    # score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
+    score(x,y) = cor(x,y)
+    meta = GermanTrack.load_stimulus_metadata()
+    scores = @_ predictions |>
+        @transform(__, score = score.(:predict, :data)) |>
+        # @where(__, :encoding .== "envelope") |>
+        # groupby(__, [:encoding, :λ]) |>
+        # @transform(__, score = zscoresafe(:score)) |>
+        groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
+            :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
+        @combine(__, score = mean(:score)) |>
+        transform!(__,
+            :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
+            :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
+            :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
+            :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
+            [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
+        )
+
+    tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+
+    function nanmean(xs)
+        xs_ = (x for x in xs if !isnan(x))
+        isempty(xs_) ? 0.0 : mean(xs_)
+    end
+    pldata = @_ scores |>
+        @transform(__, condition = string.(:condition)) |>
+        groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ]) |>
+        @combine(__, score = nanmean(:score)) |>
+        groupby(__, [:condition, :train_type, :test_type, :λ]) |>
+        @combine(__, score = mean(:score))
+
+    best_λs = @_ scores |>
+        @transform(__, condition = string.(:condition)) |>
+        groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ, :fold]) |>
+        @combine(__, score = nanmean(:score)) |>
+        groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
+        @combine(__, score = mean(:score)) |>
+        @where(__, (startswith.(:train_type, "athit-target")) .& (:test_type .== "hit-target")) |>
+        groupby(__, [:fold, :condition, :λ]) |>
+        @combine(__, score = mean(:score)) |>
+        groupby(__, [:λ, :fold]) |>
+        @combine(__, score = minimum(:score)) |>
+        filteringmap(__, desc = nothing, :fold => cross_folds(1:nfolds),
+            (sdf, fold) -> DataFrame(score = maximum(sdf.score), λ = sdf.λ[argmax(sdf.score)])
+        )
+
+    best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
+    # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
+
+    # TODO: plot all fold's λs
+    tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
+    pl = @_ pldata |>
+        @where(__, :test_type .== "hit-target") |>
+        @vlplot(
+            facet = {column = {field = :condition, type = :nominal}}
+        ) +
+        (
+            @vlplot() +
+            @vlplot({:line, strokeCap = :round}, x = {:λ, scale = {type = :log}}, y = :score,
+                color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
+            @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
+                color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
+            (
+                best_λs |> @vlplot() +
+                @vlplot({:rule, strokeDash = [2 2], size = 1},
+                    x = :λ
+                )
+            )
+        );
+    pl |> save(joinpath(dir, "decode_lambda.svg"))
+
+    pl = @_ predictions |> select(__, :λ, :steps) |>
+        @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
+    pl |> save(joinpath(dir, "steps_lambda.svg"))
+
+    models = @_ filter(_.λ == best_λ[_.fold], models)
+    coefs = @_ filter(_.λ == best_λ[_.fold], coefs)
+    predictions = @_ filter(_.λ == best_λ[_.fold], predictions)
+
+    save(string(datafile, "-model.jld"), "models", NamedTuple.(Tables.rows(models)))
+    Arrow.write(string(datafile, "-coef.feather"), coefs, compress = :lz4)
+    Arrow.write(string(datafile, "-predict.feather"), predictions, compress = :lz4)
 else
     @info "Loading models predictions from data file"
-    coefs = DataFrame(Arrow.Table(string(filename, "-coef.feather")))
-    predictions = DataFrame(Arrow.Table(string(filename, "-predict.feather")))
+    coefs = DataFrame(Arrow.Table(string(datafile, "-coef.feather")))
+    predictions = DataFrame(Arrow.Table(string(datafile, "-predict.feather")))
 end
 
 # Plotting
@@ -294,82 +368,6 @@ function zscoresafe(x)
     x = zscore(x)
     any(isnan, x) ? zero(x) : x
 end
-
-# score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
-score(x,y) = cor(x,y)
-meta = GermanTrack.load_stimulus_metadata()
-scores = @_ predictions |>
-    @transform(__, score = score.(:predict, :data)) |>
-    # @where(__, :encoding .== "envelope") |>
-    # groupby(__, [:encoding, :λ]) |>
-    # @transform(__, score = zscoresafe(:score)) |>
-    groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
-        :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
-    @combine(__, score = mean(:score)) |>
-    transform!(__,
-        :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
-        :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
-        :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
-        :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
-        [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
-    )
-
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
-
-function nanmean(xs)
-    xs_ = (x for x in xs if !isnan(x))
-    isempty(xs_) ? 0.0 : mean(xs_)
-end
-pldata = @_ scores |>
-    @transform(__, condition = string.(:condition)) |>
-    groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ]) |>
-    @combine(__, score = nanmean(:score)) |>
-    groupby(__, [:condition, :train_type, :test_type, :λ]) |>
-    @combine(__, score = mean(:score))
-
-best_λs = @_ scores |>
-    @transform(__, condition = string.(:condition)) |>
-    groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ, :fold]) |>
-    @combine(__, score = nanmean(:score)) |>
-    groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
-    @combine(__, score = mean(:score)) |>
-    @where(__, (startswith.(:train_type, "athit-target")) .& (:test_type .== "hit-target")) |>
-    groupby(__, [:fold, :condition, :λ]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, [:λ, :fold]) |>
-    @combine(__, score = minimum(:score)) |>
-    filteringmap(__, desc = nothing, :fold => cross_folds(1:nfolds),
-        (sdf, fold) -> DataFrame(score = maximum(sdf.score), λ = sdf.λ[argmax(sdf.score)])
-    )
-
-best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
-# best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
-
-# TODO: plot all fold's λs
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
-pl = @_ pldata |>
-    @where(__, :test_type .== "hit-target") |>
-    @vlplot(
-        facet = {column = {field = :condition, type = :nominal}}
-    ) +
-    (
-        @vlplot() +
-        @vlplot({:line, strokeCap = :round}, x = {:λ, scale = {type = :log}}, y = :score,
-            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
-            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        (
-            best_λs |> @vlplot() +
-            @vlplot({:rule, strokeDash = [2 2], size = 1},
-                x = :λ
-            )
-        )
-    );
-pl |> save(joinpath(dir, "decode_lambda.svg"))
-
-pl = @_ predictions |> select(__, :λ, :steps) |>
-    @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
-pl |> save(joinpath(dir, "steps_lambda.svg"))
 
 example = @_ predictions |>
     @where(__, (:λ .== first(best_λs.λ)) .& (:sid .== 33) .&
