@@ -10,7 +10,7 @@ we want to see if there are any differences in the conditions' timeline
         - do we see an increase in the power of particular frequencies of the correlation
         over time
     - question: do we gain something by decoding pitch and envelope together
-        - not with 64 hidden units: try 128 units?
+        - not with 64 hidden units: try 128 units? no, doesn't work up to 1024 units
 - can we see differences when using a joint vs. split decoder across conditions?
 - consider adding phase features: this could help classification and decoding
     - try it in one "easy" case, and see if it helps
