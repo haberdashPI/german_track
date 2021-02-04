@@ -173,7 +173,7 @@ if !isfile(datafile)
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
-    groupings = [:source, :encoding]
+    groupings = [:source]
     groups = @_ DataFrame(stimuli) |>
         @where(__, :condition .== "global") |>
         # @where(__, :is_target_source) |>
@@ -187,7 +187,7 @@ if !isfile(datafile)
         groupby(__, groupings)
 
     max_steps = 50
-    nλ = 8 #12
+    nλ = 12
     batchsize = 2048
     train_types = ["athit-other", "athit-target"] #, "atmiss-target"]
     progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
@@ -195,7 +195,7 @@ if !isfile(datafile)
 
     predictions, coefs, models = filteringmap(groups, folder = foldl, streams = 3, desc = nothing,
         :fold => 1:nfolds,
-        :λ => exp.(range(log(1e-3),log(1e-1),length=nλ)),
+        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         :train_type => train_types,
         function(sdf, fold, λ, train_type)
             hittype, is_target =
@@ -243,7 +243,7 @@ if !isfile(datafile)
                 progress = progress, batch = batchsize, max_steps = max_steps,
                 min_steps = 20,
                 patience = 6,
-                inner = 64,
+                inner = 1024,
                 validate = (xⱼ, yⱼ))
 
             test.predict = map(eachrow(test)) do testrow
