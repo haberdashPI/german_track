@@ -173,7 +173,7 @@ if !isfile(datafile)
 
     @info "Generating cross-validated predictions, this could take a bit..."
 
-    groupings = [:encoding]
+    groupings = [:source, :encoding]
     groups = @_ DataFrame(stimuli) |>
         @where(__, :condition .== "global") |>
         # @where(__, :is_target_source) |>
@@ -182,7 +182,7 @@ if !isfile(datafile)
         # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
         addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
         insertcols!(__, :predict => Ref(Float32[])) |>
-        groupby(__, [:source]) |>
+        groupby(__, [:encoding]) |>
         transform!(__, :data => zscoremany => :data) |>
         groupby(__, groupings)
 
@@ -205,7 +205,7 @@ if !isfile(datafile)
                 error("Unexpected `train_type` value of $train_type.")
 
             sdf = view(sdf, sdf.is_target_source .== is_target, :)
-            isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame))
+            isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame), Empty(DataFrame))
 
             nontest = @_ filter((_1.fold != fold) &&
                             (_1.hittype == hittype) &&
