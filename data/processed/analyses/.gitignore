@@ -26,3 +26,4 @@
 /hit_by_switch.csv
 /decode-predict-freqbin-coef.feather
 /decode-predict-freqbin-predict.feather
+/decode-predict-freqbin-model.bson

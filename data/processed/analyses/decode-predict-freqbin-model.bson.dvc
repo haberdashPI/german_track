@@ -1,0 +1,4 @@
+outs:
+- md5: 8d6e9e7c2cb595828fe15d4672c2183d
+  size: 354778291
+  path: decode-predict-freqbin-model.bson

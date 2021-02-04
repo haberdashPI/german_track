@@ -1,4 +1,3 @@
-export lassoflux
 
 struct L1Opt{O,F}
     opt::O
@@ -29,9 +28,15 @@ function Flux.Optimise.update!(o::L1Opt, x::AbstractArray, Δ::AbstractArray)
     end
 end
 
-decode_weights(x) = mean(x.layers[1].W, dims = 1)
+struct Decoder{M}
+    model::M
+    steps::Int
+end
+nsteps(x::Decoder) = x.steps
+(d::Decoder)(x) = d.model(x)
+decode_weights(x::Decoder) = mean(x.model.layers[1].W, dims = 1)
 
-function lassoflux(x, y, λ, opt;
+function decoder(x, y, λ, opt;
     batch = 64,
     validate = nothing,
     patience = 0,
@@ -96,5 +101,5 @@ function lassoflux(x, y, λ, opt;
         next!(progress)
     end
 
-    best_model |> cpu, best_steps
+    Decoder(best_model |> cpu, best_steps)
 end
