@@ -16,6 +16,8 @@ dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
 using GermanTrack: colors
 
+nfolds = 5
+
 # STEPS: maybe we should consider cross validating across stimulus type
 # rather than subject id?
 
@@ -36,6 +38,9 @@ eeg_encoding = JointEncoding(
 sr = 32
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
     encoding = eeg_encoding, framerate = sr)
+file = joinpath(cache_dir("eeg", "features"), "target-decoding.jld")
+save(file, "subjects", subjects, "events", events)
+
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
@@ -103,6 +108,7 @@ x ./= x_σ
 # -----------------------------------------------------------------
 
 stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
+encoding_map = Dict("pitch" => PitchSurpriseEncoding(), "envelope" => ASEnvelope())
 encodings = ["pitch", "envelope"]
 sources = [
     male_source,
@@ -155,13 +161,14 @@ stimulidf = @_ DataFrame(stimuli) |>
     addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     # insertcols!(__, :predict => Ref(Float32[])) |>
     groupby(__, [:encoding]) |>
-    transform!(__, :data => (x -> mean(reduce(vcat, x))) => :datamean) |>
-    groupby(__, [:encoding]) |>
-    transform!(__, [:data, :datamean] => ByRow((x, μ) -> x .-= μ) => :data) |>
-    groupby(__, [:encoding]) |>
-    transform!(__, :data => (x -> std(reduce(vcat, x))) => :datastd) |>
-    groupby(__, [:encoding]) |>
+    transform!(__, :data => (x -> mean(reduce(vcat, x))) => :datamean, ungroup = false) |>
+    transform!(__, [:data, :datamean] => ByRow((x, μ) -> x .-= μ) => :data, ungroup = false) |>
+    transform!(__, :data => (x -> std(reduce(vcat, x))) => :datastd, ungroup = false) |>
     transform!(__, [:data, :datastd] => ByRow((x, σ) -> x .-= σ) => :data)
+
+fold_map = @_ stimulidf |> groupby(__, :sid) |>
+    @combine(__, fold = first(:fold)) |>
+    Dict(row.sid => row.fold for row in eachrow(__))
 
 # Train Model
 # =================================================================
@@ -169,19 +176,6 @@ stimulidf = @_ DataFrame(stimuli) |>
 eegindices(row::DataFrameRow) = (row.offset):(row.offset + row.len - 1)
 function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
-end
-
-function zscoremany(xs)
-    μ = mean(reduce(vcat, xs))
-    for x in xs
-        x .-= μ
-    end
-    σ = std(reduce(vcat, xs))
-    for x in xs
-        x ./= σ
-    end
-
-    xs
 end
 
 function decode_scores(predictions)
@@ -207,12 +201,10 @@ end
 
 datafile = processed_datadir("analyses", "decode-predict-freqbin")
 if !isfile(datafile)
-    nfolds = 5
-
     @info "Generating cross-validated predictions, this could take a bit..."
 
     groupings = [:source, :encoding]
-    stimuli = groupby(stimulidf, groupings)
+    groups = groupby(stimulidf, groupings)
 
     max_steps = 50
     nλ = 24
@@ -368,58 +360,12 @@ if !isfile(datafile)
     Arrow.write(string(datafile, "-predict.feather"), predictions_, compress = :lz4)
 else
     @info "Loading models predictions from data file"
-    coefs = DataFrame(Arrow.Table(string(datafile, "-coef.feather")))
-    predictions = DataFrame(Arrow.Table(string(datafile, "-predict.feather")))
-    models = DataFrame(load(string(datafile, "-model.bson"))["models"])
-    scores = decode_scores(predictions)
+    coefs_ = DataFrame(Arrow.Table(string(datafile, "-coef.feather")))
+    predictions_ = DataFrame(Arrow.Table(string(datafile, "-predict.feather")))
+    models_ = DataFrame(load(string(datafile, "-model.bson"))["models"])
+    scores_ = decode_scores(predictions_)
 end
 
-# Model timeline
-# =================================================================
-
-timeline = Empty(DataFrame)
-
-sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
-progress = Progress(length(sid_trial), desc = "Evaluating decoder over timeline...")
-
-stimuli_stats = @_ stimulidf |> groupby(__, [:datamean, :datastd]) |>
-    @combine(__, encoding = first(:encoding))
-
-function decode_timeline(sid, trial)
-    event = subjects[sid].events[trial, :]
-    event.hittype != "hit" && return Empty(DataFrame)
-
-    trialdata = withlags(subjects[sid].eeg[trial]', lags)
-    winstep = round(Int, 0.3*sr)
-    winlen = round(Int, 1.0*sr)
-
-    result = combine(groupby(models, [:encoding, :source])) do models_
-        train_type = source == event.target_source ? "athit-target" : "athit-other"
-        modelrow = only(eachrow(filter(x -> x.train_type == train_type, models_)))
-        stim, stim_id = load_stimulus(source, trial, modelrow.encoding, sr, meta)
-
-        y_μ, y_σ = only(eachrow(filter(x -> x.encoding == models_.encoding[1],
-            stimuli_stats)))
-
-        function scoreat(offset)
-            x = (view(trialdata, 1:winlen .+ offset, :) .- x_μ) ./ x_σ
-            y = (view(stim, 1:winlen .+ offset, :)) .- y_μ) ./ y_σ
-            ŷ = modelrow.model(x)
-
-            DataFrame(score = cor(y, ŷ), time = offset/sr)
-        end
-
-        foldxt(append!!, Map(scoreat), 0:winstep:(trialdata-winlen-1))
-    end
-    next!(progress)
-
-    result
-end
-
-foldl(append!!, Map(decode_timeline), sid_trial)
-
-# Plotting
-# =================================================================
 
 # Plotting
 # -----------------------------------------------------------------
@@ -998,3 +944,95 @@ pl = @_ scores |>
 pl |> save(joinpath(dir, "decode_time_continuous.svg"))
 
 # TODO: plot decoding scores vs. hit-rate
+
+# Model timeline
+# =================================================================
+
+sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
+progress = Progress(length(sid_trial), desc = "Evaluating decoder over timeline...")
+
+stimuli_stats = @_ stimulidf |> groupby(__, [:datamean, :datastd]) |>
+    @combine(__, encoding = first(:encoding))
+
+function decode_timeline(sid, trial)
+    event = subjects[sid].events[trial, :]
+    if ishit(event) != "hit"
+        next!(progress)
+        return Empty(DataFrame)
+    end
+    stimid = event.sound_index
+
+    trialdata = withlags(subjects[sid].eeg[trial]', lags)
+    winstep = round(Int, 0.6*sr)
+    winlen = round(Int, 2.5*sr)
+
+    m = filter(x -> x.fold == fold_map[sid], models)
+
+    result = combine(groupby(m, [:encoding, :source])) do models_
+        train_type = models_.source[1] == event.target_source ?
+            "athit-target" : "athit-other"
+        modelrow = only(eachrow(filter(x -> x.train_type == train_type, models_)))
+        sourcei = @_ findfirst(string(_) == modelrow.source, sources)
+        source = sources[sourcei]
+        encoding = encoding_map[modelrow.encoding]
+        stim, = load_stimulus(source, stimid, encoding, sr, meta)
+
+        y_μ, y_σ = only(eachrow(filter(x -> x.encoding == models_.encoding[1],
+            stimuli_stats)))
+
+        function scoreat(offset)
+            start = 1+offset
+            stop = min(winlen+offset, size(trialdata, 1), size(stim, 1))
+            x = (view(trialdata, start:stop, :) .- x_μ') ./ x_σ'
+            y = vec((view(stim, start:stop, :) .- y_μ') ./ y_σ')
+            ŷ = vec(modelrow.model(x'))
+
+            DataFrame(
+                score = cor(y, ŷ),
+                time = offset/sr,
+                sid = sid,
+                trial = trial,
+                ;merge(
+                    modelrow[[:fold, :train_type]],
+                    event[[:condition, :sound_index]]
+                )...
+            )
+        end
+
+        foldxt(append!!, Map(scoreat), 0:winstep:(size(trialdata, 1)-winlen-1))
+    end
+    next!(progress)
+
+    result
+end
+
+timelines = foldl(append!!, MapSplat(decode_timeline), sid_trial)
+ProgressMeter.finish!(progress)
+
+# Plotting
+# -----------------------------------------------------------------
+
+plotdf = @_ timelines |>
+    groupby(__, [:condition, :time, :sid, :trial, :train_type, :sound_index]) |>
+    @combine(__, score = mean(:score)) |>
+    @transform(__, offset = :time .- getindex.(Ref(meta.target_times), :sound_index)) |>
+    groupby(__, [:condition, :offset, :sid, :train_type]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:condition, :offset, :train_type]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score),
+        upper = upperboot(:score)
+    )
+
+offsets = plotdf.offset |> unique |> sort!
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+pl = @_ plotdf |>
+    @where(__, -1 .< :offset .< 1) |>
+    @vlplot(facet = {column = {field = :condition}}) +
+    (
+        @vlplot(x = {:offset, type = :quantitative}, color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
+        @vlplot(:line, y = :score) +
+        @vlplot(:errorband, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "decode_timeline.svg"))

@@ -6,10 +6,8 @@ struct Stimulus{A}
     data::A
     framerate::Float64
     file::Union{String,Nothing}
-    target_time::Union{Float64,Nothing}
 end
-Stimulus(data,framerate,file,target_time) =
-    Stimulus(data,Float64(framerate),file,target_time)
+Stimulus(data,framerate,file) = Stimulus(data,Float64(framerate),file)
 
 abstract type StimEncoding <: Encoding
 end

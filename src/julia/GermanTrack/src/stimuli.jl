@@ -160,15 +160,13 @@ male_source = SingleSource("male", 1)
 fem1_source = SingleSource("fem1", 2)
 fem2_source = SingleSource("fem2", 3)
 
-function load_stimulus(source::SingleSource, event::RowType, encoding, tofs, stim_info)
-    stim_num = event.sound_index
-    target_time = event.target_source == source.index ?
-        event.target_time : nothing
-    load_single_speaker(tofs, stim_num, source.index, target_time,
-        encoding)
+get_stim_num(x::RowType) = x.sound_index
+get_stim_num(x::Int) = x
+function load_stimulus(source::SingleSource, stim, encoding, tofs, stim_info)
+    load_single_speaker(tofs, get_stim_num(stim), source.index, encoding)
 end
 
-function load_single_speaker(tofs, stim_num, source_i, target_time, encoding)
+function load_single_speaker(tofs, stim_num, source_i, encoding)
     encode_cache((:speaker, tofs, stim_num, source_i, encoding), stim_num) do
         file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_components",
             @sprintf("trial_%02d_%1d.wav", stim_num, source_i))
@@ -176,7 +174,7 @@ function load_single_speaker(tofs, stim_num, source_i, target_time, encoding)
         if size(x, 2) > 1
             x = sum(x, dims = 2)
         end
-        encode(Stimulus(x, fs, file, target_time), tofs, encoding)
+        encode(Stimulus(x, fs, file), tofs, encoding)
     end
 end
 
@@ -186,17 +184,12 @@ end
 joint_source = JointSource(true)
 Base.string(::JointSource) = "joint"
 
-function load_stimulus(source::JointSource, event::RowType, encoding,
-    tofs, stim_info)
-
-    stim_num = event.sound_index
-    target_time = event.target_time
-    load_joint_stimulus(tofs, stim_num, target_time,
-        encoding, source.collapse_dims)
+function load_stimulus(source::JointSource, stim, encoding, tofs, stim_info)
+    load_joint_stimulus(tofs, get_stim_num(stim), encoding, source.collapse_dims)
 end
 
 adddim(x) = reshape(x, 1, size(x)...)
-function load_joint_stimulus(tofs, stim_num, target_time, encoding, collapse)
+function load_joint_stimulus(tofs, stim_num, encoding, collapse)
 
     encode_cache((:joint, tofs, stim_num, encoding, collapse), stim_num) do
         fs = 0
@@ -209,7 +202,7 @@ function load_joint_stimulus(tofs, stim_num, target_time, encoding, collapse)
             if size(x, 2) > 1
                 x = sum(x, dims = 2)
             end
-            encode(Stimulus(x, fs, file, target_time), tofs, encoding)
+            encode(Stimulus(x, fs, file), tofs, encoding)
         end
         if collapse
             mapreduce(encodefile, hcat, sources)
@@ -227,23 +220,19 @@ other(x::OtherSource) = error("Already 'othered'")
 fortraining(x::OtherSource) = x.source
 Base.string(x::OtherSource) = string("other_", string(x.source))
 
-function load_stimulus(source::OtherSource{JointSource}, event::RowType,
-    encoding, tofs, info)
+function load_stimulus(source::OtherSource{JointSource}, stim, encoding, tofs, info)
 
-    stim_num = event.sound_index
+    stim_num = get_stim_num(stim)
     selected = rand(setdiff(1:50, stim_num))
 
-    target_time = event.target_time
-    result, real_stim_num =
-        load_joint_stimulus(tofs, selected, target_time,
-            encoding, source.source.collapse_dims)
+    result, real_stim_num = load_joint_stimulus(tofs, selected,
+        encoding, source.source.collapse_dims)
     result, stim_num
 end
 
-function load_stimulus(other::OtherSource{SingleSource}, event::RowType,
-    encoding, tofs, info)
+function load_stimulus(other::OtherSource{SingleSource}, stim, encoding, tofs, info)
 
-    stim_num = event.sound_index
+    stim_num = get_stim_num(stim)
     stimuli = info["test_block_cfg"]["trial_sentences"]
     sentence_num = stimuli[stim_num][other.source.index]
     selected = rand(filter(i -> stimuli[i][other.source.index] != sentence_num,
@@ -252,8 +241,7 @@ function load_stimulus(other::OtherSource{SingleSource}, event::RowType,
     target_time = event.target_source == other.source.index ?
         event.target_time : nothing
     result, real_stim_num =
-        load_single_speaker(tofs, selected, other.source.index, target_time,
-            encoding)
+        load_single_speaker(tofs, selected, other.source.index, encoding)
     result, stim_num
 end
 
@@ -267,10 +255,8 @@ male_fem1_sources = MixedSources(1:2, "male+fem1")
 male_fem2_sources = MixedSources([1,3], "male+fem2")
 fem1_fem2_sources = MixedSources(2:3, "fem1+fem2")
 
-function load_stimulus(mixed::MixedSources, event::RowType, encoding,
-    tofs, info)
-
-    stim_num = event.sound_index
+function load_stimulus(mixed::MixedSources, stim, encoding, tofs, info)
+    stim_num = get_stim_num(stim)
     key = (:mixed, mixed.indices, stim_num, tofs, stim_num, encoding)
     encode_cache(key, stim_num) do
         filenames = map(mixed.indices) do source_i
@@ -282,8 +268,7 @@ function load_stimulus(mixed::MixedSources, event::RowType, encoding,
 
         target_time = event.target_source ∈ mixed.indices ?
             event.target_time : nothing
-        encode(Stimulus(mixture, fr, nothing, target_time),
-            tofs, encoding)
+        encode(Stimulus(mixture, fr, nothing), tofs, encoding)
     end
 end
 
