@@ -965,6 +965,7 @@ function decode_timeline(sid, trial)
     trialdata = withlags(subjects[sid].eeg[trial]', lags)
     winstep = round(Int, 0.6*sr)
     winlen = round(Int, 2.5*sr)
+    target_time = round(Int, event.target_time * sr)
 
     m = filter(x -> x.fold == fold_map[sid], models)
 
@@ -979,27 +980,33 @@ function decode_timeline(sid, trial)
 
         y_μ, y_σ = only(eachrow(filter(x -> x.encoding == models_.encoding[1],
             stimuli_stats)))
+        maxlen = min(size(trialdata, 1), size(stim, 1))
 
         function scoreat(offset)
-            start = 1+offset
-            stop = min(winlen+offset, size(trialdata, 1), size(stim, 1))
-            x = (view(trialdata, start:stop, :) .- x_μ') ./ x_σ'
-            y = vec((view(stim, start:stop, :) .- y_μ') ./ y_σ')
-            ŷ = vec(modelrow.model(x'))
+            start = clamp(1+offset+target_time, 1, maxlen)
+            stop = clamp(winlen+offset+target_time, 1, maxlen)
 
-            DataFrame(
-                score = cor(y, ŷ),
-                time = offset/sr,
-                sid = sid,
-                trial = trial,
-                ;merge(
-                    modelrow[[:fold, :train_type]],
-                    event[[:condition, :sound_index]]
-                )...
-            )
+            if stop > start
+                x = (view(trialdata, start:stop, :) .- x_μ') ./ x_σ'
+                y = vec((view(stim, start:stop, :) .- y_μ') ./ y_σ')
+                ŷ = vec(modelrow.model(x'))
+
+                DataFrame(
+                    score = cor(y, ŷ),
+                    time = offset/sr,
+                    sid = sid,
+                    trial = trial,
+                    ;merge(
+                        modelrow[[:fold, :train_type]],
+                        event[[:condition, :sound_index]]
+                    )...
+                )
+            else
+                Empty(DataFrame)
+            end
         end
 
-        foldxt(append!!, Map(scoreat), 0:winstep:(size(trialdata, 1)-winlen-1))
+        foldxt(append!!, Map(scoreat), round(Int, -3*sr):winstep:round(Int, 3*sr))
     end
     next!(progress)
 
@@ -1013,12 +1020,9 @@ ProgressMeter.finish!(progress)
 # -----------------------------------------------------------------
 
 plotdf = @_ timelines |>
-    groupby(__, [:condition, :time, :sid, :trial, :train_type, :sound_index]) |>
+    groupby(__, [:condition, :time, :sid, :train_type]) |>
     @combine(__, score = mean(:score)) |>
-    @transform(__, offset = :time .- getindex.(Ref(meta.target_times), :sound_index)) |>
-    groupby(__, [:condition, :offset, :sid, :train_type]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, [:condition, :offset, :train_type]) |>
+    groupby(__, [:condition, :time, :train_type]) |>
     @combine(__,
         score = mean(:score),
         lower = lowerboot(:score),
@@ -1028,10 +1032,10 @@ plotdf = @_ timelines |>
 offsets = plotdf.offset |> unique |> sort!
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pl = @_ plotdf |>
-    @where(__, -1 .< :offset .< 1) |>
+    # @where(__, -1 .< :time .< 1) |>
     @vlplot(facet = {column = {field = :condition}}) +
     (
-        @vlplot(x = {:offset, type = :quantitative}, color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
+        @vlplot(x = {:time, type = :quantitative}, color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         @vlplot(:line, y = :score) +
         @vlplot(:errorband, y = :lower, y2 = :upper)
     );
