@@ -1052,8 +1052,8 @@ pl = @_ plotdf |>
     @vlplot(facet = {column = {field = :condition}}) +
     (
         @vlplot(x = {:time, type = :quantitative}, color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot(:line, y = :score) +
-        @vlplot(:errorband, y = :lower, y2 = :upper)
+        @vlplot(:line, y = {:score, title = "Mean Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
     );
 pl |> save(joinpath(dir, "decode_timeline.svg"))
 
@@ -1072,8 +1072,8 @@ pl = @_ plotdf |>
     ) |>
     (
         @vlplot(x = {:time, type = :quantitative}, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:line, y = :score) +
-        @vlplot(:errorband, y = :lower, y2 = :upper)
+        @vlplot(:line, y = {:score, title = "Mean Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
 
@@ -1098,7 +1098,7 @@ attend_thresh = @_ plotdf |>
 above_thresh(score, fold) = score >= attend_thresh[fold]
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
-pl = @_ plotdf |>
+pretarget_df = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
     @combine(__, score = mean(:score)) |>
     unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
@@ -1107,9 +1107,13 @@ pl = @_ plotdf |>
         scorediff = :var"athit-target" .- :var"athit-other", #"
         n = length(unique(:sid))
     ) |>
-    @where(__, (:time .< -1) .& (:n .>= 20)) |>
+    @where(__, (:time .< -1) .& (:n .>= 24)) |>
     groupby(__, [:condition, :sid, :fold]) |>
-    @combine(__, score = mean(above_thresh.(:scorediff,:fold))) |>
+    @combine(__, score = mean(above_thresh.(:scorediff,:fold)))
+pretarget_df |> CSV.write(joinpath(cache_dir("eeg", "decoding"), "pretarget_attend.csv"))
+# TODO: run stats using multi-levle on a per-trial basis to get best measurem
+
+pl = @_ pretarget_df |>
     groupby(__, [:condition]) |>
     @combine(__,
         score = mean(:score),
@@ -1120,8 +1124,8 @@ pl = @_ plotdf |>
         @vlplot(
             config = {legend = {disable = true}},
             x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:bar, y = :score) +
-        @vlplot(:errorbar, y = :lower, y2 = :upper, color = {value = "black"})
+        @vlplot(:bar, y = {:score, title = ["Prop. of pre-target time ≥95th", " quantile of on-target time."]}) +
+        @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
     );
 pl |> save(joinpath(dir, "decode_pretarget_attend.svg"))
 
