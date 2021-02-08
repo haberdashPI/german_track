@@ -16,7 +16,7 @@ options(mc.cores = parallel::detectCores())
 source("src/R/analysis.R")
 
 analysis_dir = file.path(base_dir,'scripts','R')
-cache_dir = file.path(base_dir,'_research','cache','cache')
+cache_dir = file.path(base_dir,'_research','cache')
 processed_datadir = file.path(base_dir,'data','processed')
 raw_datadir = file.path(base_dir,'data','raw')
 plot_dir = file.path(base_dir,'plots')
