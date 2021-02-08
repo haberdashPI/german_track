@@ -108,3 +108,22 @@ condmeans = means %>%
 
 t.test(score ~ target_window, condmeans, paired = T)
 
+
+pretargetdf = read.csv(file.path(cache_dir, 'eeg', 'decoding', 'pretarget_attend.csv')) %>%
+    filter(condition != 'spatial')
+
+prefit = stan_glmer(score ~ condition + (1 | sid), pretargetdf)
+
+effectspre = as.data.frame(prefit) %>%
+    mutate(
+        global = `(Intercept)`,
+        object = `(Intercept)` + conditionobject,
+        # spatial = `(Intercept)` + conditionspatial,
+    ) %>%
+    select(global:object) %>%
+    pairwise(global:object) %>%
+    gather(everything(), key = 'condition', value = 'value') %>%
+    group_by(condition) %>%
+    effect_summary(prop = value)
+
+t.test(score ~ condition, pretargetdf, paired = TRUE)

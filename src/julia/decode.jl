@@ -1077,7 +1077,6 @@ pl = @_ plotdf |>
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
 
-# TODO: cross validate threshold
 attend_thresh = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
     @combine(__, score = mean(:score)) |>
