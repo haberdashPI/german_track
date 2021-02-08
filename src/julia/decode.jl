@@ -932,6 +932,35 @@ pl = @_ scores |>
     @transform(__,
         condition = string.(:condition),
     ) |>
+    groupby(__, [:sid, :condition, :train_type, :target_salience_level, :trialnum]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:sid, :condition, :target_salience_level, :trialnum], :train_type, :score) |>
+    @transform(__,
+        hit = :var"athit-target" .- :var"athit-other", #"
+        miss = :var"athit-target" .- :var"atmiss-target" #"
+    ) |>
+    stack(__, [:hit, :miss],
+        [:sid, :condition, :target_salience_level, :trialnum],
+        value_name = :score, variable_name = :trial_type) |>
+    groupby(__, [:sid, :condition, :target_salience_level, :trial_type]) |>
+    @combine(__, score = mean(:score)) |>
+    @vlplot(
+        facet = {column = {field = :trial_type}}
+    ) + (
+        @vlplot({:point, filled = true, opacity = 0.6, clip = true},
+            x     = :target_salience_level,
+            y     = {:score, type = :quantitative, aggregate = :mean},
+            color = {:condition, scale = {range = "#".*hex.(colors)}}
+        )
+    );
+pl |> save(joinpath(dir, "decode_salience_continuous_diff.svg"))
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+    ) |>
     groupby(__, [:sid, :condition, :train_type, :source, :target_time]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:sid, :condition, :train_type, :target_time]) |>
@@ -949,6 +978,28 @@ pl = @_ scores |>
         )
     );
 pl |> save(joinpath(dir, "decode_time_continuous.svg"))
+
+mean_offset = 15
+ind_offset = 6
+pl = @_ scores |>
+    @transform(__,
+        condition = string.(:condition),
+    ) |>
+    groupby(__, [:sid, :condition, :train_type, :target_time, :trialnum]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:sid, :condition, :target_time, :trialnum], :train_type, :score) |>
+    @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
+    groupby(__, [:sid, :condition, :target_time]) |>
+    @combine(__, scorediff = mean(:scorediff)) |>
+    @vlplot() + (
+        @vlplot({:point, filled = true, opacity = 0.6},
+            x     = :target_time,
+            y     = {:scorediff, type = :quantitative, aggregate = :mean},
+            color = {:condition, scale = {range = "#".*hex.(colors)}}
+        )
+    );
+pl |> save(joinpath(dir, "decode_time_continuous_diff.svg"))
+
 
 # TODO: plot decoding scores vs. hit-rate
 
