@@ -1036,7 +1036,7 @@ end
 # -----------------------------------------------------------------
 
 plotdf = @_ timelines |>
-    groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index]) |>
+    groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
@@ -1076,6 +1076,82 @@ pl = @_ plotdf |>
         @vlplot(:errorband, y = :lower, y2 = :upper)
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
+
+# TODO: cross validate threshold
+attend_thresh = @_ plotdf |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
+    @transform(__,
+        scorediff = :var"athit-target" .- :var"athit-other", #"
+    ) |>
+    @where(__, -1 .< :time .< 1) |>
+    groupby(__, [:condition, :time, :fold]) |>
+    @combine(__, scorediff = mean(:scorediff)) |>
+    filteringmap(__, folder = foldl, desc = nothing,
+        :cross_fold => cross_folds(1:nfolds),
+        function(sdf, fold)
+            DataFrame(threshold = quantile(sdf.scorediff,0.95))
+        end
+    ) |>
+    Dict(row.cross_fold => row.threshold for row in eachrow(__))
+above_thresh(score, fold) = score >= attend_thresh[fold]
+
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
+    groupby(__, [:time]) |>
+    @transform(__,
+        scorediff = :var"athit-target" .- :var"athit-other", #"
+        n = length(unique(:sid))
+    ) |>
+    @where(__, (:time .< -1) .& (:n .>= 20)) |>
+    groupby(__, [:condition, :sid, :fold]) |>
+    @combine(__, score = mean(above_thresh.(:scorediff,:fold))) |>
+    groupby(__, [:condition]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score, alpha = 0.318),
+        upper = upperboot(:score, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:bar, y = :score) +
+        @vlplot(:errorbar, y = :lower, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_attend.svg"))
+
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
+    groupby(__, [:time]) |>
+    @transform(__,
+        scorediff = :var"athit-target" .- :var"athit-other", #"
+        n = length(unique(:sid))
+    ) |>
+    @where(__, (:time .< -1) .& (:n .>= 20)) |>
+    groupby(__, [:condition, :sid, :time, :fold]) |>
+    @combine(__, score = mean(above_thresh.(:scorediff,:fold))) |>
+    groupby(__, [:condition, :time]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score, alpha = 0.318),
+        upper = upperboot(:score, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :time, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:line, y = :score) +
+        @vlplot(:errorband, y = :lower, y2 = :upper)
+    );
+pl |> save(joinpath(dir, "decode_pretarget_attend_timeline.svg"))
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pldata = @_ plotdf |>
