@@ -131,20 +131,28 @@ t.test(score ~ train_kind, condmeans, paired = T)
 
 
 pretargetdf = read.csv(file.path(cache_dir, 'eeg', 'decoding', 'pretarget_attend.csv')) %>%
-    filter(condition != 'spatial')
+    # filter(condition != 'spatial') %>%
+    mutate(vardiff = var - timevar)
 
 prefit = stan_glmer(score ~ condition + (1 | sid) + (1 | sound_index), pretargetdf)
+
+prefit = stan_glmer(vardiff ~ condition + (1 | sid) + (1 | sound_index), pretargetdf)
 
 effectspre = as.data.frame(prefit) %>%
     mutate(
         global = `(Intercept)`,
         object = `(Intercept)` + conditionobject,
-        # spatial = `(Intercept)` + conditionspatial,
+        spatial = `(Intercept)` + conditionspatial,
     ) %>%
-    select(global:object) %>%
-    pairwise(global:object) %>%
+    select(global:spatial) %>%
+    pairwise(global:spatial) %>%
     gather(everything(), key = 'condition', value = 'value') %>%
     group_by(condition) %>%
     effect_summary(prop = value)
 
-t.test(score ~ condition, pretargetdf, paired = TRUE)
+premeans = pretargetdf %>%
+    group_by(condition, sid) %>%
+    summarize(vardiff = mean(vardiff)) %>%
+    filter(condition != 'spatial')
+
+t.test(vardiff ~ condition, premeans, paired = TRUE)
