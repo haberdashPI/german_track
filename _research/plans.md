@@ -1,4 +1,14 @@
+mounya thought: test decoders on condition they weren't trained on
+david thought: train decoders across all conditions
+
 ### options for ARO
+
+option 0:
+
+a mix of 1 and 2: we make all the slides mounya asked for, and we provide
+some indication of the flicker/spread dichotomy
+
+-
 
 options 1:
 - intro becomes clear: frame in terms of spotlight hypothesis
