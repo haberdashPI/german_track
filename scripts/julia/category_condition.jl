@@ -884,10 +884,11 @@ pl |> save(joinpath(dir, "fig2d.svg"))
 # EEG Cross-validated Features
 # =================================================================
 
+file = joinpath(processed_datadir("analyses"), "condition_coefs.json")
 GermanTrack.@cache_results file coefdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    start_len = unique((x.winstart, x.winlen) for x in values(hyperparams))
+    start_len = unique((x[:winstart], x[:winlen]) for x in values(hyperparams))
 
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
@@ -918,18 +919,19 @@ GermanTrack.@cache_results file coefdf begin
                 DataFrame(coefs, vcat("I", names(view(sdf, r"channel"))))
             end)
 
-    longdf = @_ coefdf |>
-        stack(__, All(r"channel"), [:cross_fold, :comparison]) |>
-        @transform(__,
-            channel = parse.(Int, getindex.(match.(r"channel_([0-9]+)", :variable), 1)),
-            freqbin = getindex.(match.(r"channel_[0-9]+_(.*)$", :variable), 1)
-        )
 
 end
 
+longdf = @_ coefdf |>
+stack(__, All(r"channel"), [:cross_fold, :comparison]) |>
+@transform(__,
+    channel = parse.(Int, getindex.(match.(r"channel_([0-9]+)", :variable), 1)),
+    freqbin = getindex.(match.(r"channel_[0-9]+_(.*)$", :variable), 1)
+)
+
 pl = @_ longdf |>
     groupby(__, [:freqbin, :comparison, :cross_fold]) |>
-    @combine(__, value = sum(!iszero, :value)) |>
+    @combine(__, value = mean(abs, :value)) |>
     groupby(__, [:freqbin, :comparison]) |>
     @combine(__,
         value = median(:value),
