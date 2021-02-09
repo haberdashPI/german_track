@@ -1117,6 +1117,7 @@ pl = @_ plotdf |>
     ) |>
     @vlplot(
         spacing = 5,
+        config = {legend = {disable = true}},
     facet = {
         column = {field = :condition, title = "",
             sort = ["global", "spatial", "object"],
