@@ -1160,7 +1160,7 @@ pl = @_ plotdf |>
     ) +
     (
         @vlplot(x = {:time, type = :quantitative, title = "Time"}, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:line, y = {:score, title = ["Target - Other", "Correlation"]}) +
+        @vlplot({:line, strokeJoin = :round}, y = {:score, title = ["Target - Other", "Correlation"]}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
         @vlplot({:text, align = "left", dx = 3},
             transform = [
