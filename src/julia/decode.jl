@@ -413,7 +413,7 @@ pl |> save(joinpath(dir, "example_predict.svg"))
 
 
 @_ scores |>
-    filter(_.λ == best_λ[_.fold], __) |>
+    # filter(_.λ == best_λ[_.fold], __) |>
     transform!(__, :train_type => ByRow(x -> string(split(x, "-")[1:2]...)) => :train_kind) |>
     CSV.write(joinpath(processed_datadir("analyses", "decode"), "decode_scores.csv"))
 
@@ -1027,12 +1027,12 @@ else
 
         trialdata = withlags(subjects[sid].eeg[trial]', lags)
         winstep = round(Int, sr/decode_sr)
-        winlen = round(Int, 1*sr)
+        winlen = round(Int, 0.5*sr)
         target_time = round(Int, event.target_time * sr)
 
         m = filter(x -> x.fold == fold_map[sid], models_)
 
-        result = combine(groupby(m, [:encoding, :source])) do modelgroup
+        function modelpredict(modelgroup)
             train_type = modelgroup.source[1] == event.target_source ?
                 "athit-target" : "athit-other"
             modelrow = only(eachrow(filter(x -> x.train_type == train_type, modelgroup)))
@@ -1045,17 +1045,20 @@ else
                 stimuli_stats)))
             maxlen = min(size(trialdata, 1), size(stim, 1))
 
+            x = (view(trialdata, 1:maxlen, :) .- x_μ') ./ x_σ'
+            y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
+            ŷ = vec(modelrow.model(x'))
+
             function scoreat(offset)
                 start = clamp(1+offset+target_time, 1, maxlen)
                 stop = clamp(winlen+offset+target_time, 1, maxlen)
 
                 if stop > start
-                    x = (view(trialdata, start:stop, :) .- x_μ') ./ x_σ'
-                    y = vec((view(stim, start:stop, :) .- y_μ') ./ y_σ')
-                    ŷ = vec(modelrow.model(x'))
+                    y_ = view(y, start:stop)
+                    ŷ_ = view(ŷ, start:stop)
 
                     DataFrame(
-                        score = cor(y, ŷ),
+                        score = cor(y_, ŷ_),
                         time = offset/sr,
                         sid = sid,
                         trial = trial,
@@ -1072,6 +1075,7 @@ else
             foldxt(append!!, Map(scoreat), round(Int, -3*sr):winstep:round(Int, 3*sr),
                 init = Empty(DataFrame))
         end
+        result = mapgroups(m, [:encoding, :source], modelpredict, desc = nothing)
         next!(progress)
 
         result
@@ -1136,7 +1140,7 @@ attend_thresh = @_ plotdf |>
         scorediff = :var"athit-target" .- :var"athit-other", #"
     ) |>
     @where(__, -1 .< :time .< 1) |>
-    groupby(__, [:condition, :time, :fold, :trial]) |>
+    groupby(__, [:condition, :time, :fold, :sid, :trial]) |>
     @combine(__, scorediff = mean(:scorediff)) |>
     filteringmap(__, folder = foldl, desc = nothing,
         :cross_fold => cross_folds(1:nfolds),
@@ -1149,9 +1153,9 @@ above_thresh(score, fold) = score >= attend_thresh[fold]
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pretarget_df = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid, :fold, :trial]) |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold, :sound_index]) |>
     @combine(__, score = mean(:score)) |>
-    unstack(__, [:condition, :time, :sid, :fold, :trial], :train_type, :score) |>
+    unstack(__, [:condition, :time, :sid, :fold, :sound_index], :train_type, :score) |>
     groupby(__, [:time]) |>
     @transform(__,
         scorediff = :var"athit-target" .- :var"athit-other", #"
@@ -1159,7 +1163,7 @@ pretarget_df = @_ plotdf |>
     ) |>
     @where(__, (:time .< -1) .& (:n .>= 24)) |>
     sort!(__, :time) |>
-    groupby(__, [:condition, :sid, :fold, :trial]) |>
+    groupby(__, [:condition, :sid, :fold, :sound_index]) |>
     @combine(__,
         var = std(:scorediff),
         timevar = std(abs.(diff(:scorediff))),
@@ -1241,35 +1245,6 @@ pl = @_ pretarget_df |>
         @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
     );
 pl |> save(joinpath(dir, "decode_pretarget_attend_var.svg"))
-
-
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
-pl = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
-    @combine(__, score = mean(:score)) |>
-    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
-    groupby(__, [:time]) |>
-    @transform(__,
-        scorediff = :var"athit-target" .- :var"athit-other", #"
-        n = length(unique(:sid))
-    ) |>
-    @where(__, (:time .< -1) .& (:n .>= 20)) |>
-    groupby(__, [:condition, :sid, :time, :fold]) |>
-    @combine(__, score = mean(above_thresh.(:scorediff,:fold))) |>
-    groupby(__, [:condition, :time]) |>
-    @combine(__,
-        score = mean(:score),
-        lower = lowerboot(:score, alpha = 0.318),
-        upper = upperboot(:score, alpha = 0.318),
-    ) |>
-    (
-        @vlplot(
-            config = {legend = {disable = true}},
-            x = :time, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:line, y = :score) +
-        @vlplot(:errorband, y = :lower, y2 = :upper)
-    );
-pl |> save(joinpath(dir, "decode_pretarget_attend_timeline.svg"))
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pldata = @_ plotdf |>
