@@ -1139,13 +1139,13 @@ attend_thresh = @_ plotdf |>
     @transform(__,
         scorediff = :var"athit-target" .- :var"athit-other", #"
     ) |>
-    @where(__, -1 .< :time .< 1) |>
+    @where(__, -0 .< :time .< 0.5) |>
     groupby(__, [:condition, :time, :fold, :sid, :trial]) |>
     @combine(__, scorediff = mean(:scorediff)) |>
     filteringmap(__, folder = foldl, desc = nothing,
         :cross_fold => cross_folds(1:nfolds),
         function(sdf, fold)
-            DataFrame(threshold = quantile(sdf.scorediff,0.95))
+            DataFrame(threshold = quantile(sdf.scorediff,0.75))
         end
     ) |>
     Dict(row.cross_fold => row.threshold for row in eachrow(__))
@@ -1153,20 +1153,21 @@ above_thresh(score, fold) = score >= attend_thresh[fold]
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pretarget_df = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid, :fold, :sound_index]) |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold, :sound_index, :trial]) |>
     @combine(__, score = mean(:score)) |>
-    unstack(__, [:condition, :time, :sid, :fold, :sound_index], :train_type, :score) |>
+    unstack(__, [:condition, :time, :sid, :fold, :sound_index, :trial], :train_type, :score) |>
     groupby(__, [:time]) |>
     @transform(__,
         scorediff = :var"athit-target" .- :var"athit-other", #"
         n = length(unique(:sid))
     ) |>
-    @where(__, (:time .< -1) .& (:n .>= 24)) |>
+    @where(__, (:time .< 0.0) .& (:n .>= 24)) |>
     sort!(__, :time) |>
-    groupby(__, [:condition, :sid, :fold, :sound_index]) |>
+    groupby(__, [:condition, :sid, :fold, :sound_index, :trial]) |>
     @combine(__,
         var = std(:scorediff),
-        timevar = std(abs.(diff(:scorediff))),
+        # NOTE: ensure time steps use non-overlapping windows
+        timevar = std(abs.(diff(:scorediff[1:ceil(Int,winlen_s*decode_sr):end]))),
         timecor = cor(:scorediff, lag(:scorediff, default = 0)),
         scoreother = mean(max.(0, :var"athit-other")), #"
         score = mean(above_thresh.(:scorediff,:fold))
@@ -1191,6 +1192,92 @@ pl = @_ pretarget_df |>
         @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
     );
 pl |> save(joinpath(dir, "decode_pretarget_attend.svg"))
+
+pcolors = ColorSchemes.bamako[range(0.3,0.7, length = 2)]
+barwidth = 10
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, var = mean(:var), timevar = mean(:timevar)) |>
+    stack(__, [:var, :timevar], [:condition, :sid], variable_name = :measure) |>
+    groupby(__, [:condition, :measure]) |>
+    @combine(__,
+        score = mean(:value),
+        lower = lowerboot(:value, alpha = 0.05),
+        upper = upperboot(:value, alpha = 0.05),
+    ) |>
+    (
+        @vlplot(
+            width = 145,
+            height = 75,
+            config = {
+                legend = {disable = true},
+                bar = {discreteBandSize = barwidth}
+            },
+            x = {:condition,
+                axis = {title = "", labelAngle = 0,
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
+            color = {:measure, scale = {range = "#".*hex.(pcolors)}}) +
+        @vlplot({:bar, xOffset = barwidth/2},
+            transform = [{filter = "datum.measure == 'var'"}],
+            y = {:score, stack = nothing, title = "Decoding Variance"}) +
+        @vlplot({:bar, xOffset = -barwidth/2},
+            transform = [{filter = "datum.measure != 'var'"}],
+            y = {:score, stack = nothing, title = "Decoding Variance"}) +
+        @vlplot({:rule, xOffset = barwidth/2},
+            transform = [{filter = "datum.measure == 'var'"}],
+            y = {:lower, title = ""}, y2 = :upper, color = {value = "black"}) +
+        @vlplot({:rule, xOffset = -barwidth/2},
+            transform = [{filter = "datum.measure != 'var'"}],
+            y = {:lower, title = ""}, y2 = :upper, color = {value = "black"}) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
+            transform = [{filter = "datum.condition == 'global' && datum.measure != 'var'"}],
+            # x = {datum = "spatial"}, y = {datum = 0.},
+            y = {datum = 0},
+            color = {value = "black"},
+            text = {value = "Global Var."},
+        ) +
+        @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
+            transform = [{filter = "datum.condition == 'global' && datum.measure == 'var'"}],
+            # x = {datum = "spatial"}, y = {datum = },
+            y = {datum = 0},
+            color = {value = "black"},
+            text = {value = "Local Var."})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_flicker.svg"))
+
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, var = mean(:var .- :timevar)) |>
+    groupby(__, [:condition]) |>
+    @combine(__,
+        score = mean(:var),
+        lower = lowerboot(:var, alpha = 0.318),
+        upper = upperboot(:var, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:bar, y = {:score, stack = nothing, title = "Variance difference"}) +
+        @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_flicker_diff.svg"))
+
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid, :trial]) |>
+    @combine(__, var = mean(:var .- :timevar)) |>
+    # groupby(__, [:condition, :trial]) |>
+    # @combine(__,
+    #     score = mean(:var),
+    #     lower = lowerboot(:var, alpha = 0.05),
+    #     upper = upperboot(:var, alpha = 0.05),
+    # ) |>
+    sort!(__, :trial) |>
+    (
+        @vlplot(:point, x = :trial, y = {:var, title = "Variance difference", type = :quantitative})
+        # @vlplot(:errobar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_flicker_diff_time.svg"))
 
 pl = @_ pretarget_df |>
     groupby(__, [:condition, :sid]) |>
