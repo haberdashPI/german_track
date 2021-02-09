@@ -1008,6 +1008,7 @@ pl |> save(joinpath(dir, "decode_time_continuous_diff.svg"))
 
 file = joinpath(cache_dir("eeg", "decoding"), "timeline.feather")
 decode_sr = 1/ (round(Int, 0.1sr) / sr)
+winlen_s = 1.0
 if isfile(file)
     timelines = DataFrame(Arrow.Table(file))
 else
@@ -1027,7 +1028,7 @@ else
 
         trialdata = withlags(subjects[sid].eeg[trial]', lags)
         winstep = round(Int, sr/decode_sr)
-        winlen = round(Int, 0.5*sr)
+        winlen = round(Int, winlen_s*sr)
         target_time = round(Int, event.target_time * sr)
 
         m = filter(x -> x.fold == fold_map[sid], models_)
@@ -1094,20 +1095,59 @@ plotdf = @_ timelines |>
     groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
 
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+labels = OrderedDict(
+    "athit-target" => "Target",
+    "athit-other" => "Other",
+)
+tolabel(x) = labels[x]
+tcolors = ColorSchemes.imola[[0.3, 0.8]]
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
+    @transform(__,
+        time = :time .+ winlen_s/2,
+        train_type = tolabel.(:train_type)
+    ) |>
+    @where(__, -1 .< :time .< 2) |>
     groupby(__, [:condition, :time, :train_type]) |>
     @combine(__,
         score = mean(:score),
         lower = lowerboot(:score),
         upper = upperboot(:score)
     ) |>
-    @vlplot(facet = {column = {field = :condition}}) +
+    @vlplot(
+        spacing = 5,
+    facet = {
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) +
     (
-        @vlplot(x = {:time, type = :quantitative}, color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot(:line, y = {:score, title = "Mean Correlation"}) +
+        @vlplot(
+            width = 60, height = 80,
+            x = {:time, type = :quantitative, title = ""},
+            color = {:train_type, sort = ["Target", "Other"], title = "Source", scale = {range = "#".*hex.(tcolors)}}
+        ) +
+        # @vlplot({:text, align = "left", dx = 3},
+        #     transform = [{filter = "datum.time > 0.75 && datum.time < 1.25 && datum.condition == 'object' && datum.train_type == 'athit-target'"}],
+        #     x = {:time, aggregate = :max},
+        #     y = {:score, aggregate = :mean},
+        #     text = {value = "Target Source"},
+        #     # color = {value = "black"}
+        # ) +
+        # @vlplot({:text, align = "left", dx = 8},
+        #     transform = [{filter = "datum.time > 0.75 && datum.time < 1.25 && datum.condition == 'object' && datum.train_type == 'athit-other'"}],
+        #     x = {:time, aggregate = :max},
+        #     y = {:score, aggregate = :mean},
+        #     text = {value = "Other Sources"},
+        #     # color = {value = "black"}
+        # ) +
+        @vlplot({:line, strokeJoin = :round}, y = {:score, title = "Mean Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
     );
 pl |> save(joinpath(dir, "decode_timeline.svg"))
