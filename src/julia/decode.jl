@@ -1105,10 +1105,10 @@ pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
     @transform(__,
-        time = :time .+ winlen_s/2,
+        time = :time .+ winlen_s,
         train_type = tolabel.(:train_type)
     ) |>
-    @where(__, -1 .< :time .< 2) |>
+    @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
     @combine(__,
         score = mean(:score),
