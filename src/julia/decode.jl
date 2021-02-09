@@ -1134,20 +1134,6 @@ pl = @_ plotdf |>
             x = {:time, type = :quantitative, title = ""},
             color = {:train_type, sort = ["Target", "Other"], title = "Source", scale = {range = "#".*hex.(tcolors)}}
         ) +
-        # @vlplot({:text, align = "left", dx = 3},
-        #     transform = [{filter = "datum.time > 0.75 && datum.time < 1.25 && datum.condition == 'object' && datum.train_type == 'athit-target'"}],
-        #     x = {:time, aggregate = :max},
-        #     y = {:score, aggregate = :mean},
-        #     text = {value = "Target Source"},
-        #     # color = {value = "black"}
-        # ) +
-        # @vlplot({:text, align = "left", dx = 8},
-        #     transform = [{filter = "datum.time > 0.75 && datum.time < 1.25 && datum.condition == 'object' && datum.train_type == 'athit-other'"}],
-        #     x = {:time, aggregate = :max},
-        #     y = {:score, aggregate = :mean},
-        #     text = {value = "Other Sources"},
-        #     # color = {value = "black"}
-        # ) +
         @vlplot({:line, strokeJoin = :round}, y = {:score, title = "Mean Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
     );
@@ -1158,6 +1144,8 @@ tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
+    @transform(__, time = :time .+ winlen_s, condition = uppercasefirst.(:condition)) |>
+    @where(__, -1 .< :time .< 2.5) |>
     unstack(__, [:condition, :time, :sid], :train_type, :score) |>
     @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
     groupby(__, [:condition, :time]) |>
@@ -1166,10 +1154,23 @@ pl = @_ plotdf |>
         lower = lowerboot(:scorediff, alpha = 0.318),
         upper = upperboot(:scorediff, alpha = 0.318)
     ) |>
+    @vlplot(
+        config = {legend = {disable = true}},
+        height = 90, width = 100,
+    ) +
     (
-        @vlplot(x = {:time, type = :quantitative}, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot(:line, y = {:score, title = "Mean Correlation"}) +
-        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+        @vlplot(x = {:time, type = :quantitative, title = "Time"}, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:line, y = {:score, title = ["Target - Other", "Correlation"]}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
+        @vlplot({:text, align = "left", dx = 3},
+            transform = [
+                {filter = "datum.time > 2.25 && datum.time < 2.5"},
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:score, aggregate = :mean},
+            text = {field = :condition}
+            # color = {value = "black"}
+        )
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
 
