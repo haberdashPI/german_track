@@ -1193,6 +1193,7 @@ pl = @_ pretarget_df |>
     );
 pl |> save(joinpath(dir, "decode_pretarget_attend.svg"))
 
+pcolors = ColorSchemes.bamako[range(0.3,0.7, length = 2)]
 barwidth = 10
 pl = @_ pretarget_df |>
     groupby(__, [:condition, :sid]) |>
@@ -1215,13 +1216,13 @@ pl = @_ pretarget_df |>
             x = {:condition,
                 axis = {title = "", labelAngle = 0,
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
-            color = {:measure, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:measure, scale = {range = "#".*hex.(pcolors)}}) +
         @vlplot({:bar, xOffset = barwidth/2},
             transform = [{filter = "datum.measure == 'var'"}],
-            y = {:score, stack = nothing, title = "Variance"}) +
+            y = {:score, stack = nothing, title = "Decoding Variance"}) +
         @vlplot({:bar, xOffset = -barwidth/2},
             transform = [{filter = "datum.measure != 'var'"}],
-            y = {:score, stack = nothing, title = "Variance"}) +
+            y = {:score, stack = nothing, title = "Decoding Variance"}) +
         @vlplot({:rule, xOffset = barwidth/2},
             transform = [{filter = "datum.measure == 'var'"}],
             y = {:lower, title = ""}, y2 = :upper, color = {value = "black"}) +
@@ -1233,14 +1234,14 @@ pl = @_ pretarget_df |>
             # x = {datum = "spatial"}, y = {datum = 0.},
             y = {datum = 0},
             color = {value = "black"},
-            text = {value = "Global"},
+            text = {value = "Global Var."},
         ) +
         @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
             transform = [{filter = "datum.condition == 'global' && datum.measure == 'var'"}],
             # x = {datum = "spatial"}, y = {datum = },
             y = {datum = 0},
             color = {value = "black"},
-            text = {value = "Local"})
+            text = {value = "Local Var."})
     );
 pl |> save(joinpath(dir, "decode_pretarget_flicker.svg"))
 
