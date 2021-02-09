@@ -1129,14 +1129,14 @@ pl = @_ plotdf |>
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
 
 attend_thresh = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
+    groupby(__, [:condition, :time, :train_type, :sid, :trial, :fold]) |>
     @combine(__, score = mean(:score)) |>
-    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
+    unstack(__, [:condition, :time, :sid, :trial, :fold], :train_type, :score) |>
     @transform(__,
         scorediff = :var"athit-target" .- :var"athit-other", #"
     ) |>
     @where(__, -1 .< :time .< 1) |>
-    groupby(__, [:condition, :time, :fold]) |>
+    groupby(__, [:condition, :time, :fold, :trial]) |>
     @combine(__, scorediff = mean(:scorediff)) |>
     filteringmap(__, folder = foldl, desc = nothing,
         :cross_fold => cross_folds(1:nfolds),
@@ -1149,21 +1149,30 @@ above_thresh(score, fold) = score >= attend_thresh[fold]
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pretarget_df = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid, :fold]) |>
+    groupby(__, [:condition, :time, :train_type, :sid, :fold, :trial]) |>
     @combine(__, score = mean(:score)) |>
-    unstack(__, [:condition, :time, :sid, :fold], :train_type, :score) |>
+    unstack(__, [:condition, :time, :sid, :fold, :trial], :train_type, :score) |>
     groupby(__, [:time]) |>
     @transform(__,
         scorediff = :var"athit-target" .- :var"athit-other", #"
         n = length(unique(:sid))
     ) |>
     @where(__, (:time .< -1) .& (:n .>= 24)) |>
-    groupby(__, [:condition, :sid, :fold]) |>
-    @combine(__, score = mean(above_thresh.(:scorediff,:fold)))
+    sort!(__, :time) |>
+    groupby(__, [:condition, :sid, :fold, :trial]) |>
+    @combine(__,
+        var = std(:scorediff),
+        timevar = std(abs.(diff(:scorediff))),
+        timecor = cor(:scorediff, lag(:scorediff, default = 0)),
+        scoreother = mean(max.(0, :var"athit-other")), #"
+        score = mean(above_thresh.(:scorediff,:fold))
+    )
 pretarget_df |> CSV.write(joinpath(cache_dir("eeg", "decoding"), "pretarget_attend.csv"))
 # TODO: run stats using multi-levle on a per-trial basis to get best measurem
 
 pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, score = mean(:score)) |>
     groupby(__, [:condition]) |>
     @combine(__,
         score = mean(:score),
@@ -1178,6 +1187,61 @@ pl = @_ pretarget_df |>
         @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
     );
 pl |> save(joinpath(dir, "decode_pretarget_attend.svg"))
+
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, score = mean(:scoreother)) |>
+    groupby(__, [:condition]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score, alpha = 0.318),
+        upper = upperboot(:score, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:point, y = {:score, title = "Rectified correlation of other sources"}) +
+        @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_attend_other.svg"))
+
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, score = mean(:timecor)) |>
+    groupby(__, [:condition]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score, alpha = 0.318),
+        upper = upperboot(:score, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:point, y = {:score, title = "Autocorrelation"}) +
+        @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_attend_cor.svg"))
+
+pl = @_ pretarget_df |>
+    groupby(__, [:condition, :sid]) |>
+    @combine(__, score = mean(:var)) |>
+    groupby(__, [:condition]) |>
+    @combine(__,
+        score = mean(:score),
+        lower = lowerboot(:score, alpha = 0.318),
+        upper = upperboot(:score, alpha = 0.318),
+    ) |>
+    (
+        @vlplot(
+            config = {legend = {disable = true}},
+            x = :condition, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
+        @vlplot(:point, y = {:score, title = "Variance of derivative"}) +
+        @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper, color = {value = "black"})
+    );
+pl |> save(joinpath(dir, "decode_pretarget_attend_var.svg"))
+
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pl = @_ plotdf |>
@@ -1286,3 +1350,5 @@ pl = @_ powerdf |> groupby(__, [:condition, :freq]) |>
     @vlplot(:point, y = :mean) +
     @vlplot(:errorbar, y = :lower, y2 = :upper);
 pl |> save(joinpath(dir, "decode_timeline_freqpower.svg"))
+
+
