@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="192" height="119" viewBox="0 0 192 119" version="1.1">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="marks" width="217" height="119" viewBox="0 0 217 119" version="1.1">
   <defs><pattern id="mix1_2" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
@@ -14,20 +14,20 @@
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
 </pattern>
 </defs>
-  <rect width="192" height="119" fill="white"/>
+  <rect width="217" height="119" fill="white"/>
   <g fill="none" stroke-miterlimit="10" transform="translate(42,10)">
     <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
       <g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h145v75h-145Z" stroke="#ddd"/>
+        <path class="background" aria-hidden="true" d="M0.5,0.5h170v75h-170Z" stroke="#ddd"/>
         <g>
           <g class="mark-group role-axis" aria-hidden="true">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,60)" x2="145" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,30)" x2="145" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="145" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,60)" x2="170" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,30)" x2="170" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="170" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
@@ -38,26 +38,26 @@
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(24,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(72,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(120,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(28,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(85,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(141,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(23.66666666666667,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                  <text text-anchor="middle" transform="translate(27.833333333333343,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
                     <tspan>Global vs.</tspan>
                     <tspan x="0" dy="12">Object</tspan>
                   </text>
-                  <text text-anchor="middle" transform="translate(72,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                  <text text-anchor="middle" transform="translate(84.5,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
                     <tspan>Global vs.</tspan>
                     <tspan x="0" dy="12">Spatial</tspan>
                   </text>
-                  <text text-anchor="middle" transform="translate(120.33333333333334,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
+                  <text text-anchor="middle" transform="translate(141.16666666666669,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">
                     <tspan>Object vs.</tspan>
                     <tspan x="0" dy="12">Spatial</tspan>
                   </text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="145" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="170" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
@@ -88,14 +88,14 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Accuracy: 0.822697295899" role="graphics-symbol" aria-roledescription="bar" d="M11.666666666666671,26.595405615224994h25v48.40459438477501h-25Z" fill="url(#mix1_2)"/>
-            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Accuracy: 0.879990875158" role="graphics-symbol" aria-roledescription="bar" d="M60,18.001368726271057h25v56.99863127372895h-25Z" fill="url(#mix1_3)"/>
-            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Accuracy: 0.753608766073" role="graphics-symbol" aria-roledescription="bar" d="M108.33333333333334,36.958685088995544h25v38.041314911004456h-25Z" fill="url(#mix2_3)"/>
+            <path aria-label=": Global vs.  Object; compname: Global vs.  Object; Accuracy: 0.822608628455" role="graphics-symbol" aria-roledescription="bar" d="M15.833333333333343,26.608705731775807h25v48.39129426822419h-25Z" fill="url(#mix1_2)"/>
+            <path aria-label=": Global vs.  Spatial; compname: Global vs.  Spatial; Accuracy: 0.879893960597" role="graphics-symbol" aria-roledescription="bar" d="M72.5,18.015905910429154h25v56.984094089570846h-25Z" fill="url(#mix1_3)"/>
+            <path aria-label=": Object vs.  Spatial; compname: Object vs.  Spatial; Accuracy: 0.755761693781" role="graphics-symbol" aria-roledescription="bar" d="M129.16666666666669,36.63574593280246h25v38.36425406719754h-25Z" fill="url(#mix2_3)"/>
           </g>
           <g class="mark-rule role-mark layer_0_layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": Global vs.  Object; upper: 0.877649280296; Accuracy: 0.753671249162" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(24.16666666666667,36.94931262574125)" x2="0" y2="-18.59670467015775" stroke="black"/>
-            <line aria-label=": Global vs.  Spatial; upper: 0.919541604047; Accuracy: 0.826919703924" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(72.5,25.9620444113262)" x2="0" y2="-13.893285018397954" stroke="black"/>
-            <line aria-label=": Object vs.  Spatial; upper: 0.823029944821; Accuracy: 0.6713290398" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(120.83333333333334,49.30064402995245)" x2="0" y2="-22.755135753116406" stroke="black"/>
+            <line aria-label=": Global vs.  Object; upper: 0.876947195015; Accuracy: 0.752337808847" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(28.333333333333343,37.149328672882795)" x2="0" y2="-18.69140792518005" stroke="black"/>
+            <line aria-label=": Global vs.  Spatial; upper: 0.918820072829; Accuracy: 0.827354932386" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(85,25.896760142165697)" x2="0" y2="-13.71977106657825" stroke="black"/>
+            <line aria-label=": Object vs.  Spatial; upper: 0.822307970092; Accuracy: 0.672575098242" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(141.66666666666669,49.113735263666555)" x2="0" y2="-22.459930777531948" stroke="black"/>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>

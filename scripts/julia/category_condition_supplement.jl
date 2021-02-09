@@ -372,24 +372,76 @@ pl |> save(joinpath(dir, "supplement", "category_baselines.svg"))
 # TODO: below stuff is old code that may need to be adjusted to work in
 # new enviornment
 
-pl = @_ plotdata |>
-    @transform(__, logitdiff = :logitfullmean .- :logitmean) |>
-    @where(__, :modeltype .!= "random-trialtype") |>
+labels = OrderedDict(
+    "full" => "Full Model",
+    "null" => "Null Model",
+    "random-labels" => "Rand.\n Condition",
+    "random-trialtype" => "Rand.\n Response",
+    "random-window-before" => "Rand.\n Window"
+)
+tolabel(x) = labels[x]
+barwidth = 20
+pldata = @_ baselinedf |>
     groupby(__, [:modeltype, :sid]) |>
-    @combine(__, logitdiff = mean(:logitdiff)) |>
-    @vlplot() +
+    @combine(__, mean = mean(:mean)) |>
+    @transform(__,
+        label = tolabel.(:modeltype),
+        isbase = :modeltype .== "full"
+    )
+
+plcolors = ColorSchemes.nuuk[[0.85, 0.2]]
+pl = pldata |>
+    @vlplot(
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}},
+    ) +
     (
-        @vlplot() +
-        @vlplot(:bar,
-            x = :modeltype,
-            y = {:logitdiff, aggregate = :mean, type = :quantitative},
+        @vlplot(width = 164, height = 50,
+            x = {:label,
+                sort = values(labels),
+                axis = {title = "", labelAngle = 0,
+                    labelExpr = "split(datum.label, '\\n')"}},
+            transform = [{filter = "datum.modeltype != 'random-trialtype' &&"*
+                " datum.modeltype != 'random-window-before'"}],
+            color = {:isbase, type = :nominal, scale = {range = "#".*hex.(plcolors)}},
+        ) +
+        @vlplot({:bar, clip = true},
+            y = {:mean, title = "Accuracy", aggregate = :mean, type = :quantitative,
+                scale = {domain = [0.4, 1.0]}},
         ) +
         @vlplot(:errorbar,
-            x = :modeltype,
-            y = {:logitdiff, aggregate = :ci, type = :quantitative},
+            y = {:mean, title = "", aggregate = :ci, type = :quantitative},
+            color = {value = "black"}
         )
     );
-    pl |> save(joinpath(dir, "supplement", "category_baseline_bar.svg"))
+pl |> save(joinpath(dir, "supplement", "category_baseline_bar_1.svg"))
+
+pl = pldata |>
+    @vlplot(
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth}},
+    ) +
+    (
+        @vlplot(width = 164, height = 50,
+            x = {:label,
+                sort = values(labels),
+                axis = {title = "", labelAngle = 0,
+                    labelExpr = "split(datum.label, '\\n')"}},
+            transform = [{filter = "datum.modeltype != 'null' &&"*
+                " datum.modeltype != 'random-labels'"}],
+            color = {:isbase, type = :nominal, scale = {range = "#".*hex.(plcolors)}},
+        ) +
+        @vlplot({:bar, clip = true},
+            y = {:mean, title = "Accuracy", aggregate = :mean, type = :quantitative, scale = {domain = [0.4, 1.0]}},
+        ) +
+        @vlplot(:errorbar,
+            y = {:mean, title = "", aggregate = :ci, type = :quantitative},
+            color = {value = "black"}
+        )
+    );
+pl |> save(joinpath(dir, "supplement", "category_baseline_bar_2.svg"))
 
 # Main median power results
 # -----------------------------------------------------------------

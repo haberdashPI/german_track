@@ -411,7 +411,7 @@ barwidth = 25
 plhit = @_ plotdata |>
     @vlplot(
         # facet = { column = { field = :hittype, type = :nominal} },
-        width = 145, height = 75,
+        width = 170, height = 75,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
