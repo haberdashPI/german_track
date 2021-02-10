@@ -120,7 +120,7 @@ GermanTrack.@cache_results file resultdf_earlylate begin
     winstart = 3.4
 
     classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit"], __) |>
         groupby(__, [:sid, :fold, :condition, :salience_label, :target_time_label, :hittype]) |>

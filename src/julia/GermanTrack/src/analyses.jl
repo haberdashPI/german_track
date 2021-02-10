@@ -1,4 +1,4 @@
-export select_windows, shrinktowards, ishit, lowerboot, boot, upperboot,
+export select_windows, shrinktowards, findresponse, lowerboot, boot, upperboot,
     addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features, cross_folds,
     shrink, wsem
 
@@ -65,13 +65,13 @@ spread(x,scale,npoints;indices=Colon()) =
     quantile.(Normal(x,scale/2),range(0.05,0.95,length=npoints)[indices])
 
 """
-    ishit(row; kwds...)
+    findresponse(row; kwds...)
 
 Correctly interprets a given row of the data as a hit, correct rejection, false positive
 or miss. Since the directions are different for each condition, how we interpret a an
 indication of a detected target depends on the condition.
 """
-function ishit(row; mark_false_targets = false, kwds...)
+function findresponse(row; mark_false_targets = false, kwds...)
     vals = merge(row,kwds)
     if vals.target_present
         if vals.condition == "global"

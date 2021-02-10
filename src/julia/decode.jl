@@ -81,7 +81,7 @@ function event2window(event, windowing)
 end
 
 windows = @_ events |>
-    transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
     filter(_.hittype ∈ ["hit", "miss"], __) |> eachrow |>
     Iterators.product(__, ["target", "pre-target"]) |>
     map(event2window(_...), __) |> vec |>
@@ -1060,7 +1060,7 @@ else
 
     function decode_timeline(sid, trial)
         event = subjects[sid].events[trial, :]
-        if ishit(event) != "hit"
+        if findresponse(event) != "hit"
             next!(progress)
             return Empty(DataFrame)
         end

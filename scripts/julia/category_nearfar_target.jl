@@ -28,7 +28,7 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition, :target_switch_label])
 
     windows = [windowtarget(len = len, start = start)
@@ -105,7 +105,7 @@ else
         label(x) = ismissing(x) ? missing : x > switch_break ? "early" : "late"
         events[!, :target_switch_label] = label.(events.switch_class)
         classdf_earlylate_groups = @_ events |>
-            filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+            filter(findresponse(_) == "hit", __) |>
             groupby(__, [:sid, :condition, :target_time_label, :target_switch_label])
 
         windows = [windowtarget(len = len, start = start)
@@ -545,7 +545,7 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_sal_earlylate_groups = @_ events |>
-        filter(ishit(_, region = "target") ∈ ["hit"], __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition, :target_time_label, :target_switch_label, :salience_label])
 
     windows = [windowtarget(len = len, start = start)

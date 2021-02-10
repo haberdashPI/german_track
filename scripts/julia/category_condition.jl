@@ -189,7 +189,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
             :window => [windowtarget(len = len, start = start)
@@ -262,7 +262,7 @@ GermanTrack.@cache_results file predictbasedf begin
     start_len = unique((x.winstart, x.winlen) for x in values(hyperparams))
 
     classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition, :hittype]) |>
         filteringmap(__, desc = "Computing features...",
@@ -452,7 +452,7 @@ subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 start_len = unique((x[:winstart], x[:winlen]) for x in values(hyperparams))
 
 classdf = @_ events |>
-    transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
     @where(__, :hittype .== "hit") |>
     transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
     groupby(__, [:sid, :condition, :hittype, :target_time_label]) |>
@@ -619,7 +619,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     ]
 
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
         :window => [winfn(start = start, len = len)
@@ -680,7 +680,7 @@ GermanTrack.@cache_results file resultdf begin
 
     offsets = range(-4.0, 4.0, length = 32)
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition]) |>
         filteringmap(__, desc = "Computing features...",
         :window => [windowtarget(start = start, len = len)
@@ -891,7 +891,7 @@ GermanTrack.@cache_results file coefdf begin
     start_len = unique((x[:winstart], x[:winlen]) for x in values(hyperparams))
 
     classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         @where(__, :hittype .== "hit") |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition]) |>
