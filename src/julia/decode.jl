@@ -955,26 +955,45 @@ pl = @_ scores |>
     );
 pl |> save(joinpath(dir, "decode_salience_continuous_diff.svg"))
 
+tcolors = ColorSchemes.imola[[0.3, 0.8]]
 mean_offset = 15
 ind_offset = 6
+labels = OrderedDict(
+    "athit-target" => "Target",
+    "athit-other" => "Other",
+)
+tolabel(x) = labels[x]
 pl = @_ scores |>
+    @where(__, :train_type .!= "atmiss-target") |>
     @transform(__,
         condition = string.(:condition),
+        train_type = tolabel.(:train_type),
     ) |>
     groupby(__, [:sid, :condition, :train_type, :source, :target_time]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:sid, :condition, :train_type, :target_time]) |>
     @combine(__, score = mean(:score)) |>
     @vlplot(
-        facet = {
-            column = {field = :condition, type = :ordinal},
-            # row = {field = :train_type, type = :ordinal}
-        }
+        width = 160, height = 90,
+        config = {legend = {orient = "none", legendX = 5, legendY = 5}},
+        # facet = {
+        #     column = {field = :condition, type = :ordinal},
+        #     # row = {field = :train_type, type = :ordinal}
+        # }
     ) + (
         @vlplot({:point, filled = true, opacity = 0.6},
-            x     = :target_time,
-            y     = {:score, type = :quantitative, aggregate = :mean},
-            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}
+            x     = {:target_time, title = "Target Time (s)", scale = {zero = false, padding = 5}},
+            y     = {:score, title = ["Correlation", "(1s post onset)"], type = :quantitative, aggregate = :mean},
+            color = {:train_type, scale = {range = "#".*hex.(tcolors)},
+                sort = collect(values(labels)),
+                title = ""}
+        )
+    ) + (
+        @vlplot() +
+        @vlplot(:line,
+            color = {value = "gray"},
+            transform = [{regression = :score, on = :target_time}],
+            x = :target_time, y = :score
         )
     );
 pl |> save(joinpath(dir, "decode_time_continuous.svg"))
