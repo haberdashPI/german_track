@@ -178,7 +178,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     lambdas = 10.0 .^ range(-2, 0, length=100)
 
     classdf = @_ events |>
-        filter(ishit(_) == "hit", __) |>
+        filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition, :salience_label]) |>
         filteringmap(__, desc = "Computing features...",
             :window => [windowtarget(len = len, start = start)
@@ -271,7 +271,7 @@ GermanTrack.@cache_results file resultdf_timeline begin
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
     classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         groupby(__, [:sid, :fold, :condition, :salience_label, :hittype]) |>
@@ -480,7 +480,7 @@ GermanTrack.@cache_results file resultdf_earlylate_timeline begin
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
     classdf = @_ events |>
-        transform!(__, AsTable(:) => ByRow(ishit) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         groupby(__, [:sid, :fold, :condition, :salience_label, :hittype, :target_time_label]) |>

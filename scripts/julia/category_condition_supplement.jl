@@ -22,11 +22,11 @@ using GermanTrack: colors, neutral, patterns
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
 events = @_ events |>
-    transform(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype)
+    transform(__, AsTable(:) => ByRow(findresponse) => :hittype)
 
 rates = @_ events |>
     transform(__, AsTable(:) =>
-        ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        ByRow(findresponse) => :hittype) |>
     groupby(__, [:condition, :sid]) |>
     @combine(__,
         hit = sum(:hittype .== "hit") / sum(:hittype .∈ Ref(Set(["hit", "miss"]))),
@@ -177,7 +177,7 @@ events = @_ readdir(processed_datadir("behavioral"), join=true) |>
 
 indmeans = @_ events |>
     transform!(__, AsTable(:) =>
-        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+        ByRow(x -> findresponse(x, region = "target", mark_false_targets = true)) => :hittype) |>
     groupby(__, [:condition, :sid]) |>
     combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits,
                 :hittype => (x -> mean(y -> occursin("falsep", y), x)) => :falseps,
@@ -452,7 +452,7 @@ pl |> save(joinpath(dir, "supplement", "category_baseline_bar_2.svg"))
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
 classhitdf_groups = @_ events |>
-    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
     groupby(__, [:sid, :condition, :hittype])
 
 windows = [(len = 2.0, start = 0.0)]
@@ -799,7 +799,7 @@ windows = [(len = 2.0, start = 0.0)]
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 spectdf_groups = @_ events |>
     filter(_.target_present, __) |>
-    filter(ishit(_, region = "target") == "hit", __) |>
+    filter(findresponse(_) == "hit", __) |>
     groupby(__, [:sid, :condition]);
 
 spectdf = compute_freqbins(subjects, spectdf_groups, windowtarget, windows, foldxt,
@@ -842,7 +842,7 @@ spectdf_norm = @_ spectdf_long |>
 subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
 classhitdf_groups = @_ events |>
-    transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
     groupby(__, [:sid, :condition, :hittype])
 
 windows = [(len = 2.0, start = 0.0)]
@@ -971,7 +971,7 @@ else
         subjects, events = load_all_subjects(processed_datadir("eeg", group), "h5")
         classdf_chgroup_groups = @_ events |>
             filter(_.target_present, __) |>
-            filter(ishit(_, region = "target") == "hit", __) |>
+            filter(findresponse(_) == "hit", __) |>
             groupby(__, [:sid, :condition])
 
         result = compute_freqbins(subjects, classdf_chgroup_groups, windows)

@@ -16,7 +16,7 @@ R"library(ggplot2)"
 
 df = @_ filter(occursin(r"\.h5$", _), readdir(processed_datadir("eeg"))) |>
         mapreduce(events_for_eeg(_, stim_info), append!!, __) |>
-        insertcols!(__,:hit => ishit.(eachrow(__),region = "target")) |>
+        insertcols!(__,:hit => findresponse.(eachrow(__),region = "target")) |>
         transform!(__,:hit => (x -> in.(x,Ref(["hit", "reject"]))) => :correct) |>
         categorical!
 

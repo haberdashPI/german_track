@@ -13,7 +13,7 @@ bad_sids = CSV.read(joinpath(processed_datadir("behavioral", "outliers"), "sids.
 
 indmeans = @_ events |>
     transform!(__, AsTable(:) =>
-        ByRow(x -> ishit(x, region = "target", mark_false_targets = true)) => :hittype) |>
+        ByRow(x -> findresponse(x, region = "target", mark_false_targets = true)) => :hittype) |>
     groupby(__, [:condition, :sid, :salience_label]) |>
     combine(__, :hittype => (x -> mean(==("hit"), x)) => :hits)
 
@@ -412,7 +412,7 @@ else
         subjects, events = load_all_subjects(processed_datadir("eeg", group), "h5")
 
         classdf_chgroup_groups = @_ events |>
-            transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+            transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
             filter(_.hittype ∈ ["hit", "miss"], __) |>
             groupby(__, [:sid, :condition, :salience_label, :hittype])
 
@@ -578,7 +578,7 @@ else
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
     classdf_sal4_timeline_groups = @_ events |>
-        transform!(__, AsTable(:) => ByRow(x -> ishit(x, region = "target")) => :hittype) |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         filter(_.condition == "global", __) |>
         groupby(__, [:sid, :condition, :salience_4level, :trial, :hittype])

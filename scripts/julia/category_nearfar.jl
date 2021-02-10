@@ -404,7 +404,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         compute_powerbin_features(filtered, subjects, window)
     end
 
-    classdf = @_ events |> filter(ishit(_) == "hit", __) |>
+    classdf = @_ events |> filter(findresponse(_) == "hit", __) |>
         @transform(__, switch_class = map(x -> sum(x .> switchbreaks).+1, :switch_distance)) |>
         groupby(__, [:sid, :condition, :target_time_label]) |>
         filteringmap(__, desc = "Computing features...",
@@ -481,7 +481,7 @@ GermanTrack.@cache_results file resultdf begin
         mapslices(Tuple, __, dims = 2) |>
         unique
 
-    classdf = @_ events |> filter(ishit(_) == "hit", __) |>
+    classdf = @_ events |> filter(findresponse(_) == "hit", __) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         transform!(__, [:fold, :switch_distance] =>
             ByRow((f,d) -> ismissing(d) ? missing :
