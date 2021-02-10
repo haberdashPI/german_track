@@ -10,7 +10,7 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW
+    JLD, Arrow, FFTW, GLM
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -963,7 +963,7 @@ labels = OrderedDict(
     "athit-other" => "Other",
 )
 tolabel(x) = labels[x]
-pl = @_ scores |>
+timedf = @_ scores |>
     @where(__, :train_type .!= "atmiss-target") |>
     @transform(__,
         condition = string.(:condition),
@@ -972,7 +972,8 @@ pl = @_ scores |>
     groupby(__, [:sid, :condition, :train_type, :source, :target_time]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:sid, :condition, :train_type, :target_time]) |>
-    @combine(__, score = mean(:score)) |>
+    @combine(__, score = mean(:score))
+pl = timedf |>
     @vlplot(
         width = 160, height = 90,
         config = {legend = {orient = "none", legendX = 5, legendY = 5}},
@@ -997,12 +998,14 @@ pl = @_ scores |>
         )
     );
 pl |> save(joinpath(dir, "decode_time_continuous.svg"))
+timedf.score = Float64.(timedf.score)
+lm(@formula(score ~ target_time), timedf)
 
 tcolors = ColorSchemes.imola[[(0.3 + 0.8)/2]]
 mean_offset = 15
 ind_offset = 6
 tolabel(x) = labels[x]
-pl = @_ scores |>
+timedf = @_ scores |>
     @transform(__,
         condition = string.(:condition),
     ) |>
@@ -1011,7 +1014,8 @@ pl = @_ scores |>
     unstack(__, [:sid, :condition, :target_time, :trialnum], :train_type, :score) |>
     @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
     groupby(__, [:sid, :condition, :target_time]) |>
-    @combine(__, scorediff = mean(:scorediff)) |>
+    @combine(__, scorediff = mean(:scorediff))
+pl = timedf |>
     @vlplot(
         width = 160, height = 90,
         config = {legend = {orient = "none", legendX = 5, legendY = 5}},
@@ -1034,6 +1038,8 @@ pl = @_ scores |>
         )
     );
 pl |> save(joinpath(dir, "decode_time_continuous_diff.svg"))
+timedf.scorediff = Float64.(timedf.scorediff)
+lm(@formula(scorediff ~ target_time), timedf)
 
 # TODO: plot decoding scores vs. hit-rate
 
