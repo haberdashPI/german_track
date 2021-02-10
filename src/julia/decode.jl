@@ -998,8 +998,10 @@ pl = @_ scores |>
     );
 pl |> save(joinpath(dir, "decode_time_continuous.svg"))
 
+tcolors = ColorSchemes.imola[[(0.3 + 0.8)/2]]
 mean_offset = 15
 ind_offset = 6
+tolabel(x) = labels[x]
 pl = @_ scores |>
     @transform(__,
         condition = string.(:condition),
@@ -1010,15 +1012,28 @@ pl = @_ scores |>
     @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
     groupby(__, [:sid, :condition, :target_time]) |>
     @combine(__, scorediff = mean(:scorediff)) |>
-    @vlplot() + (
+    @vlplot(
+        width = 160, height = 90,
+        config = {legend = {orient = "none", legendX = 5, legendY = 5}},
+        # facet = {
+        #     column = {field = :condition, type = :ordinal},
+        #     # row = {field = :train_type, type = :ordinal}
+        # }
+    ) + (
         @vlplot({:point, filled = true, opacity = 0.6},
-            x     = :target_time,
-            y     = {:scorediff, type = :quantitative, aggregate = :mean},
-            color = {:condition, scale = {range = "#".*hex.(colors)}}
+            x     = {:target_time, title = "Target Time (s)", scale = {zero = false, padding = 5}},
+            y     = {:scorediff, title = ["Target - Other", "Correlation"], type = :quantitative, aggregate = :mean},
+            color = {value = "#".*hex.(tcolors[1])}
+        )
+    ) + (
+        @vlplot() +
+        @vlplot(:line,
+            color = {value = "gray"},
+            transform = [{regression = :scorediff, on = :target_time}],
+            x = :target_time, y = :scorediff
         )
     );
 pl |> save(joinpath(dir, "decode_time_continuous_diff.svg"))
-
 
 # TODO: plot decoding scores vs. hit-rate
 
