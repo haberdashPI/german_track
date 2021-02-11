@@ -427,7 +427,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 # remove the channels: they are redundant, and bloat memory
                 test[:, Not(r"channel")]
             end) |>
-        deletecols!(__, :windows)
+        delete!(__, :windows)
 
     fold_map = @_ resultdf |>
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
@@ -490,7 +490,7 @@ GermanTrack.@cache_results file resultdf begin
         filteringmap(__, desc = "Computing features...",
             :window => [windowtarget(start = start, len = len) for (start,len) in windims],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>

@@ -74,4 +74,5 @@ WAV = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
 
 [compat]
 DataFramesMeta = "0.6"
+DataFrames = "0.22"
 julia = "≥ 1.1"

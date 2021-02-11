@@ -130,7 +130,7 @@ GermanTrack.@cache_results file resultdf_earlylate begin
                 for len in lens
             ],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     resultdf_earlylate = @_ classdf |>
         groupby(__, [:condition, :target_time_label]) |>
@@ -177,7 +177,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.modeltype == "null", __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, [:modeltype, :weight, :count])
+    delete!(__, [:modeltype, :weight, :count])
 
 statdata = @_ classmeans_sum |>
     filter(_.modeltype == "full", __) |>

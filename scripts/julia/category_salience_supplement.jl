@@ -485,7 +485,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    delete!(__, :λ)
 
 nullmean, classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01), C = mean(l.(nullmeans.nullmean))
     100logistic(C),
@@ -662,7 +662,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    delete!(__, :λ)
 
 sallevel_pairs = [
     "1v4" => "High:\t1st vs. 4th Quartile",
