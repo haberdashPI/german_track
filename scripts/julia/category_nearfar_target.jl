@@ -182,7 +182,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, [:λ, :logλ])
+    delete!(__, [:λ, :logλ])
 
 logitshrink = logit ∘ shrinktowards(0.5, by = 0.01)
 
@@ -212,7 +212,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    delete!(__, :λ)
 
 logitshrink = logit ∘ shrinktowards(0.5, by = 0.01)
 
@@ -617,7 +617,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, :λ)
+    delete!(__, :λ)
 
 classdiffs = let l = logit ∘ shrinktowards(0.5, by = 0.01)
     @_ classmeans_sum |>

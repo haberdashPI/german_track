@@ -114,7 +114,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean) |>
-    deletecols!(__, [:λ, :weight, :count])
+    delete!(__, [:λ, :weight, :count])
 
 statdata = @_ classmeans_sum |>
     filter(_.λ != 1.0, __) |>

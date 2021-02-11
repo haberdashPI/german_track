@@ -1,30 +1,20 @@
-export select_windows, shrinktowards, findresponse, lowerboot, boot, upperboot,
-    addfold!, splayby, mapgroups, filteringmap, compute_powerbin_features, cross_folds,
-    shrink, wsem
+export select_windows, shrinktowards, findresponse, boot,
+    addfold!, repeatby, compute_powerbin_features, cross_folds,
+    shrink, wsem, tcombine
 
-"""
-    lowerboot(x; alpha = 0.05, n = 10_000)
-
-Lower bound of the bootstrapped confidnece interval.
-"""
-lowerboot(x; stat = mean, alpha = 0.05, n = 10_000) =
-    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][2]
 """
     boot(x; alpha = 0.05, n = 10_000)
 
-Bootstrapped estimate
+Bootstrapped estimate. Argument `x` can be curried: `x |> boot(n = 1_000)`
 """
-boot(x; stat = mean, alpha = 0.05, n = 10_000) =
-    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][1]
+function boot(x; stat = mean, alpha = 0.05, n = 10_000,
+    sampling = BasicSampling(n),
+    confint = BasicConfInt(1 - alpha))
 
-"""
-    uppperboot(x; alpha = 0.05, n = 10_000)
-
-Upper bound of the bootstrapped confidnece interval.
-"""
-upperboot(x; stat = mean, alpha = 0.05, n = 10_000) =
-    confint(bootstrap(stat, x, BasicSampling(n)), BasicConfInt(1 - alpha))[1][3]
-
+    vals = Bootstrap.confint(bootstrap(stat, x, sampling), confint)[1]
+    NamedTuple{(:value, :lower, :upper)}(vals)
+end
+boot(;kwds...) = x -> boot(x; kwds...)
 
 """
     wmean(vals, weights, [default = one(eltype(vals))/2])
@@ -93,20 +83,25 @@ function findresponse(row; mark_false_targets = false, kwds...)
     end
 end
 
-"""
-    mapgroups(df, groups, fn;folder = foldxt, desc = "Progress")
-
-Apply `fn` to each group in a grouped data frame, in parallel (by default), `append!!`ing
-the returned values together. Set `folder = foldl` if you want to run the process in
-serial.
-
-Since this assumes a long running process, it creates a progress bar. You can change
-the description for the progress bar using `desc`.
+struct NoProgress; end
+ProgressMeter.next!(::NoProgress) = nothing
 
 """
-function mapgroups(df, vars, fn, ;folder = foldxt, desc = "Progress")
-    groups = groupby(df, vars)
-    progress = setupprogress(length(groups), desc)
+    tcombine(df, fn; showprogress = true, desc = "Progress")
+    tcombine(fn, df; showprogress = true, desc = "Progress")
+
+Apply `fn` to each group in a grouped data frame, in parallel, `append!!`ing the returned
+values together.
+
+Since this assumes a long running process, it creates a progress bar by default. You can
+change the description for the progress bar using `desc`.
+
+"""
+tcombine(fn::Base.Callable, df; kwds...) = tcombine(df, fn; kwds...)
+function tcombine(df::GroupedDataFrame, fn;
+    showprogress = true, desc = "Processing...",
+    progress = showprogress ? ProgressMeter(length(df)) : NoProgress())
+
     function fn_((key,sdf))
         result = fn(sdf)
         if !isempty(result)
@@ -119,13 +114,19 @@ function mapgroups(df, vars, fn, ;folder = foldxt, desc = "Progress")
         result
     end
 
-    folder(append!!, Map(fn_), collect(pairs(groups)))
+    foldxt(append!!, Map(fn_), collect(pairs(df)))
+end
+
+function tcombine(df::DataFrame, fn; showprogress = true, desc = "Processing...",
+    progress = NoProgress())
+
+    fn(df)
 end
 
 """
     addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 
-Insert a new column in dataframe `df` for the fold, and a column for the train_folds. There
+Insert a new column in dataframe `df` for the fold. There
 are `n` folds. The fold of a row is determined by the identity of the column `col`.
 """
 function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
@@ -135,145 +136,121 @@ function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
     df
 end
 
-"""
-    cross_folds(folds)
-
-Supply the fold specification for `filteringmap` to do a cross-validated parameter selection
-across the given folds. For each fold, the mapping function of `filteringmap` will get all
-data not belonging to that fold.
-"""
-cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
-
-struct NoProgress; end
-ProgressMeter.next!(::NoProgress) = nothing
-setupprogress(n, ::Nothing) = NoProgress()
-setupprogress(n, str::String) = Progress(n, desc = str)
-
-"""
-    filteringmap(df,filtering1 => (value1 => filterfn1 | value1, etc...),
-        filtering2 => etc..., fn, streams = 1
-        folder = foldxt, desc = "Progres...")
-
-Repeatedly map a function `fn` over a data frame or a grouped data frame, applying the
-function for each group and each set of filterings.
-
-## Details
-
-The `fn` takes each group of `df` as its first argument, and the current value for each
-filtering as its remaining arguments. These filterings behave like the groups of a grouped
-data frame, but they can include rows that are not mutually exlusive to one another. The
-`filtering` arguments specify the overlapping groups: group N's name is the value of `mapN`,
-and the values of the group variable are `valueK`; group `valueK` contains all rows that
-match the filtering function `filterfnK`. If all filtering functions for a given filtering
-are `(x -> true)` (include all rows), you need not specify the `filteringfn`, using
-`filtering1 => (value1, value2, etc...)` instead.
-
-If desc is set to `nothing`, no progress bar will be shown.
-
-## Multiple streams
-
-If streams > 1 then `fn` should return a tuple of size `streams`, and filterings
-will return the result of each tuple as separate data frames.
-
-## Example
-
-Here's an example using multiple streams
-
-    df = DataFrame(x = 1:10, group = rand(["joe", "bob"], 10))
-    result = filteringmap(df, streams = 2,
-        :region => (:lower => x -> x.x < 7, :upper => x -> x.x > 4),
-        function(sdf, region)
-            DataFrame(mean = mean(sdf.x), bobs = sum(sdf.group .== "bob")),
-                DataFrame(xnorm = sdf.x ./ mean(sdf.x))
-        end
-    )
-
-"""
-function filteringmap(df, filterings_fn...; folder = foldxt,
-    desc = "Progress...", addlabels = true, streams = 1)
-    fn = filterings_fn[end]
-    filterings = filterings_fn[1:(end-1)]
-
-    defaultpair(x::Pair) = x
-    defaultpair(x) = x => (x -> true)
-
-    flattened = @_ filterings |>
-        map(f -> collect(map(pair -> (f[1], defaultpair(pair)...), f[2])), __) |>
-        Iterators.product(__...) |> collect
-    groupings = filtermap_groupings(df, flattened)
-    progress = setupprogress(length(groupings), desc)
-
-    function addcolumns!(result, key, filterings)
-        if !isempty(result)
-            if addlabels
-                for (name, val, filterfn) in filterings
-                    result[!, name] .= Ref(val)
-                end
-            end
-            if !isempty(key)
-                for (k,v) in pairs(key)
-                    result[!, k] .= v
-                end
-            end
-
-            return result
-        else
-            return Empty(DataFrame)
-        end
+struct RepeatedDataFrame{D}
+    df::D
+    repeaters
+    applyers
+end
+function Base.show(io::IO, ::MIME"text/plain", x::RepeatedDataFrame)
+    println(io, "Lazy repeating data frame:")
+    println(io, "---------------------------")
+    println(io, "With repeaters: ")
+    for rep in x.repeaters
+        show(io, MIME"text/plain"(), rep)
+        println(io)
     end
-
-    function filtermap(((key, group), filterings))
-        filtered = group
-        for (name, val, filterfn) in filterings
-            filtered = filter(filterfn,filtered)
-        end
-
-        local result
-        if !isempty(filtered)
-            result = fn(filtered, getindex.(filterings, 2)...)
-            if streams > 1
-                result = @_ map(addcolumns!(_, key, filterings), result)
-            else
-                result = addcolumns!(result, key, filterings)
-            end
-        else
-            if streams > 1
-                result = Tuple(Empty(DataFrame) for _ in 1:streams)
-            else
-                result = Empty(DataFrame)
-            end
-        end
-        next!(progress)
-
-        result
-    end
-
-    if streams > 1
-        init_result = Tuple(Empty(DataFrame) for _ in 1:streams)
-        function append_streams!!(results, streams)
-            if length(streams) != length(results)
-                error("Cannot append $(length(streams)) streams to "*
-                    "$(length(results)) streams.")
-            end
-            append!!.(results, streams)
-        end
-
-        folder(append_streams!!, Map(filtermap), collect(groupings),
-            init = init_result)
-    else
-        folder(append!!, Map(filtermap), collect(groupings), init = Empty(DataFrame))
+    println(io)
+    println(io, "Of data:")
+    show(io, MIME"text/plain"(), x.df)
+    println(io)
+    if !isempty(x.applyers)
+        println(io, "NOTE: data has unapplied modifications stored in "*
+            "$(length(x.applyers)) functors")
     end
 end
 
-filtermap_groupings(df::GroupedDataFrame, flattened) =
-    Iterators.product(pairs(df), flattened) |> collect
+"""
+    repeatby(df, col => vals...)
 
-struct EmptyKey; end
-Base.isempty(x::EmptyKey) = true
-filtermap_groupings(df::DataFrame, flattened) =
-    Iterators.product([(EmptyKey(), df)], flattened) |> collect
+Lazily repeat the rows in df, one repeat for each possible combination of the new columns'
+values specified as `col => vals`. The key-value pairs are inserted as additional columns to
+the data frame group passed to `combine`. These repeats are realized upon a call to
+`combine` or `tcombine`.
 
-macro cache_results(prefix, args...)
+Any other operations (filtering, transforming, selecting) that are applied to the repeated
+data frame are stored lazily as functors and applied only once the call to `combine` is
+realized. This approach avoids the actual memory cost of repeating df if it is particularly
+large and the output of a call to combine is relatively small. The mutating versions of
+operators (e.g. `transform!`) are not supported (as this would lead to unpredictable
+behavior when lazily repeating).
+
+"""
+repeatby(df, repeaters...) = RepeatedDataFrame(df, repeaters, [])
+
+# these are the methods to override to support the interface for combine
+# c.f. DataFrames/src/groupeddataframe/splitapplycombine.jl
+DataFrames.combine(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    combine_repeat(rd, df -> combine(f, df; kwds...), foldl)
+
+DataFrames.combine(rd::RepeatedDataFrame,
+        cs::Union{Pair, Base.Callable, DataFrames.ColumnIndex, DataFrames.MultiColumnIndex}...;
+        kwds...) =
+    combine_repeat(rd, df -> combine(df, cs...; kwds...), foldl)
+
+DataFrames.select(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> select(f, df)))
+
+DataFrames.select(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> select(df, args...; kwds...)))
+
+DataFrames.transform(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> transform(f, df)))
+
+DataFrames.transform(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> transform(df, args...; kwds...)))
+
+Base.filter(f, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> filter(f, df)))
+
+DataFramesMeta.where(rd::RepeatedDataFrame{<:AbstractDataFrame}, f) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> DataFramesMeta.where(df, f)))
+
+DataFramesMeta.where(rd::RepeatedDataFrame{<:GroupedDataFrame}, f) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> groupby(DataFramesMeta.where(df, f), groupcols(rd.df))))
+
+glength(x::GroupedDataFrame) = length(x)
+glength(x::DataFrame) = 1
+function tcombine(rd::RepeatedDataFrame, fn; showprogress = true, desc = "Processing...",
+    progress = !showprogress ? NoProgress() :
+        Progress(glength(rd.df) * prod(x -> length(x[2]), rd.repeaters), desc = desc))
+
+    combine_repeat(rd, df -> tcombine(df, fn, progress = progress), foldxt)
+end
+
+function addcols(df::AbstractDataFrame, repeat)
+    df = copy(df, copycols = false)
+    for (k,v) in repeat
+        df[!, k] .= Ref(v)
+    end
+    df
+end
+
+function addcols(df::GroupedDataFrame, repeat)
+    groupby(addcols(parent(df), repeat), groupcols(df))
+end
+
+function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
+    function apply(repeat)
+        input = addcols(rd.df, repeat)
+        for ap in rd.applyers
+            input = ap(input)
+        end
+        combinefn(input)
+    end
+    @_ rd.repeaters |>
+        map(_1[1] .=> _1[2], __) |>
+        Iterators.product(__...) |>
+        folder(append!!, Map(apply), __, init = Empty(DataFrame))
+end
+
+macro cache_results(file, args...)
     body = args[end]
     symbols = args[1:end-1]
     if !@_ all(_ isa Symbol, symbols)

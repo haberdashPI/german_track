@@ -1,3 +1,7 @@
+cleanup:
+    - use more efficient arrow file storage format
+    - store the results in the cache, not dvc, it's too transient
+
 mounya thought: test decoders on condition they weren't trained on
 david thought: train decoders across all conditions
 

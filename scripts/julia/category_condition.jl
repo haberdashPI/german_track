@@ -196,7 +196,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 for len in 2.0 .^ range(-1, 1, length = 10),
                     start in [0; 2.0 .^ range(-2, 2, length = 10)]],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
@@ -270,7 +270,7 @@ GermanTrack.@cache_results file predictbasedf begin
                 for (name, winfn) in windowtypes
                 for (start, len) in start_len],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     modeltypes = (
         "full" => x -> x.windowtype == "target",
@@ -329,7 +329,7 @@ predictmeans = @_ predictbasedf |>
 
 nullmeans = @_ predictmeans |>
     filter(_.modeltype == "null", __) |>
-    deletecols!(__, [:logitcorrect, :modeltype]) |>
+    delete!(__, [:logitcorrect, :modeltype]) |>
     rename!(__, :mean => :nullmean)
 
 statdata = @_ predictmeans |>
@@ -460,7 +460,7 @@ classdf = @_ events |>
         :window => [windowtarget(start = start, len = len)
             for (start, len) in start_len],
         compute_powerbin_features(_1, subjects, _2)) |>
-    deletecols!(__, :window)
+    delete!(__, :window)
 
 cond_earlylate_df = @_ classdf |>
     transform!(__, :sid => ByRow(sid -> fold_map[sid]) => :fold) |>
@@ -499,7 +499,7 @@ predictmeans = @_ cond_earlylate_df |>
 
 nullmeans = @_ predictmeans |>
     filter(_.modeltype == "null", __) |>
-    deletecols!(__, [:logitcorrect, :modeltype]) |>
+    delete!(__, [:logitcorrect, :modeltype]) |>
     rename!(__, :mean => :nullmean)
 
 statdata = @_ predictmeans |>
@@ -517,13 +517,9 @@ compnames = OrderedDict(
 
 plotdata = @_ statdata |>
     @transform(__, compname = map(x -> compnames[x], :comparison)) |>
+    @transform(__, comptime = string.(:compname, :target_time_label)) |>
     groupby(__, [:target_time_label, :compname, :comparison]) |>
-    @combine(__,
-        mean = mean(:mean),
-        lower = lowerboot(:mean),
-        upper = upperboot(:mean),
-    ) |>
-    @transform(__, comptime = string.(:compname, :target_time_label))
+    combine(__, :mean => boot => AsTable)
 
 nullmean = statdata.logitnullmean |> mean |> logistic
 ytitle = "Condition Classification"
@@ -627,7 +623,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 len in 2.0 .^ range(-4, 1, length = 10),
                 start in range(0, 1.0, length = 10)],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     lambdas = 10.0 .^ range(-2, 0, length = 100)
     resultdf = @_ classdf |>
@@ -687,7 +683,7 @@ GermanTrack.@cache_results file resultdf begin
             for len in lens,
                 start in offsets],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     zero_tolerance = 1e-3
 
@@ -899,7 +895,7 @@ GermanTrack.@cache_results file coefdf begin
             :window => [windowtarget(start = start, len = len)
                 for (start, len) in start_len],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     coefdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>

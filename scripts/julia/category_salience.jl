@@ -185,7 +185,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
                 for len in 2.0 .^ range(-1, 1, length = 10),
                     start in [0; 2.0 .^ range(-2, 2, length = 10)]],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
@@ -275,30 +275,29 @@ GermanTrack.@cache_results file resultdf_timeline begin
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         groupby(__, [:sid, :fold, :condition, :salience_label, :hittype]) |>
-        filteringmap(__, desc = "Computing features...",
-            :window => [
-                windowtarget(start = start, len = len)
-                for len in lens
-                for start in range(0, 4, length = 48)
-            ],
-            compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        repeatby(__, :window => [
+            windowtarget(start = start, len = len)
+            for len in lens
+            for start in range(0, 4, length = 48)
+        ]) |>
+        tcombine(__, df -> compute_powerbin_features(df, subjects, df.window[1])) |>
+        select!(__, Not(:window))
 
     resultdf_timeline = @_ classdf |>
         groupby(__, [:hittype, :condition, :winstart]) |>
-        filteringmap(__, desc = "Classifying salience...",
-            :cross_fold => 1:10, folder = foldxt,
-            :modeltype => ["full", "null"],
-            function (sdf, fold, modeltype)
-                selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
-                lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
+        repeateby(__, :cross_fold => 1:10, :modeltype => ["full", "null"],
+            threaded = true, showprogress = true) |>
+        combine(__, function(sdf)
+            fold = sdf.cross_fold[1]
+            selector = sdf.modeltype[1] == "null" ? m -> NullSelect() :
+                hyperparams[fold][:λ]
+            lens = hyperparams[fold][:winlen] |> GermanTrack.spread(0.5, n_winlens)
 
-                sdf = filter(x -> x.winlen ∈ lens, sdf)
-                combine(groupby(sdf, :winlen)) do sdf_len
-                    test, model = traintest(sdf_len, fold, y = :salience_label,
-                        selector = selector, weight = :weight)
-                    test[:, Not(r"channel")]
-                end
+            sdf = filter(x -> x.winlen ∈ lens, sdf)
+            combine(groupby(sdf, :winlen)) do sdf_len
+                test, model = traintest(sdf_len, fold, y = :salience_label,
+                    selector = selector, weight = :weight)
+                test[:, Not(r"channel")]
             end)
 end
 
@@ -324,7 +323,7 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     @where(__, :modeltype .== "null")  |>
     rename(__, :mean => :nullmean) |>
-    deletecols!(__, [:modeltype, :weight, :count, nz...])
+    delete!(__, [:modeltype, :weight, :count, nz...])
 statdata = @_ classmeans_sum |>
     @where(__, :modeltype .!= "null") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
@@ -491,7 +490,7 @@ GermanTrack.@cache_results file resultdf_earlylate_timeline begin
                 for start in range(0, 4, length = 24)
             ],
             compute_powerbin_features(_1, subjects, _2)) |>
-        deletecols!(__, :window)
+        delete!(__, :window)
 
     resultdf_earlylate_timeline = @_ classdf |>
         groupby(__, [:hittype, :condition, :winstart]) |>
@@ -531,7 +530,7 @@ classmeans_earlylate_sum = @_ classmeans_earlylate |>
 nullmeans = @_ classmeans_earlylate_sum |>
     @where(__, :modeltype .== "null")  |>
     rename(__, :mean => :nullmean) |>
-    deletecols!(__, [:modeltype, :weight, :count])
+    delete!(__, [:modeltype, :weight, :count])
 statdata = @_ classmeans_earlylate_sum |>
     @where(__, :modeltype .!= "null") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype, :target_time_label]) |>
@@ -674,7 +673,7 @@ classmeans_earlylate_sum = @_ classmeans_earlylate |>
 nullmeans = @_ classmeans_earlylate_sum |>
     @where(__, :modeltype .== "null")  |>
     rename(__, :mean => :nullmean) |>
-    deletecols!(__, [:modeltype, :weight, :count])
+    delete!(__, [:modeltype, :weight, :count])
 statdata = @_ classmeans_earlylate_sum |>
     @where(__, :modeltype .!= "null") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype, :target_time_label]) |>

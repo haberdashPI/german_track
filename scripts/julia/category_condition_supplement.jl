@@ -43,9 +43,7 @@ means = @_ rates |>
     stack(__, [:hit, :falsep], [:condition, :sid],
         variable_name = :type, value_name = :proportion) |>
     groupby(__, [:condition, :type]) |>
-    combine(__, :proportion => mean => :prop,
-                :proportion => lowerboot => :lower,
-                :proportion => upperboot => :upper)
+    combine(__, :proportion => boot => [:prop, :lower, :upper])
 
 # TODO: apply beta-reg stats
 
@@ -340,7 +338,7 @@ baselinedf = @_ predictbasedf |>
         :correct => logit ∘ shrinktowards(0.5, by=0.01) ∘ mean => :logitmean)
 
 fulldf = @_ baselinedf |> filter(_.modeltype == "full", __) |>
-    deletecols!(__, [:modeltype, :mean, :hittype]) |>
+    delete!(__, [:modeltype, :mean, :hittype]) |>
     rename!(__, :logitmean => :logitfullmean)
 
 plotdata = @_ baselinedf |>
@@ -1029,11 +1027,11 @@ classmeans_sum = @_ classmeans |>
 nullmeans = @_ classmeans_sum |>
     filter(_.λ == 1.0, __) |>
     rename!(__, :mean => :nullmean, :meanlogit => :nullmeanlogit) |>
-    deletecols!(__, :λ)
+    delete!(__, :λ)
 
 classdiffs = @_ classmeans_sum |>
     filter(_.λ != 1.0, __) |>
-    deletecols!(__, :λ) |>
+    delete!(__, :λ) |>
     innerjoin(__, nullmeans, on = [:comparison, :chgroup, :sid, :fold]) |>
     transform!(__, [:meanlogit, :nullmeanlogit] => (-) => :meandifflogit)
 
