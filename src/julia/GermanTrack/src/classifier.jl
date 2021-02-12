@@ -126,11 +126,11 @@ function traintest(df, fold; y, X = r"channel", selector = m -> MinAICc(), weigh
             val_correct = val_predict .== validate[:, y]
 
             if !isnothing(weight)
-                test.val_accuracy = GermanTrack.wmean(val_correct, validate[:, weight])
-                test.val_se = GermanTrack.wsem(val_correct, validate[:, weight])
+                test[!, :val_accuracy] .= GermanTrack.wmean(val_correct, validate[:, weight])
+                test[!, :val_se] .= GermanTrack.wsem(val_correct, validate[:, weight])
             else
-                test.val_accuracy = mean(val_correct)
-                test.val_se = sem(val_correct)
+                test[!, :val_accuracy] .= mean(val_correct)
+                test[!, :val_se] .= sem(val_correct)
             end
         end
 
