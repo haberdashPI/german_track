@@ -226,7 +226,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     folder = @_ resultdf |>
         repeatby(__, :cross_fold => 1:10) |>
         @where(__, :fold .!= :cross_fold)
-    hyperparamsdf = combine(folder, function(sdf)
+    hyperparamsdf = combine(folder) do sdf
         fold = sdf.cross_fold[1]
         meandf = @_ sdf |> groupby(__, [:λ, :winlen, :condition, :winstart]) |>
             @combine(__, mean = mean(:val_accuracy)) |>
@@ -239,7 +239,7 @@ GermanTrack.@cache_results file fold_map hyperparams begin
         meandf_ = meandf[meandf.λ .== λ, :]
         best = maximum(meandf_.mean[(meandf_.λ .== λ)])
         (fold = fold, mean = best, λ = λ, winlen = only(meandf_.winlen[meandf_.mean .== best]))
-    end)
+    end
 
     hyperparams = @_ hyperparamsdf |>
         Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
