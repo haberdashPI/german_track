@@ -18,3 +18,4 @@
 /decode-predict-freqbin-model.bson
 /condition-lambdas-foldmap.arrow
 /condition-lambdas-hyperparamsdf.arrow
+/condition-lambdas-predictbasedf.arrow
