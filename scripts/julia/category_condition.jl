@@ -456,43 +456,51 @@ addpatterns(plotfile, patterns, size = 10)
 # EEG Cross-validated Features
 # =================================================================
 
-file = joinpath(processed_datadir("analyses"), "condition_coefs")
-GermanTrack.@cache_results file coefdf begin
+prefix = joinpath(processed_datadir("analyses"), "condition_coefs")
+GermanTrack.@use_cache prefix coefdf begin
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
 
-    start_len = unique((x[:winstart], x[:winlen]) for x in values(hyperparams))
+    start_len = unique(hyperparamsdf[:, [:winstart, :winlen]]) |> eachrow
 
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         @where(__, :hittype .== "hit") |>
-        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         groupby(__, [:sid, :condition]) |>
-        filteringmap(__, desc = "Computing features...",
-            :window => [windowtarget(start = start, len = len)
-                for (start, len) in start_len],
-            compute_powerbin_features(_1, subjects, _2)) |>
-        delete!(__, :window)
+        repeatby(__, :window => [windowtarget(start = start, len = len)
+            for (start, len) in start_len]) |>
+        tcombine(__, desc = "Computing features...",
+            df -> compute_powerbin_features(df, subjects, df.window[1])) |>
+        innerjoin(__, foldmap, on = :sid)
 
-    coefdf = @_ classdf |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :condition_lambda_folds)) |>
-        filteringmap(__, desc = "Evaluating lambdas...", folder = foldxt,
+    coefsetup = @_ classdf |>
+        repeatby(__,
             :cross_fold => 1:10,
-            :comparison => (
-                "global-v-object"  => x -> x.condition ∈ ["global", "object"],
-                "global-v-spatial" => x -> x.condition ∈ ["global", "spatial"],
-                "object-v-spatial" => x -> x.condition ∈ ["object", "spatial"],
-            ),
-            function(sdf, fold, comparison)
-                conds = split(comparison, "-v-")
+            :comparison => [
+                ("global", "object"),
+                ("global", "spatial"),
+                ("object", "spatial")
+            ]
+        ) |>
+        @where(__, :condition .∈ :comparison)
 
-                test, model = traintest(sdf, fold, y = :condition)
+    coefdf = tcombine(coefsetup, desc = "Evaluating lambdas...") do sdf
+        hyper = only(eachrow(filter(x -> x.fold == sdf.cross_fold[1], hyperparamsdf)))
+        sdf = filter(x -> x.winstart == hyper.winstart && x.winlen == hyper.winlen, sdf)
 
-                coefs = coef(model, MinAICc())'
-                DataFrame(coefs, vcat("I", names(view(sdf, r"channel"))))
-            end)
+        test, model = traintest(sdf, sdf.cross_fold[1], y = :condition, selector = hyper.λ)
+        coefs = coef(model)'
+        result = DataFrame(coefs, vcat("I", names(view(sdf, :, r"channel"))))
+        result[!, :cross_fold] .= sdf.cross_fold[1]
+        result[!, :comparison] .= Ref(sdf.comparison[1])
 
+        result
+    end
 
+    GermanTrack.@save_cache prefix coefdf
 end
+
+# Plotting
+# -----------------------------------------------------------------
 
 longdf = @_ coefdf |>
 stack(__, All(r"channel"), [:cross_fold, :comparison]) |>
