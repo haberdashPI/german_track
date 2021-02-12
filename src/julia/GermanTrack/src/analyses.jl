@@ -88,15 +88,18 @@ ProgressMeter.next!(::NoProgress) = nothing
 
 """
     tcombine(df, fn; showprogress = true, desc = "Progress")
+    tcombine(fn, df; showprogress = true, desc = "Progress")
 
-Apply `fn` to each group in a grouped data frame, in parallel (by default), `append!!`ing
-the returned values together.
+Apply `fn` to each group in a grouped data frame, in parallel, `append!!`ing the returned
+values together.
 
 Since this assumes a long running process, it creates a progress bar by default. You can
 change the description for the progress bar using `desc`.
 
 """
-function tcombine(df::GroupedDataFrame, fn; showprogress = true, desc = "Processing...",
+tcombine(fn::Base.Callable, df; kwds...) = tcombine(df, fn; kwds...)
+function tcombine(df::GroupedDataFrame, fn;
+    showprogress = true, desc = "Processing...",
     progress = showprogress ? ProgressMeter(length(df)) : NoProgress())
 
     function fn_((key,sdf))
@@ -133,15 +136,6 @@ function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
     df
 end
 
-"""
-    cross_folds(folds)
-
-Supply the fold specification for `filteringmap` to do a cross-validated parameter selection
-across the given folds. For each fold, the mapping function of `filteringmap` will get all
-data not belonging to that fold.
-"""
-cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
-
 struct RepeatedDataFrame{D}
     df::D
     repeaters
@@ -168,12 +162,16 @@ end
     repeatby(df, col => vals...)
 
 Lazily repeat the rows in df, one repeat for each possible combination of the new columns'
-values specified as `col => vals`. These repeats are realized upon a call to `combine`. This
-avoids the actual memory cost of repeating df if it is particularly large and the output of
-a call to combine is relatively small.
+values specified as `col => vals`. The key-value pairs are inserted as additional columns to
+the data frame group passed to `combine`. These repeats are realized upon a call to
+`combine` or `tcombine`.
 
-The key-value pairs are inserted as additional columns to the data frame group passed to
-`combine`
+Any other operations (filtering, transforming, selecting) that are applied to the repeated
+data frame are stored lazily as functors and applied only once the call to `combine` is
+realized. This approach avoids the actual memory cost of repeating df if it is particularly
+large and the output of a call to combine is relatively small. The mutating versions of
+operators (e.g. `transform!`) are not supported (as this would lead to unpredictable
+behavior when lazily repeating).
 
 """
 repeatby(df, repeaters...) = RepeatedDataFrame(df, repeaters, [])
