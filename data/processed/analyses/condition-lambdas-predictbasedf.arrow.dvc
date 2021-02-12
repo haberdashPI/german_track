@@ -1,0 +1,4 @@
+outs:
+- md5: 656d16cabadb80a0713b0b4862b3c5d5
+  size: 89618
+  path: condition-lambdas-predictbasedf.arrow

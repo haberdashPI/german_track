@@ -1,0 +1,4 @@
+outs:
+- md5: f47a3d0bd37d75758714fcd3682ac2b0
+  size: 41946
+  path: condition-lambdas-foldmap.arrow
