@@ -4,6 +4,7 @@ authors = ["haberdashpi <david.frank.little@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 BangBang = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
