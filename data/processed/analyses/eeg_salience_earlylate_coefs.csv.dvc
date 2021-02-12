@@ -1,4 +1,0 @@
-outs:
-- md5: 64a068c0b3e576a649259c54979cb27d
-  size: 525
-  path: eeg_salience_earlylate_coefs.csv

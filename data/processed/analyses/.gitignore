@@ -1,10 +1,8 @@
 /nearfar_earlylate.csv
 /eeg_nearfar_coefs.csv
 /eeg_nearfar.csv
-/eeg_salience_earlylate.csv
 /behavior_salience.csv
 /eeg_condition_coefs.csv
-/eeg_salience_earlylate_coefs.csv
 /eeg_salience.csv
 /behavioral_condition.csv
 /behavioral_condition_coefs.csv
