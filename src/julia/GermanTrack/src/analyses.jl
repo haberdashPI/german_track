@@ -250,12 +250,51 @@ function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
         folder(append!!, Map(apply), __, init = Empty(DataFrame))
 end
 
-macro cache_results(file, args...)
-    body = args[end]
-    symbols = args[1:end-1]
-    if !@_ all(_ isa Symbol, symbols)
-        error("Expected variable names and a code body")
+function _parse_cache_args(prefix, args)
+    # 2. symbols to cache
+    cache_symbols(x) = error("Unexpected expression `$(x)`")
+
+    # 2a. a bare variable name
+    cache_symbols(x::Symbol) = x
+    cache_filetypes(x::Symbol) = :arrow
+
+    # 2b. tuple of (varname, :filetype)
+    function cache_symbols(ex::Expr)
+        if isexpr(ex, :tuple)
+            @capture(ex, (var_, type_))
+            return var
+        else
+            error("Unexpected expression `$(ex)`.")
+        end
     end
+    function cache_filetypes(ex::Expr)
+        @capture(ex, (var_, type_))
+        if type isa QuoteNode
+            return type.value
+        else
+            error("Unexpected expression `$(type)`.")
+        end
+    end
+    symbols = cache_symbols.(args[1:end])
+    file_types = cache_filetypes.(args[1:end])
+
+    checktypes(x::Symbol) = x ∈ [:arrow, :bson, :jld] || error("Unexpected filetype `$(x)``.")
+    checktypes.(file_types)
+
+    symbols, file_types
+end
+
+_fnames(prefix, symbols, types) =
+    :(string.($(esc(prefix)), "-", $(string.(symbols)), ".", $(string.(types))))
+_fname(prefix, symbols, types, i) =
+    :(string($(esc(prefix)), "-", $(string(symbols[i])), ".", $(string(types[i]))))
+
+macro use_cache(prefix, args...)
+    body = args[end]
+    symbols, types = _parse_cache_args(prefix, args[1:(end-1)])
+
+    #### Verify that each variable listed in cache header exists in the body
+    # of the macro
 
     # check for all symbols before running the code
     # (avoids getting the error after running some long-running piece of code)
@@ -272,106 +311,75 @@ macro cache_results(file, args...)
         error("Could not find symbol `$(symbols[missing_index])` in cache body, check spelling.")
     end
 
+    #### code generation
     quote
         begin
-            function run(ignore)
+            # run body
+            if all(isfile, $(_fnames(prefix, symbols, types)))
+                $(_load_cache(prefix, symbols, types))
+            else # create the values
                 $(esc(body))
-                Dict($((map(x -> :($(QuoteNode(x)) => jsonout($(esc(x)))), symbols))...))
+                $(_save_cache(prefix, symbols, types))
             end
-            results = if isfile($(esc(file)))
-                jsonin(open(io -> JSON3.read(io), $(esc(file))))
+            nothing
+        end
+    end
+end
+
+macro save_cache(prefix, args...)
+    symbols, types = _parse_cache_args(prefix, args)
+    _save_cache(prefix, symbols, types)
+end
+
+macro load_cache(prefix, args...)
+    symbols, types = _parse_cache_args(prefix, args)
+    _load_cache(prefix, symbols, types)
+end
+
+function _load_cache(prefix, symbols, types)
+    quote
+        $(map(enumerate(zip(symbols, types))) do (i, (var, type))
+            if type == :arrow
+                :($(esc(var)) = DataFrame(Arrow.Table($(_fname(prefix, symbols, types, i)))))
+            elseif type == :bson
+                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)))[:data])
+            elseif type == :jld
+                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)), "data"))
             else
-                let (dir, prefix, suffix) = cache_results_parser($(esc(file)))
-                    produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix)[1] |>
-                        jsonin
+                errror("Unexpected error: report a bug.")
+            end
+        end...)
+    end
+end
+
+function _save_cache(prefix, symbols, types)
+    quote
+        # store code state
+        state = convert(Dict{String, String}, tag!(Dict()))
+
+        # store variables in files
+        $(map(enumerate(zip(symbols, types))) do (i, (var, type))
+            if type == :arrow
+                quote
+                    Arrow.setmetadata!($(esc(var)), state)
+                    Arrow.write($(_fname(prefix, symbols, types, i)), $(esc(var)), compress = :lz4)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
                 end
+            elseif type == :bson
+                quote
+                    data = deepcopy(state)
+                    data[:data] = $(esc(var))
+                    save($(_fname(prefix, symbols, types, i)), data)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                end
+            elseif type == :jld
+                quote
+                    save($(_fname(prefix, symbols, types, i)), "data", $(esc(var)), "state", state)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                end
+            else
+                errror("Unexpected error: report a bug.")
             end
-
-            $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
-
-            nothing
-        end
+        end...)
     end
-end
-
-macro store_cache(file, args...)
-    symbols = args[1:end]
-    if !@_ all(_ isa Symbol, symbols)
-        error("Expected variable names")
-    end
-
-    quote
-        begin
-            function run(ignore)
-                Dict($((map(x -> :($(QuoteNode(x)) => jsonout($(esc(x)))), symbols))...))
-            end
-            let (dir, prefix, suffix) = cache_results_parser($(esc(file)))
-                produce_or_load(dir, (;), run, prefix = prefix, suffix = suffix, force = true)[1] |>
-                    jsonin
-            end
-
-            nothing
-        end
-    end
-end
-
-macro load_cache(file, args...)
-    symbols = args[1:end]
-    if !@_ all(_ isa Symbol, symbols)
-        error("Expected variable names")
-    end
-
-    quote
-        begin
-            results = if isfile($(esc(file)))
-                jsonin(open(io -> JSON3.read(io), $(esc(file))))
-            end
-
-            $((map(x -> :($(esc(x)) = results[$(QuoteNode(x))]), symbols))...)
-
-            nothing
-        end
-    end
-end
-
-function jsonout(x::DataFrame)
-    Dict(:isdataframe => true, :columns => JSONTables.ObjectTable(Tables.columns(x)))
-end
-jsonout(x) = x
-
-jsonin(x) = x
-function jsonin(data::AbstractDict)
-    if haskey(data, :isdataframe) && data[:isdataframe]
-        if data[:columns] isa JSONTables.ObjectTable
-            data[:columns].x
-        else
-            jsontable(data[:columns]) |> DataFrame
-        end
-    else
-        Dict(cleanup_key(k) => jsonin(v) for (k,v) in pairs(data))
-    end
-end
-function cleanup_key(x::Symbol)
-    if occursin(r"^[0-9-]+$", string(x))
-        parse(Int, string(x))
-    elseif occursin(r"^[0-9.-]+$", string(x))
-        parse(Float64, string(x))
-    else
-        x
-    end
-end
-cleanup_key(x) = x
-
-function cache_results_parser(filename)
-    @show filename
-    parts = splitpath(filename)
-    dir = joinpath(parts[1:(end-1)]...)
-    prefixmatch = match(r"^(.+)\.([a-z]+)$", parts[end])
-    if isnothing(prefixmatch)
-        error("Could not find filetype in file name.")
-    end
-    prefix = prefixmatch[1]
-    suffix = prefixmatch[2]
-
-    string.((dir, prefix, suffix))
 end
