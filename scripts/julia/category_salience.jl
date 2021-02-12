@@ -174,29 +174,33 @@ addpatterns(plotfile, seqpatterns, size = 10)
 
 file = joinpath(processed_datadir("analyses"), "salience-hyperparams.json")
 GermanTrack.@cache_results file fold_map hyperparams begin
+
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
     lambdas = 10.0 .^ range(-2, 0, length=100)
+    windows = [
+        windowtarget(len = len, start = start)
+        for len in 2.0 .^ range(-1, 1, length = 10),
+            start in [0; 2.0 .^ range(-2, 2, length = 10)]
+    ]
 
     classdf = @_ events |>
         filter(findresponse(_) == "hit", __) |>
         groupby(__, [:sid, :condition, :salience_label]) |>
-        filteringmap(__, desc = "Computing features...",
-            :window => [windowtarget(len = len, start = start)
-                for len in 2.0 .^ range(-1, 1, length = 10),
-                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
-            compute_powerbin_features(_1, subjects, _2)) |>
-        delete!(__, :window)
+        repeatby(__, :window => windows) |>
+        tcombine(__, desc = "Computing features...",
+            df -> compute_powerbin_features(df, subjects, df.window[1]))
 
     resultdf = @_ classdf |>
         addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :salience_hyper_folds)) |>
         groupby(__, [:winstart, :winlen, :condition]) |>
-        filteringmap(__, desc = "Evaluating hyperparameters...", folder = foldxt,
-            :cross_fold => 1:10,
-            function(sdf, fold)
-                test, model = traintest(sdf, fold, y = :salience_label, weight = :weight,
-                    selector = m -> AllSeg(), λ = lambdas)
-                test[:, Not(r"channel")]
-            end)
+        repeatby(__, :cross_fold => 1:10) |>
+        tcombine(__, desc = "Evaluating hyperparameters...", function(sdf)
+            rng = stableRNG(2019_11_18, :validate_salience_lambda, NamedTuple(sdf[1, Not(r"channel")]))
+            test, model = traintest(sdf, sdf.cross_fold[1], y = :salience_label, weight = :weight,
+                selector = m -> AllSeg(), λ = lambdas,
+                validate_rng = rng)
+            test[:, Not(r"channel")]
+        end)
 
     fold_map = @_ resultdf |>
         groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
@@ -204,9 +208,9 @@ GermanTrack.@cache_results file fold_map hyperparams begin
 
     param_means = @_ resultdf |>
         groupby(__, [:λ, :condition, :fold, :winlen, :winstart]) |>
-        @combine(__, mean = mean(:train_accuracy), mean_sem = mean(:train_se)) |>
+        @combine(__, mean = mean(:val_accuracy), mean_sem = mean(:val_se)) |>
         groupby(__, [:λ, :condition, :fold]) |>
-        @combine(__, mean = maximum(:mean), mean_sem = mean(:mean_sem))
+        @combine(__, mean = maximum(:mean), mean_sem = maximum(:mean_sem))
 
     pl = @_ param_means |>
         @transform(__, lower = :mean .- :mean_sem, upper = :mean .+ :mean_sem) |>
@@ -219,40 +223,25 @@ GermanTrack.@cache_results file fold_map hyperparams begin
     @vlplot(:errorband, y = {:upper, type = :quantitative}, y2 = :lower);
     pl |> save(joinpath(dir, "supplement", "lambdas.svg"))
 
-    best_λs = @_ param_means |>
-        groupby(__, [:fold]) |>
-        combine(
-            function(sdf)
-                se = 2maximum(sdf.mean_sem)
-                @show se
-                curve = combine(groupby(sdf, :λ), :mean => mean => :mean)
-                max1se = findall(curve.mean .>= (maximum(curve.mean) - se))
-                selected = max1se[argmax(curve.λ[max1se])]
-                curve[selected:selected, :]
-            end,
-        __) |>
-        Dict(row.fold => row.λ for row in eachrow(__))
+    folder = @_ resultdf |>
+        repeatby(__, :cross_fold => 1:10) |>
+        @where(__, :fold .!= :cross_fold)
+    hyperparamsdf = combine(folder, function(sdf)
+        fold = sdf.cross_fold[1]
+        meandf = @_ sdf |> groupby(__, [:λ, :winlen, :condition, :winstart]) |>
+            @combine(__, mean = mean(:val_accuracy)) |>
+            groupby(__, [:λ, :winlen, :condition]) |>
+            @combine(__, mean = maximum(:mean)) |>
+            groupby(__, [:λ, :winlen]) |>
+            @combine(__, mean = mean(:mean))
+        thresh = maximum(meandf.mean)
+        λ = maximum(meandf.λ[meandf.mean .>= thresh])
+        meandf_ = meandf[meandf.λ .== λ, :]
+        best = maximum(meandf_.mean[(meandf_.λ .== λ)])
+        (fold = fold, mean = best, λ = λ, winlen = only(meandf_.winlen[meandf_.mean .== best]))
+    end)
 
-    win_means = @_ resultdf |>
-        groupby(__, [:winlen, :winstart, :condition, :fold, :λ]) |>
-        @combine(__, mean = mean(:train_accuracy)) |>
-        groupby(__, [:winlen, :condition, :fold, :λ]) |>
-        @combine(__, mean = maximum(:mean)) |>
-        groupby(__, :winlen) |>
-        filteringmap(__, desc = nothing,
-            :fold => cross_folds(1:10),
-            (sdf, fold) -> DataFrame(
-                λ = best_λs[fold],
-                mean = mean(sdf.mean[sdf.λ .== best_λs[fold]]
-            )))
-
-    hyperparams = @_ win_means |>
-        groupby(__, :fold) |>
-        @combine(__,
-            best = maximum(:mean),
-            winlen = :winlen[argmax(:mean)],
-            λ = :λ
-        ) |>
+    hyperparams = @_ hyperparamsdf |>
         Dict(row.fold => (;row[Not(:fold)]...) for row in eachrow(__))
 
     @info "Saving plots to $(joinpath(dir, "supplement"))"
@@ -270,24 +259,25 @@ GermanTrack.@cache_results file resultdf_timeline begin
 
     lens = @_ getindex.(values(hyperparams), :winlen) |> unique |>
         GermanTrack.spread.(__, 0.5, n_winlens) |> reduce(vcat, __) |> unique
+    windows = [
+        windowtarget(start = start, len = len)
+        for len in lens
+        for start in range(0, 4, length = 48)
+    ]
+
     classdf = @_ events |>
         transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
         groupby(__, [:sid, :fold, :condition, :salience_label, :hittype]) |>
-        repeatby(__, :window => [
-            windowtarget(start = start, len = len)
-            for len in lens
-            for start in range(0, 4, length = 48)
-        ]) |>
-        tcombine(__, df -> compute_powerbin_features(df, subjects, df.window[1])) |>
-        select!(__, Not(:window))
+        repeatby(__, :window => windows) |>
+        tcombine(__, desc = "Computing frequency bins...",
+            df -> compute_powerbin_features(df, subjects, df.window[1]))
 
     resultdf_timeline = @_ classdf |>
         groupby(__, [:hittype, :condition, :winstart]) |>
-        repeateby(__, :cross_fold => 1:10, :modeltype => ["full", "null"],
-            threaded = true, showprogress = true) |>
-        combine(__, function(sdf)
+        repeatby(__, :cross_fold => 1:10, :modeltype => ["full", "null"]) |>
+        tcombine(__, desc = "Classifying salience...", function(sdf)
             fold = sdf.cross_fold[1]
             selector = sdf.modeltype[1] == "null" ? m -> NullSelect() :
                 hyperparams[fold][:λ]
@@ -298,32 +288,33 @@ GermanTrack.@cache_results file resultdf_timeline begin
                 test, model = traintest(sdf_len, fold, y = :salience_label,
                     selector = selector, weight = :weight)
                 test[:, Not(r"channel")]
-            end)
+            end
+        end)
 end
 
 # Display classification timeline
 # -----------------------------------------------------------------
 
-nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
+# nz = @_ filter(occursin(r"nz", _), names(resultdf_timeline)) |> Symbol.(__)
 classmeans = @_ resultdf_timeline |>
     groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :hittype]) |>
-        combine(__, [:correct, :weight] => GermanTrack.wmean => :mean,
-                    :weight => sum => :weight,
-                    nz .=> mean .=> nz,
-                    :correct => length => :count) |>
+        combine(__,
+            [:correct, :weight] => GermanTrack.wmean   => :mean,
+            :weight             => sum                 => :weight,
+            :correct            => length              => :count) |>
         transform(__, :weight => (x -> x ./ mean(x)) => :weight)
 
 classmeans_sum = @_ classmeans |>
     groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :hittype]) |>
     combine(__,
         [:mean, :weight] => GermanTrack.wmean => :mean,
-        :weight => sum => :weight,
-        nz .=> mean .=> nz,
-        :count => length => :count)
+        :weight          => sum               => :weight,
+        :count           => length            => :count)
+
 nullmeans = @_ classmeans_sum |>
     @where(__, :modeltype .== "null")  |>
     rename(__, :mean => :nullmean) |>
-    delete!(__, [:modeltype, :weight, :count, nz...])
+    select!(__, Not([:modeltype, :weight, :count]))
 statdata = @_ classmeans_sum |>
     @where(__, :modeltype .!= "null") |>
     innerjoin(__, nullmeans, on = [:winstart, :condition, :sid, :fold, :hittype]) |>
@@ -335,8 +326,7 @@ logitnullmean = mean(statdata.logitnullmean)
 nullmean = logistic.(logitnullmean)
 corrected_data = @_ statdata |>
     @transform(__,
-        corrected_mean =
-            logistic.(logit.(shrinktowards.(:mean, 0.5, by = 0.01)) .-
+        mean = logistic.(logit.(shrinktowards.(:mean, 0.5, by = 0.01)) .-
                 :logitnullmean .+ logitnullmean),
         condition_label = uppercasefirst.(:condition))
 
@@ -344,7 +334,7 @@ maxdiff(xs) = maximum(abs(xs[i] - xs[j]) for i in 1:(length(xs)-1) for j in (i+1
 timeslice = @_ resultdf_timeline |>
     @where(__, (:hittype .== "hit") .& (:modeltype .== "full")) |>
     groupby(__, [:winstart, :fold]) |>
-    @combine(__, mean = mean(:train_accuracy)) |>
+    @combine(__, mean = mean(:correct)) |> # TODO: use validation accuracy here
     groupby(__, :fold) |>
     @combine(__, best = :winstart[argmax(:mean)])
 labelfn(fold) = "fold $fold"
@@ -369,11 +359,7 @@ target_len_y = 0.8
 pl = @_ corrected_data |>
     filter(_.hittype == "hit", __) |>
     groupby(__, [:condition, :condition_label, :winstart]) |>
-    @combine(__,
-        corrected_mean = mean(:corrected_mean),
-        lower = lowerboot(:corrected_mean, alpha = 0.318),
-        upper = upperboot(:corrected_mean, alpha = 0.318),
-    ) |>
+    combine(__, :mean => boot(alpha = sqrt(0.05)) => AsTable) |>
     @vlplot(
         width = 130, height = 140,
         config = {
@@ -392,7 +378,7 @@ pl = @_ corrected_data |>
     @vlplot({:line, strokeCap = :round, clip = true},
         strokeDash = {:condition, type = :nominal, scale = {range = [[1, 0], [6, 4], [2, 4]]}},
         x = {:winstart, type = :quantitative, title = "Time relative to target onset (s)"},
-        y = {:corrected_mean, aggregate = :mean, type = :quantitative, title = ytitle,
+        y = {:value, aggregate = :mean, type = :quantitative, title = ytitle,
             scale = {domain = [0.5,1.0]}}) +
     # data errorbands
     @vlplot({:errorband, clip = true},
@@ -402,9 +388,9 @@ pl = @_ corrected_data |>
     ) +
     # condition labels
     @vlplot({:text, align = :left, dx = 5},
-        transform = [{filter = "(datum.winstart > 3.95 && datum.winstart <= 4.0)"}],
+        transform = [{filter = "(datum.winstart > 3 && datum.winstart <= 3.1)"}],
         x = {datum = 4.0},
-        y = {:corrected_mean, aggregate = :mean, type = :quantitative},
+        y = {:value, aggregate = :mean, type = :quantitative},
         text = :condition_label
     ) +
     # "Time Slice" annotation
