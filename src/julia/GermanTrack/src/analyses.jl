@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
-    addfold!, splayby, mapgroups, repeatby, compute_powerbin_features, cross_folds,
-    shrink, wsem, repeatby
+    addfold!, repeatby, compute_powerbin_features, cross_folds,
+    shrink, wsem, tcombine
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -111,13 +111,19 @@ function tcombine(df::GroupedDataFrame, fn; showprogress = true, desc = "Process
         result
     end
 
-    foldxt(append!!, Map(fn_), collect(pairs(groups)))
+    foldxt(append!!, Map(fn_), collect(pairs(df)))
+end
+
+function tcombine(df::DataFrame, fn; showprogress = true, desc = "Processing...",
+    progress = NoProgress())
+
+    fn(df)
 end
 
 """
     addfold!(df, n, col; rng = Random.GLOBAL_RNG)
 
-Insert a new column in dataframe `df` for the fold, and a column for the train_folds. There
+Insert a new column in dataframe `df` for the fold. There
 are `n` folds. The fold of a row is determined by the identity of the column `col`.
 """
 function addfold!(df, n, col; rng = Random.GLOBAL_RNG)
@@ -136,9 +142,26 @@ data not belonging to that fold.
 """
 cross_folds(folds) = map(fold -> fold => @_(__.fold != fold), folds)
 
-struct RepeatedDataFrame
-    df::AbstractDataFrame
+struct RepeatedDataFrame{D}
+    df::D
     repeaters
+    applyers
+end
+function Base.show(io::IO, ::MIME"text/plain", x::RepeatedDataFrame)
+    println(io, "Lazy repeating data frame:")
+    println(io, "---------------------------")
+    println(io, "With repeaters: ")
+    for rep in x.repeaters
+        show(io, MIME"text/plain"(), rep)
+    end
+    println(io)
+    println(io, "Of data:")
+    show(io, MIME"text/plain"(), x.df)
+    println(io)
+    if !isempty(x.applyers)
+        println(io, "NOTE: data has unapplied modifications stored in "*
+            "$(length(x.applyers)) functors")
+    end
 end
 
 """
@@ -153,58 +176,79 @@ The key-value pairs are inserted as additional columns to the data frame group p
 `combine`
 
 """
-repeateby(df, repeaters...) = RepeatedDataFrame(df, repeaters)
-
-addprogress(f, rd::RepeatedDataFrame{<:Nothing}) = f
-function addprogress(f::Base.Callable, rd::RepeatedDataFrame{<:ProgressMeter})
-    function newf(xs...)
-        result = f(xs...)
-        next!(rd.progress)
-        result
-    end
-end
-addprogress(f::Pair, rd::RepeatedDataFrame{<:ProgressMeter}) =
-    f[1] => addprogress(f[2], fd)
-addprogress(f::Pair{<:Any, <:Pair}, rd::RepeatedDataFrame{<:ProgressMeter}) =
-    f[1] => addprogress(f[2][1], fd) => f[2][2]
-addprogress(f::Tuple, rd::RepeatedDataFrame{<:ProgressMeter}) =
-    @_ map(addprogress(_, rd), f)
+repeatby(df, repeaters...) = RepeatedDataFrame(df, repeaters, [])
 
 # these are the methods to override to support the interface for combine
 # c.f. DataFrames/src/groupeddataframe/splitapplycombine.jl
-function combine(f::Union{Base.Callable, Pair}, rd::RepeateBy; kwds...)
-    f = addprogress(f, )
-    combine_repeat(rd, df -> combine(f, df; kwds...))
+DataFrames.combine(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    combine_repeat(rd, df -> combine(f, df; kwds...), foldl)
+
+DataFrames.combine(rd::RepeatedDataFrame,
+        cs::Union{Pair, Base.Callable, DataFrames.ColumnIndex, DataFrames.MultiColumnIndex}...;
+        kwds...) =
+    combine_repeat(rd, df -> combine(df, cs...; kwds...), foldl)
+
+DataFrames.select(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> select(f, df)))
+
+DataFrames.select(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> select(df, args...; kwds...)))
+
+DataFrames.transform(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> transform(f, df)))
+
+DataFrames.transform(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> transform(df, args...; kwds...)))
+
+Base.filter(f, rd::RepeatedDataFrame; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> filter(f, df)))
+
+DataFramesMeta.where(rd::RepeatedDataFrame{<:AbstractDataFrame}, f) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> DataFramesMeta.where(df, f)))
+
+DataFramesMeta.where(rd::RepeatedDataFrame{<:GroupedDataFrame}, f) =
+    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+        df -> groupby(DataFramesMeta.where(df, f), groupcols(rd.df))))
+
+glength(x::GroupedDataFrame) = length(x)
+glength(x::DataFrame) = 1
+function tcombine(rd::RepeatedDataFrame, fn; showprogress = true, desc = "Processing...",
+    progress = !showprogress ? NoProgress() :
+        Progress(glength(rd.df) * prod(x -> length(x[2]), rd.repeaters), desc = desc))
+
+    combine_repeat(rd, df -> tcombine(df, fn, progress = progress), foldxt)
 end
 
-function combine(rd::RepeateBy,
-        cs::Union{Pair, Base.Callable, ColumnIndex, MultiColumnIndex}...;
-        kwds...)
-    cs = addprogress(cs, rd)
-    combine_repeat(rd, df -> combine(rd, cs...; kwds...))
-end
-
-function tcombine(df::RepeateBy, fn; showprogress = true, desc = "Processing...")
-    progress = !showprogress ? nothing :
-        ProgressMeter(glength(df) * @_ prod(length(_[2]), repeaters), desc = desc)
-    rd = RepeatedDataFrame(df, repeaters, progress, foldxt)
-
-    combine_repeat(rd, df -> tcombine(df, fn, progress = progress))
-end
-
-function combine_repeat(rd::RepeatedDataFrame, combinefn::Function)
-    function filtermap(repeat)
-        df = copy(rd.df, copycols = false)
-        for (k,v) in pairs(repeat)
-            df[!, k] .= v
-        end
-        combinefn(df)
+function addcols(df::AbstractDataFrame, repeat)
+    df = copy(df, copycols = false)
+    for (k,v) in repeat
+        df[!, k] .= Ref(v)
     end
+    df
+end
 
+function addcols(df::GroupedDataFrame, repeat)
+    groupby(addcols(parent(df), repeat), groupcols(df))
+end
+
+function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
+    function apply(repeat)
+        input = addcols(rd.df, repeat)
+        for ap in rd.applyers
+            input = ap(input)
+        end
+        combinefn(input)
+    end
     @_ rd.repeaters |>
-        map(_1[1] .=> _1[2], __)
+        map(_1[1] .=> _1[2], __) |>
         Iterators.product(__...) |>
-        rd.folder(append!!, Map(filtermap), __, init = Empty(DataFrame))
+        folder(append!!, Map(apply), __, init = Empty(DataFrame))
 end
 
 macro cache_results(file, args...)
