@@ -1,4 +1,0 @@
-outs:
-- md5: a71c3161f4d48e59f1b23c0ed28f417f
-  size: 20381
-  path: baseline-switch-by-hit_classifier=svm_radial.csv
