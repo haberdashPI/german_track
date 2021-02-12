@@ -20,3 +20,6 @@
 /condition-lambdas-hyperparamsdf.arrow
 /condition-lambdas-predictbasedf.arrow
 /condition_coefs-coefdf.arrow
+/salience-hyperparams-foldmap.arrow
+/salience-hyperparams-hyperparamsdf.arrow
+/salience-hyperparams-resultdf_timeline.arrow

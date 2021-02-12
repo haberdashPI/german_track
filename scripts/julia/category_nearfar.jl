@@ -382,6 +382,8 @@ pl = @_ target_timeline |>
     );
 pl |> save(joinpath(dir, "fig4a.svg"))
 
+# TODO: code below is out of date, and will not run
+# I'm not revising it because we're changing how this part is being analyzed
 # Find hyperparameters (λ and winlen)
 # =================================================================
 
