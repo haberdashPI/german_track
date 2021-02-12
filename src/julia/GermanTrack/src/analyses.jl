@@ -147,7 +147,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::RepeatedDataFrame)
     println(io, "With repeaters: ")
     for rep in x.repeaters
         show(io, MIME"text/plain"(), rep)
-        println(io)
+        println()
     end
     println(io)
     println(io, "Of data:")
