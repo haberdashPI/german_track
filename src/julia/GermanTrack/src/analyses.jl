@@ -357,6 +357,7 @@ function _save_cache(prefix, symbols, types)
         # store code state
         state = convert(Dict{String, String}, tag!(Dict()))
 
+        @info "Saving data..."
         # store variables in files
         $(map(enumerate(zip(symbols, types))) do (i, (var, type))
             if type == :arrow
