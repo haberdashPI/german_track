@@ -329,3 +329,161 @@ function load_directions(file)
         Directions(dir1, dir2, dir3, framerate)
     end
 end
+
+
+function _parse_cache_args(prefix, args)
+    # 2. symbols to cache
+    cache_symbols(x) = error("Unexpected expression `$(x)`")
+
+    # 2a. a bare variable name
+    cache_symbols(x::Symbol) = x
+    cache_filetypes(x::Symbol) = :arrow
+
+    # 2b. tuple of (varname, :filetype)
+    function cache_symbols(ex::Expr)
+        if isexpr(ex, :tuple)
+            @capture(ex, (var_, type_))
+            return var
+        else
+            error("Unexpected expression `$(ex)`.")
+        end
+    end
+    function cache_filetypes(ex::Expr)
+        @capture(ex, (var_, type_))
+        if type isa QuoteNode
+            return type.value
+        else
+            error("Unexpected expression `$(type)`.")
+        end
+    end
+    symbols = cache_symbols.(args[1:end])
+    file_types = cache_filetypes.(args[1:end])
+
+    checktypes(x::Symbol) = x ∈ [:arrow, :bson, :jld] || error("Unexpected filetype `$(x)``.")
+    checktypes.(file_types)
+
+    symbols, file_types
+end
+
+_fnames(prefix, symbols, types) =
+    :(string.($(esc(prefix)), "-", $(string.(symbols)), ".", $(string.(types))))
+_fname(prefix, symbols, types, i) =
+    :(string($(esc(prefix)), "-", $(string(symbols[i])), ".", $(string(types[i]))))
+
+"""
+    GermanTrack.@use_cache prefix variables... begin
+        body
+    end
+
+Store the listed variables (defined in `body`) to files. They can be stored as Arrow
+(default), JLD or BSON files. To speciy the file type give the variable in a tuple
+with `:arrow`, `:bson` or `:jld` (e.g. `(my_flux_model, :bson)`).
+
+This is used to cache long-running code, to avoid unncessary re-calculations;
+if the needed files already exists, the body of the macro will not be re-run.
+"""
+macro use_cache(prefix, args...)
+    body = args[end]
+    symbols, types = _parse_cache_args(prefix, args[1:(end-1)])
+
+    #### Verify that each variable listed in cache header exists in the body
+    # of the macro
+
+    # check for all symbols before running the code
+    # (avoids getting the error after running some long-running piece of code)
+    found_symbols = Set{Symbol}()
+    MacroTools.postwalk(body) do expr
+        if expr isa Symbol && expr ∈ symbols
+            push!(found_symbols, expr)
+        end
+        expr
+    end
+    missing_index = @_ findfirst(_ ∉ found_symbols, symbols)
+
+    if !isnothing(missing_index)
+        error("Could not find symbol `$(symbols[missing_index])` in cache body, check spelling.")
+    end
+
+    #### code generation
+    quote
+        begin
+            # run body
+            if all(isfile, $(_fnames(prefix, symbols, types)))
+                $(_load_cache(prefix, symbols, types))
+            else # create the values
+                $(esc(body))
+                $(_save_cache(prefix, symbols, types))
+            end
+            nothing
+        end
+    end
+end
+
+"""
+    GermanTrack.@save_cache prefix variables...
+
+Store data as per [`@use_cache`](@ref), but the variables should already be defined.
+"""
+macro save_cache(prefix, args...)
+    symbols, types = _parse_cache_args(prefix, args)
+    _save_cache(prefix, symbols, types)
+end
+
+"""
+    GermanTrack.@load_cache prefix variables...
+
+Deine variables, loading them from files, as per [`@use_cache`](@ref).
+"""
+macro load_cache(prefix, args...)
+    symbols, types = _parse_cache_args(prefix, args)
+    _load_cache(prefix, symbols, types)
+end
+
+function _load_cache(prefix, symbols, types)
+    quote
+        $(map(enumerate(zip(symbols, types))) do (i, (var, type))
+            if type == :arrow
+                :($(esc(var)) = DataFrame(Arrow.Table($(_fname(prefix, symbols, types, i)))))
+            elseif type == :bson
+                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)))[:data])
+            elseif type == :jld
+                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)), "data"))
+            else
+                errror("Unexpected error: report a bug.")
+            end
+        end...)
+    end
+end
+
+function _save_cache(prefix, symbols, types)
+    quote
+        # store code state
+        state = convert(Dict{String, String}, tag!(Dict()))
+
+        @info "Saving data..."
+        # store variables in files
+        $(map(enumerate(zip(symbols, types))) do (i, (var, type))
+            if type == :arrow
+                quote
+                    Arrow.setmetadata!($(esc(var)), state)
+                    Arrow.write($(_fname(prefix, symbols, types, i)), $(esc(var)), compress = :lz4)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                end
+            elseif type == :bson
+                quote
+                    data = deepcopy(state)
+                    data[:data] = $(esc(var))
+                    save($(_fname(prefix, symbols, types, i)), data)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                end
+            elseif type == :jld
+                quote
+                    save($(_fname(prefix, symbols, types, i)), "data", $(esc(var)), "state", state)
+                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                end
+            else
+                errror("Unexpected error: report a bug.")
+            end
+        end...)
+    end
+end
