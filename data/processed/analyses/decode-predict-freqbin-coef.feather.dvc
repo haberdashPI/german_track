@@ -1,4 +1,0 @@
-outs:
-- md5: 4825d02f98c02506363c1f4d6787d1d7
-  size: 28049610
-  path: decode-predict-freqbin-coef.feather

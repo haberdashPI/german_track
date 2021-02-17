@@ -1,0 +1,20 @@
+stages:
+  train-decoder:
+    desc: Training and on-target predictions of EEG decoder.
+    cmd: julia -t auto --project=. -- scripts/julia/train_decode.jl
+    deps:
+    - scripts/julia/setup_decode_params.jl
+    - data/processed/eeg
+    outs:
+    - data/processed/analyses/decode:
+        persist: true
+  decode-timeline:
+    desc: Evaluating decoder accuracy across trial timeline.
+    cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl
+    deps:
+    - scripts/julia/setup_decode_params.jl
+    - data/processed/analyses/decode
+    - data/processed/eeg
+    outs:
+    - data/processed/analyses/decode-timeline:
+        persist: true
