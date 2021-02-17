@@ -7,7 +7,7 @@ verify_ssl = true
 
 [packages]
 dvc = "*"
-svgutils = "~=0.3"
+svgutils = "==0.3.1"
 crepe = "*"
 tensorflow = "*"
 
