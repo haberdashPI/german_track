@@ -10,7 +10,7 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW, GLM
+    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables
 
 dir = mkpath(joinpath(plotsdir(), "figure6_parts"))
 
@@ -25,92 +25,88 @@ nfolds = 5
 # -----------------------------------------------------------------
 
 # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-eeg_encoding = JointEncoding(
-    RawEncoding(),
-    FilteredPower("delta", 1,  3),
-    FilteredPower("theta", 3,  7),
-    FilteredPower("alpha", 7,  15),
-    FilteredPower("beta",  15, 30),
-    FilteredPower("gamma", 30, 100),
-)
-# eeg_encoding = RawEncoding()
+prefix = joinpath(cache_dir("eeg", "decoding"), "eeg-training-data"
+GermanTrack.@use_cache prefix x_table x_scores begin
+    eeg_encoding = JointEncoding(
+        RawEncoding(),
+        FilteredPower("delta", 1,  3),
+        FilteredPower("theta", 3,  7),
+        FilteredPower("alpha", 7,  15),
+        FilteredPower("beta",  15, 30),
+        FilteredPower("gamma", 30, 100),
+    )
+    # eeg_encoding = RawEncoding()
 
-sr = 32
-file = joinpath(cache_dir("eeg", "features"), "subject-data-decoding.jld")
-if isfile(file)
-    data = load(file)
-    subjects = data["subjects"]
-    events = data["events"]
-else
+    sr = 32
     subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
         encoding = eeg_encoding, framerate = sr)
-    save(file, "subjects", subjects, "events", events)
-end
 
+    meta = GermanTrack.load_stimulus_metadata()
 
-meta = GermanTrack.load_stimulus_metadata()
+    target_length = 1.0
+    max_lag = 3
 
-target_length = 1.0
-max_lag = 3
-
-seed = 2019_11_18
-target_samples = round(Int, sr*target_length)
-function event2window(event, windowing)
-    triallen     = size(subjects[event.sid].eeg[event.trial], 2)
-    start_time = if windowing == "target"
-        meta.target_times[event.sound_index]
-    else
-        max_time = meta.target_times[event.sound_index]-1.5
-        if max_time <= 0
-            0.0
+    seed = 2019_11_18
+    target_samples = round(Int, sr*target_length)
+    function event2window(event, windowing)
+        triallen     = size(subjects[event.sid].eeg[event.trial], 2)
+        start_time = if windowing == "target"
+            meta.target_times[event.sound_index]
         else
-            # generates a random number that has the same value for
-            # the same event (so windows are shared across subjects)
-            max_time*rand(GermanTrack.trialrng((:decode_windowing, seed), event))
+            max_time = meta.target_times[event.sound_index]-1.5
+            if max_time <= 0
+                0.0
+            else
+                # generates a random number that has the same value for
+                # the same event (so windows are shared across subjects)
+                max_time*rand(GermanTrack.trialrng((:decode_windowing, seed), event))
+            end
         end
+        start = clamp(round(Int, sr*start_time), 1, triallen)
+        len   = clamp(target_samples, 1, triallen-start)
+        (
+            windowing = windowing,
+            start     = start,
+            len       = len,
+            trialnum  = event.trial,
+            event[[:condition, :sid, :target_source, :sound_index, :hittype]]...
+        )
     end
-    start = clamp(round(Int, sr*start_time), 1, triallen)
-    len   = clamp(target_samples, 1, triallen-start)
-    (
-        windowing = windowing,
-        start     = start,
-        len       = len,
-        trialnum  = event.trial,
-        event[[:condition, :sid, :target_source, :sound_index, :hittype]]...
-    )
+
+    windows = @_ events |>
+        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
+        filter(_.hittype ∈ ["hit", "miss"], __) |> eachrow |>
+        Iterators.product(__, ["target", "pre-target"]) |>
+        map(event2window(_...), __) |> vec |>
+        DataFrame |>
+        transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
+
+    nobs = sum(windows.len)
+    starts = vcat(1,1 .+ cumsum(windows.len))
+    nfeatures = size(first(subjects)[2].eeg[1],1)
+    nlags = round(Int,sr*max_lag)
+    lags = -(nlags-1):1:0
+    x = Array{Float32}(undef, nfeatures*nlags, nobs)
+
+    progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
+    Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
+        tstart = trial.start
+        tstop = trial.start + trial.len - 1
+        xstart = trial.offset
+        xstop = trial.offset + trial.len - 1
+
+        trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
+            x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
+        next!(progress)
+    end
+    x_μ = mean(x, dims = 2)
+    x .-= x_μ
+    x_σ = std(x, dims = 2)
+    x ./= x_σ
+    x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
+
+    # GermanTrack.@save_cache prefix (x, :jld) x_scores
 end
-
-windows = @_ events |>
-    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
-    filter(_.hittype ∈ ["hit", "miss"], __) |> eachrow |>
-    Iterators.product(__, ["target", "pre-target"]) |>
-    map(event2window(_...), __) |> vec |>
-    DataFrame |>
-    transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
-
-nobs = sum(windows.len)
-starts = vcat(1,1 .+ cumsum(windows.len))
-nfeatures = size(first(subjects)[2].eeg[1],1)
-nlags = round(Int,sr*max_lag)
-lags = -(nlags-1):1:0
-x = Array{Float32}(undef, nfeatures*nlags, nobs)
-
-progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
-Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
-    tstart = trial.start
-    tstop = trial.start + trial.len - 1
-    xstart = trial.offset
-    xstop = trial.offset + trial.len - 1
-
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
-    x[:, xstart:xstop] = @view(trialdata[tstart:tstop, :])'
-    next!(progress)
-end
-x_μ = mean(x, dims = 2)
-x .-= x_μ
-x_σ = std(x, dims = 2)
-x ./= x_σ
-
 # Setup stimulus data
 # -----------------------------------------------------------------
 
