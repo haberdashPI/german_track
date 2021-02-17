@@ -11,9 +11,6 @@
 /eeg_condition.csv
 /nearfar_behavior_coefs.csv
 /hit_by_switch.csv
-/decode-predict-freqbin-coef.feather
-/decode-predict-freqbin-predict.feather
-/decode-predict-freqbin-model.bson
 /condition-lambdas-foldmap.arrow
 /condition-lambdas-hyperparamsdf.arrow
 /condition-lambdas-predictbasedf.arrow
@@ -21,3 +18,4 @@
 /salience-hyperparams-foldmap.arrow
 /salience-hyperparams-hyperparamsdf.arrow
 /salience-hyperparams-resultdf_timeline.arrow
+/decode

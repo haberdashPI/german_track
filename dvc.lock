@@ -1,0 +1,12 @@
+train-decoder:
+  cmd: julia -t auto --project=. -- scripts/julia/train_decode.jl
+  deps:
+  - path: data/processed/eeg
+    md5: fd1ddbb1423a5157d2755c88e34e780a.dir
+    size: 3576667705
+    nfiles: 300
+  outs:
+  - path: data/processed/analyses/decode
+    md5: f9f4e39cc779db19e263572f076bdd73.dir
+    size: 385083015
+    nfiles: 4

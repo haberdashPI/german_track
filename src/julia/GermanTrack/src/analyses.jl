@@ -249,4 +249,3 @@ function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
         Iterators.product(__...) |>
         folder(append!!, Map(apply), __, init = Empty(DataFrame))
 end
-
