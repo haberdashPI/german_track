@@ -11,7 +11,7 @@ using DrWatson, WAV, Infiltrator, DataFrames, Printf, ProgressMeter, EEGCoding, 
     Unitful, Distributions, CSV, Random, Statistics, JSON3, HDF5, CRC, RandomNumbers,
     Random123, Colors, EzXML, Underscores, DataStructures, StatsBase, Lasso, BangBang,
     Transducers, FFTW, Bootstrap, ColorSchemes, VegaLite, StatsFuns, DSP, Peaks,
-    JSONTables, MacroTools, DataFramesMeta, Flux, CUDA, Arrow
+    MacroTools, DataFramesMeta, Flux, CUDA, Arrow
 
 # ## Files
 

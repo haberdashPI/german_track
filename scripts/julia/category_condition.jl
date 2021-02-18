@@ -7,7 +7,7 @@ using DrWatson
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
     StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding,
-    JSON3, DataFramesMeta, Lasso, Indexing
+    JSON3, DataFramesMeta, Lasso
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -551,7 +551,7 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("174mm", "67mm",
+fig = svg.Figure("174mm", "136mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig2a.svg")).move(0,15),
@@ -564,5 +564,11 @@ fig = svg.Figure("174mm", "67mm",
         svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
             scale(0.1).move(220,15)
-    ).move(240, 0)
+    ).move(240, 0),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "fig2c.svg")).move(0,15),
+        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(450,25)
+    ).move(0, 180)
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig2.svg"))
