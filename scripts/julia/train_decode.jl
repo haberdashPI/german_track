@@ -8,7 +8,7 @@ println("Julia version: $VERSION.")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables,
+    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures,
     PooledArrays # (pooled arrays is needed to reload subject data)
 
 nfolds = 5
@@ -152,11 +152,11 @@ for (i, trial) in enumerate(eachrow(windows))
 end
 
 stimulidf = @_ DataFrame(stimuli) |>
-    # @where(__, :condition .== "global") |>
+    @where(__, :condition .== "global") |>
     # @where(__, :is_target_source) |>
     # @where(__, :windowing .== "target") |>
     # train on quarter of subjects
-    # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
+    @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
     addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     # insertcols!(__, :predict => Ref(Float32[])) |>
     groupby(__, [:encoding]) |>
@@ -198,69 +198,70 @@ function decode_scores(predictions)
         )
 end
 
-@info "Generating cross-validated predictions, this could take a bit..."
+@info "Cross-validated training of source decoders (this will take some time...)"
 
 groupings = [:source, :encoding]
 groups = groupby(stimulidf, groupings)
 
-max_steps = 50
+max_steps = 10 # 50
 min_steps = 6
 hidden_units = 64
 patience = 6
-nλ = 24
+nλ = 4 # 24
 batchsize = 2048
-train_types = ["athit-other", "athit-target", "atmiss-target"]
-progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
-validate_fraction = 0.2
+train_types = OrderedDict(
+    "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
+    "athit-target"  => ( train = ("hit", false), test  = ("hit", false) ),
+    # "atmiss-target" => ( train = ("miss",false), test  = ("hit", false) )
+)
+function filtertype(df, type)
+    train_type = train_types[df.train_type[1]][type]
+    @_ filter(_1.hittype          == train_type[1] &&
+              _1.is_target_source == train_type[2], df)
+end
 
-modelsetup = @_ stimulidf |>
+progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
+
+modelsetup = @_ groups |>
     repeatby(__,
         :cross_fold => 1:nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
-        :train_type => train_types) |>
+        :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
-toxy(df) = x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df))
+toxy(df) = isempty(df) ? ([], []) :
+    x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df))
 
-modeltest = combine(modelsetup) do dffold
-    # TODO: apply these filterings proplery, with the new setup
-    hittype, is_target =
-        train_type == "athit-target" ? ("hit", true) :
-        train_type == "athit-other" ? ("hit", false) :
-        train_type == "atmiss-target" ? ("miss", false) :
-        error("Unexpected `train_type` value of $train_type.")
+modelrun = combine(modelsetup) do dffold
+    train = @_ dffold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
+    val   = @_ dffold |> filtertype(__, :train) |> @where(__, :split .== "validate") |> toxy
+    test  = @_ dffold |> filtertype(__, :test)  |> @where(__, :split .== "test")
 
-    sdf = view(sdf, sdf.is_target_source .== is_target, :)
+    (isempty(train[1]) || isempty(test) || isempty(val[1])) && return Empty(DataFrame)
 
-    sdf = view(sdf, sdf.is_target_source .== is_target, :)
-    isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame), Empty(DataFrame))
-
-    nontest = @_ filter((_1.fold != fold) &&
-                    (_1.hittype == hittype) &&
-                    (_1.windowing == "target"), sdf)
-    test  = @_ filter((_1.fold == fold) &&
-                        (_1.hittype == "hit") &&
-                        (_1.windowing == "target"), sdf)
-
-    test     = toxy(@where(dffold, :split .== "test"))
-    train    = toxy(@where(dffold, :split .== "train"))
-    validate = toxy(@where(dffold, :split .== "validate"))
-
-    model = GermanTrack.decoder(train[1], train[2], train.λ[1], Flux.Optimise.RADAM(),
-        progress = progress, batch = batchsize, max_steps = max_steps,
+    model = GermanTrack.decoder(train[1], train[2]', dffold.λ[1], Flux.Optimise.RADAM(),
+        progress = progress,
+        batch = batchsize,
+        max_steps = max_steps,
         min_steps = min_steps,
         patience = patience,
         inner = hidden_units,
-        validate = validate)
+        validate = val
+    )
 
-    predictions = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
+    testdf = DataFrame(test)
+    test[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
+    test[!, :steps] = GermanTrack.nsteps(model)
 
-    DataFrame(model = model, predictions = Ref(predictions))
+    DataFrame(model = model, result = test)
 end
 
 ProgressMeter.finish!(progress)
 alert("Completed model training!")
+
+predictions = @_ combine(_.result, modelrun)
+models = select(modelrun, Not(:result))
 
 # Plot lambda results (since we pick one, and store only the best)
 # -----------------------------------------------------------------
