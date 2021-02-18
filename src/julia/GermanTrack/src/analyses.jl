@@ -161,6 +161,50 @@ function Base.show(io::IO, ::MIME"text/plain", x::RepeatedDataFrame)
     end
 end
 
+function validationset(df, bycol, foldcol, crossfoldcol, validate, rng)
+    use(rng, df) = rng
+    use(rng::Base.Callable, df) = rng(df)
+
+    if rng !== nothing
+        valby = @_ df |>
+            @where(__, cols(foldcol) .!= cols(crossfoldcol)) |>
+            @with(__, unique(cols(bycol)))
+        valcount = round(Int, validate*length(valby))
+        sample(use(rng, df), valby, valcount, replace = false)
+    else
+        empty(view(df, :, bycol))
+    end
+end
+
+"""
+    testsplit(df, bycol, fold, foldcol = :fold, splitcol = :split; validate = 0.2, rng = nothing)
+
+Add a column that splits data into train, test and (possibly) validation sets for a given
+fold. The test set are all `df[:, :fold] == df[:, :cross_fold]`, and the train set are all
+`df[:, :fold] != df[:, :cross_fold]`. This method most effect when applied after a call
+to `repeatby`.
+
+If `rng` is `nothing` no validate set is defined, if it is defined, it selects rows for
+validation according to the identity of `bycol` (e.g. :subjectid).
+
+Note that `rng` may be a function of one argument: in this case it is passed
+the data frame and it should return a random number generator.
+"""
+function testsplit(df::Union{AbstractDataFrame, GroupedDataFrame}, bycol, foldcol = :fold,
+    crossfoldcol = :cross_fold, splitcol = :split;
+    validate = 0.2, rng = nothing)
+
+    combine(df, ungroup = false) do sdf
+        valset = validationset(sdf, bycol, foldcol, crossfoldcol, validate, rng)
+        transform(sdf, [foldcol, crossfoldcol, bycol] => ByRow((fold, cross, by) ->
+            fold == cross ? "test" : by ∈ valset ? "validate" : "train") => splitcol)
+    end
+end
+
+testsplit(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> testsplit(df, args...; kwds...)))
+
 """
     repeatby(df, col => vals...)
 
