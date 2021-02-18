@@ -443,11 +443,24 @@ function _load_cache(prefix, symbols, types)
     quote
         $(map(enumerate(zip(symbols, types))) do (i, (var, type))
             if type == :arrow
-                :($(esc(var)) = DataFrame(Arrow.Table($(_fname(prefix, symbols, types, i)))))
+                quote
+                    $(esc(var)) =
+                        DataFrame(Arrow.Table($(_fname(prefix, symbols, types, i))))
+                    @info string("Loaded ", $(string(var)), " from ",
+                        $(_fname(prefix, symbols, types, i)))
+                end
             elseif type == :bson
-                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)))[:data])
+                quote
+                    $(esc(var)) = load($(_fname(prefix, symbols, types, i)))["data"]
+                    @info string("Loaded ", $(string(var)), " from ",
+                        $(_fname(prefix, symbols, types, i)))
+                end
             elseif type == :jld
-                :($(esc(var)) = load($(_fname(prefix, symbols, types, i)), "data"))
+                quote
+                    $(esc(var)) = load($(_fname(prefix, symbols, types, i)), "data")
+                    @info string("Loaded ", $(string(var)), " from ",
+                        $(_fname(prefix, symbols, types, i)))
+                end
             else
                 errror("Unexpected error: report a bug.")
             end
@@ -458,28 +471,33 @@ end
 function _save_cache(prefix, symbols, types)
     quote
         # store code state
-        state = convert(Dict{String, String}, tag!(Dict()))
+        state = tag!(Dict())
 
         @info "Saving data..."
         # store variables in files
         $(map(enumerate(zip(symbols, types))) do (i, (var, type))
             if type == :arrow
                 quote
-                    Arrow.setmetadata!($(esc(var)), state)
-                    Arrow.write($(_fname(prefix, symbols, types, i)), $(esc(var)), compress = :lz4)
-                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                    Arrow.setmetadata!($(esc(var)), convert(Dict{String, String}, state))
+                    Arrow.write($(_fname(prefix, symbols, types, i)),
+                        $(esc(var)), compress = :lz4)
+                    @info string("Saved ", $(string(var))," to ",
+                        $(_fname(prefix, symbols, types, i)))
                 end
             elseif type == :bson
                 quote
                     data = deepcopy(state)
-                    data[:data] = $(esc(var))
+                    data["data"] = $(esc(var))
                     save($(_fname(prefix, symbols, types, i)), data)
-                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                    @info string("Saved ", $(string(var))," to ",
+                        $(_fname(prefix, symbols, types, i)))
                 end
             elseif type == :jld
                 quote
-                    save($(_fname(prefix, symbols, types, i)), "data", $(esc(var)), "state", state)
-                    @info string("Saved ", $(string(var))," to ", $(_fname(prefix, symbols, types, i)))
+                    save($(_fname(prefix, symbols, types, i)), "data",
+                        $(esc(var)), "state", state)
+                    @info string("Saved ", $(string(var))," to ",
+                        $(_fname(prefix, symbols, types, i)))
                 end
             else
                 errror("Unexpected error: report a bug.")
