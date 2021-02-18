@@ -128,7 +128,7 @@ progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
     for (j, encoding) in enumerate(encodings)
         for source in sources
-            stim, stim_id = load_stimulus(source, trial, stim_encoding, sr, meta)
+            stim, stim_id = load_stimulus(source, trial, stim_encoding, samplerate, meta)
             start = trial.start
             stop = min(size(stim,1), trial.start + trial.len - 1)
             fullrange = starts[i] : (starts[i+1] - 1)
