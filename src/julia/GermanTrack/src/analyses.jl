@@ -35,9 +35,11 @@ end
 
 """
     shrinktowards([x],mu;by=0.01)
+    shrink(x)
 
-Reduce the value of `x` towards `mu` by (the presumably small value) `by*(x-mu)`.
-You can exclude the `x` argument to curry the function.
+Reduce the value of `x` towards `mu` by `by*(x-mu)`, where `by` is a presumably small value.
+You can exclude the `x` argument to curry the function. When using `shrink`, `mu` is set to
+0.5 and `by` is 0.01.
 """
 shrinktowards(mu;by=0.01) = x -> shrinktowards(x,mu,by=by)
 shrinktowards(x,mu;by=0.01) = (1-by)*(x-mu) + mu
