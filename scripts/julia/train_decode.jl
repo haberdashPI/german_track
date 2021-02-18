@@ -8,7 +8,8 @@ println("Julia version: $VERSION.")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables
+    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables,
+    PooledArrays # (pooled arrays is needed to reload subject data)
 
 nfolds = 5
 
@@ -20,11 +21,11 @@ dir = mkpath(joinpath(plotsdir(), "decode_training"))
 # Setup EEG Data
 # -----------------------------------------------------------------
 
-# TODO: move the events outside @use_cache
-# and generate the window definitions on all runs
+samplerate = 32
 
 prefix = joinpath(cache_dir("eeg", "decoding"), "eeg-training-data")
-GermanTrack.@use_cache prefix (x, :jld) x_scores begin
+GermanTrack.@use_cache prefix (subjects, :jld) begin
+    @info "Resampling EEG data, this may take a while (this step will be cached to avoid repeating it)"
     # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
     eeg_encoding = JointEncoding(
         RawEncoding(),
@@ -36,76 +37,71 @@ GermanTrack.@use_cache prefix (x, :jld) x_scores begin
     )
     # eeg_encoding = RawEncoding()
 
-    sr = 32
-    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5",
-        encoding = eeg_encoding, framerate = sr)
-
-    meta = GermanTrack.load_stimulus_metadata()
-
-    target_length = 1.0
-    max_lag = 3
-
-    seed = 2019_11_18
-    target_samples = round(Int, sr*target_length)
-    function event2window(event, windowing)
-        triallen     = size(subjects[event.sid].eeg[event.trial], 2)
-        start_time = if windowing == "target"
-            meta.target_times[event.sound_index]
-        else
-            max_time = meta.target_times[event.sound_index]-1.5
-            if max_time <= 0
-                0.0
-            else
-                # generates a random number that has the same value for
-                # the same event (so windows are shared across subjects)
-                max_time*rand(GermanTrack.trialrng((:decode_windowing, seed), event))
-            end
-        end
-        start = clamp(round(Int, sr*start_time), 1, triallen)
-        len   = clamp(target_samples, 1, triallen-start)
-        (
-            windowing = windowing,
-            start     = start,
-            len       = len,
-            trialnum  = event.trial,
-            event[[:condition, :sid, :target_source, :sound_index, :hittype]]...
-        )
-    end
-
-    windows = @_ events |>
-        transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
-        filter(_.hittype ∈ ["hit", "miss"], __) |> eachrow |>
-        Iterators.product(__, ["target", "pre-target"]) |>
-        map(event2window(_...), __) |> vec |>
-        DataFrame |>
-        transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
-
-    nobs = sum(windows.len)
-    starts = vcat(1,1 .+ cumsum(windows.len))
-    nfeatures = size(first(subjects)[2].eeg[1],1)
-    nlags = round(Int,sr*max_lag)
-    lags = -(nlags-1):1:0
-    x = Array{Float32}(undef, nfeatures*nlags, nobs)
-
-    progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
-    Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
-        tstart = trial.start
-        tstop = trial.start + trial.len - 1
-        xstart = trial.offset
-        xstop = trial.offset + trial.len - 1
-
-        trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
-        x[:, xstart:xstop] = view(trialdata, tstart:tstop, :)'
-        next!(progress)
-    end
-    x_μ = mean(x, dims = 2)
-    x .-= x_μ
-    x_σ = std(x, dims = 2)
-    x ./= x_σ
-    x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
-
-# GermanTrack.@save_cache prefix (x, :jld) x_scores
+    subjects, = load_all_subjects(processed_datadir("eeg"), "h5",
+        encoding = eeg_encoding, framerate = samplerate)
 end
+
+events = load_all_subject_events(processed_datadir("eeg"), "h5")
+
+meta = GermanTrack.load_stimulus_metadata()
+
+target_length = 1.0
+max_lag = 3
+
+seed = 2019_11_18
+target_samples = round(Int, samplerate*target_length)
+function event2window(event)
+    triallen   = size(subjects[event.sid].eeg[event.trial], 2)
+    start_time =
+        event.windowing == "target" ? meta.target_times[event.sound_index] :
+        event.windowing == "pre-target" ?
+            max(0.0, meta.target_times[event.sound_index]-1.5) *
+                rand(GermanTrack.trialrng((:decode_windowing, seed), event)) :
+        error("Unexpected windowing `$(event.windowing)`")
+
+    start      = clamp(round(Int, samplerate*start_time), 1, triallen)
+    len        = clamp(target_samples, 1, triallen-start)
+    (
+        start     = start,
+        len       = len,
+        trialnum  = event.trial,
+        event...
+    )
+end
+
+windows = @_ events |>
+    transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
+    filter(_.hittype ∈ ["hit", "miss"], __) |>
+    repeatby(__, :windowing => ["target", "pre-target"]) |>
+    combine(__, AsTable(:) => ByRow(event2window) => AsTable) |>
+    transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
+
+nobs = sum(windows.len)
+starts = vcat(1,1 .+ cumsum(windows.len))
+nfeatures = size(first(subjects)[2].eeg[1],1)
+nlags = round(Int,samplerate*max_lag)
+lags = -(nlags-1):1:0
+x = Array{Float32}(undef, nfeatures*nlags, nobs)
+
+progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
+Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
+    tstart = trial.start
+    tstop = trial.start + trial.len - 1
+    xstart = trial.offset
+    xstop = trial.offset + trial.len - 1
+
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
+    x[:, xstart:xstop] = view(trialdata, tstart:tstop, :)'
+    next!(progress)
+end
+x_μ = mean(x, dims = 2)
+x .-= x_μ
+x_σ = std(x, dims = 2)
+x ./= x_σ
+x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
+
+prefix = joinpath(processed_datadir("analyses", "decoding"), "eeg-train")
+GermanTrack.@save_cache prefix x_scores
 
 # Setup stimulus data
 # -----------------------------------------------------------------
@@ -202,98 +198,72 @@ function decode_scores(predictions)
         )
 end
 
-datafile = joinpath(processed_datadir("analyses", "decode"), "freqbin-train")
-
 @info "Generating cross-validated predictions, this could take a bit..."
 
 groupings = [:source, :encoding]
 groups = groupby(stimulidf, groupings)
 
 max_steps = 50
+min_steps = 6
+hidden_units = 64
+patience = 6
 nλ = 24
 batchsize = 2048
 train_types = ["athit-other", "athit-target", "atmiss-target"]
 progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
 validate_fraction = 0.2
 
-predictions, coefs, models = filteringmap(groups, folder = foldl, streams = 3, desc = nothing,
-    :fold => 1:nfolds,
-    :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
-    :train_type => train_types,
-    function(sdf, fold, λ, train_type)
-        hittype, is_target =
-            train_type == "athit-target" ? ("hit", true) :
-            train_type == "athit-other" ? ("hit", false) :
-            train_type == "atmiss-target" ? ("miss", false) :
-            error("Unexpected `train_type` value of $train_type.")
+modelsetup = @_ stimulidf |>
+    repeatby(__,
+        :cross_fold => 1:nfolds,
+        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
+        :train_type => train_types) |>
+    testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
+        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
-        sdf = view(sdf, sdf.is_target_source .== is_target, :)
-        isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame), Empty(DataFrame))
+toxy(df) = x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df))
 
-        nontest = @_ filter((_1.fold != fold) &&
-                        (_1.hittype == hittype) &&
+modeltest = combine(modelsetup) do dffold
+    # TODO: apply these filterings proplery, with the new setup
+    hittype, is_target =
+        train_type == "athit-target" ? ("hit", true) :
+        train_type == "athit-other" ? ("hit", false) :
+        train_type == "atmiss-target" ? ("miss", false) :
+        error("Unexpected `train_type` value of $train_type.")
+
+    sdf = view(sdf, sdf.is_target_source .== is_target, :)
+
+    sdf = view(sdf, sdf.is_target_source .== is_target, :)
+    isempty(sdf) && return (Empty(DataFrame), Empty(DataFrame), Empty(DataFrame))
+
+    nontest = @_ filter((_1.fold != fold) &&
+                    (_1.hittype == hittype) &&
+                    (_1.windowing == "target"), sdf)
+    test  = @_ filter((_1.fold == fold) &&
+                        (_1.hittype == "hit") &&
                         (_1.windowing == "target"), sdf)
-        test  = @_ filter((_1.fold == fold) &&
-                            (_1.hittype == "hit") &&
-                            (_1.windowing == "target"), sdf)
 
-        sids = levels(nontest.sid)
-        nval = max(1, round(Int, validate_fraction * length(sids)))
-        rng = stableRNG(2019_11_18, :validate_flux, fold, λ,
-            Tuple(sdf[1, groupings]))
-        validate_ids = sample(rng, sids, nval, replace = false)
+    test     = toxy(@where(dffold, :split .== "test"))
+    train    = toxy(@where(dffold, :split .== "train"))
+    validate = toxy(@where(dffold, :split .== "validate"))
 
-        train    = @_ filter(_.sid ∉ validate_ids, nontest)
-        validate = @_ filter(_.sid ∈ validate_ids, nontest)
+    model = GermanTrack.decoder(train[1], train[2], train.λ[1], Flux.Optimise.RADAM(),
+        progress = progress, batch = batchsize, max_steps = max_steps,
+        min_steps = min_steps,
+        patience = patience,
+        inner = hidden_units,
+        validate = validate)
 
-        encodings = groupby(train, :encoding)
-        firstencoding = first(encodings).encoding |> first
-        xᵢ = x[:, eegindices(first(encodings))]
-        yᵢ = @_ [
-            row.data
-            for rows in encodings
-            for row in eachrow(rows)
-        ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
+    predictions = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
 
-        xⱼ = x[:, eegindices(first(groupby(validate, :encoding)))]
-        yⱼ = @_ [
-            row.data
-            for rows in groupby(validate, :encoding)
-            for row in eachrow(rows)
-        ] |> reduce(vcat, __) |> reshape(__, length(encodings), :)
-
-        model = GermanTrack.decoder(xᵢ, yᵢ, λ, Flux.Optimise.RADAM(),
-            progress = progress, batch = batchsize, max_steps = max_steps,
-            min_steps = 20,
-            patience = 6,
-            inner = 64,
-            validate = (xⱼ, yⱼ))
-
-        test.predict = map(eachrow(test)) do testrow
-            xⱼ = view(x, :, eegindices(testrow))
-            yⱼ = model(xⱼ)
-            view(yⱼ,testrow.encoding == firstencoding ? 1 : 2,:)
-        end
-        test.steps = GermanTrack.nsteps(model)
-        C = GermanTrack.decode_weights(model) |> vec
-
-        bins = ["raw", "delta", "theta", "alpha", "beta", "gamma"]
-        mccai(i) = CartesianIndices((nlags, 30, 6))[i][2]
-        lagi(i) = lags[CartesianIndices((nlags, 30, 6))[i][1]]
-        bini(i) = bins[CartesianIndices((nlags, 30, 6))[i][3]]
-
-        coefs = DataFrame(
-            coef = C,
-            lag = lagi.(eachindex(C)),
-            bin = bini.(eachindex(C)),
-            mcca = mccai.(eachindex(C)))
-
-        test, coefs, DataFrame(model = model)
-    end)
+    DataFrame(model = model, predictions = Ref(predictions))
+end
 
 ProgressMeter.finish!(progress)
 alert("Completed model training!")
 
+# Plot lambda results (since we pick one, and store only the best)
+# -----------------------------------------------------------------
 
 # score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
 scores = decode_scores(predictions)
@@ -357,4 +327,5 @@ models_ = @_ filter(_.λ == best_λ[_.fold], models)
 coefs_ = @_ filter(_.λ == best_λ[_.fold], coefs)
 predictions_ = @_ filter(_.λ == best_λ[_.fold], predictions)
 
-GermanTrack.@save_cache datafile models_ coefs_ predictions_
+prefix = joinpath(processed_datadir("analyses", "decode"), "freqbin-train")
+GermanTrack.@save_cache prefix models_ coefs_ predictions_
