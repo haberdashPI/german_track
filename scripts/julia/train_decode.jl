@@ -158,7 +158,7 @@ stimulidf = @_ DataFrame(stimuli) |>
     # train on quarter of subjects
     @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
     addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
-    # insertcols!(__, :predict => Ref(Float32[])) |>
+    # insertcols!(__, :prediction => Ref(Float32[])) |>
     groupby(__, [:encoding]) |>
     transform!(__, :data => (x -> mean(reduce(vcat, x))) => :datamean, ungroup = false) |>
     transform!(__, [:data, :datamean] => ByRow((x, μ) -> x .-= μ) => :data, ungroup = false) |>
@@ -178,10 +178,10 @@ function eegindices(df::AbstractDataFrame)
 end
 
 function decode_scores(predictions)
-    score(x,y) = cor(x,y)
+    score(x,y) = cor(vec(x),vec(y))
     meta = GermanTrack.load_stimulus_metadata()
     scores = @_ predictions |>
-        @transform(__, score = score.(:predict, :data)) |>
+        @transform(__, score = score.(:prediction, :data)) |>
         # @where(__, :encoding .== "envelope") |>
         # groupby(__, [:encoding, :λ]) |>
         # @transform(__, score = zscoresafe(:score)) |>
@@ -233,14 +233,14 @@ modelsetup = @_ groups |>
 toxy(df) = isempty(df) ? ([], []) :
     x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df))
 
-modelrun = combine(modelsetup) do dffold
-    train = @_ dffold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
-    val   = @_ dffold |> filtertype(__, :train) |> @where(__, :split .== "validate") |> toxy
-    test  = @_ dffold |> filtertype(__, :test)  |> @where(__, :split .== "test")
+modelrun = combine(modelsetup) do fold
+    train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
+    val   = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "validate") |> toxy
+    test  = @_ fold |> filtertype(__, :test)  |> @where(__, :split .== "test")
 
     (isempty(train[1]) || isempty(test) || isempty(val[1])) && return Empty(DataFrame)
 
-    model = GermanTrack.decoder(train[1], train[2]', dffold.λ[1], Flux.Optimise.RADAM(),
+    model = GermanTrack.decoder(train[1], train[2]', fold.λ[1], Flux.Optimise.RADAM(),
         progress = progress,
         batch = batchsize,
         max_steps = max_steps,
@@ -252,15 +252,16 @@ modelrun = combine(modelsetup) do dffold
 
     testdf = DataFrame(test)
     test[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
-    test[!, :steps] = GermanTrack.nsteps(model)
+    test[!, :steps] .= GermanTrack.nsteps(model)
 
     DataFrame(model = model, result = test)
 end
 
 ProgressMeter.finish!(progress)
-alert("Completed model training!")
+# alert("Completed model training!")
 
-predictions = @_ combine(_.result, modelrun)
+predictions = @_ modelrun |> groupby(__, Not([:result, :model])) |>
+    combine(only(_.result), __)
 models = select(modelrun, Not(:result))
 
 # Plot lambda results (since we pick one, and store only the best)
@@ -292,11 +293,11 @@ best_λs = @_ scores |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:λ, :fold]) |>
     @combine(__, score = minimum(:score)) |>
-    filteringmap(__, desc = nothing, :fold => cross_folds(1:nfolds),
-        (sdf, fold) -> DataFrame(score = maximum(sdf.score), λ = sdf.λ[argmax(sdf.score)])
-    )
+    repeatby(__, :cross_fold => 1:nfolds) |>
+    @where(__, :cross_fold .!= :fold) |>
+    combine(__, DataFrame(score = maximum(_1.score), λ = _1.λ[argmax(_1.score)]))
 
-best_λ = Dict(row.fold => row.λ for row in eachrow(best_λs))
+best_λ = Dict(row.cross_fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
@@ -324,9 +325,12 @@ pl = @_ predictions |> select(__, :λ, :steps) |>
     @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
 pl |> save(joinpath(dir, "steps_lambda.svg"))
 
-models_ = @_ filter(_.λ == best_λ[_.fold], models)
-coefs_ = @_ filter(_.λ == best_λ[_.fold], coefs)
-predictions_ = @_ filter(_.λ == best_λ[_.fold], predictions)
+models_ = @_ filter(_.λ == best_λ[_.cross_fold], models)
+predictions_ = @_ filter(_.λ == best_λ[_.cross_fold], predictions)
 
-prefix = joinpath(processed_datadir("analyses", "decode"), "freqbin-train")
-GermanTrack.@save_cache prefix models_ coefs_ predictions_
+# TODO: before we save this state, remember to setup the names for
+# the stored models_ and predictions_ so they match these results
+# we'll do a full re-run with the new setup (which should generate the same results) offline
+
+# prefix = joinpath(processed_datadir("analyses", "decode"), "freqbin-train")
+# GermanTrack.@save_cache prefix models_ coefs_ predictions_
