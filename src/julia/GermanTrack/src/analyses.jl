@@ -188,31 +188,31 @@ DataFrames.combine(rd::RepeatedDataFrame,
     combine_repeat(rd, df -> combine(df, cs...; kwds...), foldl)
 
 DataFrames.select(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> select(f, df)))
 
 DataFrames.select(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> select(df, args...; kwds...)))
 
 DataFrames.transform(f::Union{Base.Callable, Pair}, rd::RepeatedDataFrame; kwds...) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> transform(f, df)))
 
 DataFrames.transform(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> transform(df, args...; kwds...)))
 
 Base.filter(f, rd::RepeatedDataFrame; kwds...) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> filter(f, df)))
 
 DataFramesMeta.where(rd::RepeatedDataFrame{<:AbstractDataFrame}, f) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> DataFramesMeta.where(df, f)))
 
 DataFramesMeta.where(rd::RepeatedDataFrame{<:GroupedDataFrame}, f) =
-    RepeatedDataFrame(rd.df, rd.repeaters, push!(rd.applyers,
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> groupby(DataFramesMeta.where(df, f), groupcols(rd.df))))
 
 glength(x::GroupedDataFrame) = length(x)
