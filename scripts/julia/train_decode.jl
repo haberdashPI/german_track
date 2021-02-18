@@ -100,7 +100,7 @@ x_σ = std(x, dims = 2)
 x ./= x_σ
 x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
 
-prefix = joinpath(processed_datadir("analyses", "decoding"), "eeg-train")
+prefix = joinpath(processed_datadir("analyses", "decode"), "eeg-train")
 GermanTrack.@save_cache prefix x_scores
 
 # Setup stimulus data
@@ -124,6 +124,8 @@ progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
     for (j, encoding) in enumerate(encodings)
         for source in sources
+            global stimuli
+
             stim, stim_id = load_stimulus(source, trial, stim_encoding, samplerate, meta)
             start = trial.start
             stop = min(size(stim,1), trial.start + trial.len - 1)
@@ -325,12 +327,11 @@ pl = @_ predictions |> select(__, :λ, :steps) |>
     @vlplot(:point, x = {:λ, scale = {type = :log}}, y = "mean(steps)");
 pl |> save(joinpath(dir, "steps_lambda.svg"))
 
+# Store only the best results
+# -----------------------------------------------------------------
+
 models_ = @_ filter(_.λ == best_λ[_.cross_fold], models)
 predictions_ = @_ filter(_.λ == best_λ[_.cross_fold], predictions)
 
-# TODO: before we save this state, remember to setup the names for
-# the stored models_ and predictions_ so they match these results
-# we'll do a full re-run with the new setup (which should generate the same results) offline
-
-# prefix = joinpath(processed_datadir("analyses", "decode"), "freqbin-train")
-# GermanTrack.@save_cache prefix models_ coefs_ predictions_
+prefix = joinpath(processed_datadir("analyses", "decode"), "train")
+GermanTrack.@save_cache prefix models_ predictions_
