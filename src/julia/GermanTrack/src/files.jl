@@ -237,8 +237,6 @@ Load the given file of stimulus events; requires metadata loaded via
 function events(event_file, stim_info)
     stim_events = DataFrame(CSV.File(event_file))
 
-    source_names =
-
     # columns that are determined by the stimulus (and thus derived using the index of the
     # stimulus: sound_index)
     si = stim_events.sound_index
@@ -359,7 +357,8 @@ function _parse_cache_args(prefix, args)
     symbols = cache_symbols.(args[1:end])
     file_types = cache_filetypes.(args[1:end])
 
-    checktypes(x::Symbol) = x ∈ [:arrow, :bson, :jld] || error("Unexpected filetype `$(x)``.")
+    checktypes(x::Symbol) = x ∈ [:arrow, :bson, :jld] ||
+        error("Unexpected filetype `$(x)``.")
     checktypes.(file_types)
 
     symbols, file_types
@@ -401,7 +400,8 @@ macro use_cache(prefix, args...)
     missing_index = @_ findfirst(_ ∉ found_symbols, symbols)
 
     if !isnothing(missing_index)
-        error("Could not find symbol `$(symbols[missing_index])` in cache body, check spelling.")
+        error("Could not find symbol `$(symbols[missing_index])` in cache body, "*
+            "check spelling.")
     end
 
     #### code generation
