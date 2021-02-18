@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
-    addfold!, repeatby, compute_powerbin_features, cross_folds,
-    shrink, wsem, tcombine
+    addfold!, repeatby, compute_powerbin_features,
+    shrink, wsem, tcombine, testsplit
 
 """
     boot(x; alpha = 0.05, n = 10_000)
