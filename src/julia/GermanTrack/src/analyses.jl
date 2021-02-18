@@ -282,13 +282,16 @@ function addcols(df::GroupedDataFrame, repeat)
     groupby(addcols(parent(df), repeat), groupcols(df))
 end
 
+maybe_addcols(df::AbstractDataFrame, repeat) = addcols(df, repeat)
+maybe_addcols(x, repeat) = x
+
 function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
     function apply(repeat)
         input = addcols(rd.df, repeat)
         for ap in rd.applyers
             input = ap(input)
         end
-        combinefn(input)
+        maybe_addcols(combinefn(input), repeat)
     end
     @_ rd.repeaters |>
         map(_1[1] .=> _1[2], __) |>
