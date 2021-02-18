@@ -1,6 +1,6 @@
 export read_eeg_binary, read_mcca_proj, load_subject, events_for_eeg, sidfor,
     load_directions, load_all_subjects, processed_datadir, raw_datadir,
-    stimulus_dir, raw_stim_dir
+    stimulus_dir, raw_stim_dir, load_all_subject_events
 
 # we save cached results in JSON fromat
 DrWatson._wsave(file, data::Dict) = open(io -> JSON3.write(io, data), file, "w")
@@ -225,6 +225,12 @@ function load_subject(file, stim_info = load_stimulus_metadata();
     end
 
     SubjectData(eeg = data, events = stim_events)
+end
+
+function load_all_subject_events(dir, ext, stim_info = load_stimulus_metadata())
+    eeg_files = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
+
+    @_ mapreduce(events_for_eeg(_, stim_info), append!!, eeg_files)
 end
 
 """
