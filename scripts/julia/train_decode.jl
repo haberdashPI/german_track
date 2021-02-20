@@ -212,7 +212,7 @@ patience = 6
 nλ = 24
 batchsize = 2048
 train_types = OrderedDict(
-    "athit-other"   => ( train = ("hit", false), test  = ("hit", true) ),
+    "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
     "athit-target"  => ( train = ("hit", true), test  = ("hit", true) ),
     "atmiss-target" => ( train = ("miss", true), test  = ("hit", true) )
 )
