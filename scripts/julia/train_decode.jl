@@ -154,11 +154,11 @@ for (i, trial) in enumerate(eachrow(windows))
 end
 
 stimulidf = @_ DataFrame(stimuli) |>
-    @where(__, :condition .== "global") |>
+    # @where(__, :condition .== "global") |>
     # @where(__, :is_target_source) |>
     # @where(__, :windowing .== "target") |>
     # train on quarter of subjects
-    @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
+    # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
     addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     # insertcols!(__, :prediction => Ref(Float32[])) |>
     groupby(__, [:encoding]) |>
@@ -205,16 +205,16 @@ end
 groupings = [:source, :encoding]
 groups = groupby(stimulidf, groupings)
 
-max_steps = 10 # 50
+max_steps = 50
 min_steps = 6
 hidden_units = 64
 patience = 6
-nλ = 4 # 24
+nλ = 24
 batchsize = 2048
 train_types = OrderedDict(
-    "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
-    "athit-target"  => ( train = ("hit", false), test  = ("hit", false) ),
-    # "atmiss-target" => ( train = ("miss",false), test  = ("hit", false) )
+    "athit-other"   => ( train = ("hit", false), test  = ("hit", true) ),
+    "athit-target"  => ( train = ("hit", true), test  = ("hit", true) ),
+    "atmiss-target" => ( train = ("miss", true), test  = ("hit", true) )
 )
 function filtertype(df, type)
     train_type = train_types[df.train_type[1]][type]
@@ -228,19 +228,20 @@ modelsetup = @_ groups |>
     repeatby(__,
         :cross_fold => 1:nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
+        # :λ => [0.0013],
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
 toxy(df) = isempty(df) ? ([], []) :
-    x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df))
+    (x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df)))
 
 modelrun = combine(modelsetup) do fold
     train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
     val   = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "validate") |> toxy
     test  = @_ fold |> filtertype(__, :test)  |> @where(__, :split .== "test")
 
-    (isempty(train[1]) || isempty(test) || isempty(val[1])) && return Empty(DataFrame)
+    (isempty(train[1]) || isempty(test) || isempty(val[1])) && return DataFrame()
 
     model = GermanTrack.decoder(train[1], train[2]', fold.λ[1], Flux.Optimise.RADAM(),
         progress = progress,
@@ -271,7 +272,7 @@ models = select(modelrun, Not(:result))
 
 # score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
 scores = decode_scores(predictions)
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 3)]
 
 function nanmean(xs)
     xs_ = (x for x in xs if !isnan(x))
@@ -302,7 +303,7 @@ best_λs = @_ scores |>
 best_λ = Dict(row.cross_fold => row.λ for row in eachrow(best_λs))
 # best_λ = lambdas[argmin(abs.(lambdas .- 0.002))]
 
-tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 8)]
+tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 3)]
 pl = @_ pldata |>
     @where(__, :test_type .== "hit-target") |>
     @vlplot(
@@ -334,4 +335,4 @@ models_ = @_ filter(_.λ == best_λ[_.cross_fold], models)
 predictions_ = @_ filter(_.λ == best_λ[_.cross_fold], predictions)
 
 prefix = joinpath(processed_datadir("analyses", "decode"), "train")
-GermanTrack.@save_cache prefix models_ predictions_
+GermanTrack.@save_cache prefix (models_, :bson) predictions_
