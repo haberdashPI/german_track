@@ -1,11 +1,6 @@
 # Setup
 # =================================================================
 
-# STEPS:
-# veriyf measure that I'm using
-# reproduce with flux model
-# try adding more data to flux model
-
 using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
@@ -18,14 +13,21 @@ using GermanTrack: colors
 
 nfolds = 5
 
+# NOTE: these area parameters copied from process_decode_timelilne
+# should be come parameters
+
+samplerate = 32
+decode_sr = 1/ (round(Int, 0.1samplerate) / samplerate)
+winlen_s = 1.0
+
+# file loading
+# -----------------------------------------------------------------
+
 # STEPS: maybe we should consider cross validating across stimulus type
 # rather than subject id?
 
-file = joinpath(cache_dir("eeg", "decoding"), "timeline.feather")
-decode_sr = 1/ (round(Int, 0.1sr) / sr)
-winlen_s = 1.0
-
-timelines = DataFrame(Arrow.Table(file))
+prefix = joinpath(processed_datadir("analyses", "decode-timeline"), "testing")
+GermanTrack.@load_cache prefix timelines
 
 # setup plot data
 plotdf = @_ timelines |>
