@@ -8,6 +8,10 @@ david thought: train decoders across all conditions
 - add decoding to fig. 4
 
 - can we see decoding when we test on different condition than training
+- do the atmiss-target conditions look different for object and spatial
+    merely because they are a different set of target
+    i.e. would we see decodign similar to global if we treated the false
+    targets as targets
 - can we see differences when using a joint vs. split decoder across conditions?
 - consider adding phase features: this could help classification and decoding
     - try it in one "easy" case, and see if it helps
