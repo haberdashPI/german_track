@@ -100,7 +100,7 @@ x_σ = std(x, dims = 2)
 x ./= x_σ
 x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
 
-prefix = joinpath(processed_datadir("analyses", "decode"), "eeg-train")
+prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@save_cache prefix x_scores
 
 # Setup stimulus data
@@ -166,6 +166,8 @@ stimulidf = @_ DataFrame(stimuli) |>
     transform!(__, [:data, :datamean] => ByRow((x, μ) -> x .-= μ) => :data, ungroup = false) |>
     transform!(__, :data => (x -> std(reduce(vcat, x))) => :datastd, ungroup = false) |>
     transform!(__, [:data, :datastd] => ByRow((x, σ) -> x .-= σ) => :data)
+
+GermanTrack.@save_cache prefix stimulidf
 
 fold_map = @_ stimulidf |> groupby(__, :sid) |>
     @combine(__, fold = first(:fold)) |>
