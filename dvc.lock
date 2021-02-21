@@ -7,6 +7,6 @@ train-decoder:
     nfiles: 300
   outs:
   - path: data/processed/analyses/decode
-    md5: f9f4e39cc779db19e263572f076bdd73.dir
-    size: 385083015
-    nfiles: 4
+    md5: dd510b357c18be9ed2e63f69dea264e1.dir
+    size: 315211009
+    nfiles: 5
