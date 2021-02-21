@@ -8,6 +8,7 @@ david thought: train decoders across all conditions
 - add decoding to fig. 4
 
 - can we see decoding when we test on different condition than training
+- do we see accurate decoding outside of the target window
 - do the atmiss-target conditions look different for object and spatial
     merely because they are a different set of target
     i.e. would we see decodign similar to global if we treated the false
