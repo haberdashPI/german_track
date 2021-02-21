@@ -9,7 +9,7 @@ stages:
         persist: true
   decode-timeline:
     desc: Evaluating decoder accuracy across trial timeline.
-    cmd: julia -f auto --project==. -- scripts/julia/process_decode_timeline.jl
+    cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl
     deps:
     - data/processed/analyses/decode
     - data/processed/eeg
