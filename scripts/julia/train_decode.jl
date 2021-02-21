@@ -16,7 +16,7 @@ nfolds = 5
 # STEPS: maybe we should consider cross validating across stimulus type
 # rather than subject id?
 
-dir = mkpath(joinpath(plotsdir(), "decode_training"))
+dir = processed_datadir("analyses", "decode", "plots")
 
 # Setup EEG Data
 # -----------------------------------------------------------------
