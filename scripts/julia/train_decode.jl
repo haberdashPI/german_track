@@ -11,45 +11,24 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures,
     PooledArrays # (pooled arrays is needed to reload subject data)
 
-nfolds = 5
-
 # STEPS: maybe we should consider cross validating across stimulus type
 # rather than subject id?
 
 dir = processed_datadir("analyses", "decode", "plots")
+include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 
 # Setup EEG Data
 # -----------------------------------------------------------------
 
-samplerate = 32
-
-prefix = joinpath(cache_dir("eeg", "decoding"), "eeg-training-data")
-GermanTrack.@use_cache prefix (subjects, :jld) begin
-    @info "Resampling EEG data, this may take a while (this step will be cached to avoid repeating it)"
-    # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
-    eeg_encoding = JointEncoding(
-        RawEncoding(),
-        FilteredPower("delta", 1,  3),
-        FilteredPower("theta", 3,  7),
-        FilteredPower("alpha", 7,  15),
-        FilteredPower("beta",  15, 30),
-        FilteredPower("gamma", 30, 100),
-    )
-    # eeg_encoding = RawEncoding()
-
-    subjects, = load_all_subjects(processed_datadir("eeg"), "h5",
-        encoding = eeg_encoding, framerate = samplerate)
-end
-
+subjects = load_decode_data()
 events = load_all_subject_events(processed_datadir("eeg"), "h5")
 
 meta = GermanTrack.load_stimulus_metadata()
 
 target_length = 1.0
-max_lag = 3
 
 seed = 2019_11_18
-target_samples = round(Int, samplerate*target_length)
+target_samples = round(Int, params.stimulus.samplerate*target_length)
 function event2window(event)
     triallen   = size(subjects[event.sid].eeg[event.trial], 2)
     start_time =
@@ -59,7 +38,7 @@ function event2window(event)
                 rand(GermanTrack.trialrng((:decode_windowing, seed), event)) :
         error("Unexpected windowing `$(event.windowing)`")
 
-    start      = clamp(round(Int, samplerate*start_time), 1, triallen)
+    start      = clamp(round(Int, params.stimulus.samplerate*start_time), 1, triallen)
     len        = clamp(target_samples, 1, triallen-start)
     (
         start     = start,
@@ -77,11 +56,8 @@ windows = @_ events |>
     transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
 
 nobs = sum(windows.len)
-starts = vcat(1,1 .+ cumsum(windows.len))
 nfeatures = size(first(subjects)[2].eeg[1],1)
-nlags = round(Int,samplerate*max_lag)
-lags = -(nlags-1):1:0
-x = Array{Float32}(undef, nfeatures*nlags, nobs)
+x = Array{Float32}(undef, nfeatures*params.stimulus.nlags, nobs)
 
 progress = Progress(size(windows, 1), desc = "Organizing EEG data...")
 Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
@@ -90,7 +66,7 @@ Threads.@threads for (i, trial) in collect(enumerate(eachrow(windows)))
     xstart = trial.offset
     xstop = trial.offset + trial.len - 1
 
-    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', lags)
+    trialdata = withlags(subjects[trial.sid].eeg[trial.trialnum]', params.stimulus.lags)
     x[:, xstart:xstop] = view(trialdata, tstart:tstop, :)'
     next!(progress)
 end
@@ -106,33 +82,22 @@ GermanTrack.@save_cache prefix x_scores
 # Setup stimulus data
 # -----------------------------------------------------------------
 
-stim_encoding = JointEncoding(PitchSurpriseEncoding(), ASEnvelope())
-encoding_map = Dict("pitch" => PitchSurpriseEncoding(), "envelope" => ASEnvelope())
-encodings = ["pitch", "envelope"]
-sources = [
-    male_source,
-    fem1_source,
-    fem2_source,
-    # male_fem1_sources,
-    # male_fem2_sources,
-    # fem1_fem2_sources
-]
-
 stimuli = Empty(Vector)
 
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
-    for (j, encoding) in enumerate(encodings)
-        for source in sources
+    for (encoding, encoding_code) in pairs(params.stimulus.encodings)
+        for source in params.stimulus.sources
             global stimuli
 
-            stim, stim_id = load_stimulus(source, trial, stim_encoding, samplerate, meta)
+            stim, stim_id = load_stimulus(source, trial, encoding_code,
+                params.stimulus.samplerate, meta)
             start = trial.start
             stop = min(size(stim,1), trial.start + trial.len - 1)
             fullrange = starts[i] : (starts[i+1] - 1)
 
             stimulus = if stop >= start
-                stimulus = Float32.(@view(stim[start:stop, j]))
+                stimulus = Float32.(@view(stim[start:stop, :]))
             else
                 Float32[]
             end
@@ -159,7 +124,7 @@ stimulidf = @_ DataFrame(stimuli) |>
     # @where(__, :windowing .== "target") |>
     # train on quarter of subjects
     # @where(__, :sid .<= sort!(unique(:sid))[div(end,4)]) |>
-    addfold!(__, nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
+    addfold!(__, params.train.nfolds, :sid, rng = stableRNG(2019_11_18, :decoding)) |>
     # insertcols!(__, :prediction => Ref(Float32[])) |>
     groupby(__, [:encoding]) |>
     transform!(__, :data => (x -> mean(reduce(vcat, x))) => :datamean, ungroup = false) |>
@@ -207,12 +172,6 @@ end
 groupings = [:source, :encoding]
 groups = groupby(stimulidf, groupings)
 
-max_steps = 50
-min_steps = 6
-hidden_units = 64
-patience = 6
-nλ = 24
-batchsize = 2048
 train_types = OrderedDict(
     "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
     "athit-target"  => ( train = ("hit", true), test  = ("hit", true) ),
@@ -224,11 +183,12 @@ function filtertype(df, type)
               _1.is_target_source == train_type[2], df)
 end
 
-progress = Progress(max_steps * length(groups) * nfolds * nλ * length(train_types))
+progress = Progress(params.train.max_steps * length(groups) *
+    params.train.nfolds * params.train.nλ * length(train_types))
 
 modelsetup = @_ groups |>
     repeatby(__,
-        :cross_fold => 1:nfolds,
+        :cross_fold => 1:params.train.nfolds,
         :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
         # :λ => [0.0013],
         :train_type => keys(train_types)) |>
@@ -247,11 +207,11 @@ modelrun = combine(modelsetup) do fold
 
     model = GermanTrack.decoder(train[1], train[2]', fold.λ[1], Flux.Optimise.RADAM(),
         progress = progress,
-        batch = batchsize,
-        max_steps = max_steps,
-        min_steps = min_steps,
-        patience = patience,
-        inner = hidden_units,
+        batch = params.train.batchsize,
+        max_steps = params.train.max_steps,
+        min_steps = params.train.min_steps,
+        patience = params.train.patience,
+        inner = params.train.hidden_units,
         validate = val
     )
 
@@ -298,7 +258,7 @@ best_λs = @_ scores |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:λ, :fold]) |>
     @combine(__, score = minimum(:score)) |>
-    repeatby(__, :cross_fold => 1:nfolds) |>
+    repeatby(__, :cross_fold => 1:params.train.nfolds) |>
     @where(__, :cross_fold .!= :fold) |>
     combine(__, DataFrame(score = maximum(_1.score), λ = _1.λ[argmax(_1.score)]))
 

@@ -11,20 +11,12 @@ dir = mkpath(joinpath(plotsdir(), "figure2_parts"))
 
 using GermanTrack: colors
 
-nfolds = 5
-
+include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 # NOTE: these area parameters copied from process_decode_timelilne
 # should be come parameters
 
-samplerate = 32
-decode_sr = 1 / (round(Int, 0.1samplerate) / samplerate)
-winlen_s = 1.0
-
-# file loading
+# variable setup
 # -----------------------------------------------------------------
-
-# STEPS: maybe we should consider cross validating across stimulus type
-# rather than subject id?
 
 prefix = joinpath(processed_datadir("analyses", "decode-timeline"), "testing")
 GermanTrack.@load_cache prefix timelines
@@ -54,7 +46,7 @@ pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
     @transform(__,
-        time = :time .+ winlen_s,
+        time = :time .+ params.test.winlen_s,
         train_type = tolabel.(:train_type)
     ) |>
     @where(__, -1 .< :time .< 2.5) |>
@@ -128,7 +120,7 @@ pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
     @transform(__,
-        time = :time .+ winlen_s,
+        time = :time .+ params.test.winlen_s,
         train_type = tolabel.(:train_type)
     ) |>
     @where(__, -1 .< :time .< 2.5) |>
@@ -166,7 +158,8 @@ tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 4)]
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
-    @transform(__, time = :time .+ winlen_s, condition = uppercasefirst.(:condition)) |>
+    @transform(__, time = :time .+ params.test.winlen_s,
+        condition = uppercasefirst.(:condition)) |>
     @where(__, -1 .< :time .< 2.5) |>
     unstack(__, [:condition, :time, :sid], :train_type, :score) |>
     @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
