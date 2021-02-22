@@ -17,7 +17,7 @@ nfolds = 5
 # should be come parameters
 
 samplerate = 32
-decode_sr = 1/ (round(Int, 0.1samplerate) / samplerate)
+decode_sr = 1 / (round(Int, 0.1samplerate) / samplerate)
 winlen_s = 1.0
 
 # file loading
