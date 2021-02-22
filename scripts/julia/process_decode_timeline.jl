@@ -43,7 +43,7 @@ timelines = combine(groups) do trialdf
 
     trialdata = withlags(subjects[sid].eeg[trial]', params.stimulus.lags)
     winstep = round(Int, params.stimulus.samplerate/params.test.decode_sr)
-    winlen = round(Int, winlen_s*params.stimulus.samplerate)
+    winlen = round(Int, params.test.winlen_s*params.stimulus.samplerate)
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
     runsetup = @_ trialdf |>
