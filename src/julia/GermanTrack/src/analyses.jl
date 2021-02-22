@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
-    shrink, wsem, tcombine, testsplit
+    shrink, wsem, tcombine, testsplit, ngroups
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -204,6 +204,17 @@ end
 testsplit(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> testsplit(df, args...; kwds...)))
+
+"""
+    ngroups(df)
+
+Report the number of groupings in the data frame. For a data frame, this is 1, for a grouped
+data frame this is its length, and the repeated data frame is the number of repeats times
+the number of groupings for the data frame.
+"""
+ngroups(df::AbstractDataFrame) = 1
+ngroups(df::GroupedDataFrame) = length(df)
+ngroups(df::RepeatedDataFrame) = @_(prod(length(_[2]), df.repeaters)) * ngroups(df.df)
 
 """
     repeatby(df, col => vals...)

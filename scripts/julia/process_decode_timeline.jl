@@ -34,7 +34,7 @@ sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjec
 groups = groupby(stimulidf, [:sid, :trial, :condition])
 progress = Progress(length(groups), desc = "Evaluating decoder over timeline...")
 
-modelgroups = groupby(models_, [:source, :encoding, :cross_fold, :train_type])
+modelgroups = groupby(models_, [:condition, :source, :encoding, :cross_fold, :train_type])
 
 timelines = combine(groups) do trialdf
     sid, trial, sound_index, target_time, fold =
@@ -53,8 +53,8 @@ timelines = combine(groups) do trialdf
     result = combine(runsetup) do stimdf
         stimrow = only(eachrow(stimdf))
         train_type = stimrow.source == stimrow.target_source ? "athit-target" : "athit-other"
-        source = @_ filter(string(_) == stimrow.source, sources) |> only
-        encoding = encoding_map[stimrow.encoding]
+        source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
+        encoding = params.stimulus.encodings[stimrow.encoding]
         stim, = load_stimulus(source, sound_index, encoding, params.stimulus.samplerate,
             meta)
 
@@ -65,6 +65,7 @@ timelines = combine(groups) do trialdf
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
         modelrow = modelgroups[(
+            condition = stimrow.condition,
             source = string(source),
             encoding = stimrow.encoding,
             cross_fold = fold,
@@ -73,14 +74,14 @@ timelines = combine(groups) do trialdf
         ŷ = vec(modelrow.model(x'))
 
         function scoreat(offset)
-            start = clamp(1+offset+target_index, 1, maxlen)
-            stop = clamp(winlen+offset+target_index, 1, maxlen)
+            vstart = clamp(1+offset+target_index, 1, maxlen)
+            vstop = clamp(winlen+offset+target_index, 1, maxlen)
 
-            if stop <= start
+            if vstop <= vstart
                 Empty(DataFrame)
             else
-                y_ = view(y, start:stop)
-                ŷ_ = view(ŷ, start:stop)
+                y_ = view(y, vstart:vstop)
+                ŷ_ = view(ŷ, vstart:vstop)
 
                 DataFrame(
                     score = cor(y_, ŷ_),
@@ -97,14 +98,16 @@ timelines = combine(groups) do trialdf
         start = round(Int, -3*params.stimulus.samplerate)
         stop = round(Int, 3*params.stimulus.samplerate)
         steps = start:winstep:stop
-        # foldl(append!!, Map(scoreat), steps, init = Empty(DataFrame))
-        foldxt(append!!, Map(scoreat), steps, init = Empty(DataFrame))
+        foldl(append!!, Map(scoreat), steps, init = Empty(DataFrame))
     end
     next!(progress)
 
     result
 end
 ProgressMeter.finish!(progress)
+
+# Save the results
+# -----------------------------------------------------------------
 
 prefix = joinpath(processed_datadir("analyses", "decode-timeline"), "testing")
 GermanTrack.@save_cache prefix timelines
