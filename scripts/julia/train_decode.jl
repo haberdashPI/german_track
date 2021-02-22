@@ -84,6 +84,7 @@ GermanTrack.@save_cache prefix x_scores
 
 stimuli = Empty(Vector)
 
+starts = vcat(1,1 .+ cumsum(windows.len))
 progress = Progress(size(windows, 1), desc = "Organizing stimulus data...")
 for (i, trial) in enumerate(eachrow(windows))
     for (encoding, encoding_code) in pairs(params.stimulus.encodings)
