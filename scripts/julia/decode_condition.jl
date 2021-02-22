@@ -44,6 +44,11 @@ tcolors = ColorSchemes.imola[[0.3, 0.8]]
 # Paper plots
 # -----------------------------------------------------------------
 
+steps = range(0.1, 0.9, length = 15)
+steps = vcat(steps[1] - step(steps), steps)
+pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12].+1)]]
+pcolors[1] = GermanTrack.grayify(pcolors[1])
+
 target_len_y = 0.135
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
@@ -55,6 +60,8 @@ pl = @_ plotdf |>
     @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
     combine(__, :score => boot => AsTable) |>
+    transform(__, [:condition, :train_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" : cond) => :train_label) |>
     @vlplot(
         spacing = 5,
         config = {legend = {disable = true}},
@@ -72,8 +79,8 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:train_type, sort = collect(values(labels)),
-                title = "Source", scale = { range = "#".*hex.(tcolors) }}
+            color = {:train_label, sort = ["other", "global", "spatial", "object"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
         @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Decoding Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
@@ -127,6 +134,8 @@ pl = @_ plotdf |>
     @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
     combine(__, :score => boot => AsTable) |>
+    transform(__, [:condition, :train_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" : cond) => :train_label) |>
     @vlplot(
         spacing = 5,
         config = {legend = {disable = true}},
@@ -144,7 +153,8 @@ pl = @_ plotdf |>
         @vlplot(
             width = 60, height = 80,
             x = {:time, type = :quantitative, title = ""},
-            color = {:train_type, sort = ["Target", "Other"], title = "Source", scale = {range = "#".*hex.(tcolors)}}
+            color = {:train_label, sort = ["other", "global", "spatial", "object"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
         @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Mean Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
@@ -161,25 +171,21 @@ pl = @_ plotdf |>
     unstack(__, [:condition, :time, :sid], :train_type, :score) |>
     @transform(__, scorediff = :var"athit-target" .- :var"athit-other") |> #"
     groupby(__, [:condition, :time]) |>
-    @combine(__,
-        score = mean(:scorediff),
-        lower = lowerboot(:scorediff, alpha = 0.318),
-        upper = upperboot(:scorediff, alpha = 0.318)
-    ) |>
+    combine(__, :scorediff => boot(alpha = sqrt(0.05)) => AsTable) |>
     @vlplot(
         config = {legend = {disable = true}},
         height = 90, width = 100,
     ) +
     (
         @vlplot(x = {:time, type = :quantitative, title = "Time"}, color = {:condition, scale = {range = "#".*hex.(colors)}}) +
-        @vlplot({:line, strokeJoin = :round}, y = {:score, title = ["Target - Other", "Correlation"]}) +
+        @vlplot({:line, strokeJoin = :round}, y = {:value, title = ["Target - Other", "Correlation"]}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
         @vlplot({:text, align = "left", dx = 3},
             transform = [
                 {filter = "datum.time > 2.25 && datum.time < 2.5"},
             ],
             x = {:time, aggregate = :max, title = ""},
-            y = {:score, aggregate = :mean},
+            y = {:value, aggregate = :mean},
             text = {field = :condition}
             # color = {value = "black"}
         )
