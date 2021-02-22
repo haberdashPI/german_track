@@ -197,7 +197,8 @@ modelsetup = @_ groups |>
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
 toxy(df) = isempty(df) ? ([], []) :
-    (x[:, eegindices(df)], reduce(vcat, row.data for row in eachrow(df)))
+    (x[:, eegindices(df)], reshape(reduce(vcat, row.data for row in eachrow(df)),1,:))
+
 
 modelrun = combine(modelsetup) do fold
     train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
@@ -206,7 +207,7 @@ modelrun = combine(modelsetup) do fold
 
     (isempty(train[1]) || isempty(test) || isempty(val[1])) && return DataFrame()
 
-    model = GermanTrack.decoder(train[1], train[2]', fold.λ[1], Flux.Optimise.RADAM(),
+    model = GermanTrack.decoder(train[1], train[2], fold.λ[1], Flux.Optimise.RADAM(),
         progress = progress,
         batch = params.train.batchsize,
         max_steps = params.train.max_steps,
