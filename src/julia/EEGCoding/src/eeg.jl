@@ -2,7 +2,6 @@ export EEGData, select_bounds, all_indices, no_indices, resample!,
     RawEncoding, FilteredPower, FFTFiltered
 using DSP
 using DataStructures
-using ProgressMeter
 
 Base.@kwdef mutable struct EEGData
     label::Vector{String}
@@ -24,7 +23,7 @@ function resample!(eeg::EEGData,sr)
         return eeg
     end
 
-    progress = Progress(length(eeg.data))
+    # progress = Progress(length(eeg.data))
     Threads.@threads for i in eachindex(eeg.data)
         old = eeg.data[i]
 
@@ -38,7 +37,7 @@ function resample!(eeg::EEGData,sr)
             eeg.data[i][chan,:] = DSP.resample(old[chan,:],ratio)
         end
 
-        next!(progress)
+        # next!(progress)
     end
     eeg.fs = sr
 
@@ -95,7 +94,7 @@ end
 Base.string(::RawEncoding) = "raw"
 function encode(x::EEGData,tofs,::RawEncoding)
     if !ismissing(tofs)
-        @info "Resample EEG to $tofs Hz."
+        # @info "Resample EEG to $tofs Hz."
     end
     resample!(x,tofs)
 end
@@ -124,7 +123,7 @@ function FFTFiltered(bands::OrderedDict,seconds,fs,nch)
 end
 function encode(x::EEGData,tofs,filter::FFTFiltered)
     if framerate(x) != tofs
-        @info "Resample EEG to $tofs Hz."
+        # @info "Resample EEG to $tofs Hz."
     end
     x = resample!(x,tofs)
     labels = mapreduce(vcat,keys(filter.bands)) do band
@@ -237,7 +236,7 @@ function encode(x::EEGData,tofs,filter::FilteredPower)
                 abs.(DSP.Util.hilbert(filt(bandpass,view(x.data[trial],i,:))))
         end
     end
-    @info "Resample $(filter.name) power to $tofs Hz."
+    # @info "Resample $(filter.name) power to $tofs Hz."
     resample!(EEGData(string.(x.label,"_",filter.name),x.fs,power),tofs)
 end
 

@@ -176,13 +176,18 @@ function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata();
     encoding = RawEncoding(), framerate = missing)
 
     eeg_files = dfhit = @_ readdir(dir) |> filter(endswith(_, string(".",ext)), __)
+    progress = Progress(length(eeg_files))
     subjects = Dict(
-        sidfor(file) => load_subject(
-            joinpath(dir, file), stim_info,
-            encoding = encoding,
-            framerate = framerate
-        ) for file in eeg_files)
+        sidfor(file) => begin
+            result = load_subject(
+                joinpath(dir, file), stim_info,
+                encoding = encoding,
+                framerate = framerate
+            )
+            next!(progress)
+        end for file in eeg_files)
     events = @_ mapreduce(_.events, append!!, values(subjects))
+    ProgressMeter.finish!(progress)
 
     subjects, events
 end
