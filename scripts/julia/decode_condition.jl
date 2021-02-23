@@ -117,7 +117,7 @@ pl |> save(joinpath(dir, "fig2c.svg"))
 # -----------------------------------------------------------------
 
 mkpath(joinpath(dir, "present"))
-thresh = 0.05
+thresh = 0.1
 
 pldata = @_ timelines |>
     groupby(__, Not([:encoding, :source])) |>
@@ -139,7 +139,7 @@ pldata = @_ timelines |>
     stack(__, r"favor", variable_name = :favor) |>
     @transform(__, favor = replace.(:favor, r"favor_(.*)" => s"\1")) |>
     groupby(__, [:condition, :region_label, :favor]) |>
-    combine(__, :value => boot => AsTable)
+    combine(__, :value => boot(alpha = sqrt(0.05)) => AsTable)
 
 barwidth = 18
 pl = @_ pldata |>
