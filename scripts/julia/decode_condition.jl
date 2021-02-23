@@ -117,7 +117,7 @@ pl |> save(joinpath(dir, "fig2c.svg"))
 # -----------------------------------------------------------------
 
 mkpath(joinpath(dir, "present"))
-thresh = 0.5
+thresh = 0.05
 
 pldata = @_ timelines |>
     groupby(__, Not([:encoding, :source])) |>
