@@ -31,14 +31,15 @@ meta = GermanTrack.load_stimulus_metadata()
 # -----------------------------------------------------------------
 
 sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
-groups = groupby(stimulidf, [:sid, :trial, :condition])
-progress = Progress(length(groups), desc = "Evaluating decoder over timeline...")
+groups = @_ groupby(stimulidf, [:sid, :trial]) |>
+    repeatby(__, :train_condition => unique(stimulidf.condition))
 
 modelgroups = groupby(models_, [:condition, :source, :encoding, :cross_fold, :train_type])
 
+p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
-    sid, trial, sound_index, target_time, fold =
-        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold]] |>
+    sid, trial, sound_index, target_time, fold, condition =
+        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition]] |>
         eachrow |> unique |> only
 
     trialdata = withlags(subjects[sid].eeg[trial]', params.stimulus.lags)
@@ -64,13 +65,16 @@ timelines = combine(groups) do trialdf
         y_μ, y_σ = stimrow[[:datamean, :datastd]]
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
-        modelrow = modelgroups[(
-            condition = stimrow.condition,
+        modelkey = (
+            condition = stimrow.train_condition,
             source = string(source),
             encoding = stimrow.encoding,
             cross_fold = fold,
             train_type = train_type
-        )] |> eachrow |> only
+        )
+        haskey(modelgroups, modelkey) || return DataFrame()
+
+        modelrow = modelgroups[modelkey] |> eachrow |> only
         ŷ = vec(modelrow.model(x'))
 
         function scoreat(offset)
@@ -88,6 +92,7 @@ timelines = combine(groups) do trialdf
                     time = offset/params.stimulus.samplerate,
                     sid = sid,
                     trial = trial,
+                    condition = condition,
                     sound_index = sound_index,
                     fold = fold,
                     train_type = train_type,
@@ -100,11 +105,11 @@ timelines = combine(groups) do trialdf
         steps = start:winstep:stop
         foldl(append!!, Map(scoreat), steps, init = Empty(DataFrame))
     end
-    next!(progress)
 
+    next!(p)
     result
 end
-ProgressMeter.finish!(progress)
+ProgressMeter.finish!(p)
 
 # Save the results
 # -----------------------------------------------------------------
