@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
-    shrink, wsem, tcombine, testsplit, ngroups
+    shrink, wsem, tcombine, testsplit, ngroups, prcombine
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -89,6 +89,18 @@ struct NoProgress; end
 ProgressMeter.next!(::NoProgress) = nothing
 
 """
+    prcombine(df, fn; showprogress = true, desc = "Progress")
+    prcombine(fn, df; showprogress = true, desc = "Progress")
+
+Like `combine`, but also shows a progress bar.
+"""
+function prcombine(fn::Base.Callable, df; kwds...)
+    @assert !(df isa Base.Callable)
+    prcombine(df, fn; kwds...)
+end
+prcombine(df, fn; kwds...) = __combine__(df, fn, foldl; kwds...)
+
+"""
     tcombine(df, fn; showprogress = true, desc = "Progress")
     tcombine(fn, df; showprogress = true, desc = "Progress")
 
@@ -99,8 +111,12 @@ Since this assumes a long running process, it creates a progress bar by default.
 change the description for the progress bar using `desc`.
 
 """
-tcombine(fn::Base.Callable, df; kwds...) = tcombine(df, fn; kwds...)
-function tcombine(df::GroupedDataFrame, fn;
+function tcombine(fn::Base.Callable, df; kwds...)
+    @assert !(df isa Base.Callable)
+    tcombine(df, fn; kwds...)
+end
+tcombine(df, fn; kwds...) = __combine__(df, fn, foldxt; kwds...)
+function __combine__(df::GroupedDataFrame, fn, folder;
     showprogress = true, desc = "Processing...",
     progress = showprogress ? ProgressMeter(length(df)) : NoProgress())
 
@@ -116,10 +132,10 @@ function tcombine(df::GroupedDataFrame, fn;
         result
     end
 
-    foldxt(append!!, Map(fn_), collect(pairs(df)))
+    folder(append!!, Map(fn_), collect(pairs(df)))
 end
 
-function tcombine(df::DataFrame, fn; showprogress = true, desc = "Processing...",
+function __combine__(df::DataFrame, fn, folder; showprogress = true, desc = "Processing...",
     progress = NoProgress())
 
     fn(df)
@@ -274,11 +290,11 @@ DataFramesMeta.where(rd::RepeatedDataFrame{<:GroupedDataFrame}, f) =
 
 glength(x::GroupedDataFrame) = length(x)
 glength(x::DataFrame) = 1
-function tcombine(rd::RepeatedDataFrame, fn; showprogress = true, desc = "Processing...",
+function __combine__(rd::RepeatedDataFrame, fn, folder; showprogress = true, desc = "Processing...",
     progress = !showprogress ? NoProgress() :
         Progress(glength(rd.df) * prod(x -> length(x[2]), rd.repeaters), desc = desc))
 
-    combine_repeat(rd, df -> tcombine(df, fn, progress = progress), foldxt)
+    combine_repeat(rd, df -> __combine__(df, fn, folder, progress = progress), folder)
 end
 
 function addcols(df::AbstractDataFrame, repeat)
