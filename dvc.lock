@@ -29,6 +29,6 @@ decode-timeline:
     size: 2258
   outs:
   - path: data/processed/analyses/decode-timeline
-    md5: e9c581fa4d50269e410523707b602298.dir
-    size: 16933018
+    md5: 754211d0b2931a2b352998564150f48d.dir
+    size: 55961226
     nfiles: 1
