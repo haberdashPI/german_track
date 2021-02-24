@@ -318,7 +318,11 @@ function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
         for ap in rd.applyers
             input = ap(input)
         end
-        maybe_addcols(combinefn(input), repeat)
+        if isempty(input)
+            Empty(DataFrame)
+        else
+            maybe_addcols(combinefn(input), repeat)
+        end
     end
     @_ rd.repeaters |>
         map(_1[1] .=> _1[2], __) |>
