@@ -185,6 +185,7 @@ function load_all_subjects(dir, ext, stim_info = load_stimulus_metadata();
                 framerate = framerate
             )
             next!(progress)
+            result
         end for file in eeg_files)
     events = @_ mapreduce(_.events, append!!, values(subjects))
     ProgressMeter.finish!(progress)
