@@ -86,9 +86,9 @@ pl = @_ plotdf |>
             text = :train_type_lbl
             # color = {value = "black"}
         ) +
-        @vlplot({:text, align = "right", baseline = "top", dx = 3, dy = 9},
+        @vlplot({:text, align = "right", baseline = "top", dx = 3, dy = 3},
             transform = [
-                {filter = "datum.time > 1.2 && datum.time < 1.3 && datum.train_type == 'Other Sources'"},
+                {filter = "datum.time > 1.3 && datum.time < 1.4 && datum.train_type == 'Other Sources'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},

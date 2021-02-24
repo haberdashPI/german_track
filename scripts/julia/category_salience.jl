@@ -36,92 +36,6 @@ indmeans = @_ summaries |>
 
 CSV.write(joinpath(processed_datadir("analyses"), "behavior_salience.csv"), indmeans)
 
-# Absolute values (Figure 3A)
-# -----------------------------------------------------------------
-
-means = @_ indmeans |>
-    groupby(__, [:condition, :salience_label]) |>
-    combine(__,
-        :prop => mean => :mean,
-        :prop => lowerboot => :lower,
-        :prop => upperboot => :upper
-    ) |>
-    transform(__, [:condition, :salience_label] => ByRow(string) => :condition_salience)
-
-barwidth = 18
-ytitle = "Hit Rate"
-yrange = [0, 1]
-pl = means |>
-    @vlplot(
-        height = 160, width = 242, autosize = "fit",
-        config = {
-            bar = {discreteBandSize = barwidth},
-            axis = {titlePadding = 13, labelFont = "Helvetica", titleFont = "Helvetica"},
-            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
-            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
-            mark = {font = "Helvetica"},
-            text = {font = "Helvetica"},
-            title = {font = "Helvetica", subtitleFont = "Helvetica"}
-        },
-    ) +
-    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
-        transform = [{filter = "datum.salience_label == 'high'"}],
-        color = {:condition_salience, title = nothing, scale = {range = "#".*hex.(lightdark)}},
-        x = {:condition, axis = {title = "", labelAngle = 0,
-            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
-        y = {:mean, title = ytitle, scale = {domain = yrange}}
-    ) +
-    @vlplot({:rule, xOffset = -(barwidth/2)},
-        transform = [{filter = "datum.salience_label == 'high'"}],
-        color = {value = "black"},
-        x = {:condition, title = nothing},
-        y = {:lower, title = ""}, y2 = :upper
-    ) +
-    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
-        transform = [{filter = "datum.salience_label == 'low'"}],
-        color = {:condition_salience, title = nothing},
-        x = {:condition, title = nothing},
-        y = {:mean, title = ytitle}
-    ) +
-    @vlplot({:rule, xOffset = (barwidth/2)},
-        transform = [{filter = "datum.salience_label == 'low'"}],
-        x = {:condition, title = nothing},
-        color = {value = "black"},
-        y = {:lower, title = ""}, y2 = :upper
-    ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
-        transform = [{filter = "datum.salience_label == 'high' && datum.condition == 'global'"}],
-        # x = {datum = "spatial"}, y = {datum = 0.},
-        x = {:condition, axis = {title = ""}},
-        y = {datum = yrange[1]},
-        text = {value = "High Salience"},
-    ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
-        transform = [{filter = "datum.salience_label == 'low' && datum.condition == 'global'"}],
-        # x = {datum = "spatial"}, y = {datum = },
-        x = {:condition, axis = {title = ""}},
-        y = {datum = yrange[1]},
-        text = {value = "Low Salience"},
-    ); # +
-    # (
-    #     @vlplot(data = {values = [{}]}) +
-    #     @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-top",
-    #         dx = -2barwidth - 17, dy = 22},
-    #         color = {value = "#"*hex(darkgray)},
-    #         x = {datum = "global"},
-    #         y = {datum = yrange[1]},
-    #         text = {datum = ["Less distinct", "response during switch"]}
-    #     ) +
-    #     @vlplot({:text, angle = 0, fontSize = 9, align = "left", baseline = "line-bottom",
-    #         dx = -2barwidth - 17, dy = -24},
-    #         color = {value = "#"*hex(darkgray)},
-    #         x = {datum = "global"},
-    #         y = {datum = yrange[2]},
-    #         text = {datum = ["More distinct", "response during switch"]}
-    #     )
-    # ) +
-pl |> save(joinpath(dir, "fig3a.svg"))
-
 # Differences (Figure 3B)
 # -----------------------------------------------------------------
 
@@ -129,16 +43,12 @@ diffmeans = @_ indmeans |>
     unstack(__, [:condition, :sid], :salience_label, :prop) |>
     transform!(__, [:high, :low] => (-) => :meandiff) |>
     groupby(__, :condition) |>
-    combine(__,
-        :meandiff => mean => :meandiff,
-        :meandiff => lowerboot => :lower,
-        :meandiff => upperboot => :upper
-    )
+    combine(__, :meandiff => boot => AsTable)
 
-barwidth = 18
+barwidth = 22
 pl = @_ diffmeans |>
     @vlplot(
-        width = 60, height = 140,
+        width = 130, height = 100,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -152,12 +62,12 @@ pl = @_ diffmeans |>
     @vlplot(:bar,
         x = {:condition,
             title = "",
-            axis = {labelAngle = -32, labelAlign = "right",
+            axis = {labelAngle = 0, labelAlign = "center",
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
         },
         color = {:condition, scale = {
             range = urlcol.(keys(seqpatterns))}},
-        y = {:meandiff,
+        y = {:value,
             title = ["High - Low Salience", "(Hit Rate)"]
         }
     ) +
@@ -360,7 +270,7 @@ pl = @_ corrected_data |>
     groupby(__, [:condition, :condition_label, :winstart]) |>
     combine(__, :mean => boot(alpha = sqrt(0.05)) => AsTable) |>
     @vlplot(
-        width = 130, height = 140,
+        width = 130, height = 100,
         config = {
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
             legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -469,7 +379,7 @@ pl = @_ corrected_data |>
     groupby(__, [:condition]) |>
     combine(__, :mean => boot => AsTable) |>
     @vlplot(
-        width = 60, height = 140,
+        width = 130, height = 100,
         config = {
             bar = {discreteBandSize = barwidth},
             axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
@@ -483,7 +393,7 @@ pl = @_ corrected_data |>
     @vlplot(:bar,
         x = {:condition,
             title = "",
-            axis = {labelAngle = -32, labelAlign = "right",
+            axis = {labelAngle = 0, labelAlign = "center",
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
         },
         color = {:condition, scale = {range = urlcol.(keys(seqpatterns))}},
@@ -501,6 +411,17 @@ pl = @_ corrected_data |>
         @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
             y = {datum = nullmean},
             color = {value = "black"})
+    ) +
+    # "Null Model" text annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        # white rectangle to give text a background
+        @vlplot(mark = {:text, size = 11, baseline = "middle", dy = -5, dx = 23,
+            align = "left"},
+            x = {datum = "spatial"}, y = {datum = nullmean},
+            text = {value = ["Null Model", "Accuracy"]},
+            color = {value = "black"}
+        )
     );
 plotfile = joinpath(dir, "fig3c.svg")
 pl |> save(plotfile)
@@ -521,24 +442,30 @@ background = pyimport("svgutils").transform.fromstring("""
     </svg>
 """).save(background_file)
 
-fig = svg.Figure("178mm", "75mm",
+fig = svg.Figure("178mm", "115mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3b.svg")).move(0,15),
         svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(90,15)
+            scale(0.1).move(160,15)
     ).move(0, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3c.svg")).move(0,15),
         svg.Text("B", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(90,15)
-    ).move(130, 0),
+            scale(0.1).move(160,15)
+    ).move(260, 0),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig3d.svg")).move(0,15),
         svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(190,0)
-    ).move(260, 0)
+            scale(0.1).move(190,-10)
+    ).move(0, 160),
+    svg.Panel(
+        svg.SVG(joinpath(dir, "fig3e.svg")).move(13.5,5),
+        svg.Text("D", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
+            scale(0.1).move(160,15)
+    ).move(260, 160),
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig3.svg"))

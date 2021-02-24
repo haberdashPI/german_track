@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='ASCII' standalone='yes'?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="178.0mm" viewBox="0 0 178.0mm 75.0mm" height="75.0mm">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="178.0mm" viewBox="0 0 178.0mm 115.0mm" height="115.0mm">
   <g transform="translate(0, 0) scale(1.333) ">
     <g><rect width="100%" height="100%" fill="white"/>
     </g>
@@ -17,42 +17,42 @@
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
 </pattern>
 </defs>
-  <rect width="120" height="188" fill="white"/>
+  <rect width="190" height="132" fill="white"/>
   <g fill="none" stroke-miterlimit="10" transform="translate(55,10)">
     <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
       <g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h60v140h-60Z" stroke="#ddd"/>
+        <path class="background" aria-hidden="true" d="M0.5,0.5h130v100h-130Z" stroke="#ddd"/>
         <g>
           <g class="mark-group role-axis" aria-hidden="true">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,140)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,93)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,47)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,67)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,33)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
           <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
-            <g transform="translate(0.5,140.5)">
+            <g transform="translate(0.5,100.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(10,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(30,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(50,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(21,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(65,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(108,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(9.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Global</text>
-                  <text text-anchor="end" transform="translate(29.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Object</text>
-                  <text text-anchor="end" transform="translate(49.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                  <text text-anchor="middle" transform="translate(21.166666666666664,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Global</text>
+                  <text text-anchor="middle" transform="translate(64.5,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Object</text>
+                  <text text-anchor="middle" transform="translate(107.83333333333334,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Spatial</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="60" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="130" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
@@ -63,22 +63,22 @@
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(0,140)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,93)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,47)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,67)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,33)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                   <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(-7,143)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.0</text>
-                  <text text-anchor="end" transform="translate(-7,96.33333333333333)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.1</text>
-                  <text text-anchor="end" transform="translate(-7,49.66666666666666)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.2</text>
+                  <text text-anchor="end" transform="translate(-7,103)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.0</text>
+                  <text text-anchor="end" transform="translate(-7,69.66666666666666)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.1</text>
+                  <text text-anchor="end" transform="translate(-7,36.33333333333333)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.2</text>
                   <text text-anchor="end" transform="translate(-7,3)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.3</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,140)" x2="0" y2="-140" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="0" y2="-100" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(-39,70) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
+                  <text text-anchor="middle" transform="translate(-39,50) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
                     <tspan>High - Low Salience</tspan>
                     <tspan x="0" dy="13">(Hit Rate)</tspan>
                   </text>
@@ -88,14 +88,14 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": global; condition: global; High - Low Salience, (Hit Rate): 0.216346646185" role="graphics-symbol" aria-roledescription="bar" d="M1,39.03823178016725h18v100.96176821983275h-18Z" fill="url(#stripe1)"/>
-            <path aria-label=": object; condition: object; High - Low Salience, (Hit Rate): 0.0779953917051" role="graphics-symbol" aria-roledescription="bar" d="M21,103.6021505376344h18v36.3978494623656h-18Z" fill="url(#stripe2)"/>
-            <path aria-label=": spatial; condition: spatial; High - Low Salience, (Hit Rate): 0.115258576549" role="graphics-symbol" aria-roledescription="bar" d="M41,86.21266427718042h18v53.78733572281958h-18Z" fill="url(#stipre3)"/>
+            <path aria-label=": global; condition: global; High - Low Salience, (Hit Rate): 0.216346646185" role="graphics-symbol" aria-roledescription="bar" d="M10.666666666666664,27.88445127154806h22v72.11554872845194h-22Z" fill="url(#stripe1)"/>
+            <path aria-label=": spatial; condition: spatial; High - Low Salience, (Hit Rate): 0.115258576549" role="graphics-symbol" aria-roledescription="bar" d="M97.33333333333334,61.5804744837003h22v38.4195255162997h-22Z" fill="url(#stipre3)"/>
+            <path aria-label=": object; condition: object; High - Low Salience, (Hit Rate): 0.0779953917051" role="graphics-symbol" aria-roledescription="bar" d="M54,74.00153609831028h22v25.998463901689718h-22Z" fill="url(#stripe2)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": global; upper_lower: 0.278778801843; upper: 0.278778801843; lower: 0.152988031234" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,68.6055854241338)" x2="0" y2="-58.70235961768218" stroke="black"/>
-            <line aria-label=": object; upper_lower: 0.12465437788; upper: 0.12465437788; lower: 0.0328533026114" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,124.66845878136199)" x2="0" y2="-42.840501792114665" stroke="black"/>
-            <line aria-label=": spatial; upper_lower: 0.171173515105; upper: 0.171173515105; lower: 0.0602593766001" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,111.87895758661894)" x2="0" y2="-51.75993130227003" stroke="black"/>
+            <line aria-label=": global; upper_lower: 0.281434811828; upper: 0.281434811828; lower: 0.155643881208" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(21.666666666666664,48.11870626386761)" x2="0" y2="-41.93031020651992" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.171537698413; upper: 0.171537698413; lower: 0.0606241999488" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(108.33333333333334,79.79193335040111)" x2="0" y2="-36.971166154633906" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.125749327957; upper: 0.125749327957; lower: 0.0318721198157" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(65,89.37596006144392)" x2="0" y2="-31.292402713773676" stroke="black"/>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -104,7 +104,7 @@
   </g>
 </g>
       <text x="2" y="10" font-size="12" font-family="Helvetica" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">A</text>
-      <g transform="translate(90, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+      <g transform="translate(160, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
         <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
     </g>
     <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
@@ -118,7 +118,7 @@
     </defs>
 </g>
     </g>
-    <g transform="translate(130, 0) scale(1) ">
+    <g transform="translate(260, 0) scale(1) ">
       <g class="marks" transform="translate(0, 15) scale(1) "><defs><pattern id="stripe1" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#1A5862;"/>
@@ -132,44 +132,41 @@
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
 </pattern>
 </defs>
-  <rect width="122" height="188" fill="white"/>
+  <rect width="242" height="132" fill="white"/>
   <g fill="none" stroke-miterlimit="10" transform="translate(55,10)">
     <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
       <g transform="translate(0,0)">
-        <path class="background" aria-hidden="true" d="M0.5,0.5h60v140h-60Z" stroke="#ddd"/>
+        <path class="background" aria-hidden="true" d="M0.5,0.5h130v100h-130Z" stroke="#ddd"/>
         <g>
           <g class="mark-group role-axis" aria-hidden="true">
             <g transform="translate(0.5,0.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-grid" pointer-events="none">
-                  <line transform="translate(0,140)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,112)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,84)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,56)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,28)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,0)" x2="60" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,80)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,40)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
             </g>
           </g>
           <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis for a discrete scale with 3 values: global, object, spatial">
-            <g transform="translate(0.5,140.5)">
+            <g transform="translate(0.5,100.5)">
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(10,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(30,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(50,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(21,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(65,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(108,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(9.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Global</text>
-                  <text text-anchor="end" transform="translate(29.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Object</text>
-                  <text text-anchor="end" transform="translate(49.5,7) rotate(328) translate(0,8)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Spatial</text>
+                  <text text-anchor="middle" transform="translate(21.166666666666664,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Global</text>
+                  <text text-anchor="middle" transform="translate(64.5,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Object</text>
+                  <text text-anchor="middle" transform="translate(107.83333333333334,15)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">Spatial</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,0)" x2="60" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,0)" x2="130" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
@@ -180,26 +177,20 @@
               <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
               <g>
                 <g class="mark-rule role-axis-tick" pointer-events="none">
-                  <line transform="translate(0,140)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,112)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,84)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,56)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                  <line transform="translate(0,28)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,80)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,40)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                   <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-label" pointer-events="none">
-                  <text text-anchor="end" transform="translate(-7,143)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.5</text>
-                  <text text-anchor="end" transform="translate(-7,115)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.6</text>
-                  <text text-anchor="end" transform="translate(-7,87.00000000000001)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.7</text>
-                  <text text-anchor="end" transform="translate(-7,58.999999999999986)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.8</text>
-                  <text text-anchor="end" transform="translate(-7,30.999999999999993)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.9</text>
+                  <text text-anchor="end" transform="translate(-7,83)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.6</text>
+                  <text text-anchor="end" transform="translate(-7,42.99999999999999)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.8</text>
                   <text text-anchor="end" transform="translate(-7,3)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">1.0</text>
                 </g>
                 <g class="mark-rule role-axis-domain" pointer-events="none">
-                  <line transform="translate(0,140)" x2="0" y2="-140" stroke="#888" stroke-width="1" opacity="1"/>
+                  <line transform="translate(0,100)" x2="0" y2="-100" stroke="#888" stroke-width="1" opacity="1"/>
                 </g>
                 <g class="mark-text role-axis-title" pointer-events="none">
-                  <text text-anchor="middle" transform="translate(-39,70) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
+                  <text text-anchor="middle" transform="translate(-39,50) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
                     <tspan>High/Low Salience</tspan>
                     <tspan x="0" dy="13">Classification</tspan>
                   </text>
@@ -209,17 +200,23 @@
             </g>
           </g>
           <g class="mark-rect role-mark layer_0_marks" role="graphics-object" aria-roledescription="rect mark container">
-            <path aria-label=": global; condition: global; High/Low Salience, Classification: 0.949960445209" role="graphics-symbol" aria-roledescription="bar" d="M2,14.011075341384277h16v125.98892465861573h-16Z" fill="url(#stripe1)"/>
-            <path aria-label=": object; condition: object; High/Low Salience, Classification: 0.752063387215" role="graphics-symbol" aria-roledescription="bar" d="M22,69.42225157982683h16v70.57774842017317h-16Z" fill="url(#stripe2)"/>
-            <path aria-label=": spatial; condition: spatial; High/Low Salience, Classification: 0.662417574025" role="graphics-symbol" aria-roledescription="bar" d="M42,94.52307927292169h16v45.47692072707831h-16Z" fill="url(#stipre3)"/>
+            <path aria-label=": global; condition: global; High/Low Salience, Classification: 0.991681007804" role="graphics-symbol" aria-roledescription="bar" d="M10.666666666666664,1.6637984392881444h22v98.33620156071186h-22Z" fill="url(#stripe1)"/>
+            <path aria-label=": object; condition: object; High/Low Salience, Classification: 0.779421894903" role="graphics-symbol" aria-roledescription="bar" d="M54,44.11562101931141h22v55.88437898068859h-22Z" fill="url(#stripe2)"/>
+            <path aria-label=": spatial; condition: spatial; High/Low Salience, Classification: 0.773800300787" role="graphics-symbol" aria-roledescription="bar" d="M97.33333333333334,45.23993984259613h22v54.76006015740387h-22Z" fill="url(#stipre3)"/>
           </g>
           <g class="mark-rule role-mark layer_1_marks" role="graphics-object" aria-roledescription="rule mark container">
-            <line aria-label=": global; upper_lower: 1.00562031736; upper: 1.00562031736; lower: 0.912064058191" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(10,24.622063706431497)" x2="0" y2="-26.195752567981923" stroke="black"/>
-            <line aria-label=": object; upper_lower: 0.843596300697; upper: 0.843596300697; lower: 0.666014878974" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(30,93.51583388728031)" x2="0" y2="-49.72279808256213" stroke="black"/>
-            <line aria-label=": spatial; upper_lower: 0.760231114949; upper: 0.760231114949; lower: 0.566281891751" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(50,121.44107030980052)" x2="0" y2="-54.30578249541699" stroke="black"/>
+            <line aria-label=": global; upper_lower: 1.00032422126; upper: 1.00032422126; lower: 0.98687806732" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(21.666666666666664,2.624386536001544)" x2="0" y2="-2.6892307872636634" stroke="black"/>
+            <line aria-label=": object; upper_lower: 0.876514463412; upper: 0.876514463412; lower: 0.692047149639" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(65,61.59057007229396)" x2="0" y2="-36.8934627547427" stroke="black"/>
+            <line aria-label=": spatial; upper_lower: 0.872045415453; upper: 0.872045415453; lower: 0.687905909393" role="graphics-symbol" aria-roledescription="errorbar" transform="translate(108.33333333333334,62.418818121418916)" x2="0" y2="-36.827901212089856" stroke="black"/>
           </g>
           <g class="mark-rule role-mark layer_2_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-            <line transform="translate(60,115.43184744610734)" x2="-60" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+            <line transform="translate(130,82.45131960436238)" x2="-130" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+          </g>
+          <g class="mark-text role-mark layer_3_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
+            <text text-anchor="start" transform="translate(131.33333333333334,80.45131960436238)" font-family="Helvetica" font-size="11px" fill="black">
+              <tspan>Null Model</tspan>
+              <tspan x="0" dy="13">Accuracy</tspan>
+            </text>
           </g>
         </g>
         <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -228,7 +225,7 @@
   </g>
 </g>
       <text x="2" y="10" font-size="12" font-family="Helvetica" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">B</text>
-      <g transform="translate(90, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+      <g transform="translate(160, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
         <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
     </g>
     <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
@@ -239,44 +236,44 @@
     </g>
 </g>
     </g>
-    <g transform="translate(260, 0) scale(1) ">
+    <g transform="translate(0, 160) scale(1) ">
       <g class="marks" transform="translate(0, 15) scale(1) ">
         <defs>
           <clipPath id="clip1">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
           <clipPath id="clip2">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
           <clipPath id="clip3">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
           <clipPath id="clip4">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
           <clipPath id="clip5">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
           <clipPath id="clip6">
-            <rect x="0" y="0" width="130" height="140"/>
+            <rect x="0" y="0" width="130" height="100"/>
           </clipPath>
         </defs>
-        <rect width="245" height="187" fill="white"/>
+        <rect width="245" height="147" fill="white"/>
         <g fill="none" stroke-miterlimit="10" transform="translate(55,10)">
           <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
             <g transform="translate(0,0)">
-              <path class="background" aria-hidden="true" d="M0.5,0.5h130v140h-130Z" stroke="#ddd"/>
+              <path class="background" aria-hidden="true" d="M0.5,0.5h130v100h-130Z" stroke="#ddd"/>
               <g>
                 <g class="mark-group role-axis" aria-hidden="true">
-                  <g transform="translate(0.5,140.5)">
+                  <g transform="translate(0.5,100.5)">
                     <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
                     <g>
                       <g class="mark-rule role-axis-grid" pointer-events="none">
-                        <line transform="translate(0,-140)" x2="0" y2="140" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(33,-140)" x2="0" y2="140" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(65,-140)" x2="0" y2="140" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(98,-140)" x2="0" y2="140" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(130,-140)" x2="0" y2="140" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(33,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(65,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(98,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(130,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
@@ -287,11 +284,8 @@
                     <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
                     <g>
                       <g class="mark-rule role-axis-grid" pointer-events="none">
-                        <line transform="translate(0,140)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,112)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,84)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,56)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,28)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,80)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,40)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                         <line transform="translate(0,0)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
                       </g>
                     </g>
@@ -299,7 +293,7 @@
                   </g>
                 </g>
                 <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'Time relative to target onset (s)' for a linear scale with values from 0 to 4">
-                  <g transform="translate(0.5,140.5)">
+                  <g transform="translate(0.5,100.5)">
                     <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
                     <g>
                       <g class="mark-rule role-axis-tick" pointer-events="none">
@@ -331,26 +325,20 @@
                     <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
                     <g>
                       <g class="mark-rule role-axis-tick" pointer-events="none">
-                        <line transform="translate(0,140)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,112)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,84)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,56)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
-                        <line transform="translate(0,28)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,80)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,40)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                         <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
                       </g>
                       <g class="mark-text role-axis-label" pointer-events="none">
-                        <text text-anchor="end" transform="translate(-7,143)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.5</text>
-                        <text text-anchor="end" transform="translate(-7,115)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.6</text>
-                        <text text-anchor="end" transform="translate(-7,87.00000000000001)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.7</text>
-                        <text text-anchor="end" transform="translate(-7,58.999999999999986)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.8</text>
-                        <text text-anchor="end" transform="translate(-7,30.999999999999993)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.9</text>
+                        <text text-anchor="end" transform="translate(-7,83)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.6</text>
+                        <text text-anchor="end" transform="translate(-7,42.99999999999999)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">0.8</text>
                         <text text-anchor="end" transform="translate(-7,3)" font-family="Helvetica" font-size="10px" fill="#000" opacity="1">1.0</text>
                       </g>
                       <g class="mark-rule role-axis-domain" pointer-events="none">
-                        <line transform="translate(0,140)" x2="0" y2="-140" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,100)" x2="0" y2="-100" stroke="#888" stroke-width="1" opacity="1"/>
                       </g>
                       <g class="mark-text role-axis-title" pointer-events="none">
-                        <text text-anchor="middle" transform="translate(-39,70) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
+                        <text text-anchor="middle" transform="translate(-39,50) rotate(-90) translate(0,-2)" font-family="Helvetica" font-size="11px" font-weight="bold" fill="#000" opacity="1">
                           <tspan>High/Low Salience</tspan>
                           <tspan x="0" dy="13">Classification</tspan>
                         </text>
@@ -361,28 +349,28 @@
                 </g>
                 <g class="mark-group role-scope layer_0_layer_0_pathgroup" role="graphics-object" aria-roledescription="group mark container">
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-line role-mark layer_0_layer_0_marks" clip-path="url(#clip1)" role="graphics-object" aria-roledescription="line mark container">
-                        <path aria-label="condition: global; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.598531614245" role="graphics-symbol" aria-roledescription="line mark" d="M0,112.41114801136602L2.7659574468085104,126.40942352929103L5.531914893617021,130.56692740878418L8.297872340425531,134.69573740062097L11.063829787234042,138.04661619713718L13.829787234042554,133.19261590306232L16.595744680851062,132.08464074060862L19.361702127659573,124.78189624134784L22.127659574468083,117.02900850643113L24.893617021276597,118.98018222860475L27.659574468085108,120.90751051134801L30.425531914893618,113.28358085068234L33.191489361702125,114.05455785410037L35.95744680851064,110.30570015739877L38.723404255319146,107.91191971415235L41.48936170212766,98.13406961678106L44.25531914893617,94.21404727316984L47.02127659574468,92.3555740721764L49.787234042553195,90.67655360526061L52.5531914893617,93.31348978313946L55.319148936170215,94.35114306339204L58.08510638297872,90.29230093138528L60.851063829787236,76.89066992526553L63.61702127659574,73.37636652064305L66.38297872340425,68.06166392086179L69.14893617021276,58.694148930848655L71.91489361702128,56.69430594456253L74.68085106382979,51.2143480877011L77.44680851063829,38.16867997309475L80.2127659574468,30.899515166516597L82.97872340425532,28.09663429135151L85.74468085106382,31.332478680868974L88.51063829787233,30.244748958708723L91.27659574468085,31.809896337063496L94.04255319148936,27.978396697721394L96.80851063829786,22.49795672773297L99.57446808510639,21.061638245560395L102.3404255319149,17.369871937326288L105.1063829787234,18.087694332972028L107.87234042553192,17.10679255967037L110.63829787234043,17.47395371132864L113.40425531914894,15.005354965116645L116.17021276595744,11.395485104368852L118.93617021276596,12.187910769205047L121.70212765957447,8.873572391317367L124.46808510638299,8.804469453163524L127.23404255319149,10.77217904696289L130,12.000779858319511" stroke="#0F3C5F" stroke-width="2" stroke-linecap="round" stroke-dasharray="1,0"/>
+                        <path aria-label="condition: global; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.548062899508" role="graphics-symbol" aria-roledescription="line mark" d="M0,90.38742009833392L2.7659574468085104,92.91922709590827L5.531914893617021,95.53645927185399L8.297872340425531,88.74901501151398L11.063829787234042,91.26149466236042L13.829787234042554,82.60608262069633L16.595744680851062,82.07223452149779L19.361702127659573,85.9485190588966L22.127659574468083,82.48146646563386L24.893617021276597,78.91685108443014L27.659574468085108,73.30490590832592L30.425531914893618,73.66577326002795L33.191489361702125,77.91455988622238L35.95744680851064,77.4830222526955L38.723404255319146,65.76615503621551L41.48936170212766,64.10904956957208L44.25531914893617,64.12990855689895L47.02127659574468,66.18262026715433L49.787234042553195,60.918799503449186L52.5531914893617,58.69763933531973L55.319148936170215,49.748826367643396L58.08510638297872,50.41368306161396L60.851063829787236,42.62619553777356L63.61702127659574,33.571616195636864L66.38297872340425,30.46213257346222L69.14893617021276,27.431833510845372L71.91489361702128,29.366421643438567L74.68085106382979,25.144139261973052L77.44680851063829,22.471308508830145L80.2127659574468,16.96035931918056L82.97872340425532,9.744827376729749L85.74468085106382,8.755489350139033L88.51063829787233,8.108201611020306L91.27659574468085,8.172585019222822L94.04255319148936,7.408024930737178L96.80851063829786,8.062177422107109L99.57446808510639,5.799084273547206L102.3404255319149,5.891459029405444L105.1063829787234,7.263106244426143L107.87234042553192,7.422233014309487L110.63829787234043,7.320359324381265L113.40425531914894,6.7288141012388L116.17021276595744,5.957074400623341L118.93617021276596,6.767109470990107L121.70212765957447,6.275372931999468L124.46808510638299,6.473346754993337L127.23404255319149,7.438257212203081L130,5.394863254028004" stroke="#0F3C5F" stroke-width="2" stroke-linecap="round" stroke-dasharray="1,0"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-line role-mark layer_0_layer_0_marks" clip-path="url(#clip2)" role="graphics-object" aria-roledescription="line mark container">
-                        <path aria-label="condition: object; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.643448651015" role="graphics-symbol" aria-roledescription="line mark" d="M0,99.83437771566533L2.7659574468085104,104.73659978869215L5.531914893617021,103.90364697039668L8.297872340425531,104.76770496929208L11.063829787234042,102.26165879124395L13.829787234042554,111.3830093258479L16.595744680851062,110.23031301169813L19.361702127659573,108.61286953103462L22.127659574468083,113.16581612915124L24.893617021276597,110.08410820281892L27.659574468085108,101.21360863435255L30.425531914893618,102.69957290462287L33.191489361702125,103.7636548344515L35.95744680851064,98.27707524223621L38.723404255319146,103.15084728699318L41.48936170212766,110.78354935811223L44.25531914893617,107.27559412787905L47.02127659574468,108.21151526542695L49.787234042553195,98.14718962321025L52.5531914893617,96.83543936030465L55.319148936170215,96.57303982648818L58.08510638297872,94.72395299339857L60.851063829787236,86.8222178170276L63.61702127659574,94.49895995480037L66.38297872340425,89.1374175147693L69.14893617021276,92.98941932014677L71.91489361702128,100.65348043097555L74.68085106382979,97.39409443723875L77.44680851063829,103.33311777367453L80.2127659574468,99.73685190331955L82.97872340425532,99.33645255641903L85.74468085106382,94.73986005485665L88.51063829787233,101.4826445455466L91.27659574468085,91.87568058307548L94.04255319148936,93.16444727650598L96.80851063829786,93.90255228185995L99.57446808510639,92.82439044906802L102.3404255319149,85.48356334952214L105.1063829787234,79.63875910153779L107.87234042553192,76.79867251469791L110.63829787234043,74.91718643141762L113.40425531914894,75.44798820003946L116.17021276595744,84.50719103657379L118.93617021276596,85.83411580582722L121.70212765957447,89.59970682668126L124.46808510638299,79.57752773593377L127.23404255319149,72.42505480455853L130,71.28674495566153" stroke="#687B3E" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,4"/>
+                        <path aria-label="condition: object; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.656671161179" role="graphics-symbol" aria-roledescription="line mark" d="M0,68.66576776426851L2.7659574468085104,68.10947655119908L5.531914893617021,63.11396183727689L8.297872340425531,73.00828711574366L11.063829787234042,74.56845018114451L13.829787234042554,75.96278148675006L16.595744680851062,73.54361364058684L19.361702127659573,74.59672469889796L22.127659574468083,77.55740259228301L24.893617021276597,77.23975538186494L27.659574468085108,81.84661699264282L30.425531914893618,81.79528647574892L33.191489361702125,75.73006597386328L35.95744680851064,80.56813814717836L38.723404255319146,73.46199787113872L41.48936170212766,70.04185854692555L44.25531914893617,71.42595636548982L47.02127659574468,71.17156936902464L49.787234042553195,75.49253809510039L52.5531914893617,72.67117017440465L55.319148936170215,74.56867186058818L58.08510638297872,74.1929703256498L60.851063829787236,73.68724366742991L63.61702127659574,78.31604394243195L66.38297872340425,77.56158532505279L69.14893617021276,76.8801968343753L71.91489361702128,75.11240837409596L74.68085106382979,69.80896453064031L77.44680851063829,73.14039158097142L80.2127659574468,69.9668897573278L82.97872340425532,69.21040784059353L85.74468085106382,67.72938700260222L88.51063829787233,66.16650477088115L91.27659574468085,63.204885725157325L94.04255319148936,67.36117533892237L96.80851063829786,61.13223948558577L99.57446808510639,62.69925334028941L102.3404255319149,61.97813827647245L105.1063829787234,60.779168083885146L107.87234042553192,62.668791494358004L110.63829787234043,57.02475193371272L113.40425531914894,57.81253918830009L116.17021276595744,64.52292383467054L118.93617021276596,64.77876092729514L121.70212765957447,67.78199245146048L124.46808510638299,55.10927098236629L127.23404255319149,58.26338552995498L130,59.807224657155466" stroke="#687B3E" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,4"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-line role-mark layer_0_layer_0_marks" clip-path="url(#clip3)" role="graphics-object" aria-roledescription="line mark container">
-                        <path aria-label="condition: spatial; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.61957315735" role="graphics-symbol" aria-roledescription="line mark" d="M0,106.51951594187622L2.7659574468085104,113.96930338366032L5.531914893617021,116.90211833558457L8.297872340425531,119.62671656945955L11.063829787234042,118.07680124380029L13.829787234042554,116.31473945099546L16.595744680851062,117.99254704251655L19.361702127659573,116.42234978125455L22.127659574468083,115.68860162416951L24.893617021276597,121.24133337760142L27.659574468085108,121.15570367267412L30.425531914893618,119.18113868303993L33.191489361702125,109.66678136065262L35.95744680851064,99.1450104784899L38.723404255319146,109.37351590000006L41.48936170212766,101.9274058393129L44.25531914893617,112.22823373596715L47.02127659574468,107.82411262380434L49.787234042553195,109.74155151118762L52.5531914893617,108.14932729162497L55.319148936170215,105.05093319174638L58.08510638297872,100.51347742054242L60.851063829787236,106.51499425440977L63.61702127659574,101.70860245752418L66.38297872340425,105.92734059239615L69.14893617021276,109.35894037434902L71.91489361702128,113.87251043021283L74.68085106382979,104.47495046879722L77.44680851063829,106.4889720636658L80.2127659574468,107.12522097685022L82.97872340425532,107.22343348389376L85.74468085106382,105.05595508852511L88.51063829787233,105.2505829826174L91.27659574468085,105.5965136082742L94.04255319148936,93.7993430007096L96.80851063829786,83.30769622312214L99.57446808510639,74.96696855410886L102.3404255319149,74.31352639280085L105.1063829787234,73.34550603986995L107.87234042553192,73.91827255729388L110.63829787234043,75.78690498316585L113.40425531914894,73.93844586885952L116.17021276595744,79.44199035001019L118.93617021276596,89.11951737375145L121.70212765957447,82.96058760477197L124.46808510638299,83.80801325945924L127.23404255319149,85.63582846267428L130,88.01596595845572" stroke="#EB9A60" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,4"/>
+                        <path aria-label="condition: spatial; Time relative to target onset (s): 0; High/Low Salience, Classification: 0.509820726404" role="graphics-symbol" aria-roledescription="line mark" d="M0,98.03585471924534L2.7659574468085104,94.93734525163626L5.531914893617021,93.82701504213158L8.297872340425531,92.29739080633526L11.063829787234042,99.42454980570739L13.829787234042554,99.31015556704541L16.595744680851062,99.40547863854749L19.361702127659573,96.09747542274236L22.127659574468083,103.06394848778582L24.893617021276597,93.08077939851229L27.659574468085108,86.27931326650564L30.425531914893618,83.7907291770691L33.191489361702125,80.75561020204259L35.95744680851064,79.24129217377389L38.723404255319146,80.89548009263355L41.48936170212766,84.9743868627318L44.25531914893617,91.2380708457926L47.02127659574468,88.58580497836269L49.787234042553195,79.68759607618551L52.5531914893617,77.72478281114704L55.319148936170215,74.40578713982642L58.08510638297872,80.77563029956909L60.851063829787236,76.47512488113348L63.61702127659574,66.45824504908175L66.38297872340425,81.63569414282512L69.14893617021276,63.73431778829504L71.91489361702128,60.923292007789364L74.68085106382979,63.66911131869244L77.44680851063829,63.5004907289348L80.2127659574468,69.1758206748936L82.97872340425532,72.28404877748417L85.74468085106382,69.48616437739268L88.51063829787233,45.084243698203544L91.27659574468085,45.81315547311584L94.04255319148936,42.65836321742646L96.80851063829786,39.228530756414706L99.57446808510639,42.74038578401864L102.3404255319149,40.6507229529329L105.1063829787234,44.05906262434556L107.87234042553192,43.82776623153186L110.63829787234043,52.473446609178254L113.40425531914894,53.94148897603523L116.17021276595744,57.68432448151266L118.93617021276596,50.95831464789497L121.70212765957447,53.773593113354345L124.46808510638299,57.94310188665974L127.23404255319149,58.96414584332146L130,61.753171655998806" stroke="#EB9A60" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,4"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -390,62 +378,62 @@
                 </g>
                 <g class="mark-group role-scope layer_0_layer_1_layer_0_pathgroup" role="graphics-object" aria-roledescription="group mark container">
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-area role-mark layer_0_layer_1_layer_0_marks" clip-path="url(#clip4)" role="graphics-object" aria-roledescription="area mark container">
-                        <path aria-label="High/Low Salience, Classification: 0.562980882087; upper_lower: 0.635537343644; condition: global; winstart: 0; upper: 0.635537343644; lower: 0.562980882087" role="graphics-symbol" aria-roledescription="errorband" d="M0,122.36535301575081L2.7659574468085104,136.31146019827412L5.531914893617021,141.61827178831047L8.297872340425531,142.58895346108093L11.063829787234042,145.9896471915138L13.829787234042554,139.33414288211463L16.595744680851062,137.27973093749657L19.361702127659573,129.49912570648712L22.127659574468083,122.58753756857578L24.893617021276597,126.5144924793378L27.659574468085108,129.91744314132134L30.425531914893618,122.98120412048212L33.191489361702125,125.22704203384477L35.95744680851064,124.03918157683134L38.723404255319146,121.33821667733665L41.48936170212766,109.9038025888929L44.25531914893617,108.9389273821629L47.02127659574468,107.4931979742986L49.787234042553195,105.58905686749175L52.5531914893617,106.57796379180996L55.319148936170215,107.32728885356515L58.08510638297872,103.8919250141282L60.851063829787236,88.4671330829818L63.61702127659574,84.56360778887961L66.38297872340425,78.7225640097754L69.14893617021276,69.75909566819332L71.91489361702128,67.36723898727922L74.68085106382979,61.577054384616176L77.44680851063829,47.957742694686004L80.2127659574468,39.95247500672361L82.97872340425532,37.235085408374076L85.74468085106382,40.64024355193346L88.51063829787233,38.36896281396602L91.27659574468085,40.860170178470746L94.04255319148936,37.44785682317935L96.80851063829786,31.1419792665879L99.57446808510639,28.52337291076029L102.3404255319149,24.496247285039118L105.1063829787234,25.247431785054644L107.87234042553192,24.069771757208684L110.63829787234043,24.335752723508758L113.40425531914894,22.495819164674188L116.17021276595744,18.276257432311883L118.93617021276596,19.025788482126522L121.70212765957447,15.664927051680305L124.46808510638299,15.081490387210481L127.23404255319149,17.820951793431362L130,17.870860163149892L130,6.184926623672219L127.23404255319149,4.107991390142063L124.46808510638299,2.700046509388004L121.70212765957447,2.179236229136862L118.93617021276596,5.6508897329647745L116.17021276595744,4.7161630803942565L113.40425531914894,7.408865186606452L110.63829787234043,10.718012421834446L107.87234042553192,10.347611128823786L105.1063829787234,11.110657614259978L102.3404255319149,10.282637829428584L99.57446808510639,13.6226873598442L96.80851063829786,13.71398013193905L94.04255319148936,18.580322795897434L91.27659574468085,22.718702240685463L88.51063829787233,22.127446588242275L85.74468085106382,22.21362597879896L82.97872340425532,19.060890230675675L80.2127659574468,21.762217917567057L77.44680851063829,28.263570008015108L74.68085106382979,40.55102082961491L71.91489361702128,45.81394390188295L69.14893617021276,47.8598225061963L66.38297872340425,57.19367536128122L63.61702127659574,62.05045565754748L60.851063829787236,65.34735881637828L58.08510638297872,77.24481046290153L55.319148936170215,81.47810064972693L52.5531914893617,79.93010433312823L49.787234042553195,76.12100876223482L47.02127659574468,77.61907061722714L44.25531914893617,79.50938159780335L41.48936170212766,86.71671323163937L38.723404255319146,94.53223361705551L35.95744680851064,96.98665645332147L33.191489361702125,102.85000229483047L30.425531914893618,103.4896818718479L27.659574468085108,111.98524717952685L24.893617021276597,111.46287044963441L22.127659574468083,111.45186206182301L19.361702127659573,119.91896435354133L16.595744680851062,127.0128035445637L13.829787234042554,127.17950937026677L11.063829787234042,130.32886388009086L8.297872340425531,126.8432918723365L5.531914893617021,119.62525734436069L2.7659574468085104,117.18626054637261L0,102.049543779813Z" fill="#0F3C5F" opacity="0.3"/>
+                        <path aria-label="High/Low Salience, Classification: 0.508383124779; upper_lower: 0.589088726561; condition: global; winstart: 0; upper: 0.589088726561; lower: 0.508383124779" role="graphics-symbol" aria-roledescription="errorband" d="M0,98.32337504418373L2.7659574468085104,100.77967451816173L5.531914893617021,103.73301764079652L8.297872340425531,95.9788237678717L11.063829787234042,99.88241659498323L13.829787234042554,90.76096798497906L16.595744680851062,90.24637024226774L19.361702127659573,94.00837269290163L22.127659574468083,90.4098058471928L24.893617021276597,87.81072235023761L27.659574468085108,81.81878499199885L30.425531914893618,80.71845008068766L33.191489361702125,85.28843814334937L35.95744680851064,86.67499761391882L38.723404255319146,75.30749328559192L41.48936170212766,73.48430830894944L44.25531914893617,72.97495721365293L47.02127659574468,76.89694987226554L49.787234042553195,70.96939798848982L52.5531914893617,69.45926445254185L55.319148936170215,59.520042898903604L58.08510638297872,61.21022624913988L60.851063829787236,52.15684646698355L63.61702127659574,42.942451890277056L66.38297872340425,40.05368876760657L69.14893617021276,36.66077975900319L71.91489361702128,38.534923118769406L74.68085106382979,33.321902355961306L77.44680851063829,30.47068576799741L80.2127659574468,23.847866063629077L82.97872340425532,15.495044434829786L85.74468085106382,14.621655132059907L88.51063829787233,13.951183546609357L91.27659574468085,13.682907034435843L94.04255319148936,12.854033893350492L96.80851063829786,13.789701251614872L99.57446808510639,10.837352681055389L102.3404255319149,10.812861356536562L105.1063829787234,12.843328227555872L107.87234042553192,12.821733331998697L110.63829787234043,12.957733177266185L113.40425531914894,11.962541357388679L116.17021276595744,11.144734734391548L118.93617021276596,12.017327599170336L121.70212765957447,11.3431468297569L124.46808510638299,10.924436587828957L127.23404255319149,12.129695892811387L130,8.117451500105544L130,2.3386784777551073L127.23404255319149,2.612832624241811L124.46808510638299,1.7554555064757338L121.70212765957447,1.0246657071947283L118.93617021276596,1.370195013964203L116.17021276595744,0.7410395538679495L113.40425531914894,1.01033205843739L110.63829787234043,1.4171329904473673L107.87234042553192,1.8317405307588963L105.1063829787234,1.510850553313304L102.3404255319149,0.8884270186702903L99.57446808510639,0.7371714674145213L96.80851063829786,1.8599924716382397L94.04255319148936,1.7883071929973848L91.27659574468085,2.257814445710004L88.51063829787233,1.7947010591257353L85.74468085106382,2.357678181044399L82.97872340425532,3.5912100849417428L80.2127659574468,9.852343123280093L77.44680851063829,14.256084383584167L74.68085106382979,16.625979770291167L71.91489361702128,20.042476749131023L69.14893617021276,18.166092877536432L66.38297872340425,20.56588164300317L63.61702127659574,24.24593644014552L60.851063829787236,32.88078147219895L58.08510638297872,39.919761326808924L55.319148936170215,40.026577599038134L52.5531914893617,48.035768253477976L49.787234042553195,51.02394307004558L47.02127659574468,55.55902680618032L44.25531914893617,55.39370497989866L41.48936170212766,55.07356656221734L38.723404255319146,56.41539471199639L35.95744680851064,68.29709886953894L33.191489361702125,70.41506059658829L30.425531914893618,66.72497251683387L27.659574468085108,64.85425103764221L24.893617021276597,69.76398383504142L22.127659574468083,74.58636388657989L19.361702127659573,78.07204559452823L16.595744680851062,73.88188369715975L13.829787234042554,74.5105488308702L11.063829787234042,82.26196129038645L8.297872340425531,81.52707358606371L5.531914893617021,87.54383500431122L2.7659574468085104,84.7934106819237L0,82.18225468776079Z" fill="#0F3C5F" opacity="0.3"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-area role-mark layer_0_layer_1_layer_0_marks" clip-path="url(#clip5)" role="graphics-object" aria-roledescription="area mark container">
-                        <path aria-label="High/Low Salience, Classification: 0.618862440983; upper_lower: 0.667478035723; condition: object; winstart: 0; upper: 0.667478035723; lower: 0.618862440983" role="graphics-symbol" aria-roledescription="errorband" d="M0,106.7185165246557L2.7659574468085104,112.01300407532278L5.531914893617021,112.23585548780098L8.297872340425531,112.06166021253738L11.063829787234042,112.57591891277534L13.829787234042554,118.31220432795635L16.595744680851062,118.07502562300901L19.361702127659573,115.63680627674327L22.127659574468083,119.69221267605279L24.893617021276597,117.1537259037477L27.659574468085108,110.18402425693623L30.425531914893618,111.71702080409858L33.191489361702125,113.16444735251258L35.95744680851064,107.74920527358321L38.723404255319146,112.72958261351484L41.48936170212766,119.44298338310593L44.25531914893617,115.52043378509126L47.02127659574468,116.9962524750075L49.787234042553195,108.19032344023117L52.5531914893617,106.97057577952665L55.319148936170215,106.45848406385225L58.08510638297872,105.1956861678177L60.851063829787236,98.53847663531587L63.61702127659574,105.55447775849535L66.38297872340425,99.5101290017464L69.14893617021276,103.46695486616827L71.91489361702128,110.83078466003712L74.68085106382979,108.09033526349661L77.44680851063829,113.78886387416951L80.2127659574468,109.53130238440103L82.97872340425532,110.25680588552085L85.74468085106382,106.18236372149799L88.51063829787233,111.46303329353083L91.27659574468085,103.41235655942312L94.04255319148936,104.48699828053977L96.80851063829786,105.2733033416485L99.57446808510639,104.84395734389433L102.3404255319149,97.0264989632984L105.1063829787234,91.99708439519473L107.87234042553192,88.5120734002227L110.63829787234043,87.5089031389479L113.40425531914894,87.65041810926317L116.17021276595744,96.25999797972953L118.93617021276596,96.9192492639333L121.70212765957447,101.48562235346759L124.46808510638299,92.63940222982066L127.23404255319149,84.70907458029441L130,84.48588743601434L130,58.48383275652881L127.23404255319149,60.172889550051146L124.46808510638299,66.67056933966978L121.70212765957447,77.72158536321668L118.93617021276596,74.53810624277297L116.17021276595744,72.65856457562325L113.40425531914894,63.38622368690134L110.63829787234043,62.7367500878098L107.87234042553192,65.35046770277327L105.1063829787234,67.13686050871436L102.3404255319149,73.51385794727243L99.57446808510639,80.81757878357763L96.80851063829786,82.19759825843477L94.04255319148936,82.19752437187366L91.27659574468085,80.55461048221672L88.51063829787233,91.12531159194016L85.74468085106382,83.16644661832883L82.97872340425532,88.29210389053965L80.2127659574468,89.64844473412819L77.44680851063829,92.84035474111388L74.68085106382979,86.69858669242863L71.91489361702128,90.3020822169563L69.14893617021276,82.6878937109345L66.38297872340425,79.06913323315395L63.61702127659574,83.5663642412442L60.851063829787236,74.94478538806217L58.08510638297872,84.43829507687467L55.319148936170215,86.61998553119015L52.5531914893617,86.81152290536701L49.787234042553195,88.65715273366484L47.02127659574468,99.10536590883042L44.25531914893617,98.98026267999865L41.48936170212766,102.2069862687707L38.723404255319146,93.59829461505377L35.95744680851064,88.46166936022586L33.191489361702125,94.49625110155803L30.425531914893618,93.44129276916392L27.659574468085108,92.59458066755742L24.893617021276597,102.88765701716252L22.127659574468083,106.68876608452052L19.361702127659573,101.60614774059533L16.595744680851062,102.30430506824251L13.829787234042554,104.61326706107664L11.063829787234042,91.88025291732288L8.297872340425531,97.19058595535556L5.531914893617021,95.48016096609234L2.7659574468085104,97.37031528979136L0,93.10614999758782Z" fill="#687B3E" opacity="0.3"/>
+                        <path aria-label="High/Low Salience, Classification: 0.607671830966; upper_lower: 0.708646905801; condition: object; winstart: 0; upper: 0.708646905801; lower: 0.607671830966" role="graphics-symbol" aria-roledescription="errorband" d="M0,78.46563380673925L2.7659574468085104,77.2545543593734L5.531914893617021,73.3269253457483L8.297872340425531,82.6213415951131L11.063829787234042,83.76701997611093L13.829787234042554,84.47510400576557L16.595744680851062,82.50949976259801L19.361702127659573,84.60379341356759L22.127659574468083,86.9462236610046L24.893617021276597,86.12290439396799L27.659574468085108,89.77421074143632L30.425531914893618,90.49730800623045L33.191489361702125,85.1203194950426L35.95744680851064,89.2908255711953L38.723404255319146,82.86361727831965L41.48936170212766,79.11290944056L44.25531914893617,80.22769514198708L47.02127659574468,80.6996314146476L49.787234042553195,84.48330652969851L52.5531914893617,82.10670752380341L55.319148936170215,83.89737996903995L58.08510638297872,83.75466906466743L60.851063829787236,82.68710611189363L63.61702127659574,88.13938650875268L66.38297872340425,87.8694651690798L69.14893617021276,87.4846356738116L71.91489361702128,85.62742998143453L74.68085106382979,80.35973095885144L77.44680851063829,83.18267757128382L80.2127659574468,80.66405905559569L82.97872340425532,79.48693936350801L85.74468085106382,77.88830529986066L88.51063829787233,76.67208976472715L91.27659574468085,73.778794617432L94.04255319148936,77.9210414818221L96.80851063829786,72.16856629747441L99.57446808510639,73.33811868791817L102.3404255319149,72.92240081107386L105.1063829787234,71.41139699837453L107.87234042553192,72.9183324040303L110.63829787234043,67.77978441515641L113.40425531914894,68.63034850849826L116.17021276595744,76.38867320606207L118.93617021276596,75.94024043652988L121.70212765957447,79.27062024602141L124.46808510638299,67.44146331576586L127.23404255319149,69.68842803304143L130,71.71449983039739L130,47.86446915499909L127.23404255319149,46.81196664568963L124.46808510638299,42.47084332433657L121.70212765957447,56.23222598058777L118.93617021276596,53.55202636635181L116.17021276595744,52.48641009778496L113.40425531914894,46.67325965140137L110.63829787234043,46.029605705092536L107.87234042553192,52.68712535042867L105.1063829787234,49.900497025709754L102.3404255319149,51.07310711297595L99.57446808510639,52.10449632847549L96.80851063829786,50.03600397536765L94.04255319148936,56.788840719707444L91.27659574468085,52.17536498415283L88.51063829787233,55.695113330314825L85.74468085106382,57.399407427805535L82.97872340425532,58.498328677785324L80.2127659574468,59.24425080139155L77.44680851063829,63.44139918804037L74.68085106382979,59.39520396029796L71.91489361702128,64.81131742485738L69.14893617021276,66.4396502348016L66.38297872340425,66.89040821890677L63.61702127659574,68.32731272093544L60.851063829787236,64.66327105384255L58.08510638297872,64.87984870759847L55.319148936170215,64.94849577964143L52.5531914893617,63.45403611692699L49.787234042553195,66.36668723888472L47.02127659574468,61.15471706269875L44.25531914893617,62.28380897600345L41.48936170212766,60.82921432443551L38.723404255319146,63.981682011419295L35.95744680851064,71.64707167521168L33.191489361702125,66.07789289869454L30.425531914893618,72.7333207766737L27.659574468085108,73.70269526960298L24.893617021276597,68.12783491635884L22.127659574468083,67.89625725871733L19.361702127659573,64.6162530505789L16.595744680851062,64.27105024981236L13.829787234042554,67.32973829015351L11.063829787234042,64.79194017263067L8.297872340425531,63.328027377315244L5.531914893617021,53.088502307027994L2.7659574468085104,58.447547355020916L0,58.270618839881074Z" fill="#687B3E" opacity="0.3"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
                   <g transform="translate(0,0)">
-                    <path class="background" aria-hidden="true" d="M0,0h130v140h-130Z"/>
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
                     <g>
                       <g class="mark-area role-mark layer_0_layer_1_layer_0_marks" clip-path="url(#clip6)" role="graphics-object" aria-roledescription="area mark container">
-                        <path aria-label="High/Low Salience, Classification: 0.601490785653; upper_lower: 0.637949308642; condition: spatial; winstart: 0; upper: 0.637949308642; lower: 0.601490785653" role="graphics-symbol" aria-roledescription="errorband" d="M0,111.58258001728616L2.7659574468085104,121.40484421636897L5.531914893617021,125.83765050274344L8.297872340425531,127.7772908395725L11.063829787234042,126.16238421969572L13.829787234042554,123.58861467337684L16.595744680851062,125.78652790774352L19.361702127659573,122.32675509147488L22.127659574468083,122.0974199348723L24.893617021276597,129.11400733716016L27.659574468085108,129.2982879325247L30.425531914893618,126.95268071436479L33.191489361702125,117.38806608518863L35.95744680851064,107.09936822650029L38.723404255319146,118.04984854039645L41.48936170212766,110.52623497352987L44.25531914893617,118.98748758543559L47.02127659574468,114.21632081296869L49.787234042553195,114.53408665507267L52.5531914893617,113.56499712313926L55.319148936170215,111.95824582295575L58.08510638297872,108.56752534932627L60.851063829787236,114.48791078388017L63.61702127659574,111.69202503072229L66.38297872340425,118.20376489306355L69.14893617021276,121.58044308820016L71.91489361702128,126.34624477924949L74.68085106382979,118.48078610927341L77.44680851063829,119.12637737795757L80.2127659574468,119.63403962925032L82.97872340425532,120.14039751799483L85.74468085106382,119.00724353241922L88.51063829787233,118.96096567533526L91.27659574468085,118.76898343126413L94.04255319148936,106.28448445643585L96.80851063829786,96.94952045770755L99.57446808510639,87.8309404017233L102.3404255319149,86.29605233116035L105.1063829787234,85.46014571877625L107.87234042553192,85.81163904944526L110.63829787234043,87.71951569421917L113.40425531914894,86.16117754979382L116.17021276595744,91.30876322076479L118.93617021276596,100.6308665581773L121.70212765957447,96.10847717858627L124.46808510638299,95.61634106730929L127.23404255319149,97.37755303108884L130,100.9589391847249L130,74.83953243554096L127.23404255319149,73.15655393476354L124.46808510638299,71.69673154001384L121.70212765957447,70.14286618512668L118.93617021276596,77.41964292550395L116.17021276595744,67.63564349628793L113.40425531914894,61.71456658339457L110.63829787234043,63.355252351997834L107.87234042553192,61.907502398796346L105.1063829787234,61.095921059430935L102.3404255319149,62.272300524350285L99.57446808510639,62.446695179436524L96.80851063829786,69.78044354895151L94.04255319148936,81.29051390966981L91.27659574468085,92.65424884135066L88.51063829787233,91.47240950770866L85.74468085106382,91.12939116865408L82.97872340425532,94.47931668259821L80.2127659574468,94.86986883786312L77.44680851063829,93.48654196059184L74.68085106382979,90.6821052400194L71.91489361702128,101.06269157046034L69.14893617021276,96.95596817934728L66.38297872340425,94.38901189059546L63.61702127659574,92.10900984800419L60.851063829787236,98.90689419048574L58.08510638297872,92.30371178905123L55.319148936170215,98.13074300633008L52.5531914893617,102.80749963858482L49.787234042553195,105.00934180271909L47.02127659574468,101.59980865921722L44.25531914893617,105.4565130259144L41.48936170212766,93.06253314387851L38.723404255319146,100.66947059753966L35.95744680851064,91.53123734836909L33.191489361702125,102.06720475981311L30.425531914893618,111.61772656162447L27.659574468085108,113.29053600804184L24.893617021276597,113.0053779486529L22.127659574468083,109.16622456291867L19.361702127659573,110.47177598929767L16.595744680851062,110.20974627765676L13.829787234042554,109.01483588379571L11.063829787234042,110.02821724113824L8.297872340425531,111.57950418523873L5.531914893617021,108.08125909838093L2.7659574468085104,106.72982029255732L0,101.37419358025139Z" fill="#EB9A60" opacity="0.3"/>
+                        <path aria-label="High/Low Salience, Classification: 0.46316311687; upper_lower: 0.557743185356; condition: spatial; winstart: 0; upper: 0.557743185356; lower: 0.46316311687" role="graphics-symbol" aria-roledescription="errorband" d="M0,107.36737662602678L2.7659574468085104,104.87666688719737L5.531914893617021,103.09377699831992L8.297872340425531,101.12823622048457L11.063829787234042,109.81340274164337L13.829787234042554,108.18415142566442L16.595744680851062,108.5379848875659L19.361702127659573,106.22410286499921L22.127659574468083,113.55687937547057L24.893617021276597,102.55770329880546L27.659574468085108,96.41020086649563L30.425531914893618,94.12570117920143L33.191489361702125,92.12992899873854L35.95744680851064,89.94187341609205L38.723404255319146,91.75579901330752L41.48936170212766,95.4408099616969L44.25531914893617,101.68070330070587L47.02127659574468,98.90095226064881L49.787234042553195,88.46504408144742L52.5531914893617,87.23880111722599L55.319148936170215,84.65657656406711L58.08510638297872,91.59357825482036L60.851063829787236,86.74948417894855L63.61702127659574,76.67545112355654L66.38297872340425,92.53578907823953L69.14893617021276,73.6534874756635L71.91489361702128,72.21305808954924L74.68085106382979,76.14102580816022L77.44680851063829,73.45116740294668L80.2127659574468,80.85519309492962L82.97872340425532,84.35693801206916L85.74468085106382,82.07521739202915L88.51063829787233,54.99574366638809L91.27659574468085,55.07110583907517L94.04255319148936,52.12301898865592L96.80851063829786,49.061256639265196L99.57446808510639,52.5830179237734L102.3404255319149,50.39370620025634L105.1063829787234,54.517901175131314L107.87234042553192,53.71458740999904L110.63829787234043,62.452776534296106L113.40425531914894,63.41317465646863L116.17021276595744,67.59478783682265L118.93617021276596,61.63214952858882L121.70212765957447,65.46155435879658L124.46808510638299,68.73174627753254L127.23404255319149,71.26649427715328L130,76.78890716414975L130,46.72346685732498L127.23404255319149,46.47325047193447L124.46808510638299,47.03235552652978L121.70212765957447,41.85655176304546L118.93617021276596,40.368204999439804L116.17021276595744,47.97388789820618L113.40425531914894,43.992332460195826L110.63829787234043,42.216769505041206L107.87234042553192,33.385715360690305L105.1063829787234,33.126482997657945L102.3404255319149,30.629819712648576L99.57446808510639,32.6839361432514L96.80851063829786,29.109164924079533L94.04255319148936,32.73184158949212L91.27659574468085,36.50111224756814L88.51063829787233,34.86456412069228L85.74468085106382,56.87474528694909L82.97872340425532,60.37315659760345L80.2127659574468,57.41124203006169L77.44680851063829,53.778675124342L74.68085106382979,50.908976464997366L71.91489361702128,49.72234640949158L69.14893617021276,53.3948550220527L66.38297872340425,70.81778916030208L63.61702127659574,56.13284960014746L60.851063829787236,66.05436612555631L58.08510638297872,69.60655726470229L55.319148936170215,63.591617729399694L52.5531914893617,68.1589177771785L49.787234042553195,70.70612051747176L47.02127659574468,78.21779672589868L44.25531914893617,80.64701723124377L41.48936170212766,74.64259386215562L38.723404255319146,70.01661917866497L35.95744680851064,67.88817911317777L33.191489361702125,69.3011594598965L30.425531914893618,73.13863351402486L27.659574468085108,75.86996547007394L24.893617021276597,83.73631811080817L22.127659574468083,92.58486444055745L19.361702127659573,86.08892088053142L16.595744680851062,90.16217856083043L13.829787234042554,89.91924924634458L11.063829787234042,88.87083775937286L8.297872340425531,83.169756473672L5.531914893617021,84.39155066422157L2.7659574468085104,85.0856279424864L0,88.45136292887051Z" fill="#EB9A60" opacity="0.3"/>
                       </g>
                     </g>
                     <path class="foreground" aria-hidden="true" d="" display="none"/>
                   </g>
                 </g>
                 <g class="mark-text role-mark layer_0_layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text aria-label="condition: global; Mean of corrected_mean: 0.957140071935; condition_label: Global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,15.000779858319511)" font-family="Helvetica" font-size="11px" fill="#0F3C5F">Global</text>
-                  <text aria-label="condition: object; Mean of corrected_mean: 0.745404482301; condition_label: Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,74.28674495566153)" font-family="Helvetica" font-size="11px" fill="#687B3E">Object</text>
-                  <text aria-label="condition: spatial; Mean of corrected_mean: 0.685657264434; condition_label: Spatial" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,91.01596595845572)" font-family="Helvetica" font-size="11px" fill="#EB9A60">Spatial</text>
+                  <text aria-label="condition: global; Mean of value: 0.971004578632; condition_label: Global" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,8.799084273547205)" font-family="Helvetica" font-size="11px" fill="#0F3C5F">Global</text>
+                  <text aria-label="condition: object; Mean of value: 0.686503733299; condition_label: Object" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,65.6992533402894)" font-family="Helvetica" font-size="11px" fill="#687B3E">Object</text>
+                  <text aria-label="condition: spatial; Mean of value: 0.78629807108; condition_label: Spatial" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(135,45.74038578401864)" font-family="Helvetica" font-size="11px" fill="#EB9A60">Spatial</text>
                 </g>
                 <g class="mark-rule role-mark layer_0_layer_3_layer_0_marks" role="graphics-object" aria-roledescription="rule mark container">
-                  <line aria-label="Mean of best: 3.65106382979" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(118.6595744680851,0)" x2="0" y2="140" stroke="black" stroke-dasharray="2,2"/>
+                  <line aria-label="Mean of best: 3.38723404255" role="graphics-symbol" aria-roledescription="rule mark" transform="translate(110.08510638297872,0)" x2="0" y2="100" stroke="black" stroke-dasharray="2,2"/>
                 </g>
                 <g class="mark-text role-mark layer_0_layer_4_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text text-anchor="end" transform="translate(117.65957446808513,8.600000000000005)" font-family="Helvetica" font-size="11px" fill="black">Panel B slice &#8594;</text>
+                  <text text-anchor="end" transform="translate(109.08510638297872,7.0000000000000036)" font-family="Helvetica" font-size="11px" fill="black">Panel B slice &#8594;</text>
                 </g>
                 <g class="mark-text role-mark layer_0_layer_5_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text text-anchor="start" transform="translate(135,113.43184744610734)" font-family="Helvetica" font-size="11px" fill="black">
+                  <text text-anchor="start" transform="translate(135,80.45131960436238)" font-family="Helvetica" font-size="11px" fill="black">
                     <tspan>Null Model</tspan>
                     <tspan x="0" dy="13">Accuracy</tspan>
                   </text>
                 </g>
                 <g class="mark-rule role-mark layer_0_layer_6_layer_0_marks" role="graphics-symbol" aria-roledescription="rule mark container">
-                  <line transform="translate(130,115.43184744610734)" x2="-130" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
+                  <line transform="translate(130,82.45131960436238)" x2="-130" y2="0" stroke="black" stroke-width="2" stroke-dasharray="4,4"/>
                 </g>
                 <g class="mark-line role-mark layer_0_layer_7_layer_0_marks" role="graphics-object" aria-roledescription="line mark container">
-                  <path aria-label="x: 0.05; y: 0.8" role="graphics-symbol" aria-roledescription="line mark" d="M1.625,55.999999999999986L30.875,55.999999999999986" stroke="black" stroke-width="1.5"/>
+                  <path aria-label="x: 0.05; y: 0.8" role="graphics-symbol" aria-roledescription="line mark" d="M1.625,39.99999999999999L30.875,39.99999999999999" stroke="black" stroke-width="1.5"/>
                 </g>
                 <g class="mark-symbol role-mark layer_0_layer_7_layer_1_marks" role="graphics-object" aria-roledescription="symbol mark container">
-                  <path aria-label="x: 0.05; y: 0.8; dir: 270" role="graphics-symbol" aria-roledescription="point" transform="translate(1.625,55.999999999999986) rotate(270)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
-                  <path aria-label="x: 0.95; y: 0.8; dir: 90" role="graphics-symbol" aria-roledescription="point" transform="translate(30.875,55.999999999999986) rotate(90)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
+                  <path aria-label="x: 0.05; y: 0.8; dir: 270" role="graphics-symbol" aria-roledescription="point" transform="translate(1.625,39.99999999999999) rotate(270)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
+                  <path aria-label="x: 0.95; y: 0.8; dir: 90" role="graphics-symbol" aria-roledescription="point" transform="translate(30.875,39.99999999999999) rotate(90)" d="M0,-1.8257418583505536L-1.5811388300841898,0.9128709291752769L1.5811388300841898,0.9128709291752769Z" stroke="black" stroke-width="2" opacity="1"/>
                 </g>
                 <g class="mark-text role-mark layer_0_layer_8_layer_0_marks" role="graphics-object" aria-roledescription="text mark container">
-                  <text text-anchor="start" transform="translate(0,50.999999999999986)" font-family="Helvetica" font-size="11px" fill="black">Target Length</text>
+                  <text text-anchor="start" transform="translate(0,34.99999999999999)" font-family="Helvetica" font-size="11px" fill="black">Target Length</text>
                 </g>
               </g>
               <path class="foreground" aria-hidden="true" d="" display="none"/>
@@ -454,7 +442,224 @@
         </g>
       </g>
       <text x="2" y="10" font-size="12" font-family="Helvetica" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">C</text>
-      <g transform="translate(190, 0) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+      <g transform="translate(190, -10) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
+        <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
+        <rect x="0" y="0" width="300" height="254.021" style="fill:white;stroke:black;stroke-width:13.63px;"/>
+    </g>
+    <g transform="matrix(0.750724,0,0,0.750724,57.2225,30.4652)">
+        <path d="M9.918,150C65.144,151.167 50.997,99.43 65.762,99.934C76.232,100.292 82.967,197.319 93.33,197.74C104.348,198.188 113.82,20.245 132.106,20.378C152.588,20.527 146.555,266.298 182.3,266.791C207.358,267.137 221.574,151.285 290.395,150" style="fill:none;stroke:black;stroke-width:16.65px;"/>
+    </g>
+</g>
+    </g>
+    <g transform="translate(260, 160) scale(1) ">
+      <g class="marks" transform="translate(13.5, 5) scale(1) ">
+        <rect width="226" height="158" fill="white"/>
+        <g fill="none" stroke-miterlimit="10" transform="translate(43,21)">
+          <g class="mark-group role-frame root" role="graphics-object" aria-roledescription="group mark container">
+            <g transform="translate(0,0)">
+              <path class="background" aria-hidden="true" d="M0.5,0.5h130v100h-130Z" stroke="#ddd"/>
+              <g>
+                <g class="mark-group role-axis" aria-hidden="true">
+                  <g transform="translate(0.5,100.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-grid" pointer-events="none">
+                        <line transform="translate(18,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(47,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(77,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(106,-100)" x2="0" y2="100" stroke="#ddd" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" aria-hidden="true">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-grid" pointer-events="none">
+                        <line transform="translate(0,77)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,38)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="130" y2="0" stroke="#ddd" stroke-width="1" opacity="1"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="X-axis titled 'Target Salience' for a linear scale with values from -0.8 to 1.4">
+                  <g transform="translate(0.5,100.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(18,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(47,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(77,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(106,0)" x2="0" y2="5" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(17.72727272727273,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">-0.5</text>
+                        <text text-anchor="middle" transform="translate(47.27272727272727,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.0</text>
+                        <text text-anchor="middle" transform="translate(76.81818181818181,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.5</text>
+                        <text text-anchor="middle" transform="translate(106.36363636363636,15)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">1.0</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,0)" x2="130" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-title" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(65,30)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Target Salience</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-group role-axis" role="graphics-symbol" aria-roledescription="axis" aria-label="Y-axis titled 'Decoding Correlation' for a linear scale with values from -0.06 to 0.20">
+                  <g transform="translate(0.5,0.5)">
+                    <path class="background" aria-hidden="true" d="M0,0h0v0h0Z" pointer-events="none"/>
+                    <g>
+                      <g class="mark-rule role-axis-tick" pointer-events="none">
+                        <line transform="translate(0,77)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,38)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                        <line transform="translate(0,0)" x2="-5" y2="0" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-label" pointer-events="none">
+                        <text text-anchor="end" transform="translate(-7,79.92307692307693)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.0</text>
+                        <text text-anchor="end" transform="translate(-7,41.46153846153846)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.1</text>
+                        <text text-anchor="end" transform="translate(-7,3)" font-family="sans-serif" font-size="10px" fill="#000" opacity="1">0.2</text>
+                      </g>
+                      <g class="mark-rule role-axis-domain" pointer-events="none">
+                        <line transform="translate(0,100)" x2="0" y2="-100" stroke="#888" stroke-width="1" opacity="1"/>
+                      </g>
+                      <g class="mark-text role-axis-title" pointer-events="none">
+                        <text text-anchor="middle" transform="translate(-26,50) rotate(-90) translate(0,-2)" font-family="sans-serif" font-size="11px" font-weight="bold" fill="#000" opacity="1">Decoding Correlation</text>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" pointer-events="none" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-symbol role-mark layer_0_marks" role="graphics-object" aria-roledescription="symbol mark container">
+                  <path aria-label="salience: -0.515058134814; Mean of score: 0.121627515167; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(16.83747385191938,30.143263397435906)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.53226495908; Mean of score: 0.161345276895; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(15.820706963432743,14.867201194331992)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0225330540876; Mean of score: -0.0183998892333; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(48.604225923356175,83.99995739743589)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.556663079523; Mean of score: 0.133176510517; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(80.16645469910387,25.701342108974355)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0716042882046; Mean of score: 0.0866884287065; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(43.04156478791055,43.5813735744417)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.487385464085; Mean of score: 0.117053012187; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(18.472677122239837,31.902687620192328)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.432948496997; Mean of score: 0.0169052855238; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(21.689406995623667,70.42104402930404)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.32841270596; Mean of score: 0.00360096018276; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(66.67893262492409,75.53809223740053)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.405924702799; Mean of score: 0.0446170106818; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(23.286267561880997,59.762688199300705)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.042612204576; Mean of score: 0.00312944033333; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(44.75473336596465,75.71944602564102)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.358158981311; Mean of score: 0.0310421024688; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(68.4366670774556,64.98380674278846)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.648401830894; Mean of score: 0.0123910060645; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(85.58738091647515,72.1573053598015)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.334057072347; Mean of score: 0.110815314188; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(27.5329911794756,34.301802235576915)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.339585810845; Mean of score: 0.00787279150968; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(67.33916154993052,73.89508018858561)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0574660316153; Mean of score: 0.0285171428032; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(50.6684473227198,65.95494507568237)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.17427513273; Mean of score: 0.00867313425278; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(116.66171238831495,73.58725605662393)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.888385937445; Mean of score: 0.000331341741667; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(99.768259939907,76.79563779166668)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0712275841993; Mean of score: 0.0440998349714; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(43.06382457004084,59.96160193406593)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.117248915128; Mean of score: 0.0553268229932; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(54.20107225753462,55.643529618007)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.041048597334; Mean of score: 0.0443787863156; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(44.84712833935522,59.85431295555556)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.167790631404; Mean of score: 0.0424184083865; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(57.18762821934736,60.60830446673597)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.767933412903; Mean of score: 0.0151227571108; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(92.65061076244473,71.10663188045739)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.652917158145; Mean of score: -0.0175766827; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(85.85419570857154,83.6833395)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.103189662626; Mean of score: 0.124594663795; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(41.17515629937143,29.002052386587764)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.367962466824; Mean of score: 0.0748603108226; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(25.529490596741184,48.13064968362283)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.160786338677; Mean of score: 0.0234564880465; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(37.77171635091246,67.90135075134168)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.758594828302; Mean of score: 0.047977834617; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(2.4466692366875913,58.470063608837975)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.162240446512; Mean of score: 0.018901663331; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(37.68579179698923,69.65320641115385)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0922271232568; Mean of score: 0.0438860529643; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(52.72251182880994,60.04382578296703)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.180908908803; Mean of score: 0.0023183242875; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(36.58265538888586,76.03141373557692)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.31263197398; Mean of score: 0.033327502835; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(124.83734391715483,64.10480660192309)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.520766979882; Mean of score: 0.0315984797758; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(16.500133007000855,64.7698154708502)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.117637390532; Mean of score: 0.0164015670793; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(40.32142692309361,70.61478189257295)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.31435369736; Mean of score: 0.0194241102829; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(124.93908211644661,69.45226527582417)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.533639358565; Mean of score: 0.0225368235391; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(15.73949244841545,68.25506786956522)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.747149350025; Mean of score: 0.0231829491933; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(91.42246159237136,68.0065580025641)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.16807812764; Mean of score: 0.0196908373757; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(57.20461663326427,69.34967793243243)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.813192634432; Mean of score: -0.0183811411805; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(95.32501930734384,83.99274660787546)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.966783103827; Mean of score: 0.0188005841452; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(104.40081977161111,69.6920830210918)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0409083360273; Mean of score: 0.02999717945; train_type: Other Sources" role="graphics-symbol" aria-roledescription="point" transform="translate(44.855416507475404,65.38570021153846)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#EEB257" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0574660316153; Mean of score: 0.012662875171; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(50.6684473227198,72.05274031885855)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.17427513273; Mean of score: 0.0485331430278; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(116.66171238831495,58.2564834508547)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.888385937445; Mean of score: 0.0158229071556; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(99.768259939907,70.8373434017094)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0712275841993; Mean of score: 0.0310169929114; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(43.06382457004084,64.99346426483517)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.117248915128; Mean of score: 0.107870840114; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(54.20107225753462,35.43429226398601)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.041048597334; Mean of score: 0.0890889927711; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(44.84712833935522,42.65807970341881)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.167790631404; Mean of score: 0.0183921691108; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(57.18762821934736,69.84916572661123)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.767933412903; Mean of score: 0.0842492516324; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(92.65061076244473,44.5195186029106)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.652917158145; Mean of score: -0.0405058484125; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(85.85419570857154,92.50224938942307)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.103189662626; Mean of score: 0.199501229128; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(41.17515629937143,0.1918349506903394)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.367962466824; Mean of score: 0.190435464161; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(25.529490596741184,3.678667630272958)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.160786338677; Mean of score: 0.00926272654651; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(37.77171635091246,73.36048978980322)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.758594828302; Mean of score: 0.0797069027447; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(2.4466692366875913,46.26657586743045)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.162240446512; Mean of score: 0.0322323288147; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(37.68579179698923,64.52602737895927)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0922271232568; Mean of score: 0.0980996828179; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(52.72251182880994,39.19242968543956)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.180908908803; Mean of score: -0.0077626990425; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(36.58265538888586,79.90873040096153)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.31263197398; Mean of score: 0.0148500921225; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(124.83734391715483,71.2115030298077)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.520766979882; Mean of score: 0.0661777403053; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(16.500133007000855,51.4700998825911)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.117637390532; Mean of score: 0.0300418856724; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(40.32142692309361,65.36850551061009)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 1.31435369736; Mean of score: 0.0408793279857; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(124.93908211644661,61.20025846703297)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.533639358565; Mean of score: 0.0275529034067; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(15.73949244841545,66.32580638202342)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.747149350025; Mean of score: 0.0272860656333; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(91.42246159237136,66.4284362948718)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.16807812764; Mean of score: 0.00496403405405; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(57.20461663326427,75.01383305613305)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.813192634432; Mean of score: 0.012399977381; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(95.32501930734384,72.15385485347984)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.515058134814; Mean of score: 0.00197864991667; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(16.83747385191938,76.16205772435897)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.53226495908; Mean of score: 0.0979151882842; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(15.820706963432743,39.26338912145749)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.0225330540876; Mean of score: -0.00791395548333; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(48.604225923356175,79.96690595512821)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.556663079523; Mean of score: 0.172514984222; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(80.16645469910387,10.571159914529915)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0716042882046; Mean of score: 0.195159342645; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(43.04156478791055,1.8617912903225897)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.487385464085; Mean of score: 0.0842674240937; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(18.472677122239837,44.51252919471155)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.432948496997; Mean of score: -0.0031590569; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(21.689406995623667,78.13809880769232)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.32841270596; Mean of score: 0.0212997381966; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(66.67893262492409,68.73086992440318)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.405924702799; Mean of score: 0.188044575227; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(23.286267561880997,4.598240297202816)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.042612204576; Mean of score: 0.1020933588; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(44.75473336596465,37.65640046153847)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.358158981311; Mean of score: 0.07620144155; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(68.4366670774556,47.61483017307692)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.648401830894; Mean of score: -0.0116420762419; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(85.58738091647515,81.40079855459057)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.334057072347; Mean of score: 0.1317101265; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(27.5329911794756,26.26533596153846)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.339585810845; Mean of score: 0.0413513709129; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(67.33916154993052,61.018703495037215)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: 0.966783103827; Mean of score: 0.0375650879581; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(104.40081977161111,62.47496616997519)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                  <path aria-label="salience: -0.0409083360273; Mean of score: -0.054687851625; train_type: Target Source" role="graphics-symbol" aria-roledescription="point" transform="translate(44.855416507475404,97.95686600961538)" d="M2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,-2.7386127875258306,0A2.7386127875258306,2.7386127875258306,0,1,1,2.7386127875258306,0" fill="#3E2716" stroke-width="2" opacity="0.6"/>
+                </g>
+                <g class="mark-group role-scope layer_1_pathgroup" role="graphics-object" aria-roledescription="group mark container">
+                  <g transform="translate(0,0)">
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
+                    <g>
+                      <g class="mark-line role-mark layer_1_marks" role="graphics-object" aria-roledescription="line mark container">
+                        <path aria-label="train_type: Other Sources; salience: -0.758594828302; score: 0.0611349730099" role="graphics-symbol" aria-roledescription="line mark" d="M2.4466692366875913,53.40962576542212L124.93908211644661,74.17023939138261" stroke="#EEB257" stroke-width="2"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                  <g transform="translate(0,0)">
+                    <path class="background" aria-hidden="true" d="M0,0h130v100h-130Z"/>
+                    <g>
+                      <g class="mark-line role-mark layer_1_marks" role="graphics-object" aria-roledescription="line mark container">
+                        <path aria-label="train_type: Target Source; salience: -0.758594828302; score: 0.0835343319995" role="graphics-symbol" aria-roledescription="line mark" d="M2.4466692366875913,44.79448769251354L124.93908211644661,67.46592503471433" stroke="#3E2716" stroke-width="2"/>
+                      </g>
+                    </g>
+                    <path class="foreground" aria-hidden="true" d="" display="none"/>
+                  </g>
+                </g>
+                <g class="mark-text role-mark layer_2_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label="Target Salience: 1.31435369736; Decoding Correlation: 0.0245885949097; train_type_label: Target,Source; train_type: Target Source" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(132.93908211644663,57.46592503471433)" font-family="sans-serif" font-size="11px" fill="#3E2716">
+                    <tspan>Target</tspan>
+                    <tspan x="0" dy="13">Source</tspan>
+                  </text>
+                </g>
+                <g class="mark-text role-mark layer_3_marks" role="graphics-object" aria-roledescription="text mark container">
+                  <text aria-label="salience: 1.31435369736; Decoding Correlation: 0.00715737758241; train_type_label: Other,Sources; train_type: Other Sources" role="graphics-symbol" aria-roledescription="text mark" text-anchor="start" transform="translate(132.93908211644663,83.17023939138261)" font-family="sans-serif" font-size="11px" fill="#EEB257">
+                    <tspan>Other</tspan>
+                    <tspan x="0" dy="13">Sources</tspan>
+                  </text>
+                </g>
+              </g>
+              <path class="foreground" aria-hidden="true" d="" display="none"/>
+            </g>
+          </g>
+        </g>
+      </g>
+      <text x="2" y="10" font-size="12" font-family="Helvetica" font-weight="bold" letter-spacing="0" text-anchor="start" fill="black">D</text>
+      <g transform="translate(160, 15) scale(1) translate(0, 0) scale(0.1) "><g transform="matrix(0.917431,0,0,0.917431,-1.77636e-14,43.9635)">
         <rect x="0" y="0" width="300" height="254.021" style="stroke:black;stroke-width:13.63px;"/>
     </g>
     <g transform="matrix(0.917431,0,0,0.917431,24.7706,22.8724)">
