@@ -3,8 +3,8 @@ david thought: train decoders across all conditions
 
 ### priorities
 
-- add decoding to fig. 2
-- add decoding to fig. 3
++ add decoding to fig. 2
++ add decoding to fig. 3
 - add decoding to fig. 4
 
 - can we see decoding when we test on different condition than training
