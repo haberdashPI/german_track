@@ -7,7 +7,9 @@ david thought: train decoders across all conditions
 + add decoding to fig. 3
 - add decoding to fig. 4
 
-- can we see decoding when we test on different condition than training
+- todo: re-run cross-validated λ selection once we check on
+  the new cross-condition generalization results
+
 - do we see accurate decoding outside of the target window
 - do the atmiss-target conditions look different for object and spatial
     merely because they are a different set of target
