@@ -2,6 +2,7 @@ using EEGCoding
 using SignalOperators
 using DataFrames
 const encodings = Dict{Any, Array{Float64}}()
+const encodings_lock = ReentrantLock()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus,
     male_fem1_sources, male_fem2_sources, fem1_fem2_sources
@@ -135,15 +136,17 @@ fortraining(x::AbstractSource) = x
 const RowType = Union{DataFrameRow, NamedTuple}
 
 function encode_cache(body, key, stim_num)
-    if key ∈ keys(encodings)
-        encodings[key], stim_num
-    else
-        result = body()
-        encodings[key] = result
-        result, stim_num
+    lock(encodings_lock) do
+        if key ∈ keys(encodings)
+            encodings[key], stim_num
+        else
+            result = body()
+            encodings[key] = result
+            result, stim_num
+        end
     end
 end
-clear_stim_cache!() = empty!(encodings)
+clear_stim_cache!() = lock(() -> empty!(encodings), encodings_lock)
 
 function load_stimulus(source::AbstractSource, stim_i::Int, encoding, events, tofs,
     stim_info)
