@@ -276,6 +276,26 @@ DataFrames.transform(rd::RepeatedDataFrame, @nospecialize(args...); kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> transform(df, args...; kwds...)))
 
+DataFrames.groupby(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> groupby(df, args...; kwds...)))
+
+DataFrames.innerjoin(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> innerjoin(df, args...; kwds...)))
+
+DataFrames.outerjoin(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> outerjoin(df, args...; kwds...)))
+
+DataFrames.rightjoin(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> rightjoin(df, args...; kwds...)))
+
+DataFrames.leftjoin(rd::RepeatedDataFrame, args...; kwds...) =
+    RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
+        df -> leftjoin(df, args...; kwds...)))
+
 Base.filter(f, rd::RepeatedDataFrame; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
         df -> filter(f, df)))
@@ -309,7 +329,7 @@ function addcols(df::GroupedDataFrame, repeat)
     groupby(addcols(parent(df), repeat), groupcols(df))
 end
 
-maybe_addcols(df::AbstractDataFrame, repeat) = addcols(df, repeat)
+maybe_addcols(df::AbstractDataFrame, repeat) = isempty(df) ? df : addcols(df, repeat)
 maybe_addcols(x, repeat) = x
 
 function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
