@@ -35,10 +35,10 @@ params = let
             patience = 6,
             # while testing new pipelines, we use an decently good λ
             # (this is just hand picked based on earlier runs)
-            λs = [0.016],
+            # λs = [0.016],
             # utlimately, on a final run, we run a gamut of λs to pick the best one
             # by cross-validation
-            # λs = exp.(range(log(1e-4), log(1e-1), length = nλ)),
+            λs = exp.(range(log(1e-4), log(1e-1), length = nλ)),
             batchsize = 2048,
         ),
 
