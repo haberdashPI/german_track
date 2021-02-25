@@ -10,12 +10,19 @@ david thought: train decoders across all conditions
 - todo: re-run cross-validated λ selection once we check on
   the new cross-condition generalization results
 
-- do we see accurate decoding outside of the target window
++ can we see decoding when we test on different condition than training: yes
+- do we see accurate decoding outside of the target window?
+    - try mounya's idea: what percentage of trials have an effect pre-target, does that differ by condition?
+    - my idea: how often does target (and other sources) fall outside CI of random stimulus decoding pre-target? does this differ by condition?
+
 - do the atmiss-target conditions look different for object and spatial
     merely because they are a different set of target
     i.e. would we see decodign similar to global if we treated the false
     targets as targets
+
 - can we see differences when using a joint vs. split decoder across conditions?
+    doesn't matter, we saw generalization
+
 - consider adding phase features: this could help classification and decoding
     - try it in one "easy" case, and see if it helps
         + does it help with decoding: doesn't seem to
@@ -26,11 +33,9 @@ david thought: train decoders across all conditions
 ## plans
 
 - build-up angles: careful look at merve's data
-- decoding: mixed and separate other targets
-- decoding: timeline for target
 + conditions: condition-hit timeline
-- decoding: joint mixture??
 - early/late salience (but classifier trained across both cases)
+    - these results don't make much sense to me
 
 remaining tasks:
 
