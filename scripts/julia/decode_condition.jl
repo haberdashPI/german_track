@@ -15,6 +15,9 @@ include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 # NOTE: these area parameters copied from process_decode_timelilne
 # should be come parameters
 
+# Main figure
+# =================================================================
+
 # variable setup
 # -----------------------------------------------------------------
 
@@ -114,8 +117,8 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "fig2c.svg"))
 
-# supplement
-# -----------------------------------------------------------------
+# Supplement 1: decoding generalization across conditions
+# =================================================================
 
 # setup plot data
 plotdf = @_ timelines |>
@@ -210,8 +213,105 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(supdir, "decode_condition_generalize.svg"))
 
+# Supplement 2: decoding by miss
+# =================================================================
+
+# setup plot data
+plotdf = @_ timelines |>
+    groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
+    @combine(__, score = mean(:score))
+
+labels = OrderedDict(
+    "athit-target" => "Hit",
+    "atmiss-target" => "Miss",
+)
+tolabel(x) = labels[x]
+tcolors = ColorSchemes.imola[[0.3, 0.8]]
+
+supdir = mkpath(joinpath(dir, "supplement"))
+
+steps = range(0.1, 0.9, length = 15)
+steps = vcat(steps[1] - step(steps), steps)
+pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12].+1)]]
+pcolors[1] = GermanTrack.grayify(pcolors[1])
+
+target_len_y = 0.135
+pl = @_ plotdf |>
+    groupby(__, [:condition, :train_condition, :time, :train_type, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+        train_type = tolabel.(:train_type)
+    ) |>
+    @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :train_condition, :time, :train_type]) |>
+    combine(__, :score => boot => AsTable) |>
+    transform(__, [:condition, :train_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" : cond) => :train_label) |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+    facet = {
+        row = {
+            field = :train_condition, title = "Decoder Training",
+            sort = ["global", "spatial", "object"],
+                header = {labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"},
+        },
+        column = {field = :condition, title = "Decoder Testing",
+            sort = ["global", "spatial", "object"],
+            header = {
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:train_label, sort = ["other", "global", "spatial", "object"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Decoding Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
+        @vlplot({:text, align = "left", dx = 3, dy = -9},
+            transform = [
+                {filter = "datum.time > 1.25 && datum.time < 1.5 && datum.train_type == 'Target Source'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:upper, aggregate = :mean},
+            text = :train_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "right", baseline = "top", dx = 3, dy = 3},
+            transform = [
+                {filter = "datum.time > 1.3 && datum.time < 1.4 && datum.train_type == 'Other Sources'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean, scale = {domain = [-0.05, 0.15]}},
+            text = :train_type_lbl
+            # color = {value = "black"}
+        )
+    ) +
+    # Target annotation
+    (
+        @vlplot(data = {values = [{}]}) +
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left},
+            x = {datum = 0}, y = {datum = target_len_y},
+            text = {value = ["Target", "Extent"]},
+            color = {value = "black"}
+        ) +
+        @vlplot({:rect, opacity = 0.25},
+            x = {datum = 0}, x2 = {datum = 1},
+            color = {value = "gray"},
+        )
+    ));
+pl |> save(joinpath(supdir, "decode_condition_generalize.svg"))
+
+
 # Presentation plots
-# -----------------------------------------------------------------
+# =================================================================
 
 mkpath(joinpath(dir, "present"))
 thresh = 0.1
