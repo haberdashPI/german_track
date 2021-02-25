@@ -27,14 +27,13 @@ decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@load_cache decode_prefix (models_, :bson) stimulidf x_scores
 meta = GermanTrack.load_stimulus_metadata()
 
+rename!(models_, :cross_fold => :fold)
 # timeline testing
 # -----------------------------------------------------------------
 
 sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
 groups = @_ groupby(stimulidf, [:sid, :trial]) |>
     repeatby(__, :train_condition => unique(stimulidf.condition))
-
-modelgroups = groupby(models_, [:condition, :source, :encoding, :cross_fold, :train_type])
 
 p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
@@ -49,11 +48,14 @@ timelines = combine(groups) do trialdf
 
     runsetup = @_ trialdf |>
         @where(__, :windowing .== "target") |>
+        repeatby(__, :train_type => levels(models_.train_type)) |>
+        @where(__, :is_target_source .== contains.(:train_type, "target")) |>
+        @where(__, (:hittype .== "hit") .== contains.(:train_type, "athit")) |>
+        innerjoin(__, models_, on = [:condition, :source, :encoding, :fold, :train_type]) |>
         groupby(__, [:encoding, :source])
 
     result = combine(runsetup) do stimdf
         stimrow = only(eachrow(stimdf))
-        train_type = stimrow.source == stimrow.target_source ? "athit-target" : "athit-other"
         source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]
         stim, = load_stimulus(source, sound_index, encoding, params.stimulus.samplerate,
@@ -65,17 +67,7 @@ timelines = combine(groups) do trialdf
         y_μ, y_σ = stimrow[[:datamean, :datastd]]
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
-        modelkey = (
-            condition = stimrow.train_condition,
-            source = string(source),
-            encoding = stimrow.encoding,
-            cross_fold = fold,
-            train_type = train_type
-        )
-        haskey(modelgroups, modelkey) || return DataFrame()
-
-        modelrow = modelgroups[modelkey] |> eachrow |> only
-        ŷ = vec(modelrow.model(x'))
+        ŷ = vec(stimrow.model(x'))
 
         function scoreat(offset)
             vstart = clamp(1+offset+target_index, 1, maxlen)
@@ -95,7 +87,7 @@ timelines = combine(groups) do trialdf
                     condition = condition,
                     sound_index = sound_index,
                     fold = fold,
-                    train_type = train_type,
+                    train_type = stimrow.train_type,
                 )
             end
         end
