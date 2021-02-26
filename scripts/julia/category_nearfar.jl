@@ -332,7 +332,7 @@ pl = @_ target_timeline |>
         }
     ) +
     (
-        @vlplot(width = 80, autosize = "fit", height = 130,
+        @vlplot(width = 80, autosize = "fit", height = 110,
             color = {:condition, scale = {range = "#".*hex.(colors)}}) +
         @vlplot({:trail, clip = true},
             transform = [{filter = "datum.time < $(last_time) || datum.target_time == 'early'"}],
@@ -382,256 +382,6 @@ pl = @_ target_timeline |>
     );
 pl |> save(joinpath(dir, "fig4a.svg"))
 
-# TODO: code below is out of date, and will not run
-# I'm not revising it because we're changing how this part is being analyzed
-# Find hyperparameters (λ and winlen)
-# =================================================================
-
-nbins = 10
-switchbreaks = @_ GermanTrack.load_stimulus_metadata().switch_distance |>
-    skipmissing |>
-    quantile(__, range(0,1,length = nbins+1)[2:(end-1)])
-
-file = joinpath(processed_datadir("analyses"), "nearfar-hyperparams.json")
-GermanTrack.@cache_results file fold_map hyperparams begin
-    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-    lambdas = 10.0 .^ range(-2, 0, length=100)
-
-    function compute_powerbin_withbreak(sdf, switch_break, target_switch, window)
-        filtered = @_ sdf |>
-            filter(!ismissing(_.switch_class), __) |>
-            filter(target_switch == "near" ? (_.switch_class < switch_break) :
-                (_.switch_class >= switch_break), __)
-        isempty(filtered) && return Empty(DataFrame)
-        compute_powerbin_features(filtered, subjects, window)
-    end
-
-    classdf = @_ events |> filter(findresponse(_) == "hit", __) |>
-        @transform(__, switch_class = map(x -> sum(x .> switchbreaks).+1, :switch_distance)) |>
-        groupby(__, [:sid, :condition, :target_time_label]) |>
-        filteringmap(__, desc = "Computing features...",
-            :switch_break => 2:nbins,
-            :target_switch_label => ["near", "far"],
-            :windows => [windowtarget(len = len, start = start)
-                for len in 2.0 .^ range(-1, 1, length = 10),
-                    start in [0; 2.0 .^ range(-2, 2, length = 10)]],
-            compute_powerbin_withbreak)
-
-    resultdf = @_ classdf |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :nearfar_hyper_folds)) |>
-        groupby(__, [:winstart, :winlen, :condition, :switch_break]) |>
-        filteringmap(__, folder = foldxt, desc = "Evaluating hyperparameters...",
-            :cross_fold => 1:10,
-            function(sdf, fold)
-                test, model = traintest(sdf, fold, y = :target_switch_label, weight = :weight,
-                    selector = m -> AllSeg(), λ = lambdas)
-
-                # remove the channels: they are redundant, and bloat memory
-                test[:, Not(r"channel")]
-            end) |>
-        delete!(__, :windows)
-
-    fold_map = @_ resultdf |>
-        groupby(__, :sid) |> combine(__, :fold => first => :fold) |>
-        Dict(row.sid => row.fold for row in eachrow(__))
-
-    # ISSUE: were selecting using the test data, but we should select
-    # using the train data (given how close folds are to one another,
-    # I don't think this is going to change much, but we should *DO* it)
-    hyperparamsdf =
-        filteringmap(resultdf, desc = nothing, folder = foldxt,
-            :fold => cross_folds(1:10),
-            function (sdf, fold)
-                λ = @_ sdf.λ |> unique |> __[argmin(abs.(__ .- 0.13))]
-
-                factors = [:winlen, :winstart, :λ, :target_time_label, :switch_break]
-                means = @_ sdf |>
-                    @where(__, :λ .∈ Ref([1.0, λ])) |>
-                    groupby(__, vcat(factors, :sid)) |>
-                    @combine(__, mean = GermanTrack.wmean(:correct, :weight)) |>
-                    groupby(__, factors) |>
-                    @combine(__, mean = mean(:mean)) |>
-                    groupby(__, setdiff(factors, [:λ])) |>
-                    @transform(__,
-                        logitnullmean = logit(shrink(only(:mean[:λ .== 1.0]))),
-                        logitmean = logit.(shrink.(:mean))
-                    ) |>
-                    @where(__, :λ .!= 1.0) |>
-                    groupby(__, setdiff(factors, [:target_time_label])) |>
-                    @combine(__, score = mean(:logitmean - :logitnullmean))
-
-                means[[argmax(means.score)],:]
-            end)
-
-    hyperparams = Dict(row.fold => NamedTuple(row[Not(:fold)])
-        for row in eachrow(hyperparamsdf))
-
-    @info "Saving plots to $(joinpath(dir, "supplement"))"
-end
-
-# Plot near/far across early/late (Fig 4c)
-# =================================================================
-
-# Classification accuracy
-# -----------------------------------------------------------------
-
-file = joinpath(cache_dir("features"), "nearfar-target.json")
-GermanTrack.@cache_results file resultdf begin
-    subjects, events = load_all_subjects(processed_datadir("eeg"), "h5")
-
-    windims = @_ getindex.(values(hyperparams), [:winstart :winlen]) |>
-        mapslices(Tuple, __, dims = 2) |>
-        unique
-
-    classdf = @_ events |> filter(findresponse(_) == "hit", __) |>
-        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-        transform!(__, [:fold, :switch_distance] =>
-            ByRow((f,d) -> ismissing(d) ? missing :
-                (d >= switchbreaks[hyperparams[f].switch_break] ? "near" : "far")) => :target_switch_label) |>
-        groupby(__, [:sid, :fold, :condition, :target_time_label, :target_switch_label]) |>
-        filteringmap(__, desc = "Computing features...",
-            :window => [windowtarget(start = start, len = len) for (start,len) in windims],
-            compute_powerbin_features(_1, subjects, _2)) |>
-        delete!(__, :window)
-
-    resultdf = @_ classdf |>
-        addfold!(__, 10, :sid, rng = stableRNG(2019_11_18, :)) |>
-        transform!(__, :sid => ByRow(x -> fold_map[x]) => :fold) |>
-        groupby(__, [:condition, :target_time_label]) |>
-        filteringmap(__, folder = foldl, desc = "Classifying target proximity...",
-            :cross_fold => 1:10,
-            :modeltype => ["full", "null"],
-            function(sdf, fold, modeltype)
-                selector = modeltype == "null" ? m -> NullSelect() : hyperparams[fold][:λ]
-                lens = hyperparams[fold][:winlen] #|> GermanTrack.spread(0.5, n_winlens)
-                start = hyperparams[fold][:winstart]
-
-                sdf = filter(x -> x.winlen ∈ lens && x.winstart == start, sdf)
-                test, model = traintest(sdf, fold, y = :target_switch_label,
-                    selector = selector, weight = :weight)
-
-                test[:, Not(r"channel")]
-            end)
-
-    # GermanTrack.@store_cache file resultdf
-end
-
-# Plot data
-# -----------------------------------------------------------------
-
-# classmeans = @_ hyper_resultdf |>
-#     filter(_.switch_break == 3, __) |>
-#     filter(_.λ ∈ [1.0, λ_map[_.fold]], __) |>
-classmeans = @_ resultdf |>
-    groupby(__, [:winstart, :winlen, :sid, :modeltype, :fold, :condition, :target_time_label]) |>
-    combine(__, [:correct, :weight] => GermanTrack.wmean => :mean)
-
-
-classmeans_sum = @_ classmeans |>
-    groupby(__, [:winstart, :sid, :modeltype, :fold, :condition, :target_time_label]) |>
-    @combine(__, mean = maximum(:mean)) |>
-    groupby(__, [:sid, :modeltype, :fold, :condition, :target_time_label]) |>
-    @combine(__, mean = mean(:mean))
-
-statdata = @_ classmeans_sum |>
-    groupby(__, [:condition, :sid, :target_time_label]) |>
-    @transform(__,
-        logitnullmean = logit(shrink(only(:mean[:modeltype .== "null"]))),
-        logitmean     = logit.(shrink.(:mean)),
-    ) |>
-    @transform(__,
-        nullodds = exp.(:logitnullmean),
-        odds     = exp.(:logitmean)
-    ) |>
-    @where(__, :modeltype .== "full")
-
-pl = statdata |> @vlplot(:point,
-    column = :condition,
-    color = :target_time_label,
-    x     = {:nullodds, scale = {type = :log, base = 10}, axis = {grid = false}},
-    y     = {:odds, scale = {type = :log, base = 10}, axis = {grid = false}},
-);
-pl |> save(joinpath(dir, "supplement", "earlylate_nearfar_ind.svg"))
-
-CSV.write(processed_datadir("analyses", "eeg_nearfar.csv"), statdata)
-
-run(`Rscript $(joinpath(scriptsdir("R"), "nearfar_eeg.R"))`)
-
-plotdata = @_ CSV.read(processed_datadir("analyses", "eeg_nearfar_coefs.csv"), DataFrame) |>
-    rename(__, :r_med => :mean, :r_05 => :lower, :r_95 => :upper) |>
-    @transform(__,
-        condition_time = :condition,
-        condition = getindex.(split.(:condition, "_"),1),
-        target_time_label = getindex.(split.(:condition, "_"),2)
-    )
-nullmean = logistic(mean(statdata.logitnullmean))
-ytitle = ["Switch Proximity (Near/Far)", "Classification"]
-barwidth = 14
-yrange = [0.5, 1]
-pl = plotdata |>
-    @vlplot(
-        height = 150, width = 160,
-        config = {
-            legend = {disable = true},
-            bar = {discreteBandSize = barwidth},
-            axis = {titlePadding = 13}
-        },
-    ) +
-    @vlplot({:bar, xOffset = -(barwidth/2), clip = true},
-        transform = [{filter = "datum.target_time_label == 'early'"}],
-        color = {:condition_time, title = nothing,
-            scale = {range = urlcol.(keys(inpatterns))}},
-        x = {:condition, axis = {title = "", labelAngle = 0,
-            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}},
-        y = {:mean, title = ytitle, scale = {domain = yrange}}
-    ) +
-    @vlplot({:rule, xOffset = -(barwidth/2)},
-        transform = [{filter = "datum.target_time_label == 'early'"}],
-        color = {value = "black"},
-        x = {:condition, title = nothing},
-        y = {:lower, title = ""}, y2 = :upper
-    ) +
-    @vlplot({:bar, xOffset = (barwidth/2), clip = true},
-        transform = [{filter = "datum.target_time_label == 'late'"}],
-        color = {:condition_time, title = nothing},
-        x = {:condition, title = nothing},
-        y = {:mean, title = ytitle}
-    ) +
-    @vlplot({:rule, xOffset = (barwidth/2)},
-        transform = [{filter = "datum.target_time_label == 'late'"}],
-        x = {:condition, title = nothing},
-        color = {value = "black"},
-        y = {:lower, title = ""}, y2 = :upper
-    ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "bottom", dx = 0, dy = -barwidth-2},
-        transform = [{filter = "datum.target_time_label == 'early' && datum.condition == 'global'"}],
-        # x = {datum = "spatial"}, y = {datum = 0.},
-        x = {:condition, axis = {title = ""}},
-        y = {datum = yrange[1]},
-        text = {value = "Early"},
-    ) +
-    @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
-        transform = [{filter = "datum.target_time_label == 'late' && datum.condition == 'global'"}],
-        # x = {datum = "spatial"}, y = {datum = },
-        x = {:condition, axis = {title = ""}},
-        y = {datum = yrange[1]},
-        text = {value = "Late"},
-    ) +
-    (
-        @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:rule, strokeDash = [4 4], size = 2},
-            y = {datum = nullmean},
-            color = {value = "black"}) +
-        @vlplot({:text, align = "left", dx = 12, dy = 0, baseline = "line-bottom", fontSize = 9},
-            y = {datum = nullmean},
-            x = {datum = "spatial"},
-            text = {value = ["Null Model", "Accuracy"]}
-        )
-    );
-plotfile = joinpath(dir, "fig4c.svg")
-pl |> save(plotfile)
-addpatterns(plotfile, inpatterns, size = 10)
-
 # Combine early/late plots
 # -----------------------------------------------------------------
 
@@ -655,27 +405,21 @@ for (suffix, file) in [
         SubstitutionString("clip\\1_$suffix"))
 end
 
-fig = svg.Figure("89mm", "225mm", # "240mm",
+fig = svg.Figure("178mm", "75mm",
     svg.SVG(background_file),
     svg.Panel(
         svg.SVG(joinpath(dir, "fig4a.svg")).move(0,15),
-        svg.Text("A", 2, 10, size = 12, weight="bold", font = "Helvetica"),
+        svg.Text("A", 2, 30, size = 12, weight="bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(115,30),
+            scale(0.1).move(115,40),
         svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,30)
+            scale(0.1).move(220,40)
     ).move(0, 0),
     svg.Panel(
-        svg.SVG(joinpath(dir, "fig4b.svg")).move(0,15),
-        svg.Text("B", 2, 10, size = 12, weight="bold", font = "Helvetica"),
-        svg.SVG(joinpath(plotsdir("icons"), "behavior.svg")).
-            scale(0.1).move(220,10)
-    ).move(0, 220),
-    svg.Panel(
-        svg.SVG(joinpath(dir, "fig4c.svg")).move(0,15),
-        svg.Text("C", 2, 10, size = 12, weight = "bold", font = "Helvetica"),
+        svg.SVG(joinpath(dir, "fig4c.svg")).move(10,35),
+        svg.Text("B", 2, 30, size = 12, weight = "bold", font = "Helvetica"),
         svg.SVG(joinpath(plotsdir("icons"), "eeg.svg")).
-            scale(0.1).move(220,25)
-    ).move(0, 430),
+            scale(0.1).move(170,35)
+    ).move(265, 0),
 ).scale(1.333).save(joinpath(plotsdir("figures"), "fig4.svg"))
 
