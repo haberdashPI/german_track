@@ -6,6 +6,8 @@ library(rstanarm)
 library(bayestestR)
 library(gamm4)
 
+# TODO: try looking at a robust regression
+
 options(mc.cores = parallel::detectCores())
 
 df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
@@ -14,7 +16,7 @@ df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
 
 dft = filter(df, !is.na(switch_distance))
 df$time_condition = interaction(df$target_time_label, df$condition)
-fit_add = stan_gamm4(sbj_answer ~ s(dtz),
+fit_add = stan_gamm4(sbj_answer ~ s(switch_distance),
     family = binomial(),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))
@@ -69,7 +71,7 @@ table = effects %>%
     select(global_early:spatial_late) %>%
     gather(global_early:spatial_late, key = 'comparison', value = 'value') %>%
     group_by(comparison) %>%
-    effect_summary(r = value)
+    effect_summary(r = atan(value))
 
 table %>% write.csv(file.path(processed_datadir, 'analyses', 'nearfar_behavior_coefs.csv'))
 table %>% effect_table()
