@@ -21,6 +21,9 @@ include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@load_cache prefix predictions_
 
+# Plotting
+# =================================================================
+
 tcolors = ColorSchemes.lajolla[[0.3,0.9]]
 mean_offset = 15
 ind_offset = 6
