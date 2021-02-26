@@ -26,6 +26,7 @@ GermanTrack.@load_cache prefix timelines
 
 # setup plot data
 plotdf = @_ timelines |>
+    @where(__, :train_type .!= "atmiss-target") |>
     @where(__, :train_condition .== :condition) |>
     groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
@@ -218,6 +219,8 @@ pl |> save(joinpath(supdir, "decode_condition_generalize.svg"))
 
 # setup plot data
 plotdf = @_ timelines |>
+    @where(__, :train_type .!= "athit-other") |>
+    @where(__, :condition .== :train_condition) |>
     groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
 
@@ -237,26 +240,21 @@ pcolors[1] = GermanTrack.grayify(pcolors[1])
 
 target_len_y = 0.135
 pl = @_ plotdf |>
-    groupby(__, [:condition, :train_condition, :time, :train_type, :sid]) |>
+    groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
     @transform(__,
         time = :time .+ params.test.winlen_s,
         train_type = tolabel.(:train_type)
     ) |>
     @where(__, -1 .< :time .< 2.5) |>
-    groupby(__, [:condition, :train_condition, :time, :train_type]) |>
+    groupby(__, [:condition, :time, :train_type]) |>
     combine(__, :score => boot => AsTable) |>
     transform(__, [:condition, :train_type] =>
-        ByRow((cond, type) -> type == "Other Sources" ? "other" : cond) => :train_label) |>
+        ByRow((cond, type) -> type == "Miss" ? "miss" : cond) => :train_label) |>
     @vlplot(
         spacing = 5,
         config = {legend = {disable = true}},
     facet = {
-        row = {
-            field = :train_condition, title = "Decoder Training",
-            sort = ["global", "spatial", "object"],
-                header = {labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"},
-        },
         column = {field = :condition, title = "Decoder Testing",
             sort = ["global", "spatial", "object"],
             header = {
@@ -268,14 +266,14 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:train_label, sort = ["other", "global", "spatial", "object"],
+            color = {:train_label, sort = ["miss", "global", "spatial", "object"],
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
         @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Decoding Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
         @vlplot({:text, align = "left", dx = 3, dy = -9},
             transform = [
-                {filter = "datum.time > 1.25 && datum.time < 1.5 && datum.train_type == 'Target Source'"},
+                {filter = "datum.time > 1.25 && datum.time < 1.5 && datum.train_type == 'Hit'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
@@ -285,7 +283,7 @@ pl = @_ plotdf |>
         ) +
         @vlplot({:text, align = "right", baseline = "top", dx = 3, dy = 3},
             transform = [
-                {filter = "datum.time > 1.3 && datum.time < 1.4 && datum.train_type == 'Other Sources'"},
+                {filter = "datum.time > 1.3 && datum.time < 1.4 && datum.train_type == 'Miss'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
@@ -307,7 +305,7 @@ pl = @_ plotdf |>
             color = {value = "gray"},
         )
     ));
-pl |> save(joinpath(supdir, "decode_condition_generalize.svg"))
+pl |> save(joinpath(supdir, "decode_condition_miss.svg"))
 
 
 # Presentation plots
