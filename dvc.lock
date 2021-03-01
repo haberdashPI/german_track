@@ -6,29 +6,29 @@ train-decoder:
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 5b49c62851448a7cb6f1769d44a410cd
-    size: 1919
+    md5: 294cfcecce5465b302755355bde70c3d
+    size: 2263
   outs:
   - path: data/processed/analyses/decode
-    md5: 5660fb2327a281d8f44bd092d9626c21.dir
-    size: 317650981
+    md5: 11f34417a14243b2b5296014bd4f7626.dir
+    size: 804197523
     nfiles: 7
 decode-timeline:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 5660fb2327a281d8f44bd092d9626c21.dir
-    size: 317650981
+    md5: 11f34417a14243b2b5296014bd4f7626.dir
+    size: 804197523
     nfiles: 7
   - path: data/processed/eeg
     md5: fd1ddbb1423a5157d2755c88e34e780a.dir
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 5b49c62851448a7cb6f1769d44a410cd
-    size: 1919
+    md5: 294cfcecce5465b302755355bde70c3d
+    size: 2263
   outs:
   - path: data/processed/analyses/decode-timeline
-    md5: bf169d2462eead400e4b3ea75eb1ce90.dir
-    size: 16929370
+    md5: ebbbfdd32e7de1a40621ab54e5e3e3f3.dir
+    size: 14712434
     nfiles: 1
