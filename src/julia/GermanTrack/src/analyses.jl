@@ -282,19 +282,24 @@ DataFrames.groupby(rd::RepeatedDataFrame, args...; kwds...) =
 
 DataFrames.innerjoin(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
-        df -> innerjoin(df, args...; kwds...)))
+        df -> myjoin(innerjoin, df, args...; kwds...)))
 
 DataFrames.outerjoin(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
-        df -> outerjoin(df, args...; kwds...)))
+        df -> myjoin(outerjoin, df, args...; kwds...)))
 
 DataFrames.rightjoin(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
-        df -> rightjoin(df, args...; kwds...)))
+        df -> myjoin(rightjoin, df, args...; kwds...)))
 
 DataFrames.leftjoin(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
-        df -> leftjoin(df, args...; kwds...)))
+        df -> myjoin(leftjoin, df, args...; kwds...)))
+
+myjoin(joinfn, df::AbstractDataFrame, args...; kwds...) = joinfn(df, args...; kwds...)
+function myjoin(joinfn, gd::GroupedDataFrame, args...; kwds...)
+    groupby(myjoin(joinfn, parent(gd), args...; kwds...), groupcols(gd))
+end
 
 Base.filter(f, rd::RepeatedDataFrame; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
