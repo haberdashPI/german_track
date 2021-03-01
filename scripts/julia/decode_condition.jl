@@ -116,6 +116,57 @@ pl |> save(joinpath(dir, "fig2c.svg"))
 # Presentation plots
 # -----------------------------------------------------------------
 
+mkpath(joinpath(dir, "present"))
+thresh = 0.1
+
+pldata = @_ timelines |>
+    groupby(__, Not([:encoding, :source])) |>
+    @combine(__, score = mean(:score)) |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+        train_type = tolabel.(:train_type),
+    ) |>
+    @where(__, (-2 .< :time .< -1) .| (0.5 .< :time .< 1.5)) |>
+    @transform(__,
+        region_label = ifelse.(:time .< 0, "before-target", "near-target"),
+    ) |>
+    unstack(__, Not([:train_type, :score]), :train_type, :score, allowduplicates = true) |>
+    groupby(__, [:condition, :region_label, :sid]) |>
+    @combine(__,
+        favor_target = mean((:var"Target Source" .- :var"Other Sources") .> thresh),
+        favor_other = mean((:var"Target Source" .- :var"Other Sources") .< -thresh)
+    ) |>
+    stack(__, r"favor", variable_name = :favor) |>
+    @transform(__, favor = replace.(:favor, r"favor_(.*)" => s"\1")) |>
+    groupby(__, [:condition, :region_label, :favor]) |>
+    combine(__, :value => boot(alpha = sqrt(0.05)) => AsTable)
+
+barwidth = 18
+pl = @_ pldata |>
+    @transform(__,
+        region_label = replace(:region_label,
+            "near-target" => "Near (0.5 s, 1.5 s)",
+            "before-target" => "Before (-2 s, -1 s)"
+        )
+    ) |>
+    @vlplot(spacing = 5,
+        config = {
+            legend = {disable = true},
+            bar = {discreteBandSize = barwidth},
+        },
+        facet = {
+            row = {field = :region_label, title = "", sort = ["Near (0.5 s, 1.5 s)", "Before (-2 s, -1 s)"]},
+            column = {field = :condition, title = "", sort = ["global", "spatial", "object"],
+                header = {labelFontWeight = "bold",
+                    labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}
+            }
+        }) +
+    (@vlplot(x = {:favor, axis = {title = "Source", labelAngle = -45}},
+        height = 90, width = 60) +
+    @vlplot({:bar}, y = {:value, title = "Time Favoring (s)"}, color = :condition) +
+    @vlplot(:rule, y = :lower, y2 = :upper));
+pl |> save(joinpath(dir, "present", "fig2d.svg"))
+
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid]) |>
     @combine(__, score = mean(:score)) |>
