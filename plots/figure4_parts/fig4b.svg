@@ -49,6 +49,30 @@
     <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
     <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDB8C1;"/>
 </pattern>
+</defs><defs><pattern id="stripe1a" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#0F3C5F;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#134B61;"/>
+</pattern>
+<pattern id="stripe1b" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#1A5862;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#28645F;"/>
+</pattern>
+<pattern id="stripe2a" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#687B3E;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#818232;"/>
+</pattern>
+<pattern id="stripe2b" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#9D892B;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#BA8F32;"/>
+</pattern>
+<pattern id="stripe3a" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#EB9A60;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#F9A381;"/>
+</pattern>
+<pattern id="stripe3b" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="0" y="0" width="10" height="20" style="stroke:none;         fill:#FDAEA2;"/>
+    <rect x="10" y="0" width="10" height="20" style="stroke:none;         fill:#FDB8C1;"/>
+</pattern>
 </defs>
   <defs>
     <clipPath id="clip1_behavior_slopes">
