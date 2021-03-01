@@ -170,13 +170,10 @@ end
 
 @info "Cross-validated training of source decoders (this will take some time...)"
 
-groupings = [:source, :encoding, :condition]
-groups = groupby(stimulidf, groupings)
-
 train_types = OrderedDict(
     "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
     "athit-target"  => ( train = ("hit", true), test  = ("hit", true) ),
-    "atmiss-target" => ( train = ("miss", true), test  = ("hit", true) )
+    # "atmiss-target" => ( train = ("miss", true), test  = ("hit", true) )
 )
 function filtertype(df, type)
     train_type = train_types[df.train_type[1]][type]
@@ -184,7 +181,9 @@ function filtertype(df, type)
               _1.is_target_source == train_type[2], df)
 end
 
-modelsetup = @_ groups |>
+modelsetup = @_ stimulidf |>
+    @where(__, :condition .== "object") |>
+    groupby(__, [:source, :encoding, :condition]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
@@ -240,23 +239,17 @@ function nanmean(xs)
     isempty(xs_) ? 0.0 : mean(xs_)
 end
 pldata = @_ scores |>
-    @transform(__, condition = string.(:condition)) |>
+    @where(__, (:windowing .== "target")) |>
     groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ]) |>
     @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :train_type, :test_type, :λ]) |>
     @combine(__, score = median(:score))
 
 best_λs = @_ scores |>
-    @transform(__, condition = string.(:condition)) |>
-    groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ, :fold]) |>
-    @combine(__, score = nanmean(:score)) |>
-    groupby(__, [:condition, :train_type, :test_type, :λ, :fold]) |>
-    @combine(__, score = median(:score)) |>
-    @where(__, (startswith.(:train_type, "athit-target")) .& (:test_type .== "hit-target")) |>
-    groupby(__, [:fold, :condition, :λ]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, [:λ, :fold]) |>
-    @combine(__, score = minimum(:score)) |>
+    @where(__, startswith.(:train_type, "athit-target") .& (:windowing .== "target")) |>
+    groupby(__, Not(:source)) |> @combine(__, score = mean(:score)) |>
+    groupby(__, [:fold, :condition, :λ]) |> @combine(__, score = median(:score)) |>
+    groupby(__, Not(:condition)) |> @combine(__, score = minimum(:score)) |>
     repeatby(__, :cross_fold => 1:params.train.nfolds) |>
     @where(__, :cross_fold .!= :fold) |>
     combine(__, DataFrame(score = maximum(_1.score), λ = _1.λ[argmax(_1.score)]))

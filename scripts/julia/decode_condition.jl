@@ -308,6 +308,11 @@ pl = @_ plotdf |>
 pl |> save(joinpath(supdir, "decode_condition_miss.svg"))
 
 
+# Supplement 3: decoding fall outside CI of baseline
+# =================================================================
+
+
+
 # Presentation plots
 # =================================================================
 
