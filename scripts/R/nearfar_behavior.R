@@ -1,18 +1,65 @@
 source("src/R/setup.R")
-library(ggplot2)
-library(cowplot)
-library(dplyr)
-library(rstanarm)
-library(bayestestR)
-library(gamm4)
-
-# TODO: try looking at a robust regression
-
 options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = T)
 
 df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
     filter(perf %in% c('hit', 'miss')) %>%
     mutate(id = paste0(sid, exp_id))
+
+# STEP one, plot an stimulus-condition pair, and sho0w all subjects
+# hits and missed on that trial, look at the markers for switch distance
+
+# then compare to the actual stimulus
+select_groups <- function(dd, gr, ...) dd[sort(unlist(attr(dd, "groups")$.rows[ gr ])), ]
+
+singledf = df %>% filter(dev_time > 0) %>%
+    group_by(condition, exp_id, sid) %>%
+    select_groups(1)
+
+p = ggplot(singledf, aes(x = dev_time, y = direction_timing, color = perf, shape = perf)) +
+    geom_point()
+ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'data_slice.svg'), p)
+
+# OKAY: this convinces me that we really do need to avoid using a simple logistic
+# regression. We need something to make the analysis robust: i.e. an error parameter of some
+# sort that allows for misses even when we're at a very high logit
+
+# Let's compare plain logistic regression to the robust logistic model
+
+df = df %>% mutate(dtz = (direction_timing - mean(direction_timing, na.rm = T) /
+    sd(direction_timing, na.rm =T)))
+
+mf = model.frame(perf ~ direction_timing, singledf)
+MM = model.matrix(perf ~ direction_timing, singledf)
+fit1 = stan(file = file.path(standir, 'robust_logit.stan'), data = list(
+    n = nrow(MM),
+    k = ncol(MM),
+    y = model.response(mf) == 'hit',
+    A = MM,
+    theta_prior = 5,
+    r = 0.1
+))
+
+fit2 = stan(file = file.path(standir, 'robust_logit.stan'), data = list(
+    n = nrow(MM),
+    k = ncol(MM),
+    y = model.response(mf) == 'hit',
+    A = MM,
+    theta_prior = 5,
+    r = 0.001
+))
+
+df$dtz = (df$direction_timing)
+mf = model.frame(perf ~ direction_timing * condition * target_time_label, df)
+MM = model.matrix(perf ~ direction_timing * condition * target_time_label, df)
+fit2 = stan(file = file.path(standir, 'robust_logit.stan'), data = list(
+    n = nrow(MM),
+    k = ncol(MM),
+    y = model.response(mf) == 'hit',
+    A = MM,
+    theta_prior = 5,
+    r = 0.001
+))
 
 dft = filter(df, !is.na(switch_distance))
 df$time_condition = interaction(df$target_time_label, df$condition)
@@ -21,12 +68,12 @@ fit_add = stan_gamm4(sbj_answer ~ s(switch_distance),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))
 
-fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = target_time_label),
+fit_add = stan_gamm4(sbj_answer ~ s(switch_distance, by = target_time_label),
     family = binomial(),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))
 
-fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = time_condition),
+fit_add = stan_gamm4(sbj_answer ~ s(switch_distance, by = time_condition),
     family = binomial(),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))

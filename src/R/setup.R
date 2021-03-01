@@ -11,10 +11,12 @@ library(stringr)
 library(rjson)
 library(forcats)
 library(rstanarm)
+library(rstan)
 options(mc.cores = parallel::detectCores())
 
 source("src/R/analysis.R")
 
+standir = file.path(base_dir,'src','stan')
 analysis_dir = file.path(base_dir,'scripts','R')
 cache_dir = file.path(base_dir,'_research','cache')
 processed_datadir = file.path(base_dir,'data','processed')
