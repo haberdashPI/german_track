@@ -170,7 +170,7 @@ end
 
 @info "Cross-validated training of source decoders (this will take some time...)"
 
-groupings = [:source, :encoding]
+groupings = [:source, :encoding, :condition]
 groups = groupby(stimulidf, groupings)
 
 train_types = OrderedDict(
@@ -184,21 +184,18 @@ function filtertype(df, type)
               _1.is_target_source == train_type[2], df)
 end
 
-progress = Progress(params.train.max_steps * length(groups) *
-    params.train.nfolds * params.train.nλ * length(train_types))
-
 modelsetup = @_ groups |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
-        :λ => exp.(range(log(1e-4),log(1e-1),length=nλ)),
-        # :λ => [0.0013],
+        :λ => params.train.λs,
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
-        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
+        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding, :condition]])))
 
 toxy(df) = isempty(df) ? ([], []) :
     (x[:, eegindices(df)], reshape(reduce(vcat, row.data for row in eachrow(df)),1,:))
 
+progress = Progress(params.train.max_steps * ngroups(modelsetup))
 
 modelrun = combine(modelsetup) do fold
     train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
