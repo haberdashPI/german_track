@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
-    shrink, wsem, tcombine, testsplit
+    shrink, wsem, tcombine, testsplit, ngroups
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -206,6 +206,17 @@ testsplit(rd::RepeatedDataFrame, args...; kwds...) =
         df -> testsplit(df, args...; kwds...)))
 
 """
+    ngroups(df)
+
+Report the number of groupings in the data frame. For a data frame, this is 1, for a grouped
+data frame this is its length, and the repeated data frame is the number of repeats times
+the number of groupings for the data frame.
+"""
+ngroups(df::AbstractDataFrame) = 1
+ngroups(df::GroupedDataFrame) = length(df)
+ngroups(df::RepeatedDataFrame) = @_(prod(length(_[2]), df.repeaters)) * ngroups(df.df)
+
+"""
     repeatby(df, col => vals...)
 
 Lazily repeat the rows in df, one repeat for each possible combination of the new columns'
@@ -291,7 +302,11 @@ function combine_repeat(rd::RepeatedDataFrame, combinefn::Function, folder)
         for ap in rd.applyers
             input = ap(input)
         end
-        maybe_addcols(combinefn(input), repeat)
+        if isempty(input)
+            Empty(DataFrame)
+        else
+            maybe_addcols(combinefn(input), repeat)
+        end
     end
     @_ rd.repeaters |>
         map(_1[1] .=> _1[2], __) |>
