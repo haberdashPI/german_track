@@ -60,7 +60,7 @@ function encode(stim::Stimulus,tofs,::ASEnvelope)
     resampled = Signal(stim.data,stim.framerate) |>
         ToFramerate(CorticalSpectralTemporalResponses.fixed_fs) |> AxisArray
     @assert nchannels(resampled) == 1
-    spect = filt(audiospect,resampled[:,1],false)
+    spect = filt(audiospect,resampled[:,1],false,fs=8000)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
