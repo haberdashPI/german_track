@@ -3,12 +3,12 @@ david thought: train decoders across all conditions
 
 ### priorities
 
-+ add decoding to fig. 2
-+ add decoding to fig. 3
-- add decoding to fig. 4
+- work on issues mentioned in `notes.md`
 
-- todo: re-run cross-validated λ selection once we check on
-  the new cross-condition generalization results
+- cleanup: use dvc to manage resampled eeg with freqbins
+- cleanup: do we really need the L1 regularization??? (I *think* so, but verify)
+
+- todo: re-run cross-validated λ selection with a better range
 
 + can we see decoding when we test on different condition than training: yes
 - do we see accurate decoding outside of the target window?
