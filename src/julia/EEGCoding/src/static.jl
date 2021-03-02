@@ -199,25 +199,6 @@ end
 
 cleanstring(i::Int) = @sprintf("%03d",i)
 
-function withlags(x,lags)
-    if lags == 0:0
-        x
-    end
-
-    nl = length(lags)
-    n,m = size(x)
-    y = similar(x,size(x,1),m*nl)
-    z = zero(eltype(y))
-    for I in CartesianIndices(x)
-        for (l,lag) in enumerate(lags)
-            r,c = I[1],I[2]
-            r_ = r - lag
-            y[r,(l-1)*m+c] = 0 < r_ <= n ? x[r_,c] : z
-        end
-    end
-    y
-end
-
 safezscore(x) = length(x) == 1 || std(x) == 0 ? x : zscore(x)
 scale(x) = mapslices(safezscore,x,dims=1)
 # adds v to the diagonal of matrix (or tensor) x
