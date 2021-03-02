@@ -55,6 +55,7 @@ ProximalAlgorithms = "≥0.2"
 ProximalOperators = "≥0.10"
 StatsBase = "≥0.30"
 Unitful = "≥0.15"
+CorticalSpectralTemporalResponses = "≥0.6.1"
 julia = "≥0.7"
 
 [extras]
