@@ -7,7 +7,7 @@ params = let
     nlags = round(Int,samplerate*max_lag)
     lags = -(nlags-1):1:0
     decode_sr = 1 / (round(Int, 0.1samplerate) / samplerate)
-    nλ = 24
+    nλ = 6
 
     params = (
         stimulus = (
@@ -38,8 +38,8 @@ params = let
             # λs = [0.016],
             # utlimately, on a final run, we run a gamut of λs to pick the best one
             # by cross-validation
-            λs = exp.(range(log(1e-4), log(1e-1), length = nλ)),
-            batchsize = 2048,
+            λs = exp.(range(log(1e-3), log(1e-1), length = nλ)),
+            batchsize = 1024,
         ),
 
         test = (
@@ -50,7 +50,7 @@ params = let
 end
 
 function load_decode_data()
-    prefix = joinpath(cache_dir("eeg", "decoding"), "freqbin-power-sr$(params.stimulus.samplerate)")
+    prefix = joinpath(cache_dir("eeg", "decoding"), "freqbin-power-jl1.6-sr$(params.stimulus.samplerate)")
     GermanTrack.@use_cache prefix (subjects, :jld) begin
         @info "Resampling EEG data, this may take a while (this step will be cached to avoid repeating it)"
         # eeg_encoding = FFTFilteredPower("freqbins", Float32[1, 3, 7, 15, 30, 100])
