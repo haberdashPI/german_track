@@ -50,6 +50,8 @@ timelines = combine(groups) do trialdf
         ) |>
         @where(__, :is_target_source .== contains.(:train_type, "target")) |>
         @where(__, (:hittype .== "hit") .== contains.(:train_type, "athit")) |>
+        # for now train condition should be the same as condition
+        @where(__, :train_condition .== :condition) |>
         innerjoin(__, models_, on = [:train_condition, :source, :encoding, :fold,
             :train_type]) |>
         combine(identity, __)
