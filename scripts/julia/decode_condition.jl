@@ -137,7 +137,7 @@ plotdf = @_ timelines |>
         target_switch_label = getindex.(Ref(meta.target_switch_label), :sound_index)
     )
 
-target_len_y = 0.135
+target_len_y = 0.15
 pl = @_ plotdf |>
     groupby(__, [:condition, :time, :train_type, :sid, :target_switch_label]) |>
     @combine(__, score = mean(:score)) |>
@@ -189,7 +189,7 @@ pl = @_ plotdf |>
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
-            y = {:lower, aggregate = :mean, scale = {domain = [-0.05, 0.15]}},
+            y = {:lower, aggregate = :mean, scale = {domain = [-0.1, 0.2]}},
             text = :train_type_lbl
             # color = {value = "black"}
         )
@@ -306,8 +306,8 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:train_label, sort = ["other", "global", "spatial", "object"],
-                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+            color = {:train_label, sort = ["other", "object"],
+                title = "Source", scale = { range = "#".*hex.(pcolors[[1,4]]) }}
         ) +
         @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Decoding Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
