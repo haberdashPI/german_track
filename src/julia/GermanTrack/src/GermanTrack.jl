@@ -23,7 +23,7 @@ include("classifier.jl")  ## for classification
 include("stimuli.jl")     ## for encoding stimuli
 include("files.jl")       ## for loading files
 include("random.jl")      ## for pseudo-random number generation
-include("decoder.jl")
+include("decoder.jl")     ## for translating EEG to stimulus features
 
 # ## Caching
 # Let `EEGCoding` know where it can cache an intermediate results it generates
