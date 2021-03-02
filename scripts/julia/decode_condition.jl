@@ -101,13 +101,12 @@ pl = @_ plotdf |>
             text = :train_type_lbl
             # color = {value = "black"}
         )
-
     ) +
     # Target annotation
     (
         @vlplot(data = {values = [{}]}) +
-        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :left},
-            x = {datum = 0}, y = {datum = target_len_y},
+        @vlplot(mark = {:text, size = 11, baseline = "bottom", align = :center},
+            x = {datum = 0.5}, y = {datum = target_len_y},
             text = {value = ["Target", "Extent"]},
             color = {value = "black"}
         ) +
