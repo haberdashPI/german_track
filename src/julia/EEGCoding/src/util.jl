@@ -1,4 +1,4 @@
-export cachefn, cache_dir, JointEncoding, encode, folds, randmix
+export cachefn, cache_dir, JointEncoding, encode, folds, randmix, withlags
 using BSON: @save, @load
 using BSON
 using ProgressMeter
@@ -11,15 +11,24 @@ function cache_dir(args...)
     dir
 end
 
-progress_update!(prog::Progress, n = 1) =
-    ProgressMeter.update!(prog, prog.counter+n)
-progress_update!(prog::Bool, n = 1) = @assert !prog
+function withlags(x,lags)
+    if lags == 0:0
+        x
+    end
 
-function progress_ammend!(prog::Progress, n)
-    prog.n += n
-    ProgressMeter.update!(prog, prog.counter)
+    nl = length(lags)
+    n,m = size(x)
+    y = similar(x,size(x,1),m*nl)
+    z = zero(eltype(y))
+    for I in CartesianIndices(x)
+        for (l,lag) in enumerate(lags)
+            r,c = I[1],I[2]
+            r_ = r - lag
+            y[r,(l-1)*m+c] = 0 < r_ <= n ? x[r_,c] : z
+        end
+    end
+    y
 end
-progress_ammend!(prog::Bool, n) = @assert !prog
 
 """
     folds(k, indices, [test_indices];
@@ -109,48 +118,6 @@ function folds(K, indices, test_indices = indices;on_all_empty_test = :error,
         result = filter_empty_test ? @_(filter(!isempty(_[2]), result)) : result
 
         result
-    end
-end
-
-struct RandMix{T, RNG}
-    rng::RNG
-    report_source::Bool
-    args::T
-end
-Base.length(x::RandMix) = sum(length, x.args)
-Base.eltype(x::RandMix) = Union{eltype.(x.args)...}
-randmix(args...;rng = Random.AbstractRNG, report_source = false) =
-    RandMix(Random.GLOBAL_RNG, report_source, args)
-
-struct FirstIterate
-end
-const firstitr = FirstIterate()
-struct LastIterate
-end
-const lastitr = LastIterate()
-myitr(x, ::FirstIterate) = iterate(x)
-myitr(x, ::LastIterate) = nothing
-myitr(x, state) = iterate(x, state)
-
-function Base.iterate(mix::RandMix, states = map(x -> firstitr, mix.args))
-    newstates = collect(Any, states)
-    indices = Set(1:length(mix.args))
-    i = rand(mix.rng, indices); setdiff!(indices, i)
-
-    result = myitr(mix.args[i], states[i])
-    while isnothing(result) && !isempty(indices)
-        newstates[i] = lastitr
-        i = rand(mix.rng, indices); setdiff!(indices, i)
-        result = myitr(mix.args[i], states[i])
-    end
-    if !isnothing(result)
-        val, state = result
-        newstates[i] = state
-        if mix.report_source
-            (i, val), Tuple(newstates)
-        else
-            val, Tuple(newstates)
-        end
     end
 end
 
