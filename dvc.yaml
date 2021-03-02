@@ -4,6 +4,7 @@ stages:
     cmd: julia -t auto --project=. -- scripts/julia/train_decode.jl
     deps:
     - scripts/julia/setup_decode_params.jl
+    - data/processed/analyses/decode-data
     - data/processed/eeg
     outs:
     - data/processed/analyses/decode:
@@ -13,8 +14,17 @@ stages:
     cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl
     deps:
     - scripts/julia/setup_decode_params.jl
+    - data/processed/analyses/decode-data
     - data/processed/analyses/decode
     - data/processed/eeg
     outs:
     - data/processed/analyses/decode-timeline:
+        persist: true
+  load-decoder-data:
+    desc: Organize and downsample EEG data for decoding.
+    cmd: julia -t auto --project==. -- scripts/julia/load_decode_data.jl
+    deps:
+    - data/processed/eeg
+    outs:
+    - data/processed/analyses/decode-data:
         persist: true

@@ -20,7 +20,8 @@ include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 # Setup EEG Data
 # -----------------------------------------------------------------
 
-subjects = load_decode_data()
+data_prefix = joinpath(processed_datadir("analyses", "decode-data", "freqbinpower-sr$(params.stimulus.samplerate)"))
+GermanTrack.@load_cache data_prefix (subjects, :bson)
 events = load_all_subject_events(processed_datadir("eeg"), "h5")
 
 meta = GermanTrack.load_stimulus_metadata()
@@ -171,14 +172,17 @@ end
 @info "Cross-validated training of source decoders (this will take some time...)"
 
 train_types = OrderedDict(
-    "athit-other"   => ( train = ("hit", false), test  = ("hit", false) ),
-    "athit-target"  => ( train = ("hit", true), test  = ("hit", true) ),
-    "atmiss-target" => ( train = ("miss", true), test  = ("hit", true) )
+    "athit-other"   => ( train = ("hit", false, "target"), test  = ("hit", false, "target") ),
+    "athit-target"  => ( train = ("hit", true, "target"), test  = ("hit", true, "target") ),
+    # "atmiss-target" => ( train = ("miss", true, "target"), test  = ("hit", true, "target") ),
+    # "atmiss-target" shows little difference from "athit-target"
+    "athit-pre-target" => ( train = ("hit", true, "pre-target"), test  = ("hit", true, "pre-target") )
 )
 function filtertype(df, type)
     train_type = train_types[df.train_type[1]][type]
     @_ filter(_1.hittype          == train_type[1] &&
-              _1.is_target_source == train_type[2], df)
+              _1.is_target_source == train_type[2] &&
+              _1.windowing        == train_type[3], df)
 end
 
 modelsetup = @_ stimulidf |>
@@ -239,11 +243,11 @@ function nanmean(xs)
     isempty(xs_) ? 0.0 : mean(xs_)
 end
 pldata = @_ scores |>
-    @where(__, (:windowing .== "target")) |>
+    # @where(__, (:windowing .== "target")) |>
     groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ]) |>
     @combine(__, score = nanmean(:score)) |>
     groupby(__, [:condition, :train_type, :test_type, :λ]) |>
-    @combine(__, score = median(:score))
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable)
 
 best_λs = @_ scores |>
     @where(__, startswith.(:train_type, "athit-target") .& (:windowing .== "target")) |>
@@ -259,15 +263,16 @@ best_λ = Dict(row.cross_fold => row.λ for row in eachrow(best_λs))
 
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 3)]
 pl = @_ pldata |>
-    @where(__, :test_type .== "hit-target") |>
+    # @where(__, :test_type .== "hit-target") |>
     @vlplot(
         facet = {column = {field = :condition, type = :nominal}}
     ) +
     (
-        @vlplot() +
-        @vlplot({:line, strokeCap = :round}, x = {:λ, scale = {type = :log}}, y = :score,
+        @vlplot(x = {:λ, scale = {type = :log}}) +
+        @vlplot({:line, strokeCap = :round}, y = :value,
             color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot({:point, filled = true}, x = {:λ, scale = {type = :log}}, y = :score,
+        @vlplot({:errorbar, ticks = {size = 5}}, y = :lower, y2 = :upper, color = :train_type) +
+        @vlplot({:point, filled = true}, y = :value,
             color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
         (
             best_λs |> @vlplot() +
