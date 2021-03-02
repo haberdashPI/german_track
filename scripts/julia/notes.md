@@ -6,6 +6,11 @@ look at things per trial Q: why so different from traditional decoding
 - can we see better before target decoding accuracy
 - during switch (i.e. are switches messing up tracking, so we'd see better tracking pre-target for regions far from switches, or near late switches)
 
+simple approaches:
+plot decoding accuracy timeline near/far from switch
+plot decoding accuracy timeline for early/late target trials
+plot accuracy at the interaction of these two
+
 or reverse engineer:
 - what condition give before target decoding accuracy that's better
 take all decoding
