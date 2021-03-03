@@ -34,6 +34,7 @@ plotdf = @_ timelines |>
 labels = OrderedDict(
     "athit-target" => "Target Source",
     "athit-other" => "Other Sources",
+    "athit-pre-target" => "Baseline"
 )
 tolabel(x) = labels[x]
 tcolors = ColorSchemes.imola[[0.3, 0.8]]
@@ -43,8 +44,8 @@ tcolors = ColorSchemes.imola[[0.3, 0.8]]
 
 steps = range(0.1, 0.9, length = 15)
 steps = vcat(steps[1] - step(steps), steps)
-pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12].+1)]]
-pcolors[1] = GermanTrack.grayify(pcolors[1])
+pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12,14].+1)]]
+pcolors[[1,end]] = GermanTrack.grayify.(pcolors[[1,end]])
 
 target_len_y = 0.135
 pl = @_ plotdf |>
@@ -56,9 +57,10 @@ pl = @_ plotdf |>
     ) |>
     @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
-    combine(__, :score => boot => AsTable) |>
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
     transform(__, [:condition, :train_type] =>
-        ByRow((cond, type) -> type == "Other Sources" ? "other" : cond) => :train_label) |>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" :
+            type == "Baseline" ? "before" : cond) => :train_label) |>
     @vlplot(
         spacing = 5,
         config = {legend = {disable = true}},
@@ -76,10 +78,12 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:train_label, sort = ["other", "global", "spatial", "object"],
+            color = {:train_label, sort = ["other", "global", "spatial", "object", "before"],
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
-        @vlplot({:line, strokeJoin = :round}, y = {:value, title = "Decoding Correlation"}) +
+        @vlplot({:line, strokeJoin = :round},
+            strokeDash = {:train_type, range = [[1,0], [4,1], [2,1]], sort = ["Target Source", "Other Sources", "Baseline"]},
+            y = {:value, title = "Decoding Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
         @vlplot({:text, align = "left", dx = 3, dy = -9},
             transform = [
@@ -91,9 +95,19 @@ pl = @_ plotdf |>
             text = :train_type_lbl
             # color = {value = "black"}
         ) +
-        @vlplot({:text, align = "right", baseline = "top", dx = 3, dy = 3},
+        @vlplot({:text, align = "left", baseline = "top", dx = 3, dy = -3},
             transform = [
-                {filter = "datum.time > 1.3 && datum.time < 1.4 && datum.train_type == 'Other Sources'"},
+                {filter = "datum.time > 0.5 && datum.time < 0.6 && datum.train_type == 'Other Sources'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean, scale = {domain = [-0.05, 0.15]}},
+            text = :train_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "center", baseline = "top", dx = 3, dy = 3},
+            transform = [
+                {filter = "datum.time > 1.8 && datum.time < 1.9 && datum.train_type == 'Baseline'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
