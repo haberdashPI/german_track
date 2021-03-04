@@ -3,7 +3,7 @@ using EEGCoding
 
 params = let
     samplerate = 32
-    max_lag = 3
+    max_lag = 1.5
     nlags = round(Int,samplerate*max_lag)
     lags = -(nlags-1):1:0
     decode_sr = 1 / (round(Int, 0.1samplerate) / samplerate)

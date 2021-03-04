@@ -148,34 +148,11 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-function decode_scores(predictions)
-    score(x,y) = cor(vec(x),vec(y))
-    meta = GermanTrack.load_stimulus_metadata()
-    scores = @_ predictions |>
-        @transform(__, score = score.(:prediction, :data)) |>
-        # @where(__, :encoding .== "envelope") |>
-        # groupby(__, [:encoding, :λ]) |>
-        # @transform(__, score = zscoresafe(:score)) |>
-        groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
-            :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
-        @combine(__, score = mean(:score)) |>
-        transform!(__,
-            :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
-            :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
-            :stim_id => (x -> meta.target_times[x]) => :target_time,
-            :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
-            :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
-            [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
-        )
-end
-
 @info "Cross-validated training of source decoders (this will take some time...)"
 
 train_types = OrderedDict(
     "athit-other"   => ( train = ("hit", false, "target"), test  = ("hit", false, "target") ),
     "athit-target"  => ( train = ("hit", true, "target"), test  = ("hit", true, "target") ),
-    # "atmiss-target" => ( train = ("miss", true, "target"), test  = ("hit", true, "target") ),
-    # "atmiss-target" shows little difference from "athit-target"
     "athit-pre-target" => ( train = ("hit", true, "pre-target"), test  = ("hit", true, "pre-target") )
 )
 function filtertype(df, type)
@@ -187,7 +164,7 @@ end
 
 modelsetup = @_ stimulidf |>
     # @where(__, :condition .== "object") |>
-    groupby(__, [:source, :encoding, :condition]) |>
+    groupby(__, [:source, :encoding]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
@@ -235,7 +212,22 @@ models = select(modelrun, Not(:result))
 # -----------------------------------------------------------------
 
 # score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
-scores = decode_scores(predictions)
+meta = GermanTrack.load_stimulus_metadata()
+score(x,y) = cor(vec(x), vec(y))
+scores = @_ predictions |>
+    @transform(__, score = score.(:prediction, :data)) |>
+    groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
+        :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
+    @combine(__, score = mean(:score)) |>
+    transform!(__,
+        :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
+        :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
+        :stim_id => (x -> meta.target_times[x]) => :target_time,
+        :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
+        :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
+        [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
+    )
+
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 3)]
 
 function nanmean(xs)
