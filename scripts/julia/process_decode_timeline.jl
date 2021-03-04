@@ -27,7 +27,7 @@ decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@load_cache decode_prefix (models_, :bson) stimulidf x_scores
 meta = GermanTrack.load_stimulus_metadata()
 
-rename!(models_, :cross_fold => :fold, :condition => :train_condition)
+rename!(models_, :cross_fold => :fold)
 
 # timeline testing
 # -----------------------------------------------------------------
@@ -45,15 +45,14 @@ timelines = combine(groups) do trialdf
 
     runsetup = @_ copy(trialdf) |>
         repeatby(__,
-            :train_condition => unique(stimulidf.condition),
+            # :train_condition => unique(stimulidf.condition),
             :train_type => levels(models_.train_type)
         ) |>
         @where(__, :is_target_source .== contains.(:train_type, "target")) |>
         @where(__, (:hittype .== "hit") .== contains.(:train_type, "athit")) |>
         # for now train condition should be the same as condition
-        @where(__, :train_condition .== :condition) |>
-        innerjoin(__, models_, on = [:train_condition, :source, :encoding, :fold,
-            :train_type]) |>
+        # @where(__, :train_condition .== :condition) |>
+        innerjoin(__, models_, on = [:source, :encoding, :fold, :train_type]) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -63,7 +62,7 @@ timelines = combine(groups) do trialdf
     winlen = round(Int, params.test.winlen_s*params.stimulus.samplerate)
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
-    result = combine(groupby(runsetup, [:encoding, :source, :train_condition, :train_type])) do stimdf
+    result = combine(groupby(runsetup, [:encoding, :source, :condition, :train_type])) do stimdf
         stimrow = only(eachrow(stimdf))
         source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]

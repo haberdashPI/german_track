@@ -27,7 +27,7 @@ GermanTrack.@load_cache prefix timelines
 # setup plot data
 plotdf = @_ timelines |>
     @where(__, :train_type .!= "atmiss-target") |>
-    @where(__, :train_condition .== :condition) |>
+    # @where(__, :train_condition .== :condition) |>
     groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
 
