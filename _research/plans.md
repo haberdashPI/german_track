@@ -1,6 +1,8 @@
 ### priorities
 
-- establish: why is it so different
+- establish: why is it so different from older results
+- try looking at shorter lags, to reduce dimensionality, but also
+from a standpoint of our theoretical understanding of the results
 
 look at things per trial Q: why so different from traditional decoding
 
