@@ -498,9 +498,7 @@ function _save_cache(prefix, symbols, types)
                 end
             elseif type == :bson
                 quote
-                    data = deepcopy(state)
-                    data["data"] = $(esc(var))
-                    save($(_fname(prefix, symbols, types, i)), data)
+                    save($(_fname(prefix, symbols, types, i)), Dict("data" => $(esc(var))))
                     @info string("Saved ", $(string(var))," to ",
                         $(_fname(prefix, symbols, types, i)))
                 end
