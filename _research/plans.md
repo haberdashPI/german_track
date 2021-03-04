@@ -1,11 +1,39 @@
-mounya thought: test decoders on condition they weren't trained on
-david thought: train decoders across all conditions
-
 ### priorities
 
-- work on issues mentioned in `notes.md`
+- establish: why is it so different
 
-- cleanup: use dvc to manage resampled eeg with freqbins
+look at things per trial Q: why so different from traditional decoding
+
+- can we see better before target decoding accuracy
+- during switch (i.e. are switches messing up tracking, so we'd see better tracking pre-target for regions far from switches, or near late switches)
+
+simple approaches:
+plot decoding accuracy timeline near/far from switch
+plot decoding accuracy timeline for early/late target trials
+plot accuracy at the interaction of these two
+
+or reverse engineer:
+- what condition give before target decoding accuracy that's better
+take all decoding
+
+try looking at a object condition trianed on the male speaker vs. each female speaker
+
+2:
+
+then some hoping check
+
+for fig2:
+show d' figure
+show fp broken down as a separate figure
+
+for fig4:
+maybe show hit rate by target time
+maybe show some switches along the course of the target time
+
+alpha oscillation - look at alpha power or gamma power or global or object
+    - time lock to target time
+
++ cleanup: use dvc to manage resampled eeg with freqbins
 - cleanup: do we really need the L1 regularization??? (I *think* so, but verify)
 
 - todo: re-run cross-validated λ selection with a better range
