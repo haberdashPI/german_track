@@ -55,7 +55,7 @@ pl = @_ plotdf |>
         time = :time .+ params.test.winlen_s,
         train_type = tolabel.(:train_type)
     ) |>
-    @where(__, -1 .< :time .< 2.5) |>
+    # @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
     combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
     transform(__, [:condition, :train_type] =>
