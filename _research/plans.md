@@ -1,3 +1,19 @@
+# meeting
+
+1. how much does the lag matter for these new figures
+    - look at differences
+2. are any of the patterns related to switches?
+    work with these curves, show distribution of switches
+    or on a per trial (align to switch onset)
+
+for behavior:
+    focus on hr fr, split fr
+
+talk to angie about what her experience
+    - what does startup look like
+    - support more generally
+
+talk to nick: get his perspective (works at an EEG, smaller)
 # priorities
 
 first track:

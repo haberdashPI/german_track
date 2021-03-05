@@ -1,4 +1,3 @@
-# Setup
 # =================================================================
 
 using DrWatson
@@ -27,7 +26,7 @@ decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@load_cache decode_prefix (models_, :bson) stimulidf x_scores
 meta = GermanTrack.load_stimulus_metadata()
 
-rename!(models_, :cross_fold => :fold)
+rename!(models_, :cross_fold => :fold, :source => :trained_source)
 
 # timeline testing
 # -----------------------------------------------------------------
@@ -35,17 +34,18 @@ rename!(models_, :cross_fold => :fold)
 sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
 groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
-    groupby(__, [:sid, :trial, :source])
+    groupby(__, [:sid, :trial])
 
 p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
-    sid, trial, sound_index, target_time, fold, condition, is_target =
-        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition, :is_target_source]] |>
+    sid, trial, sound_index, target_time, fold, condition =
+        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition]] |>
         unique |> eachrow |> only
 
     runsetup = @_ copy(trialdf) |>
         @where(__, (:hittype .== "hit")) |>
-        innerjoin(__, models_, on = [:condition, :source, :encoding, :fold]) |>
+        @repeatby(__, trained_source = levels(:source)) |>
+        innerjoin(__, models_, on = [:condition, :trained_source, :encoding, :fold]) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -55,7 +55,7 @@ timelines = combine(groups) do trialdf
     winlen = round(Int, params.test.winlen_s*params.stimulus.samplerate)
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
-    result = combine(groupby(runsetup, [:encoding, :source])) do stimdf
+    result = combine(groupby(runsetup, [:encoding, :trained_source, :source])) do stimdf
         stimrow = only(eachrow(stimdf))
         source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]
@@ -71,8 +71,8 @@ timelines = combine(groups) do trialdf
         ŷ = vec(stimrow.model(x'))
 
         function scoreat(offset)
-            vstart = clamp(1+offset+target_index, 1, maxlen)
-            vstop = clamp(winlen+offset+target_index, 1, maxlen)
+            vstart = clamp(1+offset, 1, maxlen)
+            vstop = clamp(winlen+offset, 1, maxlen)
 
             if vstop <= vstart
                 Empty(DataFrame)
@@ -87,15 +87,13 @@ timelines = combine(groups) do trialdf
                     trial = trial,
                     condition = condition,
                     sound_index = sound_index,
+                    is_target_source = stimdf.is_target_source,
                     fold = fold,
-                    is_target_source = is_target,
                 )
             end
         end
 
-        start = round(Int, -3*params.stimulus.samplerate)
-        stop = round(Int, 3*params.stimulus.samplerate)
-        steps = start:winstep:stop
+        steps = 1:winstep:maxlen
         foldl(append!!, Map(scoreat), steps, init = Empty(DataFrame))
     end
 
@@ -104,8 +102,9 @@ timelines = combine(groups) do trialdf
 end
 ProgressMeter.finish!(p)
 
-# Save the results
+# Save results
 # -----------------------------------------------------------------
 
-prefix = joinpath(processed_datadir("analyses", "decode-timeline"), "testing")
+prefix = joinpath(processed_datadir("analyses", "decode-timeline-source"), "testing")
 GermanTrack.@save_cache prefix timelines
+
