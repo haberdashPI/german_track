@@ -26,17 +26,17 @@ GermanTrack.@load_cache prefix timelines
 
 # setup plot data
 plotdf = @_ timelines |>
-    @where(__, :train_type .!= "atmiss-target") |>
+    # @where(__, :train_type .!= "atmiss-target") |>
     # @where(__, :train_condition .== :condition) |>
-    groupby(__, [:condition, :time, :sid, :train_type, :trial, :sound_index, :fold]) |>
+    groupby(__, [:condition, :time, :sid, :is_target_source, :trial, :sound_index, :fold]) |>
     @combine(__, score = mean(:score))
 
-labels = OrderedDict(
-    "athit-target" => "Target Source",
-    "athit-other" => "Other Sources",
-    "athit-pre-target" => "Baseline"
-)
-tolabel(x) = labels[x]
+# labels = OrderedDict(
+#     "athit-target" => "Target Source",
+#     "athit-other" => "Other Sources",
+#     "athit-pre-target" => "Baseline"
+# )
+# tolabel(x) = labels[x]
 tcolors = ColorSchemes.imola[[0.3, 0.8]]
 
 # Paper plots
@@ -47,13 +47,15 @@ steps = vcat(steps[1] - step(steps), steps)
 pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12,14].+1)]]
 pcolors[[1,end]] = GermanTrack.grayify.(pcolors[[1,end]])
 
-target_len_y = 0.135
+target_len_y = -0.075
 pl = @_ plotdf |>
-    groupby(__, [:condition, :time, :train_type, :sid]) |>
+    groupby(__, [:condition, :time, :is_target_source, :sid]) |>
     @combine(__, score = mean(:score)) |>
     @transform(__,
         time = :time .+ params.test.winlen_s,
-        train_type = tolabel.(:train_type)
+        train_type =
+            getindices(Dict(true => "Target Source", false => "Other Sources"),
+            :is_target_source)
     ) |>
     # @where(__, -1 .< :time .< 2.5) |>
     groupby(__, [:condition, :time, :train_type]) |>
@@ -85,9 +87,9 @@ pl = @_ plotdf |>
             strokeDash = {:train_type, range = [[1,0], [4,1], [2,1]], sort = ["Target Source", "Other Sources", "Baseline"]},
             y = {:value, title = "Decoding Correlation"}) +
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
-        @vlplot({:text, align = "left", dx = 3, dy = -9},
+        @vlplot({:text, align = "right", dx = -3, dy = -20},
             transform = [
-                {filter = "datum.time > 1.25 && datum.time < 1.5 && datum.train_type == 'Target Source'"},
+                {filter = "datum.time > 2.1 && datum.time < 2.2 && datum.train_type == 'Target Source'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
@@ -95,13 +97,13 @@ pl = @_ plotdf |>
             text = :train_type_lbl
             # color = {value = "black"}
         ) +
-        @vlplot({:text, align = "left", baseline = "top", dx = 3, dy = -3},
+        @vlplot({:text, align = "left", baseline = "top", dx = 0, dy = 9},
             transform = [
-                {filter = "datum.time > 0.5 && datum.time < 0.6 && datum.train_type == 'Other Sources'"},
+                {filter = "datum.time > 2 && datum.time < 2.1 && datum.train_type == 'Other Sources'"},
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
-            y = {:lower, aggregate = :mean, scale = {domain = [-0.05, 0.15]}},
+            y = {:lower, aggregate = :mean, scale = {domain = [-0.1, 0.15]}},
             text = :train_type_lbl
             # color = {value = "black"}
         ) +
@@ -111,7 +113,7 @@ pl = @_ plotdf |>
                 {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
             ],
             x = {:time, aggregate = :max, title = ""},
-            y = {:lower, aggregate = :mean, scale = {domain = [-0.05, 0.15]}},
+            y = {:lower, aggregate = :mean, scale = {domain = [-0.1, 0.15]}},
             text = :train_type_lbl
             # color = {value = "black"}
         )
@@ -130,6 +132,287 @@ pl = @_ plotdf |>
         )
     ));
 pl |> save(joinpath(dir, "fig2c.svg"))
+
+# Supplement: decoding difference
+# =================================================================
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    @transform(__,
+        train_type = train_type = getindices(Dict(true => "target", false => "other"),
+            :is_target_source)
+    ) |>
+    groupby(__, [:condition, :time, :train_type, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    unstack(__, [:condition, :time, :sid], :train_type, :score) |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+        diff = :target .- :other,
+    ) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :time]) |>
+    combine(__, :diff => boot(alpha = sqrt(0.05)) => AsTable) |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Source", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "Target - Other Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+    ));
+pl |> save(joinpath(dir, "decode_diff.svg"))
+
+# Supplement: decoding from start by source
+# =================================================================
+
+prefix = joinpath(processed_datadir("analyses", "decode-timeline-source"), "testing")
+GermanTrack.@load_cache prefix timelines
+
+# Timeline for conditions
+# -----------------------------------------------------------------
+
+# Timeline by target
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @transform(__, test_type = ifelse.(:source .== :trained_source, "Trained Source", "Other Sources")) |>
+    groupby(__, [:condition, :time, :sid, :test_type, :trial, :sound_index, :fold]) |>
+    @combine(__, score = mean(:score))
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :test_type, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :time, :test_type]) |>
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
+    transform(__, [:condition, :test_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" :
+            type == "Baseline" ? "before" : cond) => :train_label) |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+    facet = {
+        # row = {field = :is_target_source},
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:train_label, sort = ["other", "global", "spatial", "object", "before"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
+            y = {:value, title = "Decoding Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
+        @vlplot({:text, align = "right", dx = -3, dy = -20},
+            transform = [
+                {filter = "datum.time > 2.1 && datum.time < 2.2 && datum.train_type == 'Trained Source'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:upper, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "left", baseline = "top", dx = 0, dy = 9},
+            transform = [
+                {filter = "datum.time > 2 && datum.time < 2.1 && datum.train_type == 'Other Sources'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "center", baseline = "top", dx = 3, dy = 3},
+            transform = [
+                {filter = "datum.time > 1.8 && datum.time < 1.9 && datum.train_type == 'Baseline'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "decode_by_source.svg"))
+
+# Timeline, excluding target region
+# -----------------------------------------------------------------
+
+# Timeline by target
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, (:time .< getindices(meta.target_times, :sound_index) .- 0.5) .|
+                (:time .> getindices(meta.target_times, :sound_index) .+ 2.0)) |>
+    @transform(__, test_type = ifelse.(:source .== :trained_source, "Trained Source", "Other Sources")) |>
+    groupby(__, [:condition, :time, :sid, :test_type, :trial, :sound_index, :fold]) |>
+    @combine(__, score = mean(:score))
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :test_type, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :time, :test_type]) |>
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
+    transform(__, [:condition, :test_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" :
+            type == "Baseline" ? "before" : cond) => :train_label) |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+    facet = {
+        # row = {field = :is_target_source},
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:train_label, sort = ["other", "global", "spatial", "object", "before"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
+            y = {:value, title = "Decoding Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
+        @vlplot({:text, align = "right", dx = -3, dy = -20},
+            transform = [
+                {filter = "datum.time > 2.1 && datum.time < 2.2 && datum.train_type == 'Trained Source'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:upper, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "left", baseline = "top", dx = 0, dy = 9},
+            transform = [
+                {filter = "datum.time > 2 && datum.time < 2.1 && datum.train_type == 'Other Sources'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "center", baseline = "top", dx = 3, dy = 3},
+            transform = [
+                {filter = "datum.time > 1.8 && datum.time < 1.9 && datum.train_type == 'Baseline'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "decode_by_source_notarget.svg"))
+
+# Timeline by target
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @transform(__, test_type = ifelse.(:source .== :trained_source, "Trained Source", "Other Sources")) |>
+    groupby(__, [:condition, :time, :sid, :test_type, :trial, :sound_index, :fold, :is_target_source]) |>
+    @combine(__, score = mean(:score))
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :test_type, :is_target_source, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :time, :test_type, :is_target_source]) |>
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
+    transform(__, [:condition, :test_type] =>
+        ByRow((cond, type) -> type == "Other Sources" ? "other" :
+            type == "Baseline" ? "before" : cond) => :train_label) |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+    facet = {
+        row = {field = :is_target_source},
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:train_label, sort = ["other", "global", "spatial", "object", "before"],
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
+            y = {:value, title = "Decoding Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) +
+        @vlplot({:text, align = "right", dx = -3, dy = -20},
+            transform = [
+                {filter = "datum.time > 2.1 && datum.time < 2.2 && datum.train_type == 'Trained Source'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:upper, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "left", baseline = "top", dx = 0, dy = 9},
+            transform = [
+                {filter = "datum.time > 2 && datum.time < 2.1 && datum.train_type == 'Other Sources'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        ) +
+        @vlplot({:text, align = "center", baseline = "top", dx = 3, dy = 3},
+            transform = [
+                {filter = "datum.time > 1.8 && datum.time < 1.9 && datum.train_type == 'Baseline'"},
+                {calculate = "split(datum.train_type,' ')", as = "train_type_lbl"}
+            ],
+            x = {:time, aggregate = :max, title = ""},
+            y = {:lower, aggregate = :mean},
+            text = :test_type_lbl
+            # color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "decode_by_source_target.svg"))
 
 # Supplement 0: decoding broken down by early/late near/far
 # and their interactions

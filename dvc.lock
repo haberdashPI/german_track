@@ -14,16 +14,16 @@ train-decoder:
     size: 1371
   outs:
   - path: data/processed/analyses/decode
-    md5: 73ee75a1aa1eff77599601c05e120daf.dir
-    size: 314435815
-    nfiles: 7
+    md5: 3e5511b8e2630d9cd5b6c80833368aff.dir
+    size: 271744142
+    nfiles: 8
 decode-timeline:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 73ee75a1aa1eff77599601c05e120daf.dir
-    size: 314435815
-    nfiles: 7
+    md5: 3e5511b8e2630d9cd5b6c80833368aff.dir
+    size: 271744142
+    nfiles: 8
   - path: data/processed/analyses/decode-data
     md5: 31392149546d6da0dcef99fa1d4eb922.dir
     size: 1347015747
@@ -37,9 +37,9 @@ decode-timeline:
     size: 1371
   outs:
   - path: data/processed/analyses/decode-timeline
-    md5: c07eb3dc25c6c8f5b3df9786b1741ee1.dir
-    size: 13955978
-    nfiles: 1
+    md5: 9f8404bd8fcaf33b846a29ea715ff197.dir
+    size: 277050620
+    nfiles: 3
 load-decoder-data:
   cmd: julia -t auto --project==. -- scripts/julia/load_decode_data.jl
   deps:
@@ -51,4 +51,20 @@ load-decoder-data:
   - path: data/processed/analyses/decode-data
     md5: 31392149546d6da0dcef99fa1d4eb922.dir
     size: 1347015747
+    nfiles: 1
+decode-timeline-source:
+  cmd: julia -f auto --project=. -- scripts/julia/process_decode_source_timeline.jl
+  deps:
+  - path: data/processed/analyses/decode
+    md5: 3e5511b8e2630d9cd5b6c80833368aff.dir
+    size: 271744142
+    nfiles: 8
+  - path: data/processed/eeg
+    md5: fd1ddbb1423a5157d2755c88e34e780a.dir
+    size: 3576667705
+    nfiles: 300
+  outs:
+  - path: data/processed/analyses/decode-timeline-source
+    md5: 243c666c35421540b68b1d3fb7c0e7f2.dir
+    size: 36267826
     nfiles: 1

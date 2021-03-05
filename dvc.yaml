@@ -28,3 +28,12 @@ stages:
     outs:
     - data/processed/analyses/decode-data:
         persist: true
+  decode-timeline-source:
+    desc: Evaluating decoder accuracy across trial timeline.
+    cmd: julia -f auto --project=. -- scripts/julia/process_decode_source_timeline.jl
+    deps:
+    - data/processed/analyses/decode
+    - data/processed/eeg
+    outs:
+    - data/processed/analyses/decode-timeline-source:
+        persist: true
