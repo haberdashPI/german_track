@@ -7,7 +7,7 @@ using DrWatson
 using GermanTrack, DataFrames, Statistics, Dates, Underscores, Random, Printf,
     ProgressMeter, VegaLite, FileIO, StatsBase, BangBang, Transducers, Infiltrator, Peaks,
     StatsFuns, Distributions, DSP, DataStructures, Colors, Bootstrap, CSV, EEGCoding,
-    JSON3, DataFramesMeta, Lasso
+    JSON3, DataFramesMeta, Lasso, Distributions
 wmean = GermanTrack.wmean
 n_winlens = 6
 
@@ -31,32 +31,39 @@ rawdata = @_ CSV.read(file, DataFrame) |>
 meansraw = @_ rawdata |>
     groupby(__, [:sid, :condition, :exp_id]) |>
     @combine(__,
-        hr = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
-        fr = sum(:perf .== "false") / sum(:perf .∈ Ref(Set(["false", "reject"]))),
+        hr = (sum(:perf .== "hit") + 0.5) / (sum(:perf .∈ Ref(Set(["hit", "miss"]))) + 1),
+        fr = (sum(:perf .== "false") + 0.5) / (sum(:perf .∈ Ref(Set(["false", "reject"]))) + 1),
     )
 
 bad_sids = @_ meansraw |>
     @where(__, :condition .== "global") |>
-    @where(__, (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
+    @where(__, (:exp_id .∉ Ref([13, 21])) .| (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
 
+dprime(hr, fr) = quantile(Normal(), hr) - quantile(Normal(), fr)
 meansclean = @_ meansraw |>
     @where(__, :sid .∉ bad_sids) |>
-    stack(__, [:hr, :fr], [:sid, :condition, :exp_id], variable_name = :type, value_name = :prop)
+    transform(__, [:hr, :fr] => ByRow(dprime) => :dprime) |>
+    stack(__, [:hr, :fr, :dprime], [:sid, :condition, :exp_id], variable_name = :type, value_name = :value)
 
+# CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), meansclean)
 
-CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), meansclean)
+# run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
 
-run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
+# file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
+# means = @_ CSV.read(file, DataFrame) |>
+#     rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper) |>
+#     @transform(__, condition = categorical(:condition,
+#         levels = ["global", "spatial", "object"], ordered = true)) |>
+#     sort!(__, :condition)
 
-file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
-means = @_ CSV.read(file, DataFrame) |>
-    rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper) |>
-    @transform(__, condition = categorical(:condition,
-        levels = ["global", "spatial", "object"], ordered = true)) |>
-    sort!(__, :condition)
+means = @_ meansclean |>
+    groupby(__, [:condition, :type]) |>
+    combine(__, :value => boot(alpha = sqrt(0.05)) => AsTable)
 
 barwidth = 20
-pl = means |> @vlplot(
+pl = @_ means |>
+    @where(__, :type .!= "dprime") |>
+    @vlplot(
         width = 190, height = 130,
         # width = {step = 50},
         x = {:condition,
@@ -75,21 +82,21 @@ pl = means |> @vlplot(
         }) +
     @vlplot({:bar, xOffset = -(barwidth/2)},
         transform = [{filter = "datum.type == 'hr'"}],
-        y = {:prop, type = :quantitative, aggregate = :mean,
+        y = {:value, type = :quantitative, aggregate = :mean,
                 scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {:condition, scale = {range = "#".*hex.(colors)}}) +
     @vlplot({:line, xOffset = -(barwidth/2), size = 1},
         transform = [{filter = "datum.type == 'hr'"}],
-        y = {:prop, type = :quantitative, aggregate = :mean,
+        y = {:value, type = :quantitative, aggregate = :mean,
                 scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {value = "black"}) +
     @vlplot({:bar, xOffset = (barwidth/2)},
         transform = [{filter = "datum.type == 'fr'"}],
-        y = {:prop, type = :quantitative, aggregate = :mean},
+        y = {:value, type = :quantitative, aggregate = :mean},
         color = {value = "#"*hex(neutral)}) +
     @vlplot({:line, xOffset = (barwidth/2), size = 1},
         transform = [{filter = "datum.type == 'fr'"}],
-        y = {:prop, type = :quantitative, aggregate = :mean,
+        y = {:value, type = :quantitative, aggregate = :mean,
                 scale = {domain = [0, 1]}, title = "Response Rate"},
         color = {value = "black"}) +
     @vlplot({:rule, xOffset = -(barwidth/2)},
@@ -105,7 +112,7 @@ pl = means |> @vlplot(
     @vlplot({:text, angle = -90, fontSize = 9, align = "right", baseline = "bottom", dx = 0, dy = -barwidth-2},
         transform = [{filter = "datum.condition == 'global' && datum.type == 'hr'"}],
         # x = {datum = "spatial"}, y = {datum = 0.},
-        y = {:prop, aggregate = :mean, type = :quantitative},
+        y = {:value, aggregate = :mean, type = :quantitative},
         text = {value = "Hits"},
     ) +
     @vlplot({:text, angle = -90, fontSize = 9, align = "left", baseline = "top", dx = 0, dy = barwidth+2},
@@ -115,6 +122,37 @@ pl = means |> @vlplot(
         text = {value = "False Positives"},
     );
 pl |> save(joinpath(dir, "fig2a.svg"))
+
+barwidth = 20
+pl = @_ means |>
+    @where(__, :type .== "dprime") |>
+    @vlplot(
+        width = 190, height = 130,
+        # width = {step = 50},
+        x = {:condition,
+            type = :nominal,
+            sort = ["global", "spatial", "object"],
+            axis = {title = "", labelAngle = 0,
+            labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)"}, },
+        config = {
+            bar = {discreteBandSize = barwidth},
+            axis = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            legend = {disable = true, labelFont = "Helvetica", titleFont = "Helvetica"},
+            header = {labelFont = "Helvetica", titleFont = "Helvetica"},
+            mark = {font = "Helvetica"},
+            text = {font = "Helvetica"},
+            title = {font = "Helvetica", subtitleFont = "Helvetica"}
+        }) +
+    @vlplot({:line, size = 1},
+        y = {:value, type = :quantitative, aggregate = :mean, title = "d'", scale = {zero = false}},
+        color = {value = "black"}) +
+    @vlplot({:rule},
+        color = {value = "black"},
+        y = {:lower, title = ""}, y2 = :upper) +
+    @vlplot({:point, filled = true, size = 30},
+        y = {:value, type = :quantitative, aggregate = :mean},
+        color = {:condition, scale = {range = "#".*hex.(colors)}});
+pl |> save(joinpath(dir, "fig2b.svg"))
 
 # Presentation
 # -----------------------------------------------------------------
