@@ -26,6 +26,7 @@ events = load_all_subject_events(processed_datadir("eeg"), "h5")
 
 meta = GermanTrack.load_stimulus_metadata()
 
+# TODO: ensure window is not length zero when using random placement
 function windowing_start_time(event, triallen)
     event.windowing == "target" ? meta.target_times[event.sound_index] :
     event.windowing == "pre-target" ?
@@ -230,7 +231,7 @@ models = select(modelrun, Not([:result, :validate]))
 # Plot lambda results (since we pick one, and store only the best)
 # -----------------------------------------------------------------
 
-score(x,y) = cor(vec(x), vec(y))
+score(x,y) = isempty(x) ? zero(eltype(x)) : cor(vec(x), vec(y))
 meta = GermanTrack.load_stimulus_metadata()
 scores = @_ predictions |>
     @transform(__, score = score.(:prediction, :data)) |>
@@ -269,14 +270,13 @@ function nanmean(xs)
 end
 pldata = @_ scores |>
     # @where(__, (:windowing .== "target")) |>
-    groupby(__, [:sid, :condition, :train_type, :test_type, :source, :λ]) |>
+    groupby(__, [:condition, :is_target_source, :λ, :sid]) |>
     @combine(__, score = nanmean(:score)) |>
-    groupby(__, [:condition, :train_type, :test_type, :λ]) |>
+    groupby(__, [:condition, :is_target_source, :λ]) |>
     combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable)
 
 best_λs = @_ valscores |>
-    @where(__, startswith.(:train_type, "athit-target") .& (:windowing .== "target")) |>
-    groupby(__, Not(:source)) |> @combine(__, score = mean(:score)) |>
+    groupby(__, [:condition, :is_target_source, :fold, :λ, :sid]) |> @combine(__, score = nanmean(:score)) |>
     groupby(__, [:fold, :condition, :λ]) |> @combine(__, score = median(:score)) |>
     groupby(__, Not(:condition)) |> @combine(__, score = minimum(:score)) |>
     repeatby(__, :cross_fold => 1:params.train.nfolds) |>
@@ -295,10 +295,9 @@ pl = @_ pldata |>
     (
         @vlplot(x = {:λ, scale = {type = :log}}) +
         @vlplot({:line, strokeCap = :round}, y = :value,
-            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
-        @vlplot({:errorbar, ticks = {size = 5}}, y = :lower, y2 = :upper, color = :train_type) +
-        @vlplot({:point, filled = true}, y = :value,
-            color = {:train_type, scale = {range = "#".*hex.(tcolors)}}) +
+            color = {:is_target_source, type = :nominal, scale = {range = "#".*hex.(tcolors)}}) +
+        @vlplot({:errorbar, ticks = {size = 5}}, y = :lower, y2 = :upper, color = "is_target_source:n") +
+        @vlplot({:point, filled = true}, y = :value, color = "is_target_source:n") +
         (
             best_λs |> @vlplot() +
             @vlplot({:rule, strokeDash = [2 2], size = 1},

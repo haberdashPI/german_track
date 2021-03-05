@@ -34,26 +34,18 @@ rename!(models_, :cross_fold => :fold)
 
 sid_trial = mapreduce(x -> x[1] .=> eachindex(x[2].eeg.data), vcat, pairs(subjects))
 groups = @_ stimulidf |>
-    @where(__, :windowing .== "target") |>
-    groupby(__, [:sid, :trial])
+    @where(__, :windowing .== "random1") |>
+    groupby(__, [:sid, :trial, :source])
 
 p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
-    sid, trial, sound_index, target_time, fold, condition =
-        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition]] |>
-        eachrow |> unique |> only
+    sid, trial, sound_index, target_time, fold, condition, is_target =
+        trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition, :is_target_source]] |>
+        unique |> eachrow |> only
 
     runsetup = @_ copy(trialdf) |>
-        repeatby(__,
-            # :train_condition => unique(stimulidf.condition),
-            :train_type => levels(models_.train_type)
-        ) |>
-        @where(__, :is_target_source .== contains.(:train_type, "target")) |>
-        @where(__, (:hittype .== "hit") .== contains.(:train_type, "athit")) |>
-        # for now train condition should be the same as condition
-        # @where(__, :train_condition .== :condition) |>
-        innerjoin(__, models_, on = [:source, :encoding, :fold,
-            :train_type]) |>
+        @where(__, (:hittype .== "hit")) |>
+        innerjoin(__, models_, on = [:condition, :source, :encoding, :fold]) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -63,7 +55,7 @@ timelines = combine(groups) do trialdf
     winlen = round(Int, params.test.winlen_s*params.stimulus.samplerate)
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
-    result = combine(groupby(runsetup, [:encoding, :source, :train_type])) do stimdf
+    result = combine(groupby(runsetup, [:encoding, :source])) do stimdf
         stimrow = only(eachrow(stimdf))
         source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]
@@ -96,7 +88,7 @@ timelines = combine(groups) do trialdf
                     condition = condition,
                     sound_index = sound_index,
                     fold = fold,
-                    train_type = stimrow.train_type,
+                    is_target_source = is_target,
                 )
             end
         end
