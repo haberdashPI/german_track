@@ -148,27 +148,6 @@ function eegindices(df::AbstractDataFrame)
     mapreduce(eegindices, vcat, eachrow(df))
 end
 
-function decode_scores(predictions)
-    score(x,y) = cor(vec(x),vec(y))
-    meta = GermanTrack.load_stimulus_metadata()
-    scores = @_ predictions |>
-        @transform(__, score = score.(:prediction, :data)) |>
-        # @where(__, :encoding .== "envelope") |>
-        # groupby(__, [:encoding, :λ]) |>
-        # @transform(__, score = zscoresafe(:score)) |>
-        groupby(__, [:sid, :condition, :source, :train_type, :is_target_source,
-            :trialnum, :stim_id, :windowing, :λ, :hittype, :fold]) |>
-        @combine(__, score = mean(:score)) |>
-        transform!(__,
-            :stim_id => (x -> meta.target_time_label[x]) => :target_time_label,
-            :stim_id => (x -> meta.target_switch_label[x]) => :target_switch_label,
-            :stim_id => (x -> meta.target_times[x]) => :target_time,
-            :stim_id => (x -> cut(meta.target_salience[x], 2)) => :target_salience,
-            :stim_id => (x -> meta.target_salience[x]) => :target_salience_level,
-            [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
-        )
-end
-
 @info "Cross-validated training of source decoders (this will take some time...)"
 
 train_types = OrderedDict(
@@ -187,13 +166,13 @@ end
 
 modelsetup = @_ stimulidf |>
     # @where(__, :condition .== "object") |>
-    groupby(__, [:source, :encoding, :condition]) |>
+    groupby(__, [:source, :encoding]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
-        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding, :condition]])))
+        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
 toxy(df) = isempty(df) ? ([], []) :
     (x[:, eegindices(df)], reshape(reduce(vcat, row.data for row in eachrow(df)),1,:))
@@ -201,11 +180,11 @@ toxy(df) = isempty(df) ? ([], []) :
 progress = Progress(params.train.max_steps * ngroups(modelsetup))
 
 modelrun = combine(modelsetup) do fold
-    train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train")    |> toxy
-    val   = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "validate") |> toxy
+    train = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "train") |> toxy
+    val   = @_ fold |> filtertype(__, :train) |> @where(__, :split .== "validate")
     test  = @_ fold |> filtertype(__, :test)  |> @where(__, :split .== "test")
 
-    (isempty(train[1]) || isempty(test) || isempty(val[1])) && return DataFrame()
+    (isempty(train[1]) || isempty(test) || isempty(val)) && return DataFrame()
 
     model = GermanTrack.decoder(train[1], train[2], fold.λ[1], Flux.Optimise.RADAM(),
         progress = progress,
@@ -214,28 +193,59 @@ modelrun = combine(modelsetup) do fold
         min_steps = params.train.min_steps,
         patience = params.train.patience,
         inner = params.train.hidden_units,
-        validate = val
+        validate = val |> toxy
     )
 
-    testdf = DataFrame(test)
     test[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
+    val[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(val)]
     test[!, :steps] .= GermanTrack.nsteps(model)
 
-    DataFrame(model = model, result = test)
+    DataFrame(model = model, result = test, validate = val)
 end
 
 ProgressMeter.finish!(progress)
 # alert("Completed model training!")
 
-predictions = @_ modelrun |> groupby(__, Not([:result, :model])) |>
+predictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
     combine(only(_.result), __)
-models = select(modelrun, Not(:result))
+valpredictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
+    combine(only(_.validate), __)
+models = select(modelrun, Not([:result, :validate]))
 
 # Plot lambda results (since we pick one, and store only the best)
 # -----------------------------------------------------------------
 
+score(x,y) = cor(vec(x), vec(y))
+meta = GermanTrack.load_stimulus_metadata()
+scores = @_ predictions |>
+    @transform(__, score = score.(:prediction, :data)) |>
+    groupby(__, Not(:encoding)) |> @combine(__, score = mean(:score)) |>
+    transform(__,
+        :stim_id => ByRow(id -> (;(kw => meta[kw][id] for kw in [
+            :target_time_label,
+            :target_switch_label,
+            :target_times,
+            :salience_label,
+            :target_salience,
+        ])...)) => AsTable,
+        [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
+    )
+
+valscores = @_ valpredictions |>
+    @transform(__, score = score.(:prediction, :data)) |>
+    groupby(__, Not(:encoding)) |> @combine(__, score = mean(:score)) |>
+    transform(__,
+        :stim_id => ByRow(id -> (;(kw => meta[kw][id] for kw in [
+            :target_time_label,
+            :target_switch_label,
+            :target_times,
+            :salience_label,
+            :target_salience,
+        ])...)) => AsTable,
+        [:hittype, :windowing] => ByRow((x,y) -> string(x, "-", y)) => :test_type
+    )
+
 # score(x,y) = -sqrt(mean(abs2, xi - yi for (xi,yi) in zip(x,y)))
-scores = decode_scores(predictions)
 tcolors = ColorSchemes.lajolla[range(0.3,0.9, length = 3)]
 
 function nanmean(xs)
@@ -249,7 +259,7 @@ pldata = @_ scores |>
     groupby(__, [:condition, :train_type, :test_type, :λ]) |>
     combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable)
 
-best_λs = @_ scores |>
+best_λs = @_ valscores |>
     @where(__, startswith.(:train_type, "athit-target") .& (:windowing .== "target")) |>
     groupby(__, Not(:source)) |> @combine(__, score = mean(:score)) |>
     groupby(__, [:fold, :condition, :λ]) |> @combine(__, score = median(:score)) |>

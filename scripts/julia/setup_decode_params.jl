@@ -7,7 +7,7 @@ params = let
     nlags = round(Int,samplerate*max_lag)
     lags = -(nlags-1):1:0
     decode_sr = 1 / (round(Int, 0.1samplerate) / samplerate)
-    nλ = 6
+    nλ = 12
 
     params = (
         stimulus = (

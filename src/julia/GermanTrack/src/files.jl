@@ -483,14 +483,14 @@ end
 function _save_cache(prefix, symbols, types)
     quote
         # store code state
-        state = tag!(Dict())
+        # state = tag!(Dict())
 
         @info "Saving data..."
         # store variables in files
         $(map(enumerate(zip(symbols, types))) do (i, (var, type))
             if type == :arrow
                 quote
-                    Arrow.setmetadata!($(esc(var)), convert(Dict{String, String}, state))
+                    # Arrow.setmetadata!($(esc(var)), convert(Dict{String, String}, state))
                     Arrow.write($(_fname(prefix, symbols, types, i)),
                         $(esc(var)), compress = :lz4)
                     @info string("Saved ", $(string(var))," to ",
@@ -504,8 +504,7 @@ function _save_cache(prefix, symbols, types)
                 end
             elseif type == :jld
                 quote
-                    save($(_fname(prefix, symbols, types, i)), "data",
-                        $(esc(var)), "state", state)
+                    save($(_fname(prefix, symbols, types, i)), "data", $(esc(var)))
                     @info string("Saved ", $(string(var))," to ",
                         $(_fname(prefix, symbols, types, i)))
                 end
