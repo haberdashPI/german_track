@@ -1,30 +1,38 @@
-### priorities
+# priorities
 
+first track:
 - establish: why is it so different from older results
-- try looking at shorter lags, to reduce dimensionality, but also
-from a standpoint of our theoretical understanding of the results
+- then establish roving behavior
+
+parallel, second track:
+- cleanup of existing results
+
+## differ from old results
+- try aggregating results as follows
+    - for each speaker model: how does the resulting stimulus compare
+        to the trained vs. untrained speakers
+    - do with time points aligned relative to the start of a trial
+    - do with time points aligned to switches?
 
 look at things per trial Q: why so different from traditional decoding
 
 try looking at a object condition trained on the male speaker vs. each female speaker
 compare that to the global condition
 
-2: once we've established whether we can get similar results, then do a "hoping" check
+## roving behavior
+once we've established whether we can get similar results, then do a "hoping" check
 
-for fig2:
-show d' figure
-show fp broken down as a separate figure
+## cleanup of existing results
+
+fig2: show variants on d' send to mounya
+show fp broken down seperately
 
 for fig4:
-run the slopes analysis
-maybe show hit rate by target time
-    maybe show some switches along the course of the target time
+run the slopes analysis with new data organization
+try hit rate by target time (if that's good, try hit rate by decoding accuracy)
 
 alpha oscillation - look at alpha power or gamma power or global or object
     - time lock to target time
-
-+ cleanup: use dvc to manage resampled eeg with freqbins
-- cleanup: do we really need the L1 regularization??? (I *think* so, but verify)
 
 - todo: re-run cross-validated λ selection with a better range
 
