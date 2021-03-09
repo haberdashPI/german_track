@@ -1,6 +1,6 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
-    shrink, wsem, tcombine, testsplit, ngroups, prcombine
+    shrink, wsem, tcombine, testsplit, ngroups, prcombine, @repeatby
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -233,6 +233,34 @@ ngroups(df::GroupedDataFrame) = length(df)
 ngroups(df::RepeatedDataFrame) = @_(prod(length(_[2]), df.repeaters)) * ngroups(df.df)
 
 """
+    @repeatby(df, col = [computed value], ...)
+
+Lazily repeat the rows in df, one repeat for each possible combination of the newly
+defined columns. (See [`repeatby`](#) for more details).
+
+The column values behave as if they were wrapped inside `@with` from DataFramesMeta,
+allowing you to reference existing columns of `df` using symbols.
+
+## Example
+
+    @repeatby(df, cross_fold = unique(:fold))
+"""
+macro repeatby(df, repeaters...)
+    tempdf = gensym(:df)
+    quote
+        let
+            $tempdf = $(esc(df))
+            repeatby($tempdf, $((parse_repeater.(Ref(tempdf), repeaters))...))
+        end
+    end
+end
+
+function parse_repeater(df, repeater)
+    @capture(repeater, repeat_ = expression_) || error("Expected keyword argument")
+    :($(QuoteNode(repeat)) => @with($df, $expression))
+end
+
+"""
     repeatby(df, col => vals...)
 
 Lazily repeat the rows in df, one repeat for each possible combination of the new columns'
@@ -240,12 +268,12 @@ values specified as `col => vals`. The key-value pairs are inserted as additiona
 the data frame group passed to `combine`. These repeats are realized upon a call to
 `combine` or `tcombine`.
 
-Any other operations (filtering, transforming, selecting) that are applied to the repeated
-data frame are stored lazily as functors and applied only once the call to `combine` is
-realized. This approach avoids the actual memory cost of repeating df if it is particularly
-large and the output of a call to combine is relatively small. The mutating versions of
-operators (e.g. `transform!`) are not supported (as this would lead to unpredictable
-behavior when lazily repeating).
+Any other operations (filtering, transforming, selecting and joins) that are applied to the
+repeated data frame are stored lazily as functors and applied only once the call to
+`combine` is realized. This approach avoids the actual memory cost of repeating df if it is
+particularly large and the output of a call to combine is relatively small. The mutating
+versions of operators (e.g. `transform!`) are not supported (as this would lead to
+unpredictable behavior when lazily repeating).
 
 """
 repeatby(df, repeaters...) = RepeatedDataFrame(df, repeaters, [])
