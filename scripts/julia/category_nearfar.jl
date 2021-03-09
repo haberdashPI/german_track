@@ -51,10 +51,10 @@ function find_switch_distance(time, switches, dev_dir)
         end
     end
 end
-rawdata.switch_index = 0
-rawdata.switch_distance = 0.0
+rawdata[!, :switch_index] .= 0
+rawdata[!, :switch_distance] .= 0.0
 allowmissing!(rawdata, [:switch_index, :switch_distance])
-rawdata[:,[:switch_distance, :switch_index]] =
+rawdata[!,[:switch_distance, :switch_index]] =
     mapreduce(find_switch_distance, hcat,
         rawdata[!,:dev_time], eachrow(rawdata[!,r"switches"]), rawdata[!, :dev_direction])'
 
@@ -82,7 +82,7 @@ bad_sids = @_ meansraw |>
 
 nbins = 30
 binwidth = 1.5
-qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins))
+qs = quantile(skipmissing(rawdata.direction_timing), range(0, 1, length = nbins+1))
 bin_means = (qs[1:(end-1)] + qs[2:end])/2
 getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
     combine(first, __) |> zip(__.sid, __.exp_id)
@@ -90,7 +90,7 @@ allids = getids(rawdata)
 
 hit_by_switch = @_ rawdata |>
     @where(__, tuple.(:sid, :exp_id) .∉ bad_sids) |>
-    @transform(__, time_bin = cut(:direction_timing, nbins, allowempty = true) ,
+    @transform(__, time_bin = cut(:switch_distance, nbins, allowempty = true) ,
         target_bin = cut(:dev_time, 2)) |>
     @transform(__, target_time_label =
         recode(:target_bin, (levels(:target_bin) .=> ["early", "late"])...)) |>
@@ -176,7 +176,7 @@ end
 target_angles = @_ hit_by_switch |>
     @where(__, :perf .∈ Ref(Set(["hit", "miss"]))) |>
     groupby(__, [:condition, :target_time_label]) |>
-    @combine(__, angle = fitangle(:direction_timing, :sbj_answer))
+    @combine(__, angle = fitangle(:switch_distance, :sbj_answer))
 
 pl = @_ target_angles |>
     groupby(__, [:condition, :target_time_label]) |>
@@ -220,7 +220,7 @@ getids(df) = @_ df |> groupby(__, [:sid, :exp_id]) |>
 allids = getids(switchdata)
 target_timeline = @_ switchdata |>
     @where(__, :sid .∉ bad_sids) |>
-    @transform(__, time_bin = cut(:direction_timing, nbins+1, allowempty = true)) |>
+    @transform(__, time_bin = cut(:switch_distance, nbins+1, allowempty = true)) |>
     @transform(__,
         time_bin_mean = Array(recode(:time_bin, (levels(:time_bin) .=> bin_means)...))) |>
     @where(__, .!ismissing.(:time_bin_mean)) |>
@@ -268,6 +268,7 @@ binwidth = 1.1
 # NOTE: using my analysis from raw data
 target_timeline = @_ hit_by_switch |>
     groupby(__, [:condition, :target_time_label]) |>
+    # TODO: stopped here
     filteringmap(__, folder = foldl, desc = nothing, :time =>
         map(binmean -> (binmean => (row ->
             abs(row.time_bin_mean - binmean) < binwidth/2)), bin_means),
