@@ -358,9 +358,9 @@ pl = @_ plotdf |>
             type == "Baseline" ? "before" : cond) => :train_label) |>
     @vlplot(
         spacing = 5,
-        config = {legend = {disable = true}},
+        # config = {legend = {disable = true}},
     facet = {
-        row = {field = :is_target_source},
+        row = {field = :test_type},
         column = {field = :condition, title = "",
             sort = ["global", "spatial", "object"],
             header = {
@@ -374,7 +374,7 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:train_label, sort = ["other", "global", "spatial", "object", "before"],
+            color = {:is_target_source, sort = ["other", "global", "spatial", "object", "before"],
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
         @vlplot({:line, strokeJoin = :round},
