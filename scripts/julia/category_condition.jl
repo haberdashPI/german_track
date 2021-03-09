@@ -37,24 +37,14 @@ meansraw = @_ rawdata |>
 
 bad_sids = @_ meansraw |>
     @where(__, :condition .== "global") |>
-    @where(__, (:exp_id .∉ Ref([13, 21])) .| (:hr .<= :fr) .| (:fr .>= 1)) |> __.sid |> Ref |> Set
+    @where(__, (:exp_id .∉ Ref([13, 21]))) |> # .| (:hr .<= :fr) .| (:fr .>= 1)) |>
+    __.sid |> Ref |> Set
 
 dprime(hr, fr) = quantile(Normal(), hr) - quantile(Normal(), fr)
 meansclean = @_ meansraw |>
     @where(__, :sid .∉ bad_sids) |>
     transform(__, [:hr, :fr] => ByRow(dprime) => :dprime) |>
     stack(__, [:hr, :fr, :dprime], [:sid, :condition, :exp_id], variable_name = :type, value_name = :value)
-
-# CSV.write(joinpath(processed_datadir("analyses"), "behavioral_condition.csv"), meansclean)
-
-# run(`Rscript $(joinpath(scriptsdir("R"), "condition_behavior.R"))`)
-
-# file = joinpath(processed_datadir("analyses"), "behavioral_condition_coefs.csv")
-# means = @_ CSV.read(file, DataFrame) |>
-#     rename(__, :propr_med => :prop, :propr_05 => :lower, :propr_95 => :upper) |>
-#     @transform(__, condition = categorical(:condition,
-#         levels = ["global", "spatial", "object"], ordered = true)) |>
-#     sort!(__, :condition)
 
 means = @_ meansclean |>
     groupby(__, [:condition, :type]) |>
