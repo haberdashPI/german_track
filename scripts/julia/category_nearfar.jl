@@ -264,15 +264,15 @@ target_timeline = @_ switchdata |>
     end, __) |>
     @transform(__, time = Array(:time))
 
-binwidth = 1.1
+binwidth = 0.6
 # NOTE: using my analysis from raw data
 target_timeline = @_ hit_by_switch |>
     groupby(__, [:condition, :target_time_label]) |>
-    # TODO: stopped here
-    filteringmap(__, folder = foldl, desc = nothing, :time =>
-        map(binmean -> (binmean => (row ->
-            abs(row.time_bin_mean - binmean) < binwidth/2)), bin_means),
-        function(sdf, time)
+    @repeatby(__, time = bin_means) |>
+    @where(__, abs.(:time_bin_mean .- :time) .< (binwidth/2)) |>
+    combine(__,
+        function(sdf)
+            time = sdf.time[1]
             result = @combine(groupby(sdf, [:sid, :exp_id]),
                 mean = sum(:perf .== "hit") / sum(:perf .∈ Ref(Set(["hit", "miss"]))),
                 weight = sum(:perf .∈ Ref(Set(["hit", "miss"]))),
@@ -306,17 +306,16 @@ target_timeline = @_ hit_by_switch |>
     end, __) |>
     @transform(__, time = Array(:time))
 
+# target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
+#     "hitrate_timeline_bytarget.csv"), DataFrame) |>
+#     groupby(__, :condition) |>
+#     transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
+#                    [:pmean, :err] => (+) => :upper,
+#                    [:pmean, :err] => (-) => :lower,
+#                    :target_time => ByRow(x -> target_labels[x]) => :target_time_label) |>
+#     rename(__, :pmean => :mean)
 
-target_timeline = @_ CSV.read(joinpath(processed_datadir("plots"),
-    "hitrate_timeline_bytarget.csv"), DataFrame) |>
-    groupby(__, :condition) |>
-    transform!(__, :err => (x -> replace(x, NaN => 0.0)) => :err,
-                   [:pmean, :err] => (+) => :upper,
-                   [:pmean, :err] => (-) => :lower,
-                   :target_time => ByRow(x -> target_labels[x]) => :target_time_label) |>
-    rename(__, :pmean => :mean)
-
-last_time = 1.25 #maximum(target_timeline.time)
+last_time = maximum(target_timeline.time)
 
 pl = @_ target_timeline |>
     @vlplot(

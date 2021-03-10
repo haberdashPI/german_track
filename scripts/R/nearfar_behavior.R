@@ -15,18 +15,14 @@ df = read.csv(file.path(processed_datadir,'analyses','hit_by_switch.csv')) %>%
     mutate(id = paste0(sid, exp_id))
 
 dft = filter(df, !is.na(switch_distance))
-df$time_condition = interaction(df$target_time_label, df$condition)
-fit_add = stan_gamm4(sbj_answer ~ s(switch_distance),
+dft$time_condition = interaction(dft$target_time_label, dft$condition)
+
+fit_add = stan_gamm4(sbj_answer ~ s(switch_distance, by = target_time_label),
     family = binomial(),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))
 
-fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = target_time_label),
-    family = binomial(),
-    adapt_delta = 0.99,
-    data = dft, iter = 2000) #, random = ~(1 | id))
-
-fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = time_condition),
+fit_add = stan_gamm4(sbj_answer ~ s(switch_distance, by = time_condition),
     family = binomial(),
     adapt_delta = 0.99,
     data = dft, iter = 2000) #, random = ~(1 | id))
@@ -34,13 +30,12 @@ fit_add = stan_gamm4(sbj_answer ~ s(dtz, by = time_condition),
 p = plot_nonlinear(fit_add)
 ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'behavior_nonlinear.svg'), p)
 
-# conclusion: non of the conditions are particularly non-linear: I think it's safe to
-# use a linear model
+# conclusion: this doesn't look so non-linear, a linear model is probably reasonable
 
 fitmm = stan_glmer(sbj_answer ~ switch_distance * condition * target_time_label
     + (switch_distance * condition * target_time_label | id),
     # switches last for 0.6 seconds, skip overlapping targets
-    filter(df, switch_distance > 0.6, switch_distance < 1.6),
+    filter(df, switch_distance > 0.6),
     adapt_delta = 0.99,
     family = binomial(link = "logit"))
 
