@@ -17,6 +17,8 @@ include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl")) # defines `pa
 x, nfeatures = prepare_decode_data(params)
 stimulidf = prepare_decode_stimuli(params)
 
+cutlags(x, nfeatures, ncut) = @view x[:, (ncut*nfeatures+1):end]
+
 # Train Model
 # =================================================================
 
@@ -45,6 +47,7 @@ modelsetup = @_ stimulidf |>
     @where(__, :condition .!= "spatial") |>
     groupby(__, [:condition, :source, :encoding]) |>
     repeatby(__,
+        :lagcut => [1.0, 2.0],
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
         :train_type => keys(train_types)) |>
