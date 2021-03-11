@@ -1,10 +1,4 @@
 source("src/R/setup.R")
-library(ggplot2)
-library(cowplot)
-library(dplyr)
-library(rstanarm)
-library(bayestestR)
-library(gamm4)
 
 # TODO: try looking at a robust regression
 
