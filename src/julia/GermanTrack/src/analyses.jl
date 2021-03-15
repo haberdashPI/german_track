@@ -257,7 +257,14 @@ end
 
 function parse_repeater(df, repeater)
     @capture(repeater, repeat_ = expression_) || error("Expected keyword argument")
-    :($(QuoteNode(repeat)) => @with($df, $expression))
+
+    # NOTE: we can't escape the entire expression below, because this interacts poorly with
+    # variables defined in the `@with` macro (leading to values that should be unescaped in
+    # an being in escaped form, which results in cryptic erros about a gensym variable being
+    # undefined). Instead, we walk through the expression and escape any individual symbols
+    # we find.
+    expr = MacroTools.postwalk(x -> x isa Symbol ? esc(x) : x, expression)
+    :($(QuoteNode(repeat)) => @with($df, $expr))
 end
 
 """
