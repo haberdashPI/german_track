@@ -14,8 +14,8 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 dir = processed_datadir("analyses", "decode", "plots")
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl")) # defines `params`
 
-x, nfeatures = prepare_decode_data(params)
-stimulidf = prepare_decode_stimuli(params)
+x, windows, nfeatures = prepare_decode_data(params, prefix)
+stimulidf = prepare_decode_stimuli(params, windows, prefix)
 
 # Train Model
 # =================================================================
@@ -51,15 +51,8 @@ modelsetup = @_ stimulidf |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
-train_decoder(params, x, modelsetup, train_type)
-
-predictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
-    combine(only(_.result), __)
-valpredictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
-    combine(only(_.validate), __)
-models = select(modelrun, Not([:result, :validate]))
-
-best_λ = plot_decode_lamabds(predictions)
+predictions, valpredictions, models = train_decoder(params, x, modelsetup, train_types)
+best_λ = plot_decode_lambdas(params, predictions, valpredictions, dir)
 
 # Store only the best results
 # -----------------------------------------------------------------

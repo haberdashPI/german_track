@@ -1,10 +1,12 @@
-export prepare_decode_data, prepare_decode_data, train_decoder, plot_decode_lambdas
+export prepare_decode_data, prepare_decode_stimuli, train_decoder, plot_decode_lambdas,
+    EEGFeatureSelector, StimSelector, MultiSelector
 using ColorSchemes
 
-function preapre_decode_stimuli(params)
+function prepare_decode_stimuli(params, windows, prefix)
     # Setup stimulus data
     # -----------------------------------------------------------------
 
+    meta = load_stimulus_metadata()
     stimuli = Empty(Vector)
 
     starts = vcat(1,1 .+ cumsum(windows.len))
@@ -12,8 +14,6 @@ function preapre_decode_stimuli(params)
     for (i, trial) in enumerate(eachrow(windows))
         for (encoding, encoding_code) in pairs(params.stimulus.encodings)
             for source in params.stimulus.sources
-                global stimuli
-
                 stim, stim_id = load_stimulus(source, trial, encoding_code,
                     params.stimulus.samplerate, meta)
                 start = trial.start
@@ -61,7 +61,7 @@ function preapre_decode_stimuli(params)
     stimulidf
 end
 
-function prepare_decode_data(params)
+function prepare_decode_data(params, prefix)
     data_prefix = joinpath(processed_datadir("analyses", "decode-data", "freqbinpower-sr$(params.stimulus.samplerate)"))
     GermanTrack.@load_cache data_prefix (subjects, :bson)
     events = load_all_subject_events(processed_datadir("eeg"), "h5")
@@ -129,37 +129,71 @@ function prepare_decode_data(params)
     x ./= x_σ
     x_scores = DataFrame(μ = vec(x_μ), σ = vec(x_σ))
 
-    prefix = joinpath(processed_datadir("analyses", "decode"), "train")
     GermanTrack.@save_cache prefix x_scores
 
-
-    x, nfeatures
+    x, windows, nfeatures
 end
 
-struct FilterStimuli
+struct StimSelector
     fn
 end
-struct FilterEEG
-    fn
+struct EEGFeatureSelector
+    featfn
 end
-# TODO: figure out how to apply the different types of filters in the two different contexts
-(x::FilterStimuli)(stimulusfold, ) =
-function train_decoder(params, x, modelsetup, train_type)
-    eegindices(row::DataFrameRow) = (row.offset):(row.offset + row.len - 1)
-    function eegindices(df::AbstractDataFrame)
-        mapreduce(eegindices, vcat, eachrow(df))
+struct MultiSelector
+    selectors
+    MultiSelector(sels...) = new(sels)
+end
+
+selectstim(x::StimSelector, df, kind) = x.fn(df, kind)
+selectstim(x::EEGFeatureSelector, df, kind) = df
+function selectstim(x::MultiSelector, df, kind)
+    helper(sels, df) = isempty(sels) ? df :
+        helper(sels[2:end], selectstim(sels[1], df, kind))
+    helper(x.selectors, df)
+end
+
+selectdata(x::StimSelector, data, row) = data
+function selectdata(x::EEGFeatureSelector, data, row::DataFrameRow)
+    (x.featfn(data, row), (row.offset):(row.offset + row.len - 1))
+end
+function selectdata(x::EEGFeatureSelector, data, rows::AbstractDataFrame)
+    local sel
+    local rowsel
+    local colsel
+    try
+        sel = @_ map(selectdata(x, data, _), eachrow(rows))
+        rowsel = @_ map(_[1], sel)
+        colsel = @_ mapreduce(_[2], vcat, sel)
+        all(==(first(rowsel)), rowsel) || error("Non-uniform feature selection.")
+        first(rowsel), colsel
+    catch e
+        @infiltrate
+        rethrow(e)
     end
+end
+function selectdata(x::MultiSelector, data, rows)
+    helper(sels, data) = isempty(sels) ? data :
+        helper(sels[2:end], selectdata(sels[1], data, rows))
+    helper(x.selectors, data)
+end
 
-    toxy(df) = isempty(df) ? ([], []) :
-        (x[:, eegindices(df)], reshape(reduce(vcat, row.data for row in eachrow(df)),1,:))
+function train_decoder(params, x, modelsetup, train_types)
+    toxy(df, selector) = isempty(df) ? ([], []) : (
+        x[selectdata(selector, x, df)...],
+        reshape(reduce(vcat, row.data for row in eachrow(df)),1,:)
+    )
 
     progress = Progress(params.train.max_steps * ngroups(modelsetup))
 
     modelrun = combine(modelsetup) do fold
-        selection = train_types[fold.train_type[1]]
-        train = @_ fold |> selection(__, :train) |> @where(__, :split .== "train") |> toxy
-        val   = @_ fold |> selection(__, :train) |> @where(__, :split .== "validate")
-        test  = @_ fold |> selection(__, :test)  |> @where(__, :split .== "test")
+        selector = train_types[fold.train_type[1]]
+        train = @_ fold |> selectstim(selector, __, :train) |>
+            @where(__, :split .== "train") |> toxy(__, selector)
+        val   = @_ fold |> selectstim(selector, __, :train) |>
+            @where(__, :split .== "validate")
+        test  = @_ fold |> selectstim(selector, __, :test)  |>
+            @where(__, :split .== "test")
 
         (isempty(train[1]) || isempty(test) || isempty(val)) && return DataFrame()
 
@@ -170,11 +204,11 @@ function train_decoder(params, x, modelsetup, train_type)
             min_steps = params.train.min_steps,
             patience = params.train.patience,
             inner = params.train.hidden_units,
-            validate = val |> toxy
+            validate = @_ val |> toxy(__, selector)
         )
 
-        test[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(test)]
-        val[!, :prediction] = [model(view(x, :, eegindices(row))) for row in eachrow(val)]
+        test[!, :prediction] = [model(x[selectdata(selector, x, row)...]) for row in eachrow(test)]
+        val[!, :prediction] = [model(x[selectdata(selector, x, row)...]) for row in eachrow(val)]
         test[!, :steps] .= GermanTrack.nsteps(model)
 
         DataFrame(model = model, result = test, validate = val)
@@ -182,9 +216,17 @@ function train_decoder(params, x, modelsetup, train_type)
 
     ProgressMeter.finish!(progress)
     # alert("Completed model training!")
+
+    predictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
+        combine(only(_.result), __)
+    valpredictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
+        combine(only(_.validate), __)
+    models = select(modelrun, Not([:result, :validate]))
+
+    predictions, valpredictions, models
 end
 
-function plot_decode_lambdas(predictions, valpredictions)
+function plot_decode_lambdas(params, predictions, valpredictions, dir)
     score(x,y) = isempty(x) ? zero(eltype(x)) : cor(vec(x), vec(y))
     meta = GermanTrack.load_stimulus_metadata()
     function compute_scores(p)
