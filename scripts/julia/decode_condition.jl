@@ -178,21 +178,25 @@ GermanTrack.@load_cache prefix timelines
 # Timeline for conditions
 # -----------------------------------------------------------------
 
-# Timeline by target
-# -----------------------------------------------------------------
+# TOOD: plot difference between target and non-target decoding
+
+steps = range(0.1, 0.9, length = 15)
+steps = vcat(steps[1] - step(steps), steps)
+pcolors = ColorSchemes.batlow[steps[vcat(1,[1,7,12,14].+1)]]
+pcolors[[1,end]] = GermanTrack.grayify.(pcolors[[1,end]])
 
 # setup plot data
 plotdf = @_ timelines |>
     @transform(__, test_type = ifelse.(:source .== :trained_source, "Trained Source", "Other Sources")) |>
-    groupby(__, [:condition, :time, :sid, :test_type, :trial, :sound_index, :fold]) |>
+    groupby(__, [:condition, :time, :sid, :test_type, :trial, :sound_index, :fold, :lagcut]) |>
     @combine(__, score = mean(:score))
 
 target_len_y = -0.075
 pl = @_ plotdf |>
-    groupby(__, [:condition, :time, :test_type, :sid]) |>
+    groupby(__, [:condition, :time, :test_type, :lagcut, :sid]) |>
     @combine(__, score = mean(:score)) |>
     # @where(__, -1 .< :time .< 2.5) |>
-    groupby(__, [:condition, :time, :test_type]) |>
+    groupby(__, [:condition, :time, :test_type, :lagcut]) |>
     combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
     transform(__, [:condition, :test_type] =>
         ByRow((cond, type) -> type == "Other Sources" ? "other" :
@@ -201,7 +205,7 @@ pl = @_ plotdf |>
         spacing = 5,
         config = {legend = {disable = true}},
     facet = {
-        # row = {field = :is_target_source},
+        row = {field = :lagcut},
         column = {field = :condition, title = "",
             sort = ["global", "spatial", "object"],
             header = {
@@ -256,9 +260,6 @@ pl = @_ plotdf |>
 pl |> save(joinpath(dir, "decode_by_source.svg"))
 
 # Timeline, excluding target region
-# -----------------------------------------------------------------
-
-# Timeline by target
 # -----------------------------------------------------------------
 
 # setup plot data

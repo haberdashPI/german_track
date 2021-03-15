@@ -18,7 +18,9 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 
-subjects = load_decode_data()
+subject_prefix = joinpath(mkpath(processed_datadir("analyses", "decode-data")), "freqbinpower-sr$(params.stimulus.samplerate)")
+GermanTrack.@load_cache subject_prefix (subjects, :bson)
+
 # things that are duplicated in `train_decode`: should be defined in a common file
 # and written out to a TOML parameter setup
 
@@ -26,7 +28,15 @@ decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@load_cache decode_prefix (models_, :bson) stimulidf x_scores
 meta = GermanTrack.load_stimulus_metadata()
 
-rename!(models_, :cross_fold => :fold, :source => :trained_source)
+models = @_ models_ |> rename!(__, :cross_fold => :fold, :source => :trained_source) |>
+    insertcols!(__, :lagcut => 0)
+
+decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
+GermanTrack.@load_cache decode_prefix (models_, :bson)
+
+append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
+
+nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
 # timeline testing
 # -----------------------------------------------------------------
@@ -36,16 +46,19 @@ groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
     groupby(__, [:sid, :trial])
 
+cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 2)
+
 p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
     sid, trial, sound_index, target_time, fold, condition =
         trialdf[:, [:sid, :trial, :sound_index, :target_time, :fold, :condition]] |>
         unique |> eachrow |> only
 
+    lagcuts = levels(models.lagcut)
     runsetup = @_ copy(trialdf) |>
         @where(__, (:hittype .== "hit")) |>
-        @repeatby(__, trained_source = levels(:source)) |>
-        innerjoin(__, models_, on = [:condition, :trained_source, :encoding, :fold]) |>
+        @repeatby(__, trained_source = levels(:source), lagcut = lagcuts) |>
+        innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -55,7 +68,7 @@ timelines = combine(groups) do trialdf
     winlen = round(Int, params.test.winlen_s*params.stimulus.samplerate)
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
-    result = combine(groupby(runsetup, [:encoding, :trained_source, :source])) do stimdf
+    result = combine(groupby(runsetup, [:encoding, :trained_source, :source, :lagcut])) do stimdf
         stimrow = only(eachrow(stimdf))
         source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]
@@ -64,7 +77,9 @@ timelines = combine(groups) do trialdf
 
         maxlen = min(size(trialdata, 1), size(stim, 1))
 
-        x = (view(trialdata, 1:maxlen, :) .- x_scores.μ') ./ x_scores.σ'
+        lags = cutlags(trialdata, nfeatures, stimrow.lagcut)
+        x = (view(trialdata, 1:maxlen, lags) .- view(x_scores.μ, lags)') ./
+            view(x_scores.σ, lags)'
         y_μ, y_σ = stimrow[[:datamean, :datastd]]
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
@@ -89,6 +104,7 @@ timelines = combine(groups) do trialdf
                     sound_index = sound_index,
                     is_target_source = stimdf.is_target_source,
                     fold = fold,
+                    lagcut = stimrow.lagcut,
                 )
             end
         end
