@@ -33,6 +33,7 @@ stages:
     cmd: julia -f auto --project=. -- scripts/julia/process_decode_source_timeline.jl
     deps:
     - data/processed/analyses/decode
+    - data/processed/analyses/decode-varlag
     - data/processed/eeg
     outs:
     - data/processed/analyses/decode-timeline-source:
