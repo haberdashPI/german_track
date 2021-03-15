@@ -11,13 +11,15 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures,
     PooledArrays # (pooled arrays is needed to reload subject data)
 
-dir = processed_datadir("analyses", "decode", "plots")
+dir = processed_datadir("analyses", "decode-varlag", "plots")
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl")) # defines `params`
 
-x, nfeatures = prepare_decode_data(params)
-stimulidf = prepare_decode_stimuli(params)
+prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
 
-cutlags(x, nfeatures, ncut) = @view x[:, (ncut*nfeatures+1):end]
+x, windows, nfeatures = prepare_decode_data(params, prefix)
+stimulidf = prepare_decode_stimuli(params, windows, prefix)
+
+cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 1)
 
 # Train Model
 # =================================================================
@@ -37,9 +39,11 @@ train_types = OrderedDict(
     #     (:hittype .== "hit") .&
     #     (:windowing .== "pre-target") .&
     #     :is_target_source)),
-    "random" => ((df, kind) -> @where(df,
-        (:hittype .∈ Ref(["hit", "miss"])) .&
-        contains.(:windowing, "random"))
+    "random" => MultiSelector(
+        StimSelector((df, kind) -> @where(df,
+            (:hittype .∈ Ref(["hit", "miss"])) .&
+            contains.(:windowing, "random"))),
+        EEGFeatureSelector((x, row) -> cutlags(x, nfeatures, row.lagcut))
     )
 )
 
@@ -47,22 +51,16 @@ modelsetup = @_ stimulidf |>
     @where(__, :condition .!= "spatial") |>
     groupby(__, [:condition, :source, :encoding]) |>
     repeatby(__,
-        :lagcut => [1.0, 2.0],
+        :lagcut => round.(Int, [1.0, 2.0] * params.stimulus.samplerate),
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
-train_decoder(params, x, modelsetup, train_type)
+predictions, valpredictions, models = train_decoder(params, x, modelsetup, train_types)
 
-predictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
-    combine(only(_.result), __)
-valpredictions = @_ modelrun |> groupby(__, Not([:result, :model, :validate])) |>
-    combine(only(_.validate), __)
-models = select(modelrun, Not([:result, :validate]))
-
-best_λ = plot_decode_lamabds(predictions)
+best_λ = plot_decode_lambdas(params, predictions, valpredictions, dir)
 
 # Store only the best results
 # -----------------------------------------------------------------
@@ -70,5 +68,4 @@ best_λ = plot_decode_lamabds(predictions)
 models_ = @_ filter(_.λ == best_λ[_.cross_fold], models)
 predictions_ = @_ filter(_.λ == best_λ[_.cross_fold], predictions)
 
-prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 GermanTrack.@save_cache prefix (models_, :bson) predictions_
