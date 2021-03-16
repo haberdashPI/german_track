@@ -38,6 +38,18 @@ stages:
     outs:
     - data/processed/analyses/decode-timeline-source:
         persist: true
+  decode-timeline-switch:
+    desc: Evaluating decoder accuracy across trial timeline.
+    cmd: julia -t auto --project=. -- scripts/julia/process_decode_source_by_switch_timeline.jl
+    deps:
+    - scripts/julia/setup_decode_params.jl
+    - data/processed/analyses/decode-data
+    - data/processed/analyses/decode-varlag
+    - data/processed/analyses/decode
+    - data/processed/eeg
+    outs:
+    - data/processed/analyses/decode-timeline-switch:
+        persist: true
   train-decoder-varlag:
     desc: Training and on-window predictions for varying time lag ranges.
     cmd: julia -f auto --project=. -- scripts/julia/train_decode_varlags.jl
