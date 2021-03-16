@@ -169,6 +169,91 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_diff.svg"))
 
+# Supplement: decoding by source aligned to switches
+# =================================================================
+
+prefix = joinpath(processed_datadir("analyses", "decode-timeline-switch"), "testing")
+GermanTrack.@load_cache prefix timelines
+
+# Plot by target sources
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, (:source .== :trained_source) .& (:lagcut .== 64) .& :is_target_source) |>
+    groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:condition, :time, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:condition, :time]) |>
+    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable)
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "Decoding Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch.svg"))
+
+# Plot by source difference
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, (:source .== :trained_source) .& (:lagcut .== 64)) |>
+    groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :is_target_source]) |>
+    @combine(__, score = mean(:score)) |>
+    groupby(__, Not([:trial])) |>
+    @combine(__, score = mean(:score)) |>
+    @transform(__, source_kind = ifelse.(:is_target_source, "target", "other")) |>
+    select(__, Not(:is_target_source)) |>
+    unstack(__, Not([:source_kind, :score]), :source_kind, :score) |>
+    @transform(__, diff = :target .- :other) |>
+    groupby(__, [:condition, :time, :sid]) |>
+    @combine(__, diff = mean(:diff)) |>
+    groupby(__, [:condition, :time]) |>
+    combine(__, :diff => boot(alpha = sqrt(0.05)) => AsTable)
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            x = {:time, type = :quantitative, title = "Time (s)"},
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "Target - Other Correlation"}) +
+        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch_diff.svg"))
+
+
 # Supplement: decoding from start by source
 # =================================================================
 
