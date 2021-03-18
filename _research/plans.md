@@ -1,3 +1,22 @@
+# meeting (3/16)
+
+- redo decoder in range 0 - 6.5 (minimum trial length?)
+    (exclude training after that)
+- can we move the bump in decoding by splitting trials
+    between early/late for a given switch (e.g. the first switch "bump")
+- decoding accuracy "out of the three possible decoders which is better"
+    per trial per time instant,
+    what range of accuracies do we get
+    OBJECT CONDITION ONLY
+
+do we still see these bumps, and do they relate to the switches
+individual level for each switch
+
+for the spatial condition: use the channels as the "target" source
+
+maybe global condition: one with each source, one with each channel (left/right)
+global: 1 of 3, spatial: 1 of 2
+
 # meeting
 
 1. how much does the lag matter for these new figures

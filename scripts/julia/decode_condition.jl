@@ -5,7 +5,7 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures
+    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures, Indexing
 
 dir = mkpath(joinpath(plotsdir(), "figure2_parts"))
 
@@ -267,7 +267,7 @@ GermanTrack.@load_cache prefix timelines
 # Timeline for decoding by source, when the soure is the target
 # -----------------------------------------------------------------
 
-pcolors = ColorSchemes.imola[range(0.2,0.8,length=3)]
+pcolors = vcat(ColorSchemes.imola[range(0.2,0.7,length=3)], ColorSchemes.lajolla[0.8])
 
 # setup plot data
 plotdf = @_ timelines |>
@@ -282,19 +282,11 @@ laglabels = Dict(
 )
 
 target_len_y = -0.075
-pl = @_ plotdf |>
-    groupby(__, [:condition, :time, :lagcut, :sid]) |>
-    @combine(__, score = mean(:score)) |>
-    # @where(__, -1 .< :time .< 2.5) |>
-    groupby(__, [:condition, :time, :lagcut]) |>
-    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable) |>
-    @transform(__, laglabel = getindices(laglabels, :lagcut)) |>
-    @vlplot(
+pl = realplotdf |> @vlplot(
         spacing = 5,
         # config = {legend = {disable = true}},
     facet = {
         column = {field = :condition, title = "",
-            sort = ["global", "spatial", "object"],
             header = {
                 title = "",
                 labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
@@ -315,6 +307,9 @@ pl = @_ plotdf |>
         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
     ));
 pl |> save(joinpath(dir, "decode_by_source_trained_target.svg"))
+
+# Decode sou
+# -----------------------------------------------------------------
 
 # Decode by source, difference from target vs non-target trials
 # -----------------------------------------------------------------
@@ -338,12 +333,28 @@ plotdf = @_ timelines |>
     combine(__, :diff => boot(alpha = sqrt(0.05)) => AsTable) |>
     @transform(__, laglabel = getindices(laglabels, :lagcut))
 
+
+function inswitches(meta, id, time)
+    switches = meta.switch_regions[id]
+    @_ any(inswitch(_, time), switches)
+end
+inswitch((start, stop), time) = start ≤ time ≤ stop
+
+switch_counts = @_ timelines |>
+    @where(__, :is_target_source .& (:source .== :trained_source) .& (:lagcut .== 0)) |>
+    @transform(__, switch_count = inswitches.(Ref(meta), :sound_index, :time)) |>
+    groupby(__, [:condition, :time]) |>
+    @combine(__, switch_count = mean(:switch_count))
+
+plotdf = innerjoin(plotdf, switch_counts, on = [:condition, :time])
+
 target_len_y = -0.075
 pl = @_ plotdf |>
     @transform(__, laglabel = getindices(laglabels, :lagcut)) |>
     @vlplot(
         spacing = 5,
         config = {legend = {disable = true}},
+        resolve = {scale = {y = :independent}},
     facet = {
         column = {field = :condition, title = "",
             sort = ["global", "spatial", "object"],
@@ -358,13 +369,18 @@ pl = @_ plotdf |>
         @vlplot(
             width = 128, height = 130,
             x = {:time, type = :quantitative, title = "Time (s)"},
+            resolve = {scale = {y = "independent"}},
             color = {:condition, type = "ordinal",
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
         @vlplot({:line, strokeJoin = :round},
             # strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
-            y = {:value, title = "Target - Non-target"}) +
-        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+            y = {:value, title = "Target - Non-target"}, type = :quantitative, scale = {domain = [-0.2, 0.6]}) +
+        # @vlplot(:errorband, y = {:lower, title = "Target - Non-target"}, y2 = :upper) +
+        @vlplot({:line, strokeJoin = :round, size = 1.0, strokeDash = [2, 2]},
+            y = {:switch_count, title = "P(switch)", scale = {domain = [0, 1]}},
+            x = :time
+        )
     ));
 pl |> save(joinpath(dir, "decode_by_source_target_diff.svg"))
 
