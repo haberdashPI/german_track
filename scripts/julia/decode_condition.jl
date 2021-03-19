@@ -336,7 +336,8 @@ pcolors = GermanTrack.colors
 
 # setup plot data
 plotdf = @_ timelines |>
-    @where(__, (:source .== :trained_source) .& (:lagcut .== 64)) |>
+    @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, (:source .== :trained_source) .& (:lagcut .== 0)) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut, :is_target_source]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, Not([:trial])) |>
@@ -348,7 +349,7 @@ plotdf = @_ timelines |>
     groupby(__, [:condition, :time, :lagcut, :sid]) |>
     @combine(__, diff = mean(:diff)) |>
     groupby(__, [:condition, :time, :lagcut]) |>
-    combine(__, :diff => boot(alpha = sqrt(0.05)) => AsTable) |>
+    combine(__, :diff => boot(alpha = 0.05) => AsTable) |>
     @transform(__, laglabel = getindices(laglabels, :lagcut))
 
 
@@ -394,7 +395,7 @@ pl = @_ plotdf |>
         @vlplot({:line, strokeJoin = :round},
             # strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
             y = {:value, title = "Target - Non-target"}, type = :quantitative, scale = {domain = [-0.2, 0.6]}) +
-        # @vlplot(:errorband, y = {:lower, title = "Target - Non-target"}, y2 = :upper) +
+        @vlplot(:errorband, y = {:lower, title = "Target - Non-target"}, y2 = :upper) +
         @vlplot({:line, strokeJoin = :round, size = 1.0, strokeDash = [2, 2]},
             y = {:switch_count, title = "P(switch)", scale = {domain = [0, 1]}},
             x = :time

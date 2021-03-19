@@ -35,6 +35,7 @@ end
 nsteps(x::Decoder) = x.steps
 (d::Decoder)(x) = d.model(x)
 decode_weights(x::Decoder) = mean(x.model.layers[1].W, dims = 1)
+Flux.gpu(x::Decoder) = Decoder(gpu(x.model), x.steps)
 
 function decoder(x, y, λ, opt;
     batch = 64,
