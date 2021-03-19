@@ -31,10 +31,9 @@ meta = GermanTrack.load_stimulus_metadata()
 models = @_ models_ |> rename!(__, :cross_fold => :fold, :source => :trained_source) |>
     insertcols!(__, :lagcut => 0)
 
-decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
-GermanTrack.@load_cache decode_prefix (models_, :bson)
-
-append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
+# decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
+# GermanTrack.@load_cache decode_prefix (models_, :bson)
+# append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
 
 nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
@@ -83,7 +82,9 @@ timelines = combine(groups) do trialdf
         y_μ, y_σ = stimrow[[:datamean, :datastd]]
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
-        ŷ = vec(stimrow.model(x'))
+        # this may or may not be faster, definitely depends on the exact model size by my
+        # benchmarking, it's roughly 2-4x as fast for the model i'm using at the moment
+        ŷ = vec(gpu(stimrow.model)(gpu(x'))) |> cpu
 
         function scoreat(offset)
             vstart = clamp(1+offset, 1, maxlen)

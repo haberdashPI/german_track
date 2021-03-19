@@ -19,7 +19,7 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 
 decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
-GermanTrack.@load_cache decode_prefix stimulidf x_scores
+GermanTrack.@load_cache decode_prefix stimulidf x_scores models_
 
 subject_prefix = joinpath(mkpath(processed_datadir("analyses", "decode-data")), "freqbinpower-sr$(params.stimulus.samplerate)")
 GermanTrack.@load_cache subject_prefix (subjects, :bson) stimulidf
@@ -29,8 +29,8 @@ GermanTrack.@load_cache subject_prefix (subjects, :bson) stimulidf
 
 meta = GermanTrack.load_stimulus_metadata()
 
-decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
-GermanTrack.@load_cache decode_prefix (models_, :bson)
+# decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
+# GermanTrack.@load_cache decode_prefix (models_, :bson)
 
 models = rename!(models_, :cross_fold => :fold, :source => :trained_source)
 
@@ -55,7 +55,7 @@ timelines = combine(groups) do trialdf
 
     runsetup = @_ copy(trialdf) |>
         @where(__, (:hittype .== "hit")) |>
-        @transform(__, trained_source = :source, lagcut = 64) |>
+        @transform(__, trained_source = :source, lagcut = 0) |>
         # @repeatby(__, trained_source = levels(:source)) |>
         innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         @repeatby(__, switch_index = 1:length(switches)) |>
