@@ -8,6 +8,7 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures, Indexing
 
 dir = mkpath(joinpath(plotsdir(), "figure2_parts"))
+meta = GermanTrack.load_stimulus_metadata()
 
 using GermanTrack: colors
 
@@ -174,12 +175,15 @@ pl |> save(joinpath(dir, "decode_diff.svg"))
 
 prefix = joinpath(processed_datadir("analyses", "decode-timeline-switch"), "testing")
 GermanTrack.@load_cache prefix timelines
+switch_offset(sound_index, switch_index) = meta.switch_regions[sound_index][switch_index][2]
 
 # Plot by target sources
 # -----------------------------------------------------------------
 
 # setup plot data
 plotdf = @_ timelines |>
+    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
+        getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, (:source .== :trained_source) .& (:lagcut .== 64) .& :is_target_source) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut]) |>
     @combine(__, score = mean(:score)) |>
@@ -216,6 +220,8 @@ pl |> save(joinpath(dir, "decode_source_near_switch.svg"))
 
 # setup plot data
 plotdf = @_ timelines |>
+    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
+        getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, (:source .== :trained_source) .& (:lagcut .== 64)) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :is_target_source]) |>
     @combine(__, score = mean(:score)) |>
@@ -271,9 +277,19 @@ pcolors = vcat(ColorSchemes.imola[range(0.2,0.7,length=3)], ColorSchemes.lajolla
 
 # setup plot data
 plotdf = @_ timelines |>
+    @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :is_target_source .& (:source .== :trained_source)) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut]) |>
-    @combine(__, score = mean(:score))
+    @combine(__, score = mean(:score)) |>
+    groupby(__, [:condition, :time, :lagcut, :sid]) |>
+    @combine(__, score = mean(:score)) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    groupby(__, [:condition, :time, :lagcut]) |>
+    combine(__,
+        :sid => length ∘ unique => :N,
+        :score => boot(alpha = sqrt(0.05)) => AsTable,
+    ) |> @where(__, :N .>= 24)
+
 
 laglabels = Dict(
     0 => "3 sec",
@@ -282,7 +298,9 @@ laglabels = Dict(
 )
 
 target_len_y = -0.075
-pl = realplotdf |> @vlplot(
+pl = @_ plotdf |>
+    @transform(__, laglabel = getindices(laglabels, :lagcut)) |>
+    @vlplot(
         spacing = 5,
         # config = {legend = {disable = true}},
     facet = {
