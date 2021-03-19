@@ -2,6 +2,9 @@
 
 - redo decoder in range 0 - 6.5 (minimum trial length?)
     (exclude training after that)
+    TODO: can we plot this data different first, to just see if
+    it's an issue of the reducing number of cases
+    and not an issue of training
 - can we move the bump in decoding by splitting trials
     between early/late for a given switch (e.g. the first switch "bump")
 - decoding accuracy "out of the three possible decoders which is better"
