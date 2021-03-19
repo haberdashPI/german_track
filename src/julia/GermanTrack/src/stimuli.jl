@@ -275,6 +275,25 @@ function load_stimulus(mixed::MixedSources, stim, encoding, tofs, info)
     end
 end
 
+# struct ChannelSource <: AbstractSource
+#     channel::Int
+#     name::String
+# end
+# Base.string(x::ChannelSource) = x.name
+# right_source = ChannelSource("right", 1)
+# left_source = ChannelSource("left", 2)
+# function load_stimulus(chan::ChannelSource, stim, encoding, tofs, info)
+#     stim_num = get_stim_num(stim)
+#     key = (:channel, chan.channel, stim_num, tofs, stim_num, encoding)
+#     encode_cache(key, stim_num) do
+#         mixture, fr = joinpath(stimulus_dir(), "mixtures", "testing",
+#                 @sprintf("trial_%02d.wav", stim_num)) |> load
+
+#         target_time = event.target_source ∈ mixed.indices ?
+#             event.target_time : nothing
+
+#     end
+
 const all_sources =
     [male_source, fem1_source, fem2_source, joint_source, other(joint_source),
      mixed_sources]
