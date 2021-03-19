@@ -68,17 +68,16 @@ function prepare_decode_data(params, prefix)
 
     meta = GermanTrack.load_stimulus_metadata()
 
-    # TODO: ensure window is not length zero when using random placement
     function windowing_start_time(event, triallen)
         event.windowing == "target" ? meta.target_times[event.sound_index] :
         event.windowing == "pre-target" ?
             max(0.0, meta.target_times[event.sound_index]-1.5) *
                 rand(GermanTrack.trialrng((:decode_windowing, seed), event)) :
         event.windowing == "random1" ?
-            (triallen / params.stimulus.samplerate) *
+            (max(triallen-1, 0.0) / params.stimulus.samplerate) *
             rand(GermanTrack.trialrng((:decode_windowing, seed, :first), event)) :
         event.windowing == "random2" ?
-            (triallen / params.stimulus.samplerate) *
+            (max(triallen-1, 0.0) / params.stimulus.samplerate) *
             rand(GermanTrack.trialrng((:decode_windowing, seed, :second), event)) :
         error("Unexpected windowing `$(event.windowing)`")
     end
