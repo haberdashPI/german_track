@@ -14,6 +14,8 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 dir = processed_datadir("analyses", "decode", "plots")
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl")) # defines `params`
 
+prefix = joinpath(processed_datadir("analyses", "decode"), "train")
+
 x, windows, nfeatures = prepare_decode_data(params, prefix)
 stimulidf = prepare_decode_stimuli(params, windows, prefix)
 
@@ -35,7 +37,7 @@ train_types = OrderedDict(
     #     (:hittype .== "hit") .&
     #     (:windowing .== "pre-target") .&
     #     :is_target_source)),
-    "random" => ((df, kind) -> @where(df,
+    "random" => StimSelector((df, kind) -> @where(df,
         (:hittype .∈ Ref(["hit", "miss"])) .&
         contains.(:windowing, "random"))
     )
