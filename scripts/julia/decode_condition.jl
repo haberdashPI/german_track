@@ -184,7 +184,7 @@ switch_offset(sound_index, switch_index) = meta.switch_regions[sound_index][swit
 plotdf = @_ timelines |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
-    @where(__, (:source .== :trained_source) .& (:lagcut .== 64) .& :is_target_source) |>
+    @where(__, (:source .== :trained_source) .& (:lagcut .== 0) .& :is_target_source) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, [:condition, :time, :sid]) |>
@@ -326,9 +326,6 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_by_source_trained_target.svg"))
 
-# Decode sou
-# -----------------------------------------------------------------
-
 # Decode by source, difference from target vs non-target trials
 # -----------------------------------------------------------------
 
@@ -387,18 +384,24 @@ pl = @_ plotdf |>
     (
         @vlplot(
             width = 128, height = 130,
-            x = {:time, type = :quantitative, title = "Time (s)"},
             resolve = {scale = {y = "independent"}},
             color = {:condition, type = "ordinal",
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
         ) +
-        @vlplot({:line, strokeJoin = :round},
-            # strokeDash = {:test_type, range = [[1,0], [4,1], [2,1]], sort = ["Trained Source", "Other Sources", "Baseline"]},
-            y = {:value, title = "Target - Non-target"}, type = :quantitative, scale = {domain = [-0.2, 0.6]}) +
-        @vlplot(:errorband, y = {:lower, title = "Target - Non-target"}, y2 = :upper) +
-        @vlplot({:line, strokeJoin = :round, size = 1.0, strokeDash = [2, 2]},
+        ( @vlplot() +
+            ( @vlplot(
+                y = {:value, title = "Target - Non-target", type = :quantitative,
+                    scale = {domain = [-0.1, 0.15]}},
+                x = {:time, type = :quantitative, title = "Time (s)"}) +
+              @vlplot({:line, strokeJoin = :round}) +
+              @vlplot(:errorband,
+                  y = {:lower, title = "Target - Non-target"}, y2 = :upper)) +
+            @vlplot({:rule, strokeDash = [4 4], size = 1}, y = {datum = 0}, color = {value = "black"})
+        ) +
+        @vlplot({:area, opacity = 0.3},
             y = {:switch_count, title = "P(switch)", scale = {domain = [0, 1]}},
-            x = :time
+            x = :time,
+            color = {value = "black"}
         )
     ));
 pl |> save(joinpath(dir, "decode_by_source_target_diff.svg"))
