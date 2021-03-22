@@ -260,7 +260,7 @@ pl = @_ plotdf |>
 pl |> save(joinpath(dir, "decode_source_near_switch_diff.svg"))
 
 
-# Supplement: decoding from start by source
+# Supplement: decoding by source
 # =================================================================
 
 prefix = joinpath(processed_datadir("analyses", "decode-timeline-source"), "testing")
@@ -393,10 +393,10 @@ pl = @_ plotdf |>
                 y = {:value, title = "Target - Non-target", type = :quantitative,
                     scale = {domain = [-0.1, 0.15]}},
                 x = {:time, type = :quantitative, title = "Time (s)"}) +
-              @vlplot({:line, strokeJoin = :round}) +
-              @vlplot(:errorband,
+              @vlplot({:line, clip = true, strokeJoin = :round}) +
+              @vlplot({:errorband, clip = true},
                   y = {:lower, title = "Target - Non-target"}, y2 = :upper)) +
-            @vlplot({:rule, strokeDash = [4 4], size = 1}, y = {datum = 0}, color = {value = "black"})
+            @vlplot({:rule, clip = true, strokeDash = [4 4], size = 1}, y = {datum = 0}, color = {value = "black"})
         ) +
         @vlplot({:area, opacity = 0.3},
             y = {:switch_count, title = "P(switch)", scale = {domain = [0, 1]}},

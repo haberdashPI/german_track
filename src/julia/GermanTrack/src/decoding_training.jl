@@ -87,7 +87,10 @@ function prepare_decode_data(params, prefix)
     seed = 2019_11_18
     target_samples = round(Int, params.stimulus.samplerate*target_length)
     function event2window(event)
-        triallen   = size(subjects[event.sid].eeg[event.trial], 2)
+        triallen   = haskey(params.train, :trial_time_limit) ?
+            min(size(subjects[event.sid].eeg[event.trial], 2),
+                round(Int, params.train.trial_time_limit*params.stimulus.samplerate)) :
+            size(subjects[event.sid].eeg[event.trial], 2)
         start_time = windowing_start_time(event, triallen)
 
         start      = clamp(round(Int, params.stimulus.samplerate*start_time), 1, triallen)
