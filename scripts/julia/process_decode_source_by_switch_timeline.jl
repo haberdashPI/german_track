@@ -19,10 +19,10 @@ using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
 
 decode_prefix = joinpath(processed_datadir("analyses", "decode"), "train")
-GermanTrack.@load_cache decode_prefix stimulidf x_scores models_
+GermanTrack.@load_cache decode_prefix stimulidf x_scores (models_, :bson)
 
 subject_prefix = joinpath(mkpath(processed_datadir("analyses", "decode-data")), "freqbinpower-sr$(params.stimulus.samplerate)")
-GermanTrack.@load_cache subject_prefix (subjects, :bson) stimulidf
+GermanTrack.@load_cache subject_prefix (subjects, :bson)
 
 # things that are duplicated in `train_decode`: should be defined in a common file
 # and written out to a TOML parameter setup
@@ -55,10 +55,9 @@ timelines = combine(groups) do trialdf
 
     runsetup = @_ copy(trialdf) |>
         @where(__, (:hittype .== "hit")) |>
-        @transform(__, trained_source = :source, lagcut = 0) |>
-        # @repeatby(__, trained_source = levels(:source)) |>
+        @transform(__, lagcut = 0) |>
+        @repeatby(__, switch_index = 1:length(switches), trained_source = levels(:source)) |>
         innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
-        @repeatby(__, switch_index = 1:length(switches)) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -75,7 +74,8 @@ timelines = combine(groups) do trialdf
         stim, = load_stimulus(source, sound_index, encoding, params.stimulus.samplerate,
             meta)
 
-        maxlen = min(size(trialdata, 1), size(stim, 1))
+        maxlen = min(size(trialdata, 1), size(stim, 1),
+            round(Int, params.train.trial_time_limit * params.stimulus.samplerate))
 
         lags = cutlags(trialdata, nfeatures, stimrow.lagcut)
         x = (view(trialdata, 1:maxlen, lags) .- view(x_scores.μ, lags)') ./
@@ -83,7 +83,7 @@ timelines = combine(groups) do trialdf
         y_μ, y_σ = stimrow[[:datamean, :datastd]]
         y = vec((view(stim, 1:maxlen, :) .- y_μ') ./ y_σ')
 
-        ŷ = vec(stimrow.model(x'))
+        ŷ = vec(gpu(stimrow.model)(gpu(x'))) |> cpu
 
         switch_time_index = round(Int, switches[stimrow.switch_index][2] *
             params.stimulus.samplerate)

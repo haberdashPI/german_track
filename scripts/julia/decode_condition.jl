@@ -222,7 +222,7 @@ pl |> save(joinpath(dir, "decode_source_near_switch.svg"))
 plotdf = @_ timelines |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
-    @where(__, (:source .== :trained_source) .& (:lagcut .== 64)) |>
+    @where(__, (:source .== :trained_source) .& (:lagcut .== 0)) |>
     groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :is_target_source]) |>
     @combine(__, score = mean(:score)) |>
     groupby(__, Not([:trial])) |>
@@ -259,6 +259,51 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_diff.svg"))
 
+# Switch by source accuracy
+# -----------------------------------------------------------------
+
+pcolors = GermanTrack.colors
+
+target_wins(row) = row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
+        getindices(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, :lagcut .== 0) |>
+    select(__, Not(:is_target_source)) |>
+    unstack(__, Not([:source, :score]), :source, :score) |>
+    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
+    groupby(__, [:condition, :time, :lagcut, :sid]) |>
+    @combine(__, correct = mean(:correct)) |>
+    groupby(__, [:condition, :time, :lagcut]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable)
+
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        (@vlplot(
+            x = {:time, type = :quantitative, title = "Time from Switch offset (s)"}) +
+            @vlplot({:line, strokeJoin = :round},
+                y = {:value, title = "P(Correct)", scale = {zero = false}}) +
+            @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+        )+
+        @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
+            y = {datum = 1/3}, color = {value = "black"})
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch_cat.svg"))
 
 # Supplement: decoding by source
 # =================================================================
@@ -407,9 +452,6 @@ pl = @_ plotdf |>
 pl |> save(joinpath(dir, "decode_by_source_target_diff.svg"))
 
 # Decode sources by classification accuracy
-# -----------------------------------------------------------------
-
-# Decode by source, difference from target vs non-target trials
 # -----------------------------------------------------------------
 
 pcolors = GermanTrack.colors

@@ -95,8 +95,8 @@ decode-timeline-switch:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_source_by_switch_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 00e857d8af7241a026c0e6080b6573b0.dir
-    size: 271944913
+    md5: 7cfa8be25625594ca5a1d09094570123.dir
+    size: 271945588
     nfiles: 7
   - path: data/processed/analyses/decode-data
     md5: 31392149546d6da0dcef99fa1d4eb922.dir
@@ -115,6 +115,6 @@ decode-timeline-switch:
     size: 1469
   outs:
   - path: data/processed/analyses/decode-timeline-switch
-    md5: 2d98c0a0219dbea3583047b291e7f35c.dir
-    size: 28136114
+    md5: 4a472068172bdf2b814dee55fce3a17e.dir
+    size: 73649674
     nfiles: 1
