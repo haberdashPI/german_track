@@ -463,6 +463,10 @@ plotdf = @_ timelines |>
     @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :time .< params.train.trial_time_limit) |>
     @where(__, :lagcut .== 0) |>
+    @where(__, :hittype == "hit") |>
+    groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
+    @transform(__, target_source = first(:source[:is_target_source])) |>
+    @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
     unstack(__, Not([:source, :score]), :source, :score) |>
     insertcols!(__, :correct => target_wins.(eachrow(__))) |>
