@@ -1,3 +1,37 @@
+# meeting (3/22)
+- show for target vs. other sources
+    - right now my results actually ignore the
+      target when the "% correct" responses.
+- cleanup: get both types of decoding working together
+- look at misses
+- look at alingment to target
+- aling to the switches, look at the later switches (do they attend to the "right" target)
+- plot x = time, y = hitrate across trial time
+- spatial: have a different feature of pitch for each source
+
+trials matched: hit
+same trial, same acoustics
+only trials that have late targets
+far from a switch
+
+decoding after the target
+decoding before the target (timeline locked to the target)
+
+can't blame different amounts of data: matched
+across conditions
+
+if there's a match near target, and mismatch earlier
+
+but then they turned at the right moment
+
+
+the things to do:
+
+1. redo: analysis by spatial: connects
+with prior literature
+
+2. new analysis we're just describing: can we support roving vs. switching
+
 # meeting (3/16)
 
 - redo decoder in range 0 - 6.5 (minimum trial length?)
