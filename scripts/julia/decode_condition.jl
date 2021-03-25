@@ -528,6 +528,69 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_by_source_class.svg"))
 
+# Subsection
+# -----------------------------------------------------------------
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, :time .< params.train.trial_time_limit) |>
+    @where(__, :lagcut .== 0) |>
+    @transform(__, target_time_label = getindices(meta.target_time_label, :sound_index)) |>
+    select(__, Not(:is_target_source)) |>
+    unstack(__, Not([:source, :score]), :source, :score) |>
+    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :target_time_label]) |>
+    @combine(__, correct = mean(:correct)) |>
+    groupby(__, [:condition, :time, :lagcut, :target_time_label]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable)
+
+
+switch_counts = @_ timelines |>
+    @where(__, :is_target_source .& (:source .== :trained_source) .& (:lagcut .== 0)) |>
+    @transform(__, switch_count = inswitches.(Ref(meta), :sound_index, :time)) |>
+    groupby(__, [:condition, :time]) |>
+    @combine(__, switch_count = mean(:switch_count))
+
+plotdf = innerjoin(plotdf, switch_counts, on = [:condition, :time])
+
+target_len_y = -0.075
+pl = @_ plotdf |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+        resolve = {scale = {y = :independent}},
+    facet = {
+        row = {field = :target_time_label, title = "Target Timing"},
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            resolve = {scale = {y = "independent"}},
+            color = {:condition, type = "ordinal",
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        ( @vlplot() +
+            ( @vlplot(
+                y = {:value, title = "P(Correct)", type = :quantitative,
+                    scale = {domain = [0.2 ,0.5]}},
+                x = {:time, type = :quantitative, title = "Time (s)"}) +
+              @vlplot({:line, clip = true, strokeJoin = :round}) +
+              @vlplot({:errorband, clip = true},
+                  y = {:lower, title = "P(Correct)"}, y2 = :upper)) +
+            @vlplot({:rule, clip = true, strokeDash = [4 4], size = 1}, y = {datum = 1/3}, color = {value = "black"})
+        )
+    ));
+pl |> save(joinpath(dir, "decode_by_source_class_target_time.svg"))
+
 # Supplement 0: decoding broken down by early/late near/far
 # and their interactions
 # =================================================================
