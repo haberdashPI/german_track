@@ -155,8 +155,8 @@ function selectstim(x::MultiSelector, df, kind)
     helper(x.selectors, df)
 end
 
-selectdata(x::StimSelector, data, row) = (:, :)
-function selectdata(x::EEGFeatureSelector, data, row::DataFrameRow)
+selectdata(x::StimSelector, data, row::DataFrameRow) = (:, (row.offset):(row.offset + row.len - 1))
+selectdata(x::EEGFeatureSelector, data, row::DataFrameRow) =
     (x.featfn(data, row), (row.offset):(row.offset + row.len - 1))
 function selectdata(x, data, rows::AbstractDataFrame)
     local sel
