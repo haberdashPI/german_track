@@ -271,6 +271,10 @@ plotdf = @_ timelines |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :lagcut .== 0) |>
+    # @where(__, :hittype .== "hit") |>
+    groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
+    @transform(__, target_source = first(:source[:is_target_source])) |>
+    @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
     unstack(__, Not([:source, :score]), :source, :score) |>
     insertcols!(__, :correct => target_wins.(eachrow(__))) |>
@@ -303,7 +307,8 @@ pl = @_ plotdf |>
         @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
             y = {datum = 1/3}, color = {value = "black"})
     ));
-pl |> save(joinpath(dir, "decode_source_near_switch_cat.svg"))
+pl |> save(joinpath(dir, "decode_source_near_switch_class.svg"))
+
 
 # Supplement: decoding by source
 # =================================================================
