@@ -177,110 +177,29 @@ prefix = joinpath(processed_datadir("analyses", "decode-timeline-switch"), "test
 GermanTrack.@load_cache prefix timelines
 switch_offset(sound_index, switch_index) = meta.switch_regions[sound_index][switch_index][2]
 
-# Plot by target sources
-# -----------------------------------------------------------------
-
-# setup plot data
-plotdf = @_ timelines |>
-    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
-        getindices(meta.trial_lengths, :sound_index) .- 1) |>
-    @where(__, (:source .== :trained_source) .& (:lagcut .== 0) .& :is_target_source) |>
-    groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :lagcut]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, [:condition, :time, :sid]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, [:condition, :time]) |>
-    combine(__, :score => boot(alpha = sqrt(0.05)) => AsTable)
-
-target_len_y = -0.075
-pl = @_ plotdf |>
-    @transform(__,
-        time = :time .+ params.test.winlen_s,
-    ) |>
-    # @where(__, -1 .< :time .< 2.5) |>
-    @vlplot(
-        spacing = 5,
-        # config = {legend = {disable = true}},
-    ) + (@vlplot() +
-    (
-        @vlplot(
-            width = 128, height = 130,
-            x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:condition, sort = ["global", "spatial", "object", "before"],
-                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
-        ) +
-        @vlplot({:line, strokeJoin = :round},
-            y = {:value, title = "Decoding Correlation"}) +
-        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
-    ));
-pl |> save(joinpath(dir, "decode_source_near_switch.svg"))
-
-# Plot by source difference
-# -----------------------------------------------------------------
-
-# setup plot data
-plotdf = @_ timelines |>
-    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
-        getindices(meta.trial_lengths, :sound_index) .- 1) |>
-    @where(__, (:source .== :trained_source) .& (:lagcut .== 0)) |>
-    groupby(__, [:condition, :time, :sid, :trial, :sound_index, :fold, :is_target_source]) |>
-    @combine(__, score = mean(:score)) |>
-    groupby(__, Not([:trial])) |>
-    @combine(__, score = mean(:score)) |>
-    @transform(__, source_kind = ifelse.(:is_target_source, "target", "other")) |>
-    select(__, Not(:is_target_source)) |>
-    unstack(__, Not([:source_kind, :score]), :source_kind, :score) |>
-    @transform(__, diff = :target .- :other) |>
-    groupby(__, [:condition, :time, :sid]) |>
-    @combine(__, diff = mean(:diff)) |>
-    groupby(__, [:condition, :time]) |>
-    combine(__, :diff => boot(alpha = sqrt(0.05)) => AsTable)
-
-target_len_y = -0.075
-pl = @_ plotdf |>
-    @transform(__,
-        time = :time .+ params.test.winlen_s,
-    ) |>
-    # @where(__, -1 .< :time .< 2.5) |>
-    @vlplot(
-        spacing = 5,
-        # config = {legend = {disable = true}},
-    ) + (@vlplot() +
-    (
-        @vlplot(
-            width = 128, height = 130,
-            x = {:time, type = :quantitative, title = "Time (s)"},
-            color = {:condition, sort = ["global", "spatial", "object", "before"],
-                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
-        ) +
-        @vlplot({:line, strokeJoin = :round},
-            y = {:value, title = "Target - Other Correlation"}) +
-        @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
-    ));
-pl |> save(joinpath(dir, "decode_source_near_switch_diff.svg"))
-
 # Switch by source accuracy
 # -----------------------------------------------------------------
 
 pcolors = GermanTrack.colors
 
 target_wins(row) = row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+switch_end(stim, index) = meta.switch_regions[stim][index][2]
 
 # setup plot data
 plotdf = @_ timelines |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :lagcut .== 0) |>
-    # @where(__, :hittype .== "hit") |>
     groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
     @transform(__, target_source = first(:source[:is_target_source])) |>
     @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
     unstack(__, Not([:source, :score]), :source, :score) |>
     insertcols!(__, :correct => target_wins.(eachrow(__))) |>
-    groupby(__, [:condition, :time, :lagcut, :sid]) |>
+    @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype]) |>
     @combine(__, correct = mean(:correct)) |>
-    groupby(__, [:condition, :time, :lagcut]) |>
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype]) |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable)
 
 pl = @_ plotdf |>
@@ -290,6 +209,7 @@ pl = @_ plotdf |>
     # @where(__, -1 .< :time .< 2.5) |>
     @vlplot(
         spacing = 5,
+        facet = {column = {field = :switch_timing}, row = {field = :hittype}}
         # config = {legend = {disable = true}},
     ) + (@vlplot() +
     (
@@ -308,7 +228,6 @@ pl = @_ plotdf |>
             y = {datum = 1/3}, color = {value = "black"})
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_class.svg"))
-
 
 # Supplement: decoding by source
 # =================================================================

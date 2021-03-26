@@ -54,7 +54,7 @@ timelines = combine(groups) do trialdf
     switches = meta.switch_regions[sound_index]
 
     runsetup = @_ copy(trialdf) |>
-        @where(__, (:hittype .== "hit")) |>
+        @where(__, (:hittype .∈ Ref(["miss", "hit"]))) |>
         @transform(__, lagcut = 0) |>
         @repeatby(__, switch_index = 1:length(switches), trained_source = levels(:source)) |>
         innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
@@ -108,7 +108,8 @@ timelines = combine(groups) do trialdf
                     is_target_source = stimdf.is_target_source,
                     fold = fold,
                     lagcut = stimrow.lagcut,
-                    switch_index = stimrow.switch_index
+                    switch_index = stimrow.switch_index,
+                    hittype = stimrow.hittype,
                 )
             end
         end

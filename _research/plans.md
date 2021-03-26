@@ -2,10 +2,10 @@
 - show for target vs. other sources
     + right now my results actually ignore the
       target when the "% correct" responses.
-- cleanup: get both types of decoding working together
++ cleanup: get both types of decoding working together
 - look at misses
-- look at alingment to target
 - aling to the switches, look at the later switches (do they attend to the "right" target)
+- look at alingment to target? (less important)
 - plot x = time, y = hitrate across trial time
 - spatial: have a different feature of pitch for each source
 
