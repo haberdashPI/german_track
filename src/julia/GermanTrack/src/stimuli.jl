@@ -171,8 +171,16 @@ end
 
 function load_single_speaker(tofs, stim_num, source_i, encoding)
     encode_cache((:speaker, tofs, stim_num, source_i, encoding), stim_num) do
-        file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_components",
-            @sprintf("trial_%02d_%1d.wav", stim_num, source_i))
+        file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_components_channels",
+            @sprintf("trial_%02d_%1d_mix.wav", stim_num, source_i))
+        x, fs = load(file)
+        if size(x, 2) > 1
+            error("Unexpected channel count (>1) in stimulus file.")
+        end
+        encode(Stimulus(x, fs, file), tofs, encoding)
+    end
+end
+
         x, fs = load(file)
         if size(x, 2) > 1
             x = sum(x, dims = 2)
