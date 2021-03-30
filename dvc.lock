@@ -118,3 +118,27 @@ decode-timeline-switch:
     md5: 7414ca5e0bf9d636406002d16fe2fd74.dir
     size: 134772178
     nfiles: 1
+parse-mixture-channels:
+  cmd: julia -t auto --project=. -- scripts/julia/mix_component_channels.jl
+  deps:
+  - path: data/processed/stimuli/mixtures/testing/mixture_components
+    md5: 3de09a504f99052bf5c3abd562cbf0b3.dir
+    size: 604120648
+    nfiles: 1051
+  outs:
+  - path: data/processed/stimuli/mixtures/testing/mixture_component_channels
+    md5: 48f2bde851be2c03a21b8439300c7c93.dir
+    size: 501227400
+    nfiles: 450
+find-channel-pitches:
+  cmd: julia -t auto --project=. -- scripts/julia/find_pitches.jl
+  deps:
+  - path: data/processed/stimuli/mixtures/testing/mixture_component_channels
+    md5: 48f2bde851be2c03a21b8439300c7c93.dir
+    size: 501227400
+    nfiles: 450
+  outs:
+  - path: data/processed/stimuli/mixtures/testing/mixture_component_pitches
+    md5: 3eb4072467d238fd368da212f5c2526c.dir
+    size: 19521685
+    nfiles: 600

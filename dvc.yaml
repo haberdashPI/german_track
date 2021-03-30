@@ -60,3 +60,19 @@ stages:
     outs:
     - data/processed/analyses/decode-varlag:
         persist: true
+  parse-mixture-channels:
+    desc: Prepare different channels for pitch tracking by CREPE.
+    cmd: julia -t auto --project=. -- scripts/julia/mix_component_channels.jl
+    deps:
+    - data/processed/stimuli/mixtures/testing/mixture_components
+    outs:
+    - data/processed/stimuli/mixtures/testing/mixture_component_channels:
+        persist: true
+  find-channel-pitches:
+    desc: Use CREPE to find each sound source's pitch.
+    cmd: julia -t auto --project=. -- scripts/julia/find_pitches.jl
+    deps:
+    - data/processed/stimuli/mixtures/testing/mixture_component_channels
+    outs:
+    - data/processed/stimuli/mixtures/testing/mixture_component_pitches:
+        persist: true
