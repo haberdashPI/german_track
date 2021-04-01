@@ -136,10 +136,13 @@ function prepare_decode_data(params, prefix)
     x, windows, nfeatures
 end
 
-struct StimSelector
+abstract type SingleSelector
+end
+
+struct StimSelector <: SingleSelector
     fn
 end
-struct EEGFeatureSelector
+struct EEGFeatureSelector <: SingleSelector
     featfn
 end
 struct MultiSelector
@@ -155,28 +158,27 @@ function selectstim(x::MultiSelector, df, kind)
     helper(x.selectors, df)
 end
 
-selectdata(x::StimSelector, data, row::DataFrameRow) = (:, (row.offset):(row.offset + row.len - 1))
-selectdata(x::EEGFeatureSelector, data, row::DataFrameRow) =
-    (x.featfn(data, row), (row.offset):(row.offset + row.len - 1))
-function selectdata(x, data, rows::AbstractDataFrame)
-    local sel
-    local rowsel
-    local colsel
-    try
-        sel = @_ map(selectdata(x, data, _), eachrow(rows))
-        rowsel = @_ map(_[1], sel)
-        colsel = @_ mapreduce(_[2], vcat, sel)
-        all(==(first(rowsel)), rowsel) || error("Non-uniform feature selection.")
-        first(rowsel), colsel
-    catch e
-        @infiltrate
-        rethrow(e)
-    end
+myintersect(::Colon, x) = x
+myintersect(::Colon, ::Colon) = Colon()
+myintersect(x, ::Colon) = x
+myintersect(x, y) = intersect(x, y)
+selectdata(x::StimSelector, data::AbstractMatrix, row::DataFrameRow, indices = (:, :)) =
+    (myintersect(:, indices[1]),
+     myintersect((row.offset):(row.offset + row.len - 1), indices[2]))
+selectdata(x::EEGFeatureSelector, data::AbstractMatrix, row::DataFrameRow, indices = (:, :)) =
+    (myintersect(x.featfn(data, row), indices[1]),
+     myintersect((row.offset):(row.offset + row.len - 1), indices[2]))
+function selectdata(x::SingleSelector, data::AbstractMatrix, rows::AbstractDataFrame, indices = (:, :))
+    sel = @_ map(selectdata(x, data, _, indices), eachrow(rows))
+    rowsel = @_ map(_[1], sel)
+    colsel = @_ mapreduce(_[2], vcat, sel)
+    all(==(first(rowsel)), rowsel) || error("Non-uniform feature selection.")
+    first(rowsel), colsel
 end
-function selectdata(x::MultiSelector, data, rows)
-    helper(sels, data) = isempty(sels) ? data :
-        helper(sels[2:end], selectdata(sels[1], data, rows))
-    helper(x.selectors, data)
+function selectdata(x::MultiSelector, data::AbstractMatrix, rows)
+    helper(sels, data, indices) = isempty(sels) ? indices :
+        helper(sels[2:end], data, selectdata(sels[1], data, rows, indices))
+    helper(x.selectors, data, (:, :))
 end
 
 function train_decoder(params, x, modelsetup, train_types)

@@ -21,11 +21,9 @@ params = let
                 male_source,
                 fem1_source,
                 fem2_source,
-                # left_source,
-                # right_source
-                # male_fem1_sources,
-                # male_fem2_sources,
-                # fem1_fem2_sources
+                # MaleChannel(1), MaleChannel(2),
+                # Fem1Channel(1), Fem1Channel(2),
+                # Fem2Channel(1), Fem2Channel(2),
             ],
         ),
 

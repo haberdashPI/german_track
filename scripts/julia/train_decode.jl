@@ -37,6 +37,7 @@ train_types = OrderedDict(
     #     (:hittype .== "hit") .&
     #     (:windowing .== "pre-target") .&
     #     :is_target_source)),
+    # NOTE: when I uncomment above, they need changes (check for just the mix sources)
     "random" => StimSelector((df, kind) -> @where(df,
         (:hittype .∈ Ref(["hit", "miss"])) .&
         contains.(:windowing, "random"))

@@ -57,10 +57,10 @@ Base.string(::ASEnvelope) = "audiospect_envelope"
 function encode(stim::Stimulus,tofs,::ASEnvelope)
     @assert size(stim.data,2) == 1
 
-    resampled = Signal(stim.data,stim.framerate) |>
-        ToFramerate(CorticalSpectralTemporalResponses.fixed_fs) |> AxisArray
-    @assert nchannels(resampled) == 1
-    spect = filt(audiospect,resampled[:,1],false,fs=8000)
+    @assert size(stim.data, 2) == 1
+    resampled = DSP.resample(stim.data |> vec,
+        CorticalSpectralTemporalResponses.fixed_fs / stim.framerate)
+    spect = filt(audiospect,resampled,false,fs=8000)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
 end
@@ -153,7 +153,8 @@ Base.string(::PitchEncoding) = "pitch"
 
 load_pitch(file::Nothing) = nothing
 function load_pitch(file)
-    pitchfile = replace(file,r"\.wav$" => ".f0.csv")
+    pitchfile = @_ replace(abspath(file), r"\.wav$" => ".f0.csv") |>
+        replace(__, "mixture_component_channels" => "mixture_component_pitches")
     DataFrame(CSV.File(pitchfile))
 end
 

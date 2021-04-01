@@ -5,7 +5,8 @@ const encodings = Dict{Any, Array{Float64}}()
 const encodings_lock = ReentrantLock()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus,
-    male_fem1_sources, male_fem2_sources, fem1_fem2_sources
+    male_fem1_sources, male_fem2_sources, fem1_fem2_sources, MaleChannel,
+    Fem1Channel, Fem2Channel
 
 function load_behavioral_stimulus_metadata()
     bdir = joinpath(raw_datadir(), "behavioral")
@@ -171,7 +172,7 @@ end
 
 function load_single_speaker(tofs, stim_num, source_i, encoding)
     encode_cache((:speaker, tofs, stim_num, source_i, encoding), stim_num) do
-        file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_components_channels",
+        file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_component_channels",
             @sprintf("trial_%02d_%1d_mix.wav", stim_num, source_i))
         x, fs = load(file)
         if size(x, 2) > 1
@@ -181,9 +182,23 @@ function load_single_speaker(tofs, stim_num, source_i, encoding)
     end
 end
 
+struct SingleSourceChannel <: AbstractSource
+    name::String
+    ch::Int
+    index::Int
+end
+Base.string(x::SingleSourceChannel) = "$(x.name) (ch $(x.ch))"
+MaleChannel(ch) = SingleSourceChannel("male", ch, 1)
+Fem1Channel(ch) = SingleSourceChannel("fem1", ch, 2)
+Fem2Channel(ch) = SingleSourceChannel("fem2", ch, 3)
+function load_stimulus(source::SingleSourceChannel, stim, encoding, tofs, stim_info)
+    stim_num = get_stim_num(stim)
+    encode_cache((:speakerch, tofs, stim_num, source.index, encoding, source.ch), stim_num) do
+        file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_component_channels",
+            @sprintf("trial_%02d_%1d_ch%1d.wav", stim_num, source.index, source.ch))
         x, fs = load(file)
         if size(x, 2) > 1
-            x = sum(x, dims = 2)
+            error("Unexpected channel count (>1) in stimulus file.")
         end
         encode(Stimulus(x, fs, file), tofs, encoding)
     end
