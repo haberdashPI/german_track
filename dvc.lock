@@ -84,12 +84,12 @@ train-decoder-varlag:
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 097f18ddd8d7735282704666ec99232d
-    size: 1371
+    md5: 62491a38c8f9a667657c45980b21c105
+    size: 1447
   outs:
   - path: data/processed/analyses/decode-varlag
-    md5: 38d98e6242d6ab2fccb09ace64b47ed0.dir
-    size: 275932023
+    md5: 42b12483d085ffde3570af59db3e4c22.dir
+    size: 138257192
     nfiles: 6
 decode-timeline-switch:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_source_by_switch_timeline.jl
