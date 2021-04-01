@@ -27,12 +27,15 @@ GermanTrack.@load_cache subject_prefix (subjects, :bson)
 # things that are duplicated in `train_decode`: should be defined in a common file
 # and written out to a TOML parameter setup
 
+# models = @_ models_ |> rename!(__, :cross_fold => :fold, :source => :trained_source) |>
+#     insertcols!(__, :lagcut => 0)
+
 meta = GermanTrack.load_stimulus_metadata()
 
-# decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
-# GermanTrack.@load_cache decode_prefix (models_, :bson)
+decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
+GermanTrack.@load_cache decode_prefix (models_, :bson)
 
-models = rename!(models_, :cross_fold => :fold, :source => :trained_source)
+append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
 
 nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
@@ -41,6 +44,7 @@ nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
 groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
+    @where(__, :source .∈ Ref(["male", "fem1", "fem2"])) |>
     groupby(__, [:sid, :trial])
 
 cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 2)
@@ -53,10 +57,15 @@ timelines = combine(groups) do trialdf
 
     switches = meta.switch_regions[sound_index]
 
+    lagcuts = levels(models.lagcut)
     runsetup = @_ copy(trialdf) |>
         @where(__, (:hittype .∈ Ref(["miss", "hit"]))) |>
-        @transform(__, lagcut = 0) |>
-        @repeatby(__, switch_index = 1:length(switches), trained_source = levels(:source)) |>
+        # @transform(__, lagcut = 0) |>
+        @repeatby(__,
+            switch_index = 1:length(switches),
+            trained_source = levels(:source),
+            lagcut = levels(models.lagcut)
+        ) |>
         innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         combine(identity, __)
 
@@ -68,8 +77,15 @@ timelines = combine(groups) do trialdf
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
     result = combine(groupby(runsetup, [:encoding, :trained_source, :source, :switch_index, :lagcut])) do stimdf
-        stimrow = only(eachrow(stimdf))
-        source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
+        local stimrow
+        local source
+        try
+            stimrow = only(eachrow(stimdf))
+            source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
+        catch e
+            @infiltrate
+            rethrow(e)
+        end
         encoding = params.stimulus.encodings[stimrow.encoding]
         stim, = load_stimulus(source, sound_index, encoding, params.stimulus.samplerate,
             meta)
