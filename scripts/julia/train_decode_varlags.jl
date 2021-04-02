@@ -48,8 +48,6 @@ train_types = OrderedDict(
 )
 
 modelsetup = @_ stimulidf |>
-    @where(__, :condition .== "global") |>
-    @where(__, :target_source .== "male") |>
     @where(__, :condition .!= "spatial") |>
     groupby(__, [:condition, :source, :encoding]) |>
     repeatby(__,
