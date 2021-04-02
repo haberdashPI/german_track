@@ -229,6 +229,60 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_class.svg"))
 
+# Switch by source accuracy, across different amonuts of lag
+# -----------------------------------------------------------------
+
+pcolors = ColorSchemes.imola[range(0.2,0.8,length=3)]
+
+target_wins(row) = row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+switch_end(stim, index) = meta.switch_regions[stim][index][2]
+
+# setup plot data
+plotdf = @_ timelines |>
+    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
+        getindices(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, :condition .== "global") |>
+    groupby(__, Not([:source, :trained_source, :is_target_source, :score, :lagcut])) |>
+    @transform(__, target_source = first(:source[:is_target_source])) |>
+    @where(__, :trained_source .== :target_source) |>
+    select(__, Not(:is_target_source)) |>
+    unstack(__, Not([:source, :score]), :source, :score) |>
+    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
+    @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype]) |>
+    @combine(__, correct = mean(:correct)) |>
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable)
+
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        facet = {column = {field = :switch_timing}, row = {field = :hittype}}
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            color = {:lagcut, type = :nominal, sort = ["global", "spatial", "object", "before"],
+                title = "Lags", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        (@vlplot(
+            x = {:time, type = :quantitative, title = "Time from Switch offset (s)"}) +
+            @vlplot({:line, strokeJoin = :round},
+                y = {:value, title = "P(Correct)", scale = {zero = false}}) +
+            @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+        )+
+        @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
+            y = {datum = 1/3}, color = {value = "black"})
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch_lag_class.svg"))
+
+
+
 # Supplement: decoding by source
 # =================================================================
 

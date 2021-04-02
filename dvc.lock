@@ -95,28 +95,28 @@ decode-timeline-switch:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_source_by_switch_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 7cfa8be25625594ca5a1d09094570123.dir
-    size: 271945588
+    md5: 2bbc4d90383ad5d92e1e774387e5ebd8.dir
+    size: 281638484
     nfiles: 7
   - path: data/processed/analyses/decode-data
     md5: 31392149546d6da0dcef99fa1d4eb922.dir
     size: 1347015747
     nfiles: 1
   - path: data/processed/analyses/decode-varlag
-    md5: 38d98e6242d6ab2fccb09ace64b47ed0.dir
-    size: 275932023
+    md5: 42b12483d085ffde3570af59db3e4c22.dir
+    size: 138257192
     nfiles: 6
   - path: data/processed/eeg
     md5: fd1ddbb1423a5157d2755c88e34e780a.dir
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 05d590f0d4fb792d21f7b8db888b0513
-    size: 1469
+    md5: 62491a38c8f9a667657c45980b21c105
+    size: 1447
   outs:
   - path: data/processed/analyses/decode-timeline-switch
-    md5: 7414ca5e0bf9d636406002d16fe2fd74.dir
-    size: 134772178
+    md5: d2eb6d95e84cdc82c0b31535afc9f066.dir
+    size: 302301138
     nfiles: 1
 parse-mixture-channels:
   cmd: julia -t auto --project=. -- scripts/julia/mix_component_channels.jl
