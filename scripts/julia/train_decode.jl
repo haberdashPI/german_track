@@ -45,7 +45,6 @@ train_types = OrderedDict(
 )
 
 modelsetup = @_ stimulidf |>
-    @where(__, :condition .!= "spatial") |>
     groupby(__, [:condition, :source, :encoding]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,

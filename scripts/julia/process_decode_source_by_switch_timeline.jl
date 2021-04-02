@@ -27,15 +27,15 @@ GermanTrack.@load_cache subject_prefix (subjects, :bson)
 # things that are duplicated in `train_decode`: should be defined in a common file
 # and written out to a TOML parameter setup
 
-# models = @_ models_ |> rename!(__, :cross_fold => :fold, :source => :trained_source) |>
-#     insertcols!(__, :lagcut => 0)
+models = @_ models_ |> rename!(__, :cross_fold => :fold, :source => :trained_source) |>
+    insertcols!(__, :lagcut => 0)
 
 meta = GermanTrack.load_stimulus_metadata()
 
-decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
-GermanTrack.@load_cache decode_prefix (models_, :bson)
+# decode_prefix = joinpath(processed_datadir("analyses", "decode-varlag"), "train")
+# GermanTrack.@load_cache decode_prefix (models_, :bson)
 
-append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
+# append!(models, rename!(models_, :cross_fold => :fold, :source => :trained_source))
 
 nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
@@ -44,11 +44,14 @@ nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 
 groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
-    @where(__, :source .∈ Ref(["male", "fem1", "fem2"])) |>
+    @where(__, (:condition .== "global") .|
+               ((:condition .== "object") .& (.!contains.(:source, r"\(ch [12]\)"))) .|
+               ((:condition .== "spatial") .& (contains.(:source, r"\(ch [12]\)")))) |>
     groupby(__, [:sid, :trial])
 
 cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 2)
 
+sourcename(str) = match(r"\w+", str).match
 p = Progress(ngroups(groups))
 timelines = combine(groups) do trialdf
     sid, trial, sound_index, target_time, fold, condition =
@@ -66,7 +69,11 @@ timelines = combine(groups) do trialdf
             trained_source = levels(:source),
             lagcut = levels(models.lagcut)
         ) |>
-        innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
+        @where(__, ifelse.(contains.(:trained_source, r"\(ch [12]\)"),
+            sourcename.(:source) .== sourcename.(:trained_source),
+            .!contains.(:source, r"\(ch [12]\)"))) |>
+        innerjoin(__, models,
+            on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         combine(identity, __)
 
     isempty(runsetup) && return DataFrame()
@@ -77,15 +84,8 @@ timelines = combine(groups) do trialdf
     target_index = round(Int, target_time * params.stimulus.samplerate)
 
     result = combine(groupby(runsetup, [:encoding, :trained_source, :source, :switch_index, :lagcut])) do stimdf
-        local stimrow
-        local source
-        try
-            stimrow = only(eachrow(stimdf))
-            source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
-        catch e
-            @infiltrate
-            rethrow(e)
-        end
+        stimrow = only(eachrow(stimdf))
+        source = @_ filter(string(_) == stimrow.source, params.stimulus.sources) |> only
         encoding = params.stimulus.encodings[stimrow.encoding]
         stim, = load_stimulus(source, sound_index, encoding, params.stimulus.samplerate,
             meta)
