@@ -29,7 +29,7 @@ ggsave(file.path(plot_dir, 'figure4_parts', 'supplement', 'behavior_nonlinear.sv
 fitmm = stan_glmer(sbj_answer ~ switch_distance * condition * target_time_label
     + (switch_distance * condition * target_time_label | id),
     # switches last for 0.6 seconds, skip overlapping targets
-    filter(df, switch_distance > 0.6),
+    df,
     adapt_delta = 0.99,
     family = binomial(link = "logit"))
 
