@@ -206,24 +206,29 @@ plotdf = @_ timelines |>
     @transform(__, target_source = first(:source[:is_target_source])) |>
     @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
-    unstack(__, Not([:source, :score]), :source, :score) |>
+    unstack(__, Not([:source, :score]), :source, :score)
+
+plotdf2 = @_ plotdf |>
     insertcols!(__, :correct => target_wins.(eachrow(plotdf))) |>
-    @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
-    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source]) |>
+    @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2))
+
+plotdf3 = @_ plotdf2 |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source, :trained_source_name]) |>
     @combine(__, correct = mean(:correct)) |>
-    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source, :trained_source_name]) |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
     @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
 
-pl = @_ plotdf |>
+pl = @_ plotdf3 |>
     @transform(__,
         time = :time .+ params.test.winlen_s,
     ) |>
     @where(__, :hittype .== "hit") |>
+	@where(__, :spatial_source) |>
     # @where(__, -1 .< :time .< 2.5) |>
     @vlplot(
         spacing = 5,
-        facet = {column = {field = :switch_timing}, row = {field = :spatial_source}}
+        facet = {column = {field = :switch_timing}, row = {field = :trained_source_name}}
         # config = {legend = {disable = true}},
     ) + (@vlplot() +
     (
@@ -241,7 +246,7 @@ pl = @_ plotdf |>
         @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
             y = "mean(chance)", color = {value = "black"})
     ));
-pl |> save(joinpath(dir, "decode_source_near_switch_class.svg"))
+pl |> save(joinpath(dir, "decode_source_near_switch_by_source_name_class.svg"))
 
 # Switch by source accuracy, across different amonuts of lag
 # -----------------------------------------------------------------
