@@ -1,3 +1,17 @@
+# meeting (4/6)
+Maybe just use the dominant pitch?
+    - can we look at the current results, broken down by source?
+
+global - why is this high
+maybe the global peak is delayed because they shift attention towards the target
+    - can we break this by high and low salience, does that affect the object
+
+some different version for spatial: just one decoding - dominant pitch, mushed enveloped
+
+object: irrelevant female? does it win sometimes?
+
+we can probably start putting together a figure for this
+
 # meeting (3/22)
 - show for target vs. other sources
     + right now my results actually ignore the

@@ -182,34 +182,48 @@ switch_offset(sound_index, switch_index) = meta.switch_regions[sound_index][swit
 
 pcolors = GermanTrack.colors
 
-target_wins(row) = row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+target_wins(row) =
+    row.spatial_source ?
+        row[Symbol(row.trained_source)] == maximum(row[Regex(row.trained_source_name*".*\\(ch")]) :
+        row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
+sourcename(str) = match(r"\w+", str).match
 
 # setup plot data
 plotdf = @_ timelines |>
+    @transform(__, spatial_source = contains.(:trained_source, r"\(ch [12]\)")) |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :lagcut .== 0) |>
+    @transform(__,
+        is_target_source = ifelse.(:spatial_source,
+            contains.(:source, r"\(ch 2\)"),
+            :is_target_source
+        ),
+        trained_source_name = sourcename.(:trained_source)
+    ) |>
     groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
     @transform(__, target_source = first(:source[:is_target_source])) |>
     @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
     unstack(__, Not([:source, :score]), :source, :score) |>
-    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
+    insertcols!(__, :correct => target_wins.(eachrow(plotdf))) |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
-    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype]) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source]) |>
     @combine(__, correct = mean(:correct)) |>
-    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype]) |>
-    combine(__, :correct => boot(alpha = 0.05) => AsTable)
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
+    @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
 
 pl = @_ plotdf |>
     @transform(__,
         time = :time .+ params.test.winlen_s,
     ) |>
+    @where(__, :hittype .== "hit") |>
     # @where(__, -1 .< :time .< 2.5) |>
     @vlplot(
         spacing = 5,
-        facet = {column = {field = :switch_timing}, row = {field = :hittype}}
+        facet = {column = {field = :switch_timing}, row = {field = :spatial_source}}
         # config = {legend = {disable = true}},
     ) + (@vlplot() +
     (
@@ -225,7 +239,7 @@ pl = @_ plotdf |>
             @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
         )+
         @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
-            y = {datum = 1/3}, color = {value = "black"})
+            y = "mean(chance)", color = {value = "black"})
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_class.svg"))
 
