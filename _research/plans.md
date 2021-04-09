@@ -6,7 +6,7 @@ global - why is this high
 maybe the global peak is delayed because they shift attention towards the target
     - can we break this by high and low salience, does that affect the object
 
-some different version for spatial: just one decoding - dominant pitch, mushed enveloped
+NEXT: some different version for spatial: just one decoding - dominant pitch, mushed enveloped
 
 object: irrelevant female? does it win sometimes?
 
