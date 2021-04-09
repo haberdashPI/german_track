@@ -189,8 +189,9 @@ target_wins(row) =
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
 sourcename(str) = match(r"\w+", str).match
 
+
 # setup plot data
-plotdf = @_ timelines |>
+plotdf_base = @_ timelines |>
     @transform(__, spatial_source = contains.(:trained_source, r"\(ch [12]\)")) |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
@@ -206,13 +207,91 @@ plotdf = @_ timelines |>
     @transform(__, target_source = first(:source[:is_target_source])) |>
     @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
-    unstack(__, Not([:source, :score]), :source, :score)
-
-plotdf2 = @_ plotdf |>
+    unstack(__, Not([:source, :score]), :source, :score) |>
     insertcols!(__, :correct => target_wins.(eachrow(plotdf))) |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2))
 
-plotdf3 = @_ plotdf2 |>
+plotdf = @_ plotdf_base |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source]) |>
+    @combine(__, correct = mean(:correct)) |>
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
+    @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
+
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    @where(__, :hittype .== "hit") |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        facet = {column = {field = :switch_timing}, row = {field = :spatial_source}}
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        (@vlplot(
+            x = {:time, type = :quantitative, title = "Time from Switch offset (s)"}) +
+            @vlplot({:line, strokeJoin = :round},
+                y = {:value, title = "P(Correct)", scale = {zero = false}}) +
+            @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+        )+
+        @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
+            y = "mean(chance)", color = {value = "black"})
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch_by_source.svg"))
+
+# Plot by salience
+# -----------------------------------------------------------------
+
+plotdf = @_ plotdf_base |>
+    @transform(__, salience_label = getindices(meta.salience_label, :sound_index)) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype,
+        :spatial_source, :salience_label]) |>
+    @combine(__, correct = mean(:correct)) |>
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype,
+        :spatial_source, :salience_label]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
+    @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
+
+pl = @_ plotdf |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    @where(__, :hittype .== "hit") |>
+    @where(__, .!(:spatial_source)) |>
+    # @where(__, -1 .< :time .< 2.5) |>
+    @vlplot(
+        spacing = 5,
+        facet = {column = {field = :switch_timing}, row = {field = :salience_label}}
+        # config = {legend = {disable = true}},
+    ) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        (@vlplot(
+            x = {:time, type = :quantitative, title = "Time from Switch offset (s)"}) +
+            @vlplot({:line, strokeJoin = :round},
+                y = {:value, title = "P(Correct)", scale = {zero = false}}) +
+            @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper)
+        )+
+        @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
+            y = "mean(chance)", color = {value = "black"})
+    ));
+pl |> save(joinpath(dir, "decode_source_near_switch_by_source_salience.svg"))
+
+# Plot by source type
+# -----------------------------------------------------------------
+
+plotdf = @_ plotdf_base |>
     groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source, :trained_source_name]) |>
     @combine(__, correct = mean(:correct)) |>
     groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source, :trained_source_name]) |>
