@@ -1,6 +1,7 @@
 using SignalOperators, CSV, AxisArrays
 export RMSEnvelope, ASEnvelope, ASBins, PitchEncoding,
-    PitchSurpriseEncoding, Stimulus, DiffEncoding, WeightedEncoding
+    PitchSurpriseEncoding, Stimulus, DiffEncoding, WeightedEncoding,
+    MixedStimulus
 
 struct Stimulus{A}
     data::A
@@ -8,6 +9,10 @@ struct Stimulus{A}
     file::Union{String,Nothing}
 end
 Stimulus(data,framerate,file) = Stimulus(data,Float64(framerate),file)
+
+struct MixedStimulus{A}
+    mix::Vector{Stimulus{A}}
+end
 
 abstract type StimEncoding <: Encoding
 end
@@ -63,6 +68,19 @@ function encode(stim::Stimulus,tofs,::ASEnvelope)
     spect = filt(audiospect,resampled,false,fs=8000)
     envelope = vec(sum(spect,dims=2))
     Filters.resample(envelope,ustrip(tofs*Δt(spect)))
+end
+
+function encode(stim::MixedStimulus, tofs, ::ASEnvelope)
+    result = zeros(eltype(stim.mix[1].data),
+        (maximum(size.((s.data for s in stim.mix), 1)),
+         maximum(size.((s.data for s in stim.mix), 2)))
+    )
+    @assert all(==(stim.mix[1].framerate), s.framerate for s in stim.mix)
+
+    for i in 1:length(stim.mix)
+        result[CartesianIndices(Base.axes(stim.mix[i].data))] .+= stim.mix[i].data
+    end
+    encode(Stimulus(result, stim.mix[1].framerate, nothing), tofs, ASEnvelope())
 end
 
 """
@@ -158,9 +176,9 @@ function load_pitch(file)
     DataFrame(CSV.File(pitchfile))
 end
 
-function pitch_resample_helper(x,tofs,pitches)
-    delta = pitches.time[2] - pitches.time[1]
-    @assert all(x -> isapprox(delta,x),diff(pitches.time))
+function pitch_resample_helper(x,tofs,time)
+    delta = time[2] - time[1]
+    @assert all(x -> isapprox(delta,x),diff(time))
     if !isapprox(tofs*delta,1.0,atol=1e-4)
         DSP.resample(x,rationalize(tofs*delta))
     else
@@ -168,10 +186,10 @@ function pitch_resample_helper(x,tofs,pitches)
     end
 end
 
-function encode(stim::Stimulus,file::String,tofs,method::PitchEncoding)::Array{Float64}
+function encode(stim::Stimulus, tofs, method::PitchEncoding)::Array{Float64}
     pitches = load_pitch(stim.file)
     isnothing(pitches) ? Array{Float64}(undef,0,0) :
-        pitch_resample_helper(pitches.frequency,tofs,pitches)
+        pitch_resample_helper(pitches.frequency,tofs,pitches.time)
 end
 
 """
@@ -194,6 +212,27 @@ function encode(stim::Stimulus,tofs,method::PitchSurpriseEncoding)::Array{Float6
 
         surprisal = [0;abs.(diff(pitches.frequency)) .*
             @views(pitches.confidence[2:end])]
-        pitch_resample_helper(surprisal,tofs,pitches)
+        pitch_resample_helper(surprisal,tofs,pitches.time)
     end
+end
+
+function encode(stim::MixedStimulus, tofs, method::PitchSurpriseEncoding)
+    all_pitches = load_pitch.(s.file for s in stim.mix)
+
+    clean_nan(p,c) = iszero(p) ? zero(c) : c
+    for pitches in all_pitches
+        pitches.confidence = clean_nan.(pitches.frequency,pitches.confidence)
+    end
+
+    frequency = similar(all_pitches[1].frequency)
+    confidence = similar(all_pitches[1].confidence)
+    for i in 1:length(all_pitches[1].frequency)
+        j = argmax([x.confidence[i] for x in all_pitches])
+        frequency[i]  = all_pitches[j].frequency[i]
+        confidence[i] = all_pitches[j].confidence[i]
+    end
+
+    surprisal = [0;abs.(diff(frequency)) .* @views(confidence[2:end])]
+    time = all_pitches[argmax(length.(p.time for p in all_pitches))].time
+    pitch_resample_helper(surprisal, tofs, time)
 end

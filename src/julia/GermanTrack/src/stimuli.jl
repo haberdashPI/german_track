@@ -6,7 +6,7 @@ const encodings_lock = ReentrantLock()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus,
     male_fem1_sources, male_fem2_sources, fem1_fem2_sources, MaleChannel,
-    Fem1Channel, Fem2Channel
+    Fem1Channel, Fem2Channel, MixedChannel
 
 function load_behavioral_stimulus_metadata()
     bdir = joinpath(raw_datadir(), "behavioral")
@@ -201,6 +201,26 @@ function load_stimulus(source::SingleSourceChannel, stim, encoding, tofs, stim_i
             error("Unexpected channel count (>1) in stimulus file.")
         end
         encode(Stimulus(x, fs, file), tofs, encoding)
+    end
+end
+
+struct MixedChannel <: AbstractSource
+    ch::Int
+end
+function load_stimulus(source::MixedChannel, stim, encoding, tofs, stim_info)
+    stim_num = get_stim_num(stim)
+    encode_cache((:mixedchannel, tofs, stim_num, source.ch, encoding), stim_num) do
+        stims = map(1:3) do index
+            file = joinpath(stimulus_dir(), "mixtures", "testing", "mixture_component_channels",
+                @sprintf("trial_%02d_%1d_ch%1d.wav", stim_num, index, source.ch))
+            x, fs = load(file)
+            if size(x, 2) > 1
+                error("Unexpected channel count (>1) in stimulus file.")
+            end
+            Stimulus(x, fs, file)
+        end
+
+        encode(MixedStimulus(stims), tofs, encoding)
     end
 end
 
