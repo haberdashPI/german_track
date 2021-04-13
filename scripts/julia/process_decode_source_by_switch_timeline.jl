@@ -42,11 +42,12 @@ nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 # timeline testing
 # -----------------------------------------------------------------
 
+# TODO: fix this, it's not quite right for the new setup
 groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
     @where(__, (:condition .== "global") .|
-               ((:condition .== "object") .& (.!contains.(:source, r"\(ch [12]\)"))) .|
-               ((:condition .== "spatial") .& (contains.(:source, r"\(ch [12]\)")))) |>
+               ((:condition .== "object") .& (.!contains.(:source, "MixedChannel"))) .|
+               ((:condition .== "spatial") .& (contains.(:source, "MixedChannel")))) |>
     groupby(__, [:sid, :trial])
 
 cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 2)
@@ -69,9 +70,6 @@ timelines = combine(groups) do trialdf
             trained_source = levels(:source),
             lagcut = levels(models.lagcut)
         ) |>
-        @where(__, ifelse.(contains.(:trained_source, r"\(ch [12]\)"),
-            sourcename.(:source) .== sourcename.(:trained_source),
-            .!contains.(:source, r"\(ch [12]\)"))) |>
         innerjoin(__, models,
             on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         combine(identity, __)
