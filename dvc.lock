@@ -95,8 +95,8 @@ decode-timeline-switch:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_source_by_switch_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 5cd3baee6387d85642f855ba66639e25.dir
-    size: 1222632752
+    md5: 15de1f396ae8d0a2d948690261466607.dir
+    size: 679085815
     nfiles: 7
   - path: data/processed/analyses/decode-data
     md5: 31392149546d6da0dcef99fa1d4eb922.dir
@@ -111,12 +111,12 @@ decode-timeline-switch:
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 364bc67bca8db7c448b47642bd42dc3e
-    size: 1441
+    md5: 4b7b57952e65e058c704c01b7593bddb
+    size: 1497
   outs:
   - path: data/processed/analyses/decode-timeline-switch
-    md5: 3c68486f94ffb0ba8851a6c29125c8c3.dir
-    size: 343962458
+    md5: 93e1497164700e5b8cdc11bc69881859.dir
+    size: 297651650
     nfiles: 1
 parse-mixture-channels:
   cmd: julia -t auto --project=. -- scripts/julia/mix_component_channels.jl
