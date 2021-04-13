@@ -268,14 +268,14 @@ pl = @_ plotdf |>
     # @where(__, -1 .< :time .< 2.5) |>
     @vlplot(
         spacing = 5,
-        facet = {column = {field = :switch_timing}, row = {field = :salience_label}}
+        facet = {column = {field = :switch_timing}, row = {field = :condition}}
         # config = {legend = {disable = true}},
     ) + (@vlplot() +
     (
         @vlplot(
             width = 128, height = 130,
-            color = {:condition, sort = ["global", "spatial", "object", "before"],
-                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+            color = {:salience_label, #sort = ["global", "spatial", "object", "before"],
+                title = "Condition"}#, scale = { range = "#".*hex.(GermanTrack.colors) }}
         ) +
         (@vlplot(
             x = {:time, type = :quantitative, title = "Time from Switch offset (s)"}) +
@@ -288,6 +288,41 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_by_source_salience.svg"))
 
+# TODO: plot by individual subject, at a few time points
+alltimes = plotdf_base.time |> unique |> sort!
+refs = [1.75, 3.5]
+time_points = alltimes[getindex.(argmin(abs.(alltimes .- refs'), dims = 1), 1)]
+plotdf_slice = @_ plotdf_base |>
+    @transform(__, salience_label = getindices(meta.salience_label, :sound_index)) |>
+    @where(__, :time .∈ Ref(time_points)) |>
+    @where(__, (:hittype .== "hit") .& .!(:spatial_source)) |>
+    @transform(__,
+        time = :time .+ params.test.winlen_s,
+    ) |>
+    groupby(__, [:condition, :time, :sid, :switch_timing, :salience_label]) |>
+    @combine(__, correct = mean(:correct)) |>
+    @where(__, contains.(string.(:switch_timing),"Q2")) |>
+    insertcols!(__, :chance => 1/3)
+
+pl = plotdf_slice |> @vlplot(
+    spacing = 5,
+    facet = {column = {field = :time, type = :nominal}, row = {field = :salience_label}}
+) + (@vlplot() +
+    (
+        @vlplot(
+            width = 128, height = 130,
+            color = {:condition, sort = ["global", "spatial", "object", "before"],
+                title = "Condition", scale = { range = "#".*hex.(GermanTrack.colors) }}
+        ) +
+        @vlplot(:point, x = :condition, y = :correct) +
+        @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
+            y = "mean(chance)", color = {value = "black"})
+    )
+);
+pl |> save(joinpath(dir, "decode_source_near_switch_by_source_salience_indsbj.svg"))
+
+# TODO: plot by individual trial/subject at these time points
+
 # Plot by source type
 # -----------------------------------------------------------------
 
@@ -298,7 +333,7 @@ plotdf = @_ plotdf_base |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
     @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
 
-pl = @_ plotdf3 |>
+pl = @_ plotdf |>
     @transform(__,
         time = :time .+ params.test.winlen_s,
     ) |>

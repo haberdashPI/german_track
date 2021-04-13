@@ -1,3 +1,10 @@
+# meeting (4/13)
+two key points:
+- try decoding spatial location (alpha power, gamma (?) phase)
+- try looking at switch rates for the different sources
+    (maybe we can get a sense of roving)
+    we can do this over limited windows and plot across time
+
 # meeting (4/6)
 Maybe just use the dominant pitch?
     - can we look at the current results, broken down by source?
