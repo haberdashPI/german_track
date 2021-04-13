@@ -184,7 +184,7 @@ pcolors = GermanTrack.colors
 
 target_wins(row) =
     row.spatial_source ?
-        row[Symbol(row.trained_source)] == maximum(row[Regex(row.trained_source_name*".*\\(ch")]) :
+        row[Symbol(row.trained_source)] == maximum(row[Regex(row.trained_source_name*".*\\([12]")]) :
         row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
 sourcename(str) = match(r"\w+", str).match
@@ -192,13 +192,13 @@ sourcename(str) = match(r"\w+", str).match
 
 # setup plot data
 plotdf_base = @_ timelines |>
-    @transform(__, spatial_source = contains.(:trained_source, r"\(ch [12]\)")) |>
+    @transform(__, spatial_source = contains.(:trained_source, "MixedChannel")) |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :lagcut .== 0) |>
     @transform(__,
         is_target_source = ifelse.(:spatial_source,
-            contains.(:source, r"\(ch 2\)"),
+            :source .== "MixedChannel(2)",
             :is_target_source
         ),
         trained_source_name = sourcename.(:trained_source)
@@ -208,7 +208,7 @@ plotdf_base = @_ timelines |>
     @where(__, :trained_source .== :target_source) |>
     select(__, Not(:is_target_source)) |>
     unstack(__, Not([:source, :score]), :source, :score) |>
-    insertcols!(__, :correct => target_wins.(eachrow(plotdf))) |>
+    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2))
 
 plotdf = @_ plotdf_base |>
