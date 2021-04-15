@@ -10,12 +10,12 @@ train-decoder:
     size: 3576667705
     nfiles: 300
   - path: scripts/julia/setup_decode_params.jl
-    md5: 4b7b57952e65e058c704c01b7593bddb
-    size: 1497
+    md5: c82c1410c26f01f34f8c31369c940898
+    size: 1585
   outs:
   - path: data/processed/analyses/decode
-    md5: 15de1f396ae8d0a2d948690261466607.dir
-    size: 679085815
+    md5: d6fee70f2296883c7df1f3c43529f8aa.dir
+    size: 611002932
     nfiles: 7
 decode-timeline:
   cmd: julia -t auto --project=. -- scripts/julia/process_decode_timeline.jl

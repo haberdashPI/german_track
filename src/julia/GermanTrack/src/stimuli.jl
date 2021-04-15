@@ -6,7 +6,7 @@ const encodings_lock = ReentrantLock()
 export SpeakerStimMethod, joint_source, male_source, fem1_source, fem2_source,
     other, mixed_sources, fem_mix_sources, JointSource, load_stimulus,
     male_fem1_sources, male_fem2_sources, fem1_fem2_sources, MaleChannel,
-    Fem1Channel, Fem2Channel, MixedChannel
+    Fem1Channel, Fem2Channel, MixedChannel, Azimuth
 
 function load_behavioral_stimulus_metadata()
     bdir = joinpath(raw_datadir(), "behavioral")
@@ -347,3 +347,33 @@ Base.@kwdef struct SpeakerStimMethod <: StimMethod
 end
 label(x::SpeakerStimMethod) = "speakers_"*string(x.encoding)
 sources(x::SpeakerStimMethod) = unique!(fortraining.(x.sources)), x.sources
+
+struct Azimuth <: EEGCoding.StimEncoding
+end
+Base.string(x::Azimuth) = "azimuth"
+
+const dirindex = [:dir1, :dir2, :dir3]
+function load_azimuth(file)
+    index_pattern = r"trial_[0-9]{2}_([0-9])_mix.wav"
+    index_match  = match(index_pattern, file)
+    if isnothing(index_match)
+        error("Filename $(file) does not have valid directions metadata file.")
+    end
+    source_index = parse(Int, index_match[1])
+    pitchfile = @_ abspath(file) |>
+        replace(__, r"\_[0-9]_(mix|ch1|ch2).wav$" => ".direc") |>
+        replace(__, r"mixture_component_channels[/\\]+" => "")
+    direc = load_directions(pitchfile)
+
+    (data = getproperty(direc, dirindex[source_index]), direc.framerate)
+end
+
+function EEGCoding.encode(stim::EEGCoding.Stimulus, tofs, method::Azimuth)
+    azimuth = load_azimuth(stim.file)
+    if isnothing(azimuth)
+        Array{Float64}(undef, 0, 0)
+    else
+        !isapprox(tofs/azimuth.framerate,1.0,atol=1e-4)
+        DSP.resample(azimuth.data, tofs/azimuth.framerate)
+    end
+end
