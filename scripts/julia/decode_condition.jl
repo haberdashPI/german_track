@@ -183,40 +183,38 @@ switch_offset(sound_index, switch_index) = meta.switch_regions[sound_index][swit
 pcolors = GermanTrack.colors
 
 target_wins(row) =
-    row.spatial_source ?
-        row[Symbol(row.trained_source)] == maximum(row[Regex(row.trained_source_name*".*\\([12]")]) :
-        row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+    # row.spatial_source ?
+    # row[Symbol(row.source)] == maximum(row[Regex(row.source_name*".*\\([12]")]) :
+    row[Symbol(row.target_source)] == max(row.male, row.fem1, row.fem2)
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
 sourcename(str) = match(r"\w+", str).match
 
 
+trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
 # setup plot data
 plotdf_base = @_ timelines |>
-    @transform(__, spatial_source = contains.(:trained_source, "MixedChannel")) |>
+    @where(__, :source .== :trained_source) |>
+    @where(__, :condition .!= "spatial") |>
     @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
         getindices(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :lagcut .== 0) |>
     @transform(__,
-        is_target_source = ifelse.(:spatial_source,
-            :source .== "MixedChannel(2)",
-            :is_target_source
-        ),
-        trained_source_name = sourcename.(:trained_source)
+        is_trained_target = trained_speaker.(:sound_index) .== :trained_source,
+        source_name = sourcename.(:source)
     ) |>
-    groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
-    @transform(__, target_source = first(:source[:is_target_source])) |>
-    @where(__, :trained_source .== :target_source) |>
-    select(__, Not(:is_target_source)) |>
-    unstack(__, Not([:source, :score]), :source, :score) |>
+    groupby(__, [:sid, :trial, :encoding, :switch_index, :lagcut,
+        :time, :condition, :hittype]) |>
+    @transform(__, target_source = first(:trained_source[:is_trained_target])) |>
+    select(__, Not([:is_target_source, :is_trained_target])) |>
+    unstack(__, Not([:source, :trained_source, :source_name, :score]), :trained_source, :score) |>
     insertcols!(__, :correct => target_wins.(eachrow(__))) |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2))
 
 plotdf = @_ plotdf_base |>
-    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype, :spatial_source]) |>
+    groupby(__, [:condition, :time, :lagcut, :sid, :switch_timing, :hittype]) |>
     @combine(__, correct = mean(:correct)) |>
-    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
-    combine(__, :correct => boot(alpha = 0.05) => AsTable) |>
-    @transform(__, chance = ifelse.(:spatial_source, 0.5, 1/3))
+    groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable)
 
 pl = @_ plotdf |>
     @transform(__,
