@@ -42,12 +42,14 @@ nfeatures = floor(Int, size(first(subjects)[2].eeg[1], 1))
 # timeline testing
 # -----------------------------------------------------------------
 
-# TODO: fix this, it's not quite right for the new setup
+# QUESITON: how do we decide if attention is on the left or the right?
+# I think we look at decoding accuracy as a function of azimuth: just
+# put all sources with the left vs right azimuth together
+# and determine if the left azimth regions are better than right
+# so decoding the timelines, at this point, ins't nay different
+
 groups = @_ stimulidf |>
     @where(__, :windowing .== "random1") |>
-    @where(__, (:condition .== "global") .|
-               ((:condition .== "object") .& (.!contains.(:source, "MixedChannel"))) .|
-               ((:condition .== "spatial") .& (contains.(:source, "MixedChannel")))) |>
     groupby(__, [:sid, :trial])
 
 cutlags(x, nfeatures, ncut) = (ncut*nfeatures+1):size(x, 2)
