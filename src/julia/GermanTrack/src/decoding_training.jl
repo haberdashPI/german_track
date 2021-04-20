@@ -1,6 +1,26 @@
 export prepare_decode_data, prepare_decode_stimuli, train_decoder, plot_decode_lambdas,
-    EEGFeatureSelector, StimSelector, MultiSelector
+    EEGFeatureSelector, StimSelector, MultiSelector, azimuthdf
 using ColorSchemes
+
+function azimuthdf(switch_index, sound_index, times, meta)
+    # identify absolute timing
+    switches = meta.switch_regions[sound_index]
+    switch_time = switches[switch_index][2]
+
+    file = joinpath(processed_datadir("stimuli", "mixtures", "testing"),
+        @sprintf("trial_%02d.direc", sound_index))
+    azimuths = load_directions(file)
+    dirat(dir, time) =
+        get(dir, round(Int, (switch_time + time) * azimuths.framerate), missing)
+    dirs = dirat.((azimuths.dir1, azimuths.dir2, azimuths.dir3), times')
+
+    (
+        maledir = dirs[1, :],
+        fem1dir = dirs[2, :],
+        fem2dir = dirs[3, :],
+        time = times[1:min(end, size(dirs, 2))]
+    )
+end
 
 function prepare_decode_stimuli(params, windows, prefix)
     # Setup stimulus data
