@@ -1,3 +1,10 @@
+# meeting (4/20)
+
+figure out what's up with the sharp changes for the spatial condition
+    - is it about the new azimuth feature (some weird lowpass thing)
+align the target problility for the switches
+switching
+
 # meeting (4/13)
 two key points:
 - try decoding spatial location (alpha power, gamma (?) phase)
