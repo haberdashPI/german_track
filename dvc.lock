@@ -56,12 +56,12 @@ decode-timeline-source:
   cmd: julia -f auto --project=. -- scripts/julia/process_decode_source_timeline.jl
   deps:
   - path: data/processed/analyses/decode
-    md5: 7cfa8be25625594ca5a1d09094570123.dir
-    size: 271945588
+    md5: d6fee70f2296883c7df1f3c43529f8aa.dir
+    size: 611002932
     nfiles: 7
   - path: data/processed/analyses/decode-varlag
-    md5: 38d98e6242d6ab2fccb09ace64b47ed0.dir
-    size: 275932023
+    md5: 42b12483d085ffde3570af59db3e4c22.dir
+    size: 138257192
     nfiles: 6
   - path: data/processed/eeg
     md5: fd1ddbb1423a5157d2755c88e34e780a.dir
@@ -69,8 +69,8 @@ decode-timeline-source:
     nfiles: 300
   outs:
   - path: data/processed/analyses/decode-timeline-source
-    md5: 253444a0259501da46d7df55110ef829.dir
-    size: 36317146
+    md5: 7e61072d9aee0de01b447ea684e28b62.dir
+    size: 102964282
     nfiles: 1
 train-decoder-varlag:
   cmd: julia -f auto --project=. -- scripts/julia/train_decode_varlags.jl

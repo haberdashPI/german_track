@@ -55,8 +55,8 @@ timelines = combine(groups) do trialdf
 
     lagcuts = levels(models.lagcut)
     runsetup = @_ copy(trialdf) |>
-        @where(__, (:hittype .== "hit")) |>
-        @repeatby(__, trained_source = levels(:source), lagcut = lagcuts) |>
+        @where(__, (:hittype .∈ Ref(["hit", "miss"]))) |>
+        @repeatby(__, trained_source = levels(:source), lagcut = levels(models.lagcut)) |>
         innerjoin(__, models, on = [:condition, :trained_source, :encoding, :fold, :lagcut]) |>
         combine(identity, __)
 
