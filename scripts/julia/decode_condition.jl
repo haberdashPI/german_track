@@ -195,7 +195,7 @@ sourcename(str) = match(r"\w+", str).match
 
 
 trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
-azimuths = @_ plotdf_base |> groupby(__, [:sound_index, :switch_index]) |>
+azimuths = @_ timelines |> groupby(__, [:sound_index, :switch_index]) |>
     combine(__, [:switch_index, :sound_index, :time] =>
         ((switch, sound, time) -> azimuthdf(first(switch), first(sound), unique(time) |> sort!, meta)) => AsTable)
 # setup plot data
@@ -562,7 +562,7 @@ pl = @_ plotdf |>
         ( @vlplot() +
             ( @vlplot(
                 y = {:value, title = "Target - Non-target", type = :quantitative,
-                    scale = {domain = [-0.1, 0.15]}},
+                    scale = {domain = [-0.1, 0.3]}},
                 x = {:time, type = :quantitative, title = "Time (s)"}) +
               @vlplot({:line, clip = true, strokeJoin = :round}) +
               @vlplot({:errorband, clip = true},
@@ -582,25 +582,31 @@ pl |> save(joinpath(dir, "decode_by_source_target_diff.svg"))
 
 pcolors = GermanTrack.colors
 
-target_wins(row) = row[Symbol(row.trained_source)] == max(row.male, row.fem1, row.fem2)
+target_wins(row) = row[Symbol(row.target_source)] == max(row.male, row.fem1, row.fem2)
 
 # setup plot data
-plotdf = @_ timelines |>
+trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
+plotdf_base = @_ timelines |>
+    @where(__, :source .== :trained_source) |>
+    @where(__, :condition .!= "spatial") |>
     @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
     @where(__, :time .< params.train.trial_time_limit) |>
     @where(__, :lagcut .== 0) |>
-    @where(__, :hittype == "hit") |>
-    groupby(__, Not([:source, :trained_source, :is_target_source, :score])) |>
-    @transform(__, target_source = first(:source[:is_target_source])) |>
-    @where(__, :trained_source .== :target_source) |>
-    select(__, Not(:is_target_source)) |>
-    unstack(__, Not([:source, :score]), :source, :score) |>
-    insertcols!(__, :correct => target_wins.(eachrow(__))) |>
+    @where(__, :hittype .== "hit") |>
+    @transform(__,
+        is_trained_target = trained_speaker.(:sound_index) .== :trained_source,
+    ) |>
+    groupby(__, [:sid, :trial, :encoding, :lagcut, :time, :condition, :hittype]) |>
+    @transform(__, target_source = first(:trained_source[:is_trained_target])) |>
+    select(__, Not([:is_target_source, :is_trained_target])) |>
+    unstack(__, Not([:source, :trained_source, :score]), :trained_source, :score) |>
+    insertcols!(__, :correct => target_wins.(eachrow(__)))
+
+plotdf = @_ plotdf_base |>
     groupby(__, [:condition, :time, :lagcut, :sid]) |>
     @combine(__, correct = mean(:correct)) |>
     groupby(__, [:condition, :time, :lagcut]) |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable)
-
 
 function inswitches(meta, id, time)
     switches = meta.switch_regions[id]

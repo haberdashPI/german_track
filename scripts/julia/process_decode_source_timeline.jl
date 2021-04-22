@@ -101,9 +101,10 @@ timelines = combine(groups) do trialdf
                     time = offset/params.stimulus.samplerate,
                     sid = sid,
                     trial = trial,
+                    hittype = stimrow.hittype,
                     condition = condition,
                     sound_index = sound_index,
-                    is_target_source = stimdf.is_target_source,
+                    is_target_source = stimrow.is_target_source,
                     fold = fold,
                     lagcut = stimrow.lagcut,
                 )

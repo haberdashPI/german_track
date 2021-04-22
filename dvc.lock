@@ -69,8 +69,8 @@ decode-timeline-source:
     nfiles: 300
   outs:
   - path: data/processed/analyses/decode-timeline-source
-    md5: 7e61072d9aee0de01b447ea684e28b62.dir
-    size: 102964282
+    md5: 5b8a3d64368ffa2a1f11578548f38f79.dir
+    size: 119964626
     nfiles: 1
 train-decoder-varlag:
   cmd: julia -f auto --project=. -- scripts/julia/train_decode_varlags.jl
