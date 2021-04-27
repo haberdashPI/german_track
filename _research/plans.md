@@ -1,9 +1,26 @@
-# meeting (4/20)
+fig 2:
+split plot in two?
+- get a plot for the source decoding
+    - it needs to include spatial
+- create a bar plot for the switching rate: push on those different switching types
 
-figure out what's up with the sharp changes for the spatial condition
+fig 3:
+ - get rid of regression with decoding
+ - maybe show a stat for it but not much else
+
+fig 4:
+    - split up the regression by the three different conditions
+    - get a stat or basic bar graph (remember to handle points on edges robustly)
+
+fig 5:
+    - stick to simple bar graphs, and just use some kind of anova table
+
+# meeting (4/20)
+- align the target probability for the switches
+- figure out what's up with the sharp changes for the spatial condition
     - is it about the new azimuth feature (some weird lowpass thing)
-align the target problility for the switches
-switching
+        no that doesn't seem to be the issue
++ try looking at source switching
 
 # meeting (4/13)
 two key points:

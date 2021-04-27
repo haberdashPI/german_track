@@ -216,6 +216,19 @@ plotdf_base = @_ timelines |>
     leftjoin(__, azimuths, on = [:time, :sound_index, :switch_index]) |>
     subset(__, r"dir$" => ByRow((cols...) -> any(!ismissing, cols)))
 
+function intarget(meta, id, time, switch_index)
+    if meta.target_times[id] > 0
+        switch_time = meta.switch_regions[id][switch_index][2] + time
+        return meta.target_times[id] < switch_time < (meta.target_times[id] + 1)
+    else
+        return false
+    end
+end
+
+target_counts = @_ timelines |>
+    @where(__, :is_target_source .& (:source .== :trained_source) .& (:lagcut .== 0)) |>
+    @transform(__, target_count = intarget.(Ref(meta), :sound_index, :time, :switch_index))
+
 plotdf_base_source = @_ plotdf_base |>
     @where(__, :condition .!= "spatial") |>
     groupby(__, Not(:encoding)) |>
@@ -236,6 +249,8 @@ plotdf = @_ vcat(plotdf_base_source, plotdf_base_dir) |>
     @combine(__, correct = mean(:correct), chance = mean(:chance)) |>
     groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable, :chance => mean => :chance)
+
+plotdf = innerjoin(plotdf, target_counts, on = [:condition, :time, :lagcut, :hittype])
 
 pl = @_ plotdf |>
     @transform(__,
@@ -262,7 +277,12 @@ pl = @_ plotdf |>
         )+
         @vlplot({:rule, clip = true, strokeDash = [2 2], size = 1},
             y = "mean(chance)", color = {value = "black"})
-    ));
+    ) +  (
+        @vlplot({:area, opacity = 0.3},
+        y = {:target_count, title = "P(target)", scale = {domain = [0, 1]}},
+        x = :time,
+        color = {value = "black"}
+    )));
 pl |> save(joinpath(dir, "decode_source_near_switch_by_source.svg"))
 
 # Plot by salience
