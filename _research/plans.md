@@ -7,6 +7,7 @@ split plot in two?
 fig 3:
  - get rid of regression with decoding
  - maybe show a stat for it but not much else
+ - maybe a bar plot of the different degrees of salience (4 quartiles)
 
 fig 4:
     - split up the regression by the three different conditions
