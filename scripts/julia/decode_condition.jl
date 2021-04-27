@@ -688,24 +688,21 @@ decode_scores = @_ timelines |>
     select(__, Not([:is_target_source, :is_trained_target])) |>
     unstack(__, Not([:source, :trained_source, :score]), :trained_source, :score)
 
-function dominant_mass(x)
-    indices = argmax.(eachrow(x))
-    c = counts(indices, size(x, 2))
-    dominant_index = (1:size(x,2))[argmax(c)]
-    mean(indices .== dominant_index)
-end
-
 switch_band = 1
+timeΔ = mean(diff(unique(timelines.time)))
 decode_switches = @_ decode_scores |>
     groupby(__, Not(:encoding)) |>
     combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     groupby(__, [:sid, :trial, :condition]) |>
     @repeatby(__,
         window = range(extrema(parent(__).time)..., step = 0.25),
-        band = [0.05, 0.1, 0.2, 0.5, 1, 4]
+        band = [0.5, 1, 2, 3]
     ) |>
     @where(__, abs.(:time .- :window) .< (:band./2)) |>
-    @combine(__, switch_mass = dominant_mass(Hcat(:male, :fem1, :fem2)))
+    @combine(__,
+        switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2)),
+        switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1),
+    )
 
 plotdf = @_ decode_switches |>
     groupby(__, [:condition, :window, :sid, :band]) |>
@@ -722,6 +719,23 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_rate.svg"))
 
+plotdf = @_ decode_switches |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @combine(__, switch_length = mean(:switch_length)) |>
+    groupby(__, [:condition, :window, :band]) |>
+    combine(__, :switch_length => boot(alpha = 0.05) => AsTable)
+
+pl = plotdf |>
+    @vlplot(facet = {column = {field = :band, title = "Window Width (s)"}}) +
+    (@vlplot() +
+        (@vlplot(x = {:window, title = "Window Center (s)"}, color = :condition) +
+         @vlplot(:line, y = {:value, title = "Switch Duration for Dominant Source (s)"}) +
+         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) )
+    )
+pl |> save(joinpath(dir, "decode_switch_length.svg"))
+
+# alternative swtich rate measure
+# -----------------------------------------------------------------
 
 # Subsection
 # -----------------------------------------------------------------

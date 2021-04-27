@@ -1,6 +1,7 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
-    shrink, wsem, tcombine, testsplit, ngroups, prcombine, @repeatby
+    shrink, wsem, tcombine, testsplit, ngroups, prcombine, @repeatby,
+    dominant_mass, streak_length
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -44,6 +45,64 @@ You can exclude the `x` argument to curry the function. When using `shrink`, `mu
 shrinktowards(mu;by=0.01) = x -> shrinktowards(x,mu,by=by)
 shrinktowards(x,mu;by=0.01) = (1-by)*(x-mu) + mu
 shrink(x) = shrinktowards(x,0.5)
+
+
+function dominant_index(x)
+    indices = argmax.(eachrow(x))
+    c = counts(indices, size(x, 2))
+    indices, (1:size(x,2))[argmax(c)]
+end
+
+"""
+    dominant_mass(x)
+
+Given a matrix of decoding correlations, witha source per column and a time point per row,
+report the maximum period of time a given source has the largest correlation.
+"""
+function dominant_mass(x)
+    indices, dominant = dominant_index(x)
+    mean(i == dominant for i in indices)
+end
+
+function streak_stats(x, skip_blips)
+    stats = zeros(Int, size(x))
+    old_streak = 0
+    streak = 0
+    misses = 0
+    max_streak = 0
+    for val in x
+        if val
+            if misses <= skip_blips && old_streak > 0
+                stats[old_streak] -= 1
+                streak = old_streak + 1
+                old_streak = 0
+                misses = 0
+            else
+                streak += 1
+            end
+        else
+            if streak > 0
+                stats[streak] += 1
+                max_streak = max(max_streak, streak)
+                old_streak = streak
+                streak = 0
+                misses = 0
+            end
+            misses += 1
+        end
+    end
+    if streak > 0
+        stats[streak] += 1
+        max_streak = max(max_streak, streak)
+    end
+    view(stats,1:max_streak)
+end
+
+function streak_length(x, skip_blips)
+    indices, dominant = dominant_index(x)
+    streaks = streak_stats(indices .== dominant, skip_blips)
+    wmean(1:length(streaks), streaks)
+end
 
 """
     spread([x,]scale,npoints,[indices=Colon()])
