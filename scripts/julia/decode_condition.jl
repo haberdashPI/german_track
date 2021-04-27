@@ -5,7 +5,8 @@ using DrWatson #; @quickactivate("german_track")
 using EEGCoding, GermanTrack, DataFrames, StatsBase, Underscores, Transducers,
     BangBang, ProgressMeter, HDF5, DataFramesMeta, Lasso, VegaLite, Colors,
     Printf, LambdaFn, ShiftedArrays, ColorSchemes, Flux, CUDA, GLM, SparseArrays,
-    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures, Indexing
+    JLD, Arrow, FFTW, GLM, CategoricalArrays, Tables, DataStructures, Indexing,
+    LazyArrays
 
 dir = mkpath(joinpath(plotsdir(), "figure2_parts"))
 meta = GermanTrack.load_stimulus_metadata()
@@ -193,7 +194,6 @@ end
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
 sourcename(str) = match(r"\w+", str).match
 
-
 trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
 azimuths = @_ timelines |> groupby(__, [:sound_index, :switch_index]) |>
     combine(__, [:switch_index, :sound_index, :time] =>
@@ -218,11 +218,15 @@ plotdf_base = @_ timelines |>
 
 plotdf_base_source = @_ plotdf_base |>
     @where(__, :condition .!= "spatial") |>
+    groupby(__, Not(:encoding)) |>
+    combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     transform(__, AsTable(:) => ByRow(target_wins) => :correct) |>
     insertcols!(__, :spatial_source => false, :chance => 1/3)
 
 plotdf_base_dir = @_ plotdf_base |>
     @where(__, :condition .!= "object") |>
+    groupby(__, Not(:encoding)) |>
+    combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     transform(__, AsTable(:) => ByRow(dir_wins) => :correct) |>
     insertcols!(__, :spatial_source => true, :chance => 0.5)
 
@@ -663,6 +667,61 @@ pl = @_ plotdf |>
         )
     ));
 pl |> save(joinpath(dir, "decode_by_source_class.svg"))
+
+# switching rate over time
+# -----------------------------------------------------------------
+
+pcolors = GermanTrack.colors
+
+# setup plot data
+decode_scores = @_ timelines |>
+    @where(__, :source .== :trained_source) |>
+    @where(__, :time .< getindex(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, :time .< params.train.trial_time_limit) |>
+    @where(__, :lagcut .== 0) |>
+    @where(__, :hittype .== "hit") |>
+    @transform(__,
+        is_trained_target = trained_speaker.(:sound_index) .== :trained_source,
+    ) |>
+    groupby(__, [:sid, :trial, :encoding, :lagcut, :time, :condition, :hittype]) |>
+    @transform(__, target_source = first(:trained_source[:is_trained_target])) |>
+    select(__, Not([:is_target_source, :is_trained_target])) |>
+    unstack(__, Not([:source, :trained_source, :score]), :trained_source, :score)
+
+function dominant_mass(x)
+    indices = argmax.(eachrow(x))
+    c = counts(indices, size(x, 2))
+    dominant_index = (1:size(x,2))[argmax(c)]
+    mean(indices .== dominant_index)
+end
+
+switch_band = 1
+decode_switches = @_ decode_scores |>
+    groupby(__, Not(:encoding)) |>
+    combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
+    groupby(__, [:sid, :trial, :condition]) |>
+    @repeatby(__,
+        window = range(extrema(parent(__).time)..., step = 0.25),
+        band = [0.05, 0.1, 0.2, 0.5, 1, 4]
+    ) |>
+    @where(__, abs.(:time .- :window) .< :band) |>
+    @combine(__, switch_mass = dominant_mass(Hcat(:male, :fem1, :fem2)))
+
+plotdf = @_ decode_switches |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @combine(__, switch_mass = mean(:switch_mass)) |>
+    groupby(__, [:condition, :window, :band]) |>
+    combine(__, :switch_mass => boot(alpha = 0.05) => AsTable)
+
+pl = plotdf |>
+    @vlplot(facet = {column = {field = :band, title = "Window Width (s)"}}) +
+    (@vlplot() +
+        (@vlplot(x = {:window, title = "Window Center (s)"}, color = :condition) +
+         @vlplot(:line, y = {:value, title = "Prop. Winning Source > Lossing Sources"}) +
+         @vlplot(:errorband, y = :lower, y2 = :upper) )
+    )
+pl |> save(joinpath(dir, "decode_switch_rate.svg"))
+
 
 # Subsection
 # -----------------------------------------------------------------

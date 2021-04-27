@@ -246,6 +246,9 @@ allowing you to reference existing columns of `df` using symbols.
     @repeatby(df, cross_fold = unique(:fold))
 """
 macro repeatby(df, repeaters...)
+    if length(repeaters) < 1
+        error("Expected at least one repeater")
+    end
     tempdf = gensym(:df)
     quote
         let
