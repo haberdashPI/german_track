@@ -704,7 +704,7 @@ decode_switches = @_ decode_scores |>
         window = range(extrema(parent(__).time)..., step = 0.25),
         band = [0.05, 0.1, 0.2, 0.5, 1, 4]
     ) |>
-    @where(__, abs.(:time .- :window) .< :band) |>
+    @where(__, abs.(:time .- :window) .< (:band./2)) |>
     @combine(__, switch_mass = dominant_mass(Hcat(:male, :fem1, :fem2)))
 
 plotdf = @_ decode_switches |>
@@ -718,7 +718,7 @@ pl = plotdf |>
     (@vlplot() +
         (@vlplot(x = {:window, title = "Window Center (s)"}, color = :condition) +
          @vlplot(:line, y = {:value, title = "Prop. Winning Source > Lossing Sources"}) +
-         @vlplot(:errorband, y = :lower, y2 = :upper) )
+         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) )
     )
 pl |> save(joinpath(dir, "decode_switch_rate.svg"))
 
