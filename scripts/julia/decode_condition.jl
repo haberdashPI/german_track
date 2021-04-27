@@ -433,6 +433,74 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_source_near_switch_lag_class.svg"))
 
+# source switching rate over time
+# -----------------------------------------------------------------
+
+pcolors = GermanTrack.colors
+
+# setup plot data
+decode_scores = @_ timelines |>
+    @where(__, :source .== :trained_source) |>
+    @where(__, :time .+ switch_offset.(:sound_index, :switch_index) .<
+        getindices(meta.trial_lengths, :sound_index) .- 1) |>
+    @where(__, :lagcut .== 0) |>
+    @where(__, :hittype .== "hit") |>
+    @transform(__,
+        is_trained_target = trained_speaker.(:sound_index) .== :trained_source,
+    ) |>
+    groupby(__, [:sid, :trial, :encoding, :lagcut, :time, :condition, :hittype, :switch_index]) |>
+    @transform(__, target_source = first(:trained_source[:is_trained_target])) |>
+    select(__, Not([:is_target_source, :is_trained_target])) |>
+    unstack(__, Not([:source, :trained_source, :score]), :trained_source, :score)
+
+switch_band = 1
+timeΔ = mean(diff(unique(timelines.time)))
+decode_switches = @_ decode_scores |>
+    groupby(__, Not(:encoding)) |>
+    combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
+    groupby(__, [:sid, :trial, :condition]) |>
+    @repeatby(__,
+        window = range(extrema(parent(__).time)..., step = 0.25),
+        band = [0.5, 1, 2, 3]
+    ) |>
+    @where(__, abs.(:time .- :window) .< (:band./2)) |>
+    @combine(__,
+        switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2)),
+        switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1),
+    )
+
+pcolors = GermanTrack.colors
+plotdf = @_ decode_switches |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @combine(__, switch_mass = mean(:switch_mass)) |>
+    groupby(__, [:condition, :window, :band]) |>
+    combine(__, :switch_mass => boot(alpha = 0.05) => AsTable)
+
+pl = plotdf |>
+    @vlplot(facet = {column = {field = :band, title = "Window Width (s)"}}) +
+    (@vlplot() +
+        (@vlplot(x = {:window, title = "Window Center (s)"},
+            color = {:condition, scale = { range = "#".*hex.(pcolors) }}) +
+         @vlplot(:line, y = {:value, title = "Prop. Winning Source > Lossing Sources"}) +
+         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) )
+    )
+pl |> save(joinpath(dir, "decode_switch_rate_near_switch.svg"))
+
+plotdf = @_ decode_switches |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @combine(__, switch_length = mean(:switch_length)) |>
+    groupby(__, [:condition, :window, :band]) |>
+    combine(__, :switch_length => boot(alpha = 0.05) => AsTable)
+
+pl = plotdf |>
+    @vlplot(facet = {column = {field = :band, title = "Window Width (s)"}}) +
+    (@vlplot() +
+        (@vlplot(x = {:window, title = "Window Center (s)"}, color = :condition) +
+         @vlplot(:line, y = {:value, title = "Switch Duration for Dominant Source (s)"}) +
+         @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) )
+    )
+pl |> save(joinpath(dir, "decode_switch_length_near_switch.svg"))
+
 
 
 # Supplement: decoding by source
@@ -733,9 +801,6 @@ pl = plotdf |>
          @vlplot(:errorband, y = {:lower, title = ""}, y2 = :upper) )
     )
 pl |> save(joinpath(dir, "decode_switch_length.svg"))
-
-# alternative swtich rate measure
-# -----------------------------------------------------------------
 
 # Subsection
 # -----------------------------------------------------------------
