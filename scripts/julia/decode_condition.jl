@@ -14,8 +14,6 @@ meta = GermanTrack.load_stimulus_metadata()
 using GermanTrack: colors
 
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
-# NOTE: these area parameters copied from process_decode_timelilne
-# should be come parameters
 
 # Main figure
 # =================================================================
@@ -521,8 +519,6 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_length_near_switch.svg"))
 
-
-
 # Supplement: decoding by source
 # =================================================================
 
@@ -756,7 +752,7 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_by_source_class.svg"))
 
-# switching rate over time
+# attention switching rate over time
 # -----------------------------------------------------------------
 
 pcolors = GermanTrack.colors
@@ -778,21 +774,19 @@ decode_scores = @_ timelines |>
 
 switch_band = 1
 timeΔ = mean(diff(unique(timelines.time)))
+times = range(extrema(decode_scores.time)..., step = 0.25)
 decode_switches = @_ decode_scores |>
     groupby(__, Not(:encoding)) |>
     combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     groupby(__, [:sid, :trial, :condition]) |>
     @repeatby(__,
-        window = range(extrema(parent(__).time)..., step = 0.25),
+        window = times,
         band = [0.5, 1, 2, 3]
     ) |>
-    @where(__, abs.(:time .- :window) .< (:band./2)) |>
-    @combine(__,
-        switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2)),
-        switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1),
-    )
+    @where(__, abs.(:time .- :window) .< (:band./2))
 
 plotdf = @_ decode_switches |>
+    @combine(__, switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2))) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
     @combine(__, switch_mass = mean(:switch_mass)) |>
     groupby(__, [:condition, :window, :band]) |>
@@ -808,6 +802,7 @@ pl = plotdf |>
 pl |> save(joinpath(dir, "decode_switch_rate.svg"))
 
 plotdf = @_ decode_switches |>
+    @combine(__, switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1)) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
     @combine(__, switch_length = mean(:switch_length)) |>
     groupby(__, [:condition, :window, :band]) |>
@@ -822,7 +817,78 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_length.svg"))
 
-# Subsection
+function bin(x, nbins)
+    _min, _max = extrema(x)
+    step = (_max - _min) / nbins
+    min.(nbins-1, floor.(x ./ step)).*step .+ step./2
+end
+
+# what are all the extra columns for????
+plotdf_base = @_ decode_switches |>
+    @where(__, 0.5 .< :window .< 5.5) |>
+    @where(__, :band .== 1.0) |>
+    combine(__, [:male, :fem1, :fem2] =>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
+    @transform(__, streak_length_bin = bin(:streak_length.*timeΔ, 10)) |>
+    groupby(__, [:condition, :window, :sid, :band, :streak_length_bin]) |>
+    @combine(__, bin_time = sum(:count) .* first(:streak_length_bin)) |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @transform(__, bin_prop = :bin_time ./ sum(:bin_time)) |>
+    groupby(__, Not([:window, :bin_prop])) |>
+    @combine(__, bin_prop = mean(:bin_prop))
+
+plotdf = @_ plotdf_base |>
+    groupby(__, Not([:sid, :bin_prop, :bin_time])) |>
+    combine(__, :bin_prop => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+
+pl = plotdf |>
+    # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot() +
+        (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length (binned)"},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot(:line, y = {:value, title = "Prop. of Time"}) +
+         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "decode_switch_stats.svg"))
+
+function weighted_mean_above(x, count, thresh)
+    ixs = findall(>(thresh), x)
+    if isempty(abovei)
+        0.0
+    else
+        sum(x[ixs].^2 .* count[ixs]) / sum(count[ixs] .* x[ixs])
+    end
+end
+
+plotdf_base = @_ decode_switches |>
+    # @where(__, :window .∈ Ref(times[1:5:end])) |>
+    @where(__, 0.5 .< :window .< 5.5) |>
+    @where(__, :band .== 1.0) |>
+    combine(__, [:male, :fem1, :fem2] =>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    # computes the mean time for a given time point
+    # (since the longer streaks encompass more time points, they
+    # are count as more data points)
+    @combine(__, mean_length = weighted_mean_above(:streak_length, :count,
+        quantile(mapreduce(fill,vcat,:streak_length,:count), 0.95))) |>
+    groupby(__, [:condition, :sid, :band]) |>
+    @combine(__, mean_length = timeΔ.*mean(:mean_length))
+
+plotdf = @_ plotdf_base |>
+    groupby(__, Not([:mean_length, :sid])) |>
+    combine(__, :mean_length => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+
+pl = plotdf |>
+    # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot() +
+        (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot(:point, y = {:value, title = "Prop. of Time with > 95th quantile focus length", scale = {zero = false}}) +
+         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
+
+
+# Decoding by sources across different target times
 # -----------------------------------------------------------------
 
 # setup plot data
@@ -1431,4 +1497,3 @@ pl = @_ plotdf |>
         )
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
-
