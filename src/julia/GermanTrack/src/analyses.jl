@@ -64,7 +64,7 @@ function dominant_mass(x)
     mean(i == dominant for i in indices)
 end
 
-function streak_stats(x, skip_blips)
+function streak_stats_(x, skip_blips)
     stats = zeros(Int, size(x))
     old_streak = 0
     streak = 0
@@ -102,6 +102,13 @@ function streak_length(x, skip_blips)
     indices, dominant = dominant_index(x)
     streaks = streak_stats(indices .== dominant, skip_blips)
     wmean(1:length(streaks), streaks)
+end
+
+function streak_stats(x, skip_blips)
+    indices, dominant = dominant_index(x)
+    streaks = streak_stats(indices .== dominant, skip_blips)
+    ixs = streaks .> 0
+    (lengths = 1:length(streaks)[ixs], count = streaks[ixs])
 end
 
 """

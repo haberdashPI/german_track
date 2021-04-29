@@ -14,8 +14,6 @@ meta = GermanTrack.load_stimulus_metadata()
 using GermanTrack: colors
 
 include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl"))
-# NOTE: these area parameters copied from process_decode_timelilne
-# should be come parameters
 
 # Main figure
 # =================================================================
@@ -756,7 +754,7 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_by_source_class.svg"))
 
-# switching rate over time
+# attention switching rate over time
 # -----------------------------------------------------------------
 
 pcolors = GermanTrack.colors
@@ -786,13 +784,10 @@ decode_switches = @_ decode_scores |>
         window = range(extrema(parent(__).time)..., step = 0.25),
         band = [0.5, 1, 2, 3]
     ) |>
-    @where(__, abs.(:time .- :window) .< (:band./2)) |>
-    @combine(__,
-        switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2)),
-        switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1),
-    )
+    @where(__, abs.(:time .- :window) .< (:band./2))
 
 plotdf = @_ decode_switches |>
+    @combine(__, switch_mass = GermanTrack.dominant_mass(Hcat(:male, :fem1, :fem2))) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
     @combine(__, switch_mass = mean(:switch_mass)) |>
     groupby(__, [:condition, :window, :band]) |>
@@ -808,6 +803,7 @@ pl = plotdf |>
 pl |> save(joinpath(dir, "decode_switch_rate.svg"))
 
 plotdf = @_ decode_switches |>
+    @combine(__, switch_length = timeΔ.*GermanTrack.streak_length(Hcat(:male, :fem1, :fem2), 1)) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
     @combine(__, switch_length = mean(:switch_length)) |>
     groupby(__, [:condition, :window, :band]) |>
@@ -822,6 +818,12 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_length.svg"))
 
+plotdf = @_ decode_switches |>
+    # TODO:
+    @combine(__, switch_stats = streak_stats())
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    groupby(__, [:condition, :window, :band]) |>
+    combine(__, :switch_length => boot(alpha = 0.05) => AsTable)
 # Subsection
 # -----------------------------------------------------------------
 
