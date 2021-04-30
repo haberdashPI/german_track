@@ -1,7 +1,7 @@
 export select_windows, shrinktowards, findresponse, boot,
     addfold!, repeatby, compute_powerbin_features,
     shrink, wsem, tcombine, testsplit, ngroups, prcombine, @repeatby,
-    dominant_mass, streak_length
+    dominant_mass, streak_length, streak_stats
 
 """
     boot(x; alpha = 0.05, n = 10_000)
@@ -74,7 +74,7 @@ function streak_stats_(x, skip_blips)
         if val
             if misses <= skip_blips && old_streak > 0
                 stats[old_streak] -= 1
-                streak = old_streak + 1
+                streak = old_streak + misses + 1
                 old_streak = 0
                 misses = 0
             else
@@ -100,15 +100,15 @@ end
 
 function streak_length(x, skip_blips)
     indices, dominant = dominant_index(x)
-    streaks = streak_stats(indices .== dominant, skip_blips)
+    streaks = streak_stats_(indices .== dominant, skip_blips)
     wmean(1:length(streaks), streaks)
 end
 
 function streak_stats(x, skip_blips)
     indices, dominant = dominant_index(x)
-    streaks = streak_stats(indices .== dominant, skip_blips)
+    streaks = streak_stats_(indices .== dominant, skip_blips)
     ixs = streaks .> 0
-    (lengths = 1:length(streaks)[ixs], count = streaks[ixs])
+    (streak_length = (1:length(streaks))[ixs], count = streaks[ixs])
 end
 
 """

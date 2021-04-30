@@ -519,8 +519,6 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_length_near_switch.svg"))
 
-
-
 # Supplement: decoding by source
 # =================================================================
 
@@ -776,12 +774,13 @@ decode_scores = @_ timelines |>
 
 switch_band = 1
 timeΔ = mean(diff(unique(timelines.time)))
+times = range(extrema(decode_scores.time)..., step = 0.25)
 decode_switches = @_ decode_scores |>
     groupby(__, Not(:encoding)) |>
     combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     groupby(__, [:sid, :trial, :condition]) |>
     @repeatby(__,
-        window = range(extrema(parent(__).time)..., step = 0.25),
+        window = times,
         band = [0.5, 1, 2, 3]
     ) |>
     @where(__, abs.(:time .- :window) .< (:band./2))
@@ -819,12 +818,28 @@ pl = plotdf |>
 pl |> save(joinpath(dir, "decode_switch_length.svg"))
 
 plotdf = @_ decode_switches |>
-    # TODO:
-    @combine(__, switch_stats = streak_stats())
-    groupby(__, [:condition, :window, :sid, :band]) |>
-    groupby(__, [:condition, :window, :band]) |>
-    combine(__, :switch_length => boot(alpha = 0.05) => AsTable)
-# Subsection
+    @where(__, :window .∈ Ref(times[1:5:end])) |>
+    @where(__, :band .== 1.0) |>
+    combine(__, [:male, :fem1, :fem2] =>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 0)) => AsTable) |>
+    @transform(__, streak_length_bin = cut(:streak_length.*timeΔ, 5)) |>
+    groupby(__, [:condition, :window, :sid, :band, :streak_length_bin]) |>
+    @combine(__, count = sum(:count)) |>
+    groupby(__, Not([:streak_length_bin, :count])) |>
+    @transform(__, count = :count ./ sum(:count)) |>
+    groupby(__, Not([:sid, :count])) |>
+    combine(__, :count => boot(stat = median, alpha = 0.05) => AsTable)
+
+pl = plotdf |>
+    @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot() +
+        (@vlplot(x = {:streak_length_bin, type = :ordinal, title = "Focus Length"},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot(:line, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
+         @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "decode_switch_stats.svg"))
+
+# Decoding by sources across different target times
 # -----------------------------------------------------------------
 
 # setup plot data
@@ -1433,4 +1448,3 @@ pl = @_ plotdf |>
         )
     );
 pl |> save(joinpath(dir, "decode_timeline_diff.svg"))
-
