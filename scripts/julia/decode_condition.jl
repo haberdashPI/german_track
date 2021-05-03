@@ -817,27 +817,61 @@ pl = plotdf |>
     )
 pl |> save(joinpath(dir, "decode_switch_length.svg"))
 
-plotdf = @_ decode_switches |>
+function bin(x, nbins)
+    _min, _max = extrema(x)
+    step = (_max - _min) / nbins
+    min.(nbins-1, floor.(x ./ step)).*step .+ step./2
+end
+
+# what are all the extra columns for????
+plotdf_base = @_ decode_switches |>
     @where(__, :window .∈ Ref(times[1:5:end])) |>
     @where(__, :band .== 1.0) |>
     combine(__, [:male, :fem1, :fem2] =>
-        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 0)) => AsTable) |>
-    @transform(__, streak_length_bin = cut(:streak_length.*timeΔ, 5)) |>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 1)) => AsTable) |>
+    @transform(__, streak_length_bin = bin(:streak_length.*timeΔ, 5)) |>
     groupby(__, [:condition, :window, :sid, :band, :streak_length_bin]) |>
-    @combine(__, count = sum(:count)) |>
-    groupby(__, Not([:streak_length_bin, :count])) |>
-    @transform(__, count = :count ./ sum(:count)) |>
-    groupby(__, Not([:sid, :count])) |>
-    combine(__, :count => boot(stat = median, alpha = 0.05) => AsTable)
+    @combine(__, bin_time = sum(:count) .* first(:streak_length_bin)) |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @transform(__, bin_prop = :bin_time ./ sum(:bin_time))
+
+plotdf = @_ plotdf_base |>
+    groupby(__, Not([:sid, :bin_prop, :bin_time])) |>
+    combine(__, :bin_prop => boot(stat = mean, alpha = 0.05) => AsTable)
 
 pl = plotdf |>
     @vlplot(facet = {column = {field = :window, type = :nominal}}) +
     (@vlplot() +
         (@vlplot(x = {:streak_length_bin, type = :ordinal, title = "Focus Length"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
-         @vlplot(:line, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
-         @vlplot(:errorbar, y = {:lower, title = ""}, y2 = :upper)));
+         @vlplot(:line, y = {:value, title = "Normalized Weight"}) +
+         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_stats.svg"))
+
+
+plotdf_base = @_ decode_switches |>
+    @where(__, :window .∈ Ref(times[1:5:end])) |>
+    @where(__, :band .== 1.0) |>
+    combine(__, [:male, :fem1, :fem2] =>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 1)) => AsTable) |>
+    @where(__, :streak_length .> 2) |>
+    @transform(__, streak_length = :streak_length.*timeΔ) |>
+    groupby(__, [:condition, :window, :sid, :band]) |>
+    @combine(__, mean_length = sum(:streak_length .* :count) / sum(:count))
+
+plotdf = @_ plotdf_base |>
+    groupby(__, Not([:mean_length, :sid])) |>
+    combine(__, :mean_length => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+
+pl = plotdf |>
+    # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot() +
+        (@vlplot(x = {:window, type = :ordinal, title = "Window Onset (s)"},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot(:line, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
+         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
+
 
 # Decoding by sources across different target times
 # -----------------------------------------------------------------
