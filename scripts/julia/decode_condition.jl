@@ -931,12 +931,21 @@ plotdf = @_ plotdf_base |>
 
 pl = plotdf |>
     # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
-    (@vlplot() +
+    (@vlplot(config = {legend = {disable = true}}) +
         (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
          @vlplot({:point, filled = true}, y = {:value, title = "Prop. of Time with > 95th quantile focus length", scale = {zero = false}}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
+
+pl = plotdf |>
+    # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot(width = 50, height = 50, config = {legend = {disable = true}}) +
+        (@vlplot(x = {:condition, type = :nominal, axis = {title = "", labelAngle = -45}},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot({:point, filled = true}, y = {:value, title = "Prop. of Time", scale = {zero = false}}) +
+         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "present", "decode_switch_cleaned_mean.svg"))
 
 
 # Decoding by sources across different target times
