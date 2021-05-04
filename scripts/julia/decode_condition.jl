@@ -844,7 +844,7 @@ plotdf = @_ plotdf_base |>
 pl = plotdf |>
     # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
     (@vlplot() +
-        (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length"},
+        (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length (binned)"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
          @vlplot(:line, y = {:value, title = "Prop. of Time"}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
@@ -883,7 +883,7 @@ pl = plotdf |>
     (@vlplot() +
         (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
-         @vlplot(:point, y = {:value, title = "Prop. of Time in 0.95-quantile lengths", scale = {zero = false}}) +
+         @vlplot(:point, y = {:value, title = "Prop. of Time with > 95th quantile focus length", scale = {zero = false}}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
 
