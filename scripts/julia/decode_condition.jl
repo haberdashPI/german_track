@@ -892,6 +892,15 @@ pl = plotdf |>
          @vlplot({:errorband, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_stats.svg"))
 
+pl = plotdf |>
+    # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
+    (@vlplot(width = 70, height = 60) +
+        (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length (binned)"},
+            color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
+         @vlplot(:line, y = {:value, title = "Prop. of Time"}) +
+         @vlplot({:errorband, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+pl |> save(joinpath(dir, "present", "decode_switch_stats.svg"))
+
 function weighted_mean_above(x, count, thresh)
     ixs = findall(>(thresh), x)
     if isempty(ixs)
