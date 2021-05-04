@@ -828,47 +828,59 @@ plotdf_base = @_ decode_switches |>
     @where(__, :window .∈ Ref(times[1:5:end])) |>
     @where(__, :band .== 1.0) |>
     combine(__, [:male, :fem1, :fem2] =>
-        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 1)) => AsTable) |>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
     @transform(__, streak_length_bin = bin(:streak_length.*timeΔ, 5)) |>
     groupby(__, [:condition, :window, :sid, :band, :streak_length_bin]) |>
     @combine(__, bin_time = sum(:count) .* first(:streak_length_bin)) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
-    @transform(__, bin_prop = :bin_time ./ sum(:bin_time))
+    @transform(__, bin_prop = :bin_time ./ sum(:bin_time)) |>
+    @where(__, 0.5 .< :window .< 5.5) |>
+    groupby(__, Not([:window, :bin_prop])) |>
+    @combine(__, bin_prop = mean(:bin_prop))
 
 plotdf = @_ plotdf_base |>
     groupby(__, Not([:sid, :bin_prop, :bin_time])) |>
-    combine(__, :bin_prop => boot(stat = mean, alpha = 0.05) => AsTable)
+    combine(__, :bin_prop => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
 
 pl = plotdf |>
     @vlplot(facet = {column = {field = :window, type = :nominal}}) +
     (@vlplot() +
-        (@vlplot(x = {:streak_length_bin, type = :ordinal, title = "Focus Length"},
+        (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
          @vlplot(:line, y = {:value, title = "Normalized Weight"}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_stats.svg"))
 
+function weighted_mean_above(x, count, thresh)
+    abovei = findall(>(thresh), x)
+    if isempty(abovei)
+        0.0
+    else
+        dot(view(x, abovei), view(count, abovei)) / sum(count)
+    end
+end
 
 plotdf_base = @_ decode_switches |>
-    @where(__, :window .∈ Ref(times[1:5:end])) |>
+    # @where(__, :window .∈ Ref(times[1:5:end])) |>
+    @where(__, 0.5 .< :window .< 5.5) |>
     @where(__, :band .== 1.0) |>
     combine(__, [:male, :fem1, :fem2] =>
-        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 1)) => AsTable) |>
-    @where(__, :streak_length .> 2) |>
-    @transform(__, streak_length = :streak_length.*timeΔ) |>
+        ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
-    @combine(__, mean_length = sum(:streak_length .* :count) / sum(:count))
+    @combine(__, count_above = count_above(:streak_length, :count, 21)) |>
+    groupby(__, [:condition, :sid, :band]) |>
+    @combine(__, count_above = mean(:count_above))
 
 plotdf = @_ plotdf_base |>
-    groupby(__, Not([:mean_length, :sid])) |>
-    combine(__, :mean_length => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+    groupby(__, Not([:count_above, :sid])) |>
+    combine(__, :count_above => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
 
 pl = plotdf |>
     # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
     (@vlplot() +
-        (@vlplot(x = {:window, type = :ordinal, title = "Window Onset (s)"},
+        (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
-         @vlplot(:line, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
+         @vlplot(:point, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
 
