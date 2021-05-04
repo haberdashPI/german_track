@@ -524,6 +524,7 @@ pl |> save(joinpath(dir, "decode_switch_length_near_switch.svg"))
 
 prefix = joinpath(processed_datadir("analyses", "decode-timeline-source"), "testing")
 GermanTrack.@load_cache prefix timelines
+trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
 
 # two figures:
 # - trained sources when they're the target, across the different lags
@@ -673,7 +674,6 @@ pcolors = GermanTrack.colors
 target_wins(row) = row[Symbol(row.target_source)] == max(row.male, row.fem1, row.fem2)
 
 # setup plot data
-trained_speaker(si) = get(["male", "fem1", "fem2"], Int(meta.speakers[si]), missing)
 plotdf_base = @_ timelines |>
     @where(__, :source .== :trained_source) |>
     @where(__, :condition .!= "spatial") |>
@@ -752,6 +752,48 @@ pl = @_ plotdf |>
     ));
 pl |> save(joinpath(dir, "decode_by_source_class.svg"))
 
+target_len_y = -0.075
+pl = @_ plotdf |>
+    @vlplot(
+        spacing = 5,
+        config = {legend = {disable = true}},
+        resolve = {scale = {y = :independent}},
+    facet = {
+        column = {field = :condition, title = "",
+            sort = ["global", "spatial", "object"],
+            header = {
+                title = "",
+                labelExpr = "upper(slice(datum.label,0,1)) + slice(datum.label,1)",
+                labelFontWeight = "bold",
+            }
+        }
+    }) + (@vlplot() +
+    (
+        @vlplot(
+            width = 64, height = 65,
+            resolve = {scale = {y = "independent"}},
+            color = {:condition, type = "ordinal",
+                title = "Source", scale = { range = "#".*hex.(pcolors) }}
+        ) +
+        ( @vlplot() +
+            ( @vlplot(
+                y = {:value, title = "P(Correct)", type = :quantitative,
+                    scale = {domain = [0.25 ,0.45]}},
+                x = {:time, type = :quantitative, title = "Time (s)"}) +
+              @vlplot({:line, clip = true, strokeJoin = :round}) +
+              @vlplot({:errorband, clip = true},
+                  y = {:lower, title = "P(Correct)"}, y2 = :upper)) +
+            @vlplot({:rule, clip = true, strokeDash = [4 4], size = 1}, y = {datum = 1/3}, color = {value = "black"})
+        ) +
+        @vlplot({:area, opacity = 0.3},
+            y = {:switch_count, title = "P(switch)", scale = {domain = [0, 1]}},
+            x = :time,
+            color = {value = "black"}
+        )
+    ));
+pl |> save(joinpath(dir, "present", "decode_by_source_class.svg"))
+
+
 # attention switching rate over time
 # -----------------------------------------------------------------
 
@@ -829,7 +871,7 @@ plotdf_base = @_ decode_switches |>
     @where(__, :band .== 1.0) |>
     combine(__, [:male, :fem1, :fem2] =>
         ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
-    @transform(__, streak_length_bin = bin(:streak_length.*timeΔ, 10)) |>
+    @transform(__, streak_length_bin = bin(:streak_length.*timeΔ, 12)) |>
     groupby(__, [:condition, :window, :sid, :band, :streak_length_bin]) |>
     @combine(__, bin_time = sum(:count) .* first(:streak_length_bin)) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
@@ -839,7 +881,7 @@ plotdf_base = @_ decode_switches |>
 
 plotdf = @_ plotdf_base |>
     groupby(__, Not([:sid, :bin_prop, :bin_time])) |>
-    combine(__, :bin_prop => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+    combine(__, :bin_prop => boot(stat = mean, alpha = 0.05) => AsTable)
 
 pl = plotdf |>
     # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
@@ -847,12 +889,12 @@ pl = plotdf |>
         (@vlplot(x = {:streak_length_bin, type = :quantitative, title = "Focus Length (binned)"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
          @vlplot(:line, y = {:value, title = "Prop. of Time"}) +
-         @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
+         @vlplot({:errorband, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_stats.svg"))
 
 function weighted_mean_above(x, count, thresh)
     ixs = findall(>(thresh), x)
-    if isempty(abovei)
+    if isempty(ixs)
         0.0
     else
         sum(x[ixs].^2 .* count[ixs]) / sum(count[ixs] .* x[ixs])
@@ -876,14 +918,14 @@ plotdf_base = @_ decode_switches |>
 
 plotdf = @_ plotdf_base |>
     groupby(__, Not([:mean_length, :sid])) |>
-    combine(__, :mean_length => boot(stat = mean, alpha = sqrt(0.05)) => AsTable)
+    combine(__, :mean_length => boot(stat = mean, alpha = 0.05) => AsTable)
 
 pl = plotdf |>
     # @vlplot(facet = {column = {field = :window, type = :nominal}}) +
     (@vlplot() +
         (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
-         @vlplot(:point, y = {:value, title = "Prop. of Time with > 95th quantile focus length", scale = {zero = false}}) +
+         @vlplot({:point, filled = true}, y = {:value, title = "Prop. of Time with > 95th quantile focus length", scale = {zero = false}}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
 
@@ -933,7 +975,7 @@ pl = @_ plotdf |>
     }) + (@vlplot() +
     (
         @vlplot(
-            width = 128, height = 130,
+            width = 64, height = 65,
             resolve = {scale = {y = "independent"}},
             color = {:condition, type = "ordinal",
                 title = "Source", scale = { range = "#".*hex.(pcolors) }}
