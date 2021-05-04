@@ -851,20 +851,11 @@ pl = plotdf |>
 pl |> save(joinpath(dir, "decode_switch_stats.svg"))
 
 function weighted_mean_above(x, count, thresh)
-    abovei = findall(>(thresh), x)
+    ixs = findall(>(thresh), x)
     if isempty(abovei)
         0.0
     else
-        dot(view(x, abovei), view(count, abovei)) / sum(count)
-    end
-end
-
-function count_above(x, count, thresh)
-    abovei = findall(>(thresh), x)
-    if isempty(abovei)
-        0.0
-    else
-        sum(count[abovei]) / sum(count)
+        sum(x[ixs].^2 .* count[ixs]) / sum(count[ixs] .* x[ixs])
     end
 end
 
@@ -875,9 +866,13 @@ plotdf_base = @_ decode_switches |>
     combine(__, [:male, :fem1, :fem2] =>
         ((m,f1,f2) -> streak_stats(Hcat(m,f1,f2), 2)) => AsTable) |>
     groupby(__, [:condition, :window, :sid, :band]) |>
-    @combine(__, mean_length = sum(:streak_length .* :count) / sum(:count)) |>
+    # computes the mean time for a given time point
+    # (since the longer streaks encompass more time points, they
+    # are count as more data points)
+    @combine(__, mean_length = weighted_mean_above(:streak_length, :count,
+        quantile(mapreduce(fill,vcat,:streak_length,:count), 0.95))) |>
     groupby(__, [:condition, :sid, :band]) |>
-    @combine(__, mean_length = sum(:mean_length))
+    @combine(__, mean_length = timeΔ.*mean(:mean_length))
 
 plotdf = @_ plotdf_base |>
     groupby(__, Not([:mean_length, :sid])) |>
@@ -888,7 +883,7 @@ pl = plotdf |>
     (@vlplot() +
         (@vlplot(x = {:condition, type = :nominal, title = "Condition"},
             color = {:condition, type = "ordinal", scale = {range = "#".*hex.(pcolors)}}) +
-         @vlplot(:point, y = {:value, title = "Switch Duration in s (Dominant Source)"}) +
+         @vlplot(:point, y = {:value, title = "Prop. of Time in 0.95-quantile lengths", scale = {zero = false}}) +
          @vlplot({:errorbar, ticks = {width = 5, color = "black"}}, y = {:lower, title = ""}, y2 = :upper)));
 pl |> save(joinpath(dir, "decode_switch_cleaned_mean.svg"))
 
