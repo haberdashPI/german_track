@@ -3,11 +3,22 @@ split plot in two?
 - get a plot for the source decoding
     - it needs to include spatial
 - create a bar plot for the switching rate: push on those different switching types
+- averaged other sources
+
+fig 2 (split 1): continuous decoding, both switching and continuous time decoder
+    ignore very beginning, very end
+    maybe hold out by trial
+    stretch some more
+    - maybe show target probability as well
+    - maybe this should show both for hits and misses?
+
+fig 2 (split 2): target decoding
 
 fig 3:
  - get rid of regression with decoding
  - maybe show a stat for it but not much else
  - maybe a bar plot of the different degrees of salience (4 quartiles)
+ - split regerssion by three, maybe use bins
 
 fig 4:
     - split up the regression by the three different conditions
