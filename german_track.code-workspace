@@ -16,6 +16,9 @@
 		]
 	},
 	"settings": {
-		"workbench.colorCustomizations": {}
+		"workbench.colorCustomizations": {},
+		"terminal.integrated.env.linux": {
+			"VSCODE_WORKSPACE_NAME": "vscode-germantrack"
+		},
 	}
 }
