@@ -225,7 +225,9 @@ end
 
 target_counts = @_ timelines |>
     @where(__, :is_target_source .& (:source .== :trained_source) .& (:lagcut .== 0)) |>
-    @transform(__, target_count = intarget.(Ref(meta), :sound_index, :time, :switch_index))
+    @transform(__, target_count = intarget.(Ref(meta), :sound_index, :time, :switch_index)) |>
+    groupby(__, [:condition, :time]) |>
+    @combine(__, target_count = mean(:target_count))
 
 plotdf_base_source = @_ plotdf_base |>
     @where(__, :condition .!= "spatial") |>
@@ -248,7 +250,7 @@ plotdf = @_ vcat(plotdf_base_source, plotdf_base_dir) |>
     groupby(__, [:condition, :time, :lagcut, :switch_timing, :hittype, :spatial_source]) |>
     combine(__, :correct => boot(alpha = 0.05) => AsTable, :chance => mean => :chance)
 
-plotdf = innerjoin(plotdf, target_counts, on = [:condition, :time, :lagcut, :hittype])
+plotdf = innerjoin(plotdf, target_counts, on = [:condition, :time])
 
 pl = @_ plotdf |>
     @transform(__,
@@ -277,10 +279,12 @@ pl = @_ plotdf |>
             y = "mean(chance)", color = {value = "black"})
     ) +  (
         @vlplot({:area, opacity = 0.3},
-        y = {:target_count, title = "P(target)", scale = {domain = [0, 1]}},
+        y = {:target_count, aggregate = :mean, title = "P(target)", scale = {domain = [0, 1]}},
         x = :time,
         color = {value = "black"}
-    )));
+    )))
+    # ))
+
 pl |> save(joinpath(dir, "decode_source_near_switch_by_source.svg"))
 
 # Plot by salience
