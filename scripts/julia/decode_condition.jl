@@ -237,11 +237,20 @@ plotdf_base_source = @_ plotdf_base |>
     insertcols!(__, :spatial_source => false, :chance => 1/3)
 
 plotdf_base_dir = @_ plotdf_base |>
-    @where(__, :condition .!= "object") |>
+    # @where(__, :condition .!= "object") |>
     groupby(__, Not(:encoding)) |>
     combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
     transform(__, AsTable(:) => ByRow(dir_wins) => :correct) |>
     insertcols!(__, :spatial_source => true, :chance => 0.5)
+
+
+# TODO: questions:
+# 1. is there a paritcular source that's winning, hence the tendency for
+# switches to lead to an abrupt change
+# 2. what do the individual plots look like?
+#    show for each subject, just the spatial data
+# 3. show what it looks like for the object condition
+#    there should be a sudden jump there, if people are doingn the task correctly
 
 plotdf = @_ vcat(plotdf_base_source, plotdf_base_dir) |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
@@ -286,6 +295,95 @@ pl = @_ plotdf |>
     # ))
 
 pl |> save(joinpath(dir, "decode_source_near_switch_by_source.svg"))
+
+function source_wins(row)
+    winner = max(row.male, row.fem1, row.fem2)
+    (malewin = row.male == winner, fem1win = row.fem1 == winner, fem2win = row.fem2 === winner)
+end
+
+plotdf_source_wins = @_ plotdf_base |>
+    groupby(__, Not(:encoding)) |>
+    combine(__, [:male, :fem1, :fem2] .=> mean, renamecols = false) |>
+    transform(__, AsTable(:) => ByRow(source_wins) => AsTable) |>
+    insertcols!(__, :chance => 1/3) |>
+    stack(__, r"win$", Not(r"win$"), variable_name = :winsource, value_name = :win) |>
+    @transform(__, winsource = replace.(:winsource, r"(.*)win$" => s"\1"))
+
+plotdf = @_ plotdf_source_wins |>
+    groupby(__, [:condition, :sid, :time, :winsource]) |>
+    @combine(__, win = mean(:win)) |>
+    @transform(__, cond_sid = string.(:condition,"-",:sid))
+
+pl = @_ plotdf |>
+    @vlplot(
+        facet = {field = :cond_sid, type = :ordinal},
+        config = {facet = {columns = 5}}
+    ) + (@vlplot(width = 70, height = 70) +
+    (@vlplot(x = {:time, type = :quantiative, title = "By Switch Offset (s)"}) +
+        (@vlplot(
+            color = {:winsource, scale = {range = "#".*hex.(ColorSchemes.imola[[0.2,0.5,0.8]])}},
+            x = {:time, type = :quantitative, title = "By Switch Offset (s)"}) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:win, title = "P(Source Win)", scale = {zero = false}},
+        ))
+    ))
+
+plotdf_trial = @_ plotdf_source_wins |>
+    groupby(__, [:condition, :sound_index, :time, :winsource]) |>
+    @combine(__, win = mean(:win)) |>
+    @transform(__, cond_trial = string.(:condition,"-",:sound_index))
+
+pl = @_ plotdf_trial |>
+    @vlplot(
+        facet = {field = :cond_trial, type = :ordinal, title = "Condition - Stimulus ID"},
+        config = {facet = {columns = 5}}
+    ) + (@vlplot(width = 70, height = 70) +
+    (@vlplot(x = {:time, type = :quantiative, title = "By Switch Offset (s)"}) +
+        (@vlplot(
+            color = {:winsource, scale = {range = "#".*hex.(ColorSchemes.imola[[0.2,0.5,0.8]])}},
+            x = {:time, type = :quantitative, title = "By Switch Offset (s)"}) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:win, title = "P(Source Win)", scale = {zero = false}},
+        ))
+    ))
+pl |> save(joinpath(dir, "decode_switch_sourcewin_trial.svg"))
+
+
+pl = @_ plotdf |>
+    groupby(__, Not([:win, :sid, :cond_sid])) |>
+    combine(__, :win => boot(alpha = 0.05) => AsTable) |>
+    @vlplot(
+        facet = {
+            column = {field = :condition, title = "Condition"}}
+    ) + (@vlplot(width = 100, height = 100) +
+        (@vlplot(
+            color = {:winsource, scale = {range = "#".*hex.(ColorSchemes.imola[[0.2,0.5,0.8]])}},
+            x = {:time, type = :quantitative, title = "By Switch Offset (s)"}) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "P(Source Win)", scale = {zero = false}},
+        ) +
+        @vlplot(:errorband, y = {:lower, title = "", type = :quantitative}, y2 = {:upper, type = :quantitative}))
+    )
+pl |> save(joinpath(dir, "decode_switch_sourcewin.svg"))
+
+indplotdf = @_ plotdf_base_dir |>
+    @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
+    @where(__, (levelcode.(:switch_timing) .== 1) .& :spatial_source .& (:condition .== "spatial")) |>
+    groupby(__, [:condition, :time, :sid, :spatial_source]) |>
+    combine(__, :correct => boot(alpha = 0.05) => AsTable, :chance => mean => :chance)
+
+pl = indplotdf |> @vlplot(
+    facet = {field = :sid, type = :ordinal},
+    config = {facet = {columns = 5}}
+) + (@vlplot(width = 70, height = 70) +
+    (@vlplot(x = {:time, type = :quantitative, title = "By Switch Offset (s)"}) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "P(Correct)", scale = {zero = false}})
+        # @vlplot(:errband, y = {:lower, title = ""}, y2 = :upper))
+    )
+)
+
+pl |> save(joinpath(dir, "decode_source_near_switch_by_source_ind.svg"))
 
 # Plot by salience
 # -----------------------------------------------------------------
