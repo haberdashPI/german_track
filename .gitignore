@@ -12,6 +12,7 @@
 .tags
 tags
 .undo/*
+.vscode/settings.json
 
 ################################################################################
 #                          DrWatson Project Structure                          #
