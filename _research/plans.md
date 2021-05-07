@@ -1,3 +1,8 @@
+task order:
+    - figure out the thing with spatial
+      if not done by today (05/05/2021), think through alternatives
+    - start running the "continuous" decoder, i.e. all windows
+
 fig 2:
 split plot in two?
 - get a plot for the source decoding
