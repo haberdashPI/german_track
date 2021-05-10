@@ -183,10 +183,14 @@ pcolors = GermanTrack.colors
 
 target_wins(row) =
     row[Symbol(row.target_source)] == max(row.male, row.fem1, row.fem2)
+function logit(x)
+    t = exp(-abs(x))
+    ifelse(x ≥ 0, inv(1 + t), t / (1 + t))
+end
 function dir_wins(row)
     cols = [:male, :fem1, :fem2]
     maxcol = cols[argmax(getindices(row,cols))]
-    row[Symbol(maxcol, :dir)] ≥ 0
+    logit(clamp(row[Symbol(maxcol, :dir)] ./ 90, -1.0, 1.0)*3)
 end
 
 switch_end(stim, index) = meta.switch_regions[stim][index][2]
@@ -212,7 +216,8 @@ plotdf_base = @_ timelines |>
     select(__, Not([:is_target_source, :is_trained_target])) |>
     unstack(__, Not([:source, :trained_source, :source_name, :score]), :trained_source, :score) |>
     leftjoin(__, azimuths, on = [:time, :sound_index, :switch_index]) |>
-    subset(__, r"dir$" => ByRow((cols...) -> any(!ismissing, cols)))
+    subset(__, r"dir$" => ByRow((cols...) -> any(!ismissing, cols))) |>
+    @where(__, :encoding .!= "azimuth")
 
 function intarget(meta, id, time, switch_index)
     if meta.target_times[id] > 0
@@ -335,7 +340,7 @@ plotdf_trial = @_ plotdf_source_wins |>
 
 pl = @_ plotdf_trial |>
     @vlplot(
-        facet = {field = :cond_trial, type = :ordinal, title = "Condition - Stimulus ID"},
+        facet =  {field = :cond_trial, type = :ordinal, title = "Condition - Stimulus ID"},
         config = {facet = {columns = 5}}
     ) + (@vlplot(width = 70, height = 70) +
     (@vlplot(x = {:time, type = :quantiative, title = "By Switch Offset (s)"}) +
@@ -365,6 +370,37 @@ pl = @_ plotdf |>
         @vlplot(:errorband, y = {:lower, title = "", type = :quantitative}, y2 = {:upper, type = :quantitative}))
     )
 pl |> save(joinpath(dir, "decode_switch_sourcewin.svg"))
+
+plotdf_source_wins = @_ plotdf_base |>
+    transform(__, AsTable(:) => ByRow(source_wins) => AsTable) |>
+    insertcols!(__, :chance => 1/3) |>
+    stack(__, r"win$", Not(r"win$"), variable_name = :winsource, value_name = :win) |>
+    @transform(__, winsource = replace.(:winsource, r"(.*)win$" => s"\1"))
+
+plotdf = @_ plotdf_source_wins |>
+    groupby(__, [:condition, :sid, :time, :winsource, :encoding]) |>
+    @combine(__, win = mean(:win)) |>
+    @transform(__, cond_sid = string.(:condition,"-",:sid))
+
+pl = @_ plotdf |>
+    groupby(__, [:condition, :time, :winsource, :encoding]) |>
+    combine(__, :win => boot(alpha = 0.05) => AsTable) |>
+    @vlplot(
+        facet = {
+            column = {field = :condition, title = "Condition"},
+            row = {field = :encoding, title = "Decoded Feature"}
+        }
+    ) + (@vlplot(width = 100, height = 100) +
+        (@vlplot(
+            color = {:winsource, scale = {range = "#".*hex.(ColorSchemes.imola[[0.2,0.5,0.8]])}},
+            x = {:time, type = :quantitative, title = "By Switch Offset (s)"}) +
+        @vlplot({:line, strokeJoin = :round},
+            y = {:value, title = "P(Source Win)", scale = {zero = false}},
+        ) +
+        @vlplot(:errorband, y = {:lower, title = "", type = :quantitative}, y2 = {:upper, type = :quantitative}))
+    )
+pl |> save(joinpath(dir, "decode_switch_sourcewin_feature.svg"))
+
 
 indplotdf = @_ plotdf_base_dir |>
     @transform(__, switch_timing = cut(switch_end.(:sound_index, :switch_index), 2)) |>
