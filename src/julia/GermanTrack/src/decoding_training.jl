@@ -106,28 +106,39 @@ function prepare_decode_data(params, prefix)
 
     seed = 2019_11_18
     target_samples = round(Int, params.stimulus.samplerate*target_length)
-    function event2window(event)
+    function event2windows(event)
         triallen   = haskey(params.train, :trial_time_limit) ?
             min(size(subjects[event.sid].eeg[event.trial], 2),
                 round(Int, params.train.trial_time_limit*params.stimulus.samplerate)) :
             size(subjects[event.sid].eeg[event.trial], 2)
-        start_time = windowing_start_time(event, triallen)
 
-        start      = clamp(round(Int, params.stimulus.samplerate*start_time), 1, triallen)
-        len        = clamp(target_samples, 1, triallen-start)
-        (
-            start     = start,
-            len       = len,
-            trialnum  = event.trial,
-            event...
-        )
+        function find_bounds(start_time)
+            start      = clamp(round(Int, params.stimulus.samplerate*start_time), 1, triallen)
+            len        = clamp(target_samples, 1, triallen-start)
+            (start, len)
+        end
+
+        bounds = if event.windowing == "full"
+            map(find_bounds, range(0.0, triallen, step = target_length))
+        else
+            find_bounds(windowing_start_time(event, triallen))
+        end
+        map(bounds) do (start, len)
+            (
+                start     = start,
+                len       = len,
+                trialnum  = event.trial,
+                event...
+            )
+        end
     end
 
     windows = @_ events |>
         transform!(__, AsTable(:) => ByRow(findresponse) => :hittype) |>
         filter(_.hittype ∈ ["hit", "miss"], __) |>
-        repeatby(__, :windowing => ["random1", "random2"]) |>
-        combine(__, AsTable(:) => ByRow(event2window) => AsTable) |>
+        # repeatby(__, :windowing => ["random1", "random2"]) |>
+        insertcols!(__, :windowing => "full") |>
+        DataFrame(mapreduce(event2windows, vcat, eachrow(__))) |>
         transform!(__, :len => (x -> lag(cumsum(x), default = 1)) => :offset)
 
     nobs = sum(windows.len)

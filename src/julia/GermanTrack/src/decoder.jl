@@ -43,6 +43,7 @@ function decoder(x, y, λ, opt;
     patience = 0,
     max_steps = 2,
     min_steps = 1,
+    max_x_memory = 8(2^10)^3,
     inner = 1024,
     progress = Progress(steps))
 
@@ -91,13 +92,22 @@ function decoder(x, y, λ, opt;
         end
     end
 
-    loader = Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
+    loader = if sizeof(x) > max_x_memory
+        @warn "Large data set: $(round(sizeof(x) / (2^10)^3, digits=2)) GB. Loading into memory in batches." maxlog=1 _id=objectid(x)
+        Iterators.map(Flux.Data.DataLoader((x, y), batchsize = batch, shuffle = true)) do (x_batch, y_batch)
+            (x_batch |> gpu, y_batch |> gpu)
+        end
+    else
+        Flux.Data.DataLoader((x |> gpu, y |> gpu), batchsize = batch, shuffle = true)
+    end
     for outer cur_step in 1:max_steps
         Flux.Optimise.train!(loss, Flux.params(model), loader, l1opt)
         next!(progress)
         evalcb()
         stopped && break
     end
+    CUDA.memory_status()
+
     for _ in (cur_step+1):max_steps
         next!(progress)
     end
