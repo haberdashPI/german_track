@@ -222,16 +222,20 @@ function train_decoder(params, x, modelsetup, train_types)
 
     modelrun = combine(modelsetup) do fold
         selector = train_types[fold.train_type[1]]
-        train = @_ fold |> selectstim(selector, __, :train) |>
-            @where(__, :split .== "train") |> toxy(__, selector)
-        val   = @_ fold |> selectstim(selector, __, :train) |>
-            @where(__, :split .== "validate")
-        test  = @_ fold |> selectstim(selector, __, :test)  |>
-            @where(__, :split .== "test")
+        train = toxy(fold, selector)
+        val = fold
+        test = fold
+        # train = @_ fold |> selectstim(selector, __, :train) |>
+        #     @where(__, :split .== "train") |> toxy(__, selector)
+        # val   = @_ fold |> selectstim(selector, __, :train) |>
+        #     @where(__, :split .== "validate")
+        # test  = @_ fold |> selectstim(selector, __, :test)  |>
+        #     @where(__, :split .== "test")
 
         (isempty(train[1]) || isempty(test) || isempty(val)) && return DataFrame()
 
-        model = GermanTrack.decoder(train[1], train[2], fold.λ[1], Flux.Optimise.RADAM(),
+        opt = Flux.Optimise.RADAM()
+        model = GermanTrack.decoder(train[1], train[2], fold.λ[1], opt,
             progress = progress,
             batch = params.train.batchsize,
             max_steps = params.train.max_steps,
@@ -240,11 +244,14 @@ function train_decoder(params, x, modelsetup, train_types)
             inner = params.train.hidden_units,
             validate = @_ val |> toxy(__, selector)
         )
+        opt = nothing
+        CUDA.memory_status()
 
         test[!, :prediction] = [model(x[selectdata(selector, x, row)...]) for row in eachrow(test)]
         val[!, :prediction] = [model(x[selectdata(selector, x, row)...]) for row in eachrow(val)]
         test[!, :steps] .= GermanTrack.nsteps(model)
 
+        @infiltrate
         DataFrame(model = model, result = test, validate = val)
     end
 

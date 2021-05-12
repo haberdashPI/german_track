@@ -16,6 +16,9 @@ include(joinpath(scriptsdir(), "julia", "setup_decode_params.jl")) # defines `pa
 
 prefix = joinpath(processed_datadir("analyses", "decode"), "train")
 
+# load data
+# -----------------------------------------------------------------
+
 x, windows, nfeatures = prepare_decode_data(params, prefix)
 stimulidf = prepare_decode_stimuli(params, windows, prefix)
 
@@ -47,16 +50,30 @@ train_types = OrderedDict(
     )
 )
 
+# modelsetup = @_ stimulidf |>
+#     groupby(__, [:condition, :source, :encoding]) |>
+#     repeatby(__,
+#         :cross_fold => 1:params.train.nfolds,
+#         :λ => params.train.λs,
+#         :train_type => keys(train_types)) |>
+#     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
+#         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
+
 modelsetup = @_ stimulidf |>
-    groupby(__, [:condition, :source, :encoding]) |>
+    __[1:10, :] |>
+    select(__, Not(:fold)) |>
+    insertcols!(__,
+        :λ => 0.01,
+        :fold => [fill(1,5); fill(2,5)]
+    ) |>
     repeatby(__,
-        :cross_fold => 1:params.train.nfolds,
-        :λ => params.train.λs,
+        :cross_fold => 1:2,
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
         NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
 
-predictions, valpredictions, models = train_decoder(params, x, modelsetup, train_types)
+CUDA.allowscalar(false)
+predictions, valpredictions, models = train_decoder(params, view(x, 1:2, :), modelsetup, train_types)
 best_λ = plot_decode_lambdas(params, predictions, valpredictions, dir)
 
 # Store only the best results

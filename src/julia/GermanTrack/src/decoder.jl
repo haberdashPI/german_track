@@ -92,7 +92,7 @@ function decoder(x, y, λ, opt;
         end
     end
 
-    loader = if sizeof(x) > max_x_memory
+    loader = if true #sizeof(x) > max_x_memory
         @warn "Large data set: $(round(sizeof(x) / (2^10)^3, digits=2)) GB. Loading into memory in batches." maxlog=1 _id=objectid(x)
         Iterators.map(Flux.Data.DataLoader((x, y), batchsize = batch, shuffle = true)) do (x_batch, y_batch)
             (x_batch |> gpu, y_batch |> gpu)
@@ -106,11 +106,10 @@ function decoder(x, y, λ, opt;
         evalcb()
         stopped && break
     end
-    CUDA.memory_status()
 
     for _ in (cur_step+1):max_steps
         next!(progress)
     end
 
-    Decoder(best_model |> cpu, best_steps)
+    Decoder(testmode!(best_model |> cpu), best_steps)
 end
