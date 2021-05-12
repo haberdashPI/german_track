@@ -1,8 +1,6 @@
 task order:
     - reanalyze: spatial: of the 6 decoders
         which one wins, which side is on it?
-    - figure out the thing with spatial
-      if not done by today (05/05/2021), think through alternatives
     - start running the "continuous" decoder, i.e. all windows
     - refactor the decoding results to have a separate thing
     for source and for target decoding
