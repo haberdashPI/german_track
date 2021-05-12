@@ -276,12 +276,15 @@ function testsplit(df::Union{AbstractDataFrame, GroupedDataFrame}, bycol, foldco
     crossfoldcol = :cross_fold, splitcol = :split;
     validate = 0.2, rng = nothing)
 
-    combine(df, ungroup = false) do sdf
+    ungrouped_combine(df) do sdf
         valset = validationset(sdf, bycol, foldcol, crossfoldcol, validate, rng)
         transform(sdf, [foldcol, crossfoldcol, bycol] => ByRow((fold, cross, by) ->
             fold == cross ? "test" : by ∈ valset ? "validate" : "train") => splitcol)
     end
 end
+ungrouped_combine(fn, df::GroupedDataFrame) = combine(fn, df, ungroup = false)
+ungrouped_combine(fn, df::AbstractDataFrame) = combine(fn, df)
+
 
 testsplit(rd::RepeatedDataFrame, args...; kwds...) =
     RepeatedDataFrame(rd.df, rd.repeaters, vcat(rd.applyers,
