@@ -155,7 +155,7 @@ train_types = OrderedDict(
     "athit-target"  => ( train = ("hit", true, "target"), test  = ("hit", true, "target") ),
     # "atmiss-target" => ( train = ("miss", true, "target"), test  = ("hit", true, "target") ),
     # "atmiss-target" shows little difference from "athit-target"
-    "athit-pre-target" => ( train = ("hit", true, "pre-target"), test  = ("hit", true, "pre-target") )
+    # "athit-pre-target" => ( train = ("hit", true, "pre-target"), test  = ("hit", true, "pre-target") )
 )
 function filtertype(df, type)
     train_type = train_types[df.train_type[1]][type]
@@ -165,7 +165,7 @@ function filtertype(df, type)
 end
 
 modelsetup = @_ stimulidf |>
-    # @where(__, :condition .== "object") |>
+    @where(__, :condition .== "global") |>
     groupby(__, [:source, :encoding]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
