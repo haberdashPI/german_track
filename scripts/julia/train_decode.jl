@@ -166,13 +166,13 @@ end
 
 modelsetup = @_ stimulidf |>
     @where(__, :condition .== "global") |>
-    groupby(__, [:source, :encoding]) |>
+    groupby(__, [:source, :encoding, :condition]) |>
     repeatby(__,
         :cross_fold => 1:params.train.nfolds,
         :λ => params.train.λs,
         :train_type => keys(train_types)) |>
     testsplit(__, :sid, rng = df -> stableRNG(2019_11_18, :validate_flux,
-        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding]])))
+        NamedTuple(df[1, [:cross_fold, :λ, :train_type, :encoding, :condition]])))
 
 toxy(df) = isempty(df) ? ([], []) :
     (x[:, eegindices(df)], reshape(reduce(vcat, row.data for row in eachrow(df)),1,:))
