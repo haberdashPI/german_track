@@ -7,6 +7,6 @@ cp("Project.toml.install","Project.toml")
 cp("Manifest.toml.local","Manifest.toml")
 quickactivate(@__DIR__,"german_track")
 
-Pkg.devdir("src/julia/EEGCoding")
-Pkg.devdir("src/julia/GermanTrack")
+Pkg.develop(path="src/julia/EEGCoding")
+Pkg.develop(path="src/julia/GermanTrack")
 Pkg.instantiate()
